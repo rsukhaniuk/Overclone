@@ -7,15 +7,15 @@
 pub mod dto;
 pub mod facts;
 pub mod knu_dto;
-pub mod profiles;
-pub mod observations;
 pub mod lexer;
 pub mod mapping;
+pub mod observations;
+pub mod profiles;
+pub mod rules;
 
 use dto::{
     AnalysisResult, AnalyzePayload, ErrorBody, FileDescriptor, InitializePayload, Limits,
-    NewlineKind, Outcome, ProfileRef, RequestEnvelope, ResolvedLimits, Response, SourceFacts,
-    PROTOCOL_VERSION,
+    NewlineKind, Outcome, RequestEnvelope, ResolvedLimits, Response, SourceFacts, PROTOCOL_VERSION,
 };
 use lexer::{FileBudget, ScanResult};
 use mapping::has_bom;
@@ -32,7 +32,7 @@ const D_MAX_DIAGNOSTICS_PER_PROJECT: u32 = 1000;
 const D_MAX_BRACE_DEPTH: u32 = 256;
 
 /// Engine version advertised to the bridge.
-pub const ENGINE_VERSION: &str = "overclone-engine-m2a-1";
+pub const ENGINE_VERSION: &str = "overclone-engine-m2b-1";
 
 /// Bounded opaque identity IDs (requestId/snapshot/project/session/fileId,
 /// profile id/version). Small fixture IDs stay valid; oversized IDs are
@@ -337,6 +337,32 @@ pub fn analyze_source(metadata_json: &str, packed_bytes: &[u8]) -> String {
     if let Err(msg) = validate_payload_identity(&payload) {
         return failed_response(Some(request_id), "InvalidInput", msg);
     }
+    let Some(selected_profile) = profiles::resolve(&payload.profile) else {
+        return failed_response(
+            Some(request_id),
+            "UnsupportedCapability",
+            "unknown profile or version",
+        );
+    };
+    if (selected_profile == profiles::Profile::Knu) != payload.configuration.is_some() {
+        return failed_response(
+            Some(request_id),
+            "InvalidInput",
+            "KNU requires configuration; engine-only requests must omit it",
+        );
+    }
+    if selected_profile == profiles::Profile::Knu
+        && payload
+            .files
+            .iter()
+            .any(|f| !valid_project_path(&f.relative_path))
+    {
+        return failed_response(
+            Some(request_id),
+            "InvalidInput",
+            "invalid project-relative path",
+        );
+    }
     let resolved = resolve_limits(&payload.limits);
 
     // Reject a packed buffer larger than the resolved total-byte cap even
@@ -429,6 +455,7 @@ pub fn analyze_source(metadata_json: &str, packed_bytes: &[u8]) -> String {
     let mut diagnostics_truncated = false;
     let mut rule_limitations: Vec<String> = Vec::new();
     let mut diag_cap_remaining = resolved.max_diagnostics_per_project;
+    let mut lookaheads = Vec::with_capacity(payload.files.len());
 
     let mut budget = FileBudget {
         tokens_per_file_cap: resolved.max_tokens_per_file,
@@ -443,6 +470,7 @@ pub fn analyze_source(metadata_json: &str, packed_bytes: &[u8]) -> String {
         let slice = &packed_bytes[off..off + len as usize];
 
         if f.media_kind != "text" {
+            lookaheads.push(lexer::LookaheadBudget::new(0));
             // Binary/non-source: NotApplicable, no lexing, metadata-only.
             file_facts.push(dto::SourceFileFacts {
                 file_id: f.file_id.clone(),
@@ -458,7 +486,7 @@ pub fn analyze_source(metadata_json: &str, packed_bytes: &[u8]) -> String {
             continue;
         }
 
-        let scan: ScanResult = lexer::scan_file(
+        let mut scan: ScanResult = lexer::scan_file(
             &f.file_id,
             slice,
             len,
@@ -476,24 +504,22 @@ pub fn analyze_source(metadata_json: &str, packed_bytes: &[u8]) -> String {
             ));
         }
         all_diagnostics.extend(scan.diagnostics.iter().cloned());
+        lookaheads.push(std::mem::replace(
+            &mut scan.lookahead,
+            lexer::LookaheadBudget::new(0),
+        ));
         let facts = facts::file_facts(&f.file_id, len, f.has_bom, scan, &f.media_kind);
         file_facts.push(facts);
     }
 
-    let source = SourceFacts {
-        files: file_facts.clone(),
-    };
     let (rule, aggregate) =
         facts::rule_result_and_aggregate(&file_facts, &all_diagnostics, &rule_limitations);
     let coverage = facts::coverage(&file_facts, diagnostics_truncated);
 
-    let result = AnalysisResult {
-        snapshot_id: payload.snapshot_id,
-        profile: ProfileRef {
-            id: payload.profile.id,
-            version: payload.profile.version,
-        },
-        facts: source,
+    let mut result = AnalysisResult {
+        snapshot_id: payload.snapshot_id.clone(),
+        profile: payload.profile.clone(),
+        facts: SourceFacts { files: file_facts },
         diagnostics: all_diagnostics,
         rule_results: vec![rule],
         aggregate_outcome: aggregate,
@@ -502,6 +528,39 @@ pub fn analyze_source(metadata_json: &str, packed_bytes: &[u8]) -> String {
         configuration: None,
         knu: None,
     };
+    if selected_profile == profiles::Profile::Knu {
+        let mut remaining = resolved
+            .max_tokens_per_project
+            .saturating_sub(budget.tokens_per_project_used);
+        let mut observations = Vec::with_capacity(payload.files.len());
+        for (((f, facts), &(off, len)), work) in payload
+            .files
+            .iter()
+            .zip(&result.facts.files)
+            .zip(&validated)
+            .zip(lookaheads)
+        {
+            let eligible = f.media_kind == "text"
+                && f.relative_path
+                    .rsplit_once('.')
+                    .is_some_and(|(_, ext)| ext.eq_ignore_ascii_case("tex"));
+            observations.push(observations::observe(
+                facts,
+                &packed_bytes[off..off + len as usize],
+                eligible,
+                work,
+                resolved.max_tokens_per_file,
+                &mut remaining,
+            ));
+        }
+        rules::evaluate(
+            &mut result,
+            &payload,
+            observations,
+            packed_bytes,
+            diag_cap_remaining,
+        );
+    }
 
     serialize_result_bounded(Some(request_id), &result, resolved.max_result_bytes)
 }
@@ -537,6 +596,15 @@ fn recover_request_id(json: &str) -> Result<String, &'static str> {
         return Err("requestId exceeds the 128-byte id limit");
     }
     Ok(s.to_string())
+}
+
+/// KNU observations never resolve includes or access a filesystem. Reject raw
+/// path escapes rather than normalizing them at this untrusted boundary.
+fn valid_project_path(path: &str) -> bool {
+    !path.is_empty()
+        && !path.contains(['\\', ':'])
+        && !path.chars().any(char::is_control)
+        && path.split('/').all(|part| !matches!(part, "" | "." | ".."))
 }
 
 fn first_duplicate_file_id(files: &[FileDescriptor]) -> Option<String> {
@@ -694,3 +762,5 @@ mod tests {
 
 #[cfg(test)]
 mod contract_tests;
+#[cfg(test)]
+mod knu_tests;
