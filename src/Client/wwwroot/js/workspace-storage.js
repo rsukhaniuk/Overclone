@@ -344,6 +344,50 @@ export async function repairHead(
     );
 }
 
+// Atomically publish a brand-new project from a validated staged import: store
+// the project record, the initial revision manifest and an import checkpoint,
+// and set the head — all in one readwrite transaction. A failure or abort leaves
+// no project row, so the project list never shows an empty/partial import. There
+// is no expectedHead CAS (the project is new). Content objects were already
+// written and verified by the caller before this runs.
+export async function publishImport(project, revision, checkpoint) {
+    const db = await openDb();
+    return new Promise((resolve) => {
+        const stores = [STORE_PROJECTS, STORE_REVISIONS, STORE_CHECKPOINTS];
+        const transaction = db.transaction(stores, "readwrite");
+        const projectStore = transaction.objectStore(STORE_PROJECTS);
+        const revisionStore = transaction.objectStore(STORE_REVISIONS);
+        const checkpointStore = transaction.objectStore(STORE_CHECKPOINTS);
+
+        transaction.oncomplete = () => {
+            resolve({ published: true });
+        };
+        transaction.onerror = () =>
+            resolve({
+                published: false,
+                errorCode: "StorageFailure",
+                safeMessage: String(
+                    transaction.error || "publish transaction failed",
+                ),
+            });
+        transaction.onabort = () =>
+            resolve({
+                published: false,
+                errorCode: "StorageFailure",
+                safeMessage: String(
+                    transaction.error || "publish transaction aborted",
+                ),
+            });
+
+        // Order: manifest + checkpoint first, then the project row last so that a
+        // failure before the project put never leaves a headless project row.
+        revisionStore.put(revision);
+        checkpointStore.put(checkpoint);
+        project.headRevisionId = revision.id;
+        projectStore.put(project);
+    });
+}
+
 // ---------- Web Locks ----------
 
 function ensureLocks() {

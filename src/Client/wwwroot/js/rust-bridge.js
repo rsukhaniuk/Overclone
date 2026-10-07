@@ -1,4 +1,16 @@
 import { createWorkerBridge } from "./worker-bridge.js";
 
-export const { ready, countWords, dispose } = createWorkerBridge(
-    new URL("./rust-worker.js", import.meta.url), "Rust");
+const bridge = createWorkerBridge(
+    new URL("./rust-worker.js", import.meta.url),
+    "Rust",
+);
+
+export const {
+    ready,
+    countWords,
+    dispose,
+    analyzeSource,
+    cancelSource,
+    getWorkerEpoch,
+    isCurrentWorkerEpoch,
+} = bridge;

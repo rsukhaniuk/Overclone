@@ -1,0 +1,52 @@
+@* App-scoped service-worker UPDATE safety guard. Rendered once at the app root
+   (App.razor), so it survives route changes (a dirty workspace on /smoke is still
+   protected). It registers a DotNetObjectReference as window.__oopUpdateGuard
+   for the index.html update banner; the banner forwards the user's "Reload to
+   update" click here and reloads ONLY when this guard says it is safe. C# owns
+   the document/save policy; JS forwards the decision and manages the SW /
+   controllerchange events. The guard fails CLOSED when unavailable (the banner
+   refuses before Blazor boots), never bypassing. *@
+@inject WorkspaceCoordinator Coordinator
+@inject IJSRuntime JS
+@implements IAsyncDisposable
+
+@code {
+    private DotNetObjectReference<UpdateGuard>? _ref;
+    private bool _registered;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && !_registered)
+        {
+            _registered = true;
+            _ref = DotNetObjectReference.Create(this);
+            try { await JS.InvokeVoidAsync("__oopSetUpdateGuard", _ref); }
+            catch (JSException) { /* app tearing down; root component will not re-render */ }
+        }
+    }
+
+    // Conservative refusal. Delegates the pure policy to
+    // `UpdateGuardPolicy.Decide` (unit-tested in UpdateGuardTests) over a
+    // synchronous snapshot of coordinator state (no await), so the decision
+    // reflects current state. The banner RECHECKS before the actual reload
+    // (controllerchange and timeout fallback) so an edit landing during the
+    // activation wait is still caught.
+    [JSInvokable]
+    public Task<UpdateGuardDecision> CanActivateUpdateAsync()
+    {
+        var c = Coordinator;
+        return Task.FromResult(
+            UpdateGuardPolicy.Decide(c.IsOpen, c.IsReadOnly, c.SavePhase, c.IsDirty));
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_ref is not null)
+        {
+            try { await JS.InvokeVoidAsync("__oopClearUpdateGuard"); }
+            catch (JSException) { /* tearing down */ }
+            _ref.Dispose();
+            _ref = null;
+        }
+    }
+}

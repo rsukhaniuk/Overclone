@@ -22,6 +22,8 @@ internal sealed class FileRecord
     public string MediaKind { get; set; } = "text";
     public string ContentHash { get; set; } = "";
     public long ByteLength { get; set; }
+    // Additive v1 field: missing in legacy M1a records, defaults to false.
+    public bool HasBom { get; set; }
 }
 
 internal sealed class RevisionRecord
@@ -63,6 +65,13 @@ internal sealed class CommitBatchResult
     public string? ActualHead { get; set; }
 }
 
+internal sealed class ImportResult
+{
+    public bool Published { get; set; }
+    public string? ErrorCode { get; set; }
+    public string? SafeMessage { get; set; }
+}
+
 internal static class Mapping
 {
     public static ProjectRecord ToRecord(Project p) => new()
@@ -86,6 +95,7 @@ internal static class Mapping
         MediaKind = f.MediaKind,
         ContentHash = f.ContentHash.Hex,
         ByteLength = f.ByteLength,
+        HasBom = f.HasBom,
     };
 
     public static ProjectFile ToDomain(FileRecord r) => new(
@@ -93,7 +103,8 @@ internal static class Mapping
         r.RelativePath,
         r.MediaKind,
         new SHA256(r.ContentHash),
-        r.ByteLength);
+        r.ByteLength,
+        r.HasBom);
 
     public static RevisionRecord ToRecord(ProjectRevision r) => new()
     {

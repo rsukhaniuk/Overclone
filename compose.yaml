@@ -152,6 +152,46 @@ services:
         npm install --no-audit --no-fund --prefix /tmp/browser-test playwright@1.56.1
         node /tests/test-browser.cjs
 
+  analysis-worker-test:
+    profiles: ["test"]
+    image: ${BROWSER_IMAGE:-mcr.microsoft.com/playwright:v1.56.1-noble}
+    init: true
+    working_dir: /tmp/browser-test
+    environment:
+      NODE_PATH: /tmp/browser-test/node_modules
+      APP_URL: http://app:8080
+    volumes:
+      - ./scripts:/tests:ro
+    depends_on:
+      app:
+        condition: service_started
+    command:
+      - sh
+      - -ec
+      - |
+        npm install --no-audit --no-fund --prefix /tmp/browser-test playwright@1.56.1
+        node /tests/test-analysis-worker.cjs
+
+  analysis-ui-test:
+    profiles: ["test"]
+    image: ${BROWSER_IMAGE:-mcr.microsoft.com/playwright:v1.56.1-noble}
+    init: true
+    working_dir: /tmp/browser-test
+    environment:
+      NODE_PATH: /tmp/browser-test/node_modules
+      APP_URL: http://app:8080
+    volumes:
+      - ./scripts:/tests:ro
+    depends_on:
+      app:
+        condition: service_started
+    command:
+      - sh
+      - -ec
+      - |
+        npm install --no-audit --no-fund --prefix /tmp/browser-test playwright@1.56.1
+        node /tests/test-analysis-ui.cjs
+
   workspace-test:
     profiles: ["test"]
     image: ${BROWSER_IMAGE:-mcr.microsoft.com/playwright:v1.56.1-noble}
@@ -172,6 +212,160 @@ services:
         npm install --no-audit --no-fund --prefix /tmp/browser-test playwright@1.56.1
         node /tests/test-workspace.cjs
 
+  transfer-test:
+    profiles: ["test"]
+    image: ${BROWSER_IMAGE:-mcr.microsoft.com/playwright:v1.56.1-noble}
+    init: true
+    working_dir: /tmp/browser-test
+    environment:
+      NODE_PATH: /tmp/browser-test/node_modules
+      APP_URL: http://app:8080
+    volumes:
+      - ./scripts:/tests:ro
+    depends_on:
+      app:
+        condition: service_started
+    command:
+      - sh
+      - -ec
+      - |
+        npm install --no-audit --no-fund --prefix /tmp/browser-test playwright@1.56.1
+        node /tests/test-transfer.cjs
+
+  offline-restart-test:
+    profiles: ["test"]
+    image: ${BROWSER_IMAGE:-mcr.microsoft.com/playwright:v1.56.1-noble}
+    init: true
+    working_dir: /tmp/browser-test
+    environment:
+      NODE_PATH: /tmp/browser-test/node_modules
+      # The offline restart test verifies the PUBLISHED static build served by
+      # static-origin, not the development server (app). The static origin
+      # is later blocked with setOffline(true), simulating "stop its static
+      # origin" for the offline cold-start check.
+      APP_URL: http://static-origin:8080
+    volumes:
+      - ./scripts:/tests:ro
+    depends_on:
+      static-origin:
+        condition: service_healthy
+    command:
+      - sh
+      - -ec
+      - |
+        npm install --no-audit --no-fund --prefix /tmp/browser-test playwright@1.56.1
+        node /tests/test-offline-restart.cjs
+
+  sw-update-test:
+    profiles: ["test"]
+    image: ${BROWSER_IMAGE:-mcr.microsoft.com/playwright:v1.56.1-noble}
+    init: true
+    working_dir: /tmp/browser-test
+    environment:
+      NODE_PATH: /tmp/browser-test/node_modules
+      # The SW update-path test verifies the PUBLISHED static build served by
+      # static-origin (same origin as offline-restart-test) and stages a new
+      # worker by routing the SW script to a bumped-CACHE_VERSION copy.
+      APP_URL: http://static-origin:8080
+    volumes:
+      - ./scripts:/tests:ro
+    depends_on:
+      static-origin:
+        condition: service_healthy
+    command:
+      - sh
+      - -ec
+      - |
+        npm install --no-audit --no-fund --prefix /tmp/browser-test playwright@1.56.1
+        node /tests/test-sw-update.cjs
+
+  sw-update-draft-test:
+    profiles: ["test"]
+    image: ${BROWSER_IMAGE:-mcr.microsoft.com/playwright:v1.56.1-noble}
+    init: true
+    working_dir: /tmp/browser-test
+    environment:
+      NODE_PATH: /tmp/browser-test/node_modules
+      # The SW update-DRAFT preservation test verifies the PUBLISHED static build
+      # served by static-origin and stages new workers by bumping CACHE_VERSION
+      # through a proxy (same approach as sw-update-test, separate proxy port).
+      APP_URL: http://static-origin:8080
+    volumes:
+      - ./scripts:/tests:ro
+    depends_on:
+      static-origin:
+        condition: service_healthy
+    command:
+      - sh
+      - -ec
+      - |
+        npm install --no-audit --no-fund --prefix /tmp/browser-test playwright@1.56.1
+        node /tests/test-sw-update-draft.cjs
+
+  # Publishes the Blazor WASM client to a static wwwroot (the production
+  # static build) shared with static-origin. Mirrors the app service's
+  # native/rust WASM mounts so the published wwwroot includes the workers.
+  publish-client:
+    profiles: ["test"]
+    image: oop-dev-dotnet:local
+    # One-shot publish step: run as root so it can write the Docker-created
+    # publish-assets volume; the published files are served read-only by
+    # static-origin (which runs as the Playwright image user).
+    user: "0:0"
+    working_dir: /workspace
+    init: true
+    environment:
+      DOTNET_CLI_HOME: /cache/dotnet
+      NUGET_PACKAGES: /cache/nuget
+      DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+      DOTNET_SKIP_FIRST_TIME_EXPERIENCE: "1"
+    volumes:
+      - .:/workspace
+      - dotnet-cache:/cache
+      - dotnet-build:/artifacts/dotnet
+      - wasm:/workspace/src/Client/wwwroot/native-generated:ro
+      - rust-wasm:/workspace/src/Client/wwwroot/rust-generated:ro
+      - publish-assets:/artifacts/publish
+    depends_on:
+      native:
+        condition: service_healthy
+      rust:
+        condition: service_healthy
+    command:
+      [
+        "sh",
+        "-c",
+        "dotnet publish src/Client/Client.csproj -c Release -o /artifacts/publish",
+      ]
+    restart: "no"
+
+  # Serves the published static wwwroot over plain HTTP (zero-dependency
+  # node static server in scripts/static-server.cjs). This is the
+  # origin the offline-restart test provisions and then blocks offline.
+  static-origin:
+    profiles: ["test"]
+    image: ${BROWSER_IMAGE:-mcr.microsoft.com/playwright:v1.56.1-noble}
+    init: true
+    working_dir: /work
+    volumes:
+      - publish-assets:/artifacts/publish:ro
+      - ./scripts:/tests:ro
+    depends_on:
+      publish-client:
+        condition: service_completed_successfully
+    command:
+      ["node", "/tests/static-server.cjs", "/artifacts/publish/wwwroot", "8080"]
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "require('http').get('http://127.0.0.1:8080/',r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1));"
+      interval: 3s
+      timeout: 2s
+      retries: 60
+      start_period: 5s
+
 volumes:
   dotnet-cache:
   dotnet-build:
@@ -181,3 +375,4 @@ volumes:
   rust-cache:
   rust-build:
   rust-wasm:
+  publish-assets:

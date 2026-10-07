@@ -3,13 +3,17 @@ using System.Collections.Immutable;
 namespace Client.Workspace.Domain;
 
 /// <summary>A file manifest entry. Stable file ID is independent of the
-/// normalized relative path; rename changes the path, not the ID.</summary>
+/// normalized relative path; rename changes the path, not the ID. MediaKind is
+/// <c>"text"</c> for valid-UTF-8 editable files or <c>"binary"</c> otherwise;
+/// <see cref="HasBom"/> records a retained UTF-8 BOM for text files. Binary
+/// files are never decoded for editing.</summary>
 public record ProjectFile(
     FileId Id,
     string RelativePath,
     string MediaKind,
     SHA256 ContentHash,
-    long ByteLength);
+    long ByteLength,
+    bool HasBom = false);
 
 /// <summary>Immutable project revision. The file manifest captures the exact
 /// content objects referenced by this revision; settings are versioned with it.</summary>
@@ -45,7 +49,9 @@ public record Project(
 public record ContentObject(SHA256 Hash, long ByteLength, bool Verified);
 
 /// <summary>A content object to write during this commit. The repository writes
-/// and verifies these to OPFS before the IndexedDB manifest/head transaction.</summary>
+/// and verifies these to OPFS before the IndexedDB manifest/head transaction.
+/// <see cref="Bytes"/> is the exact content; the hash/length are validated to
+/// match before writing.</summary>
 public record ContentInput(SHA256 Hash, byte[] Bytes, long ByteLength);
 
 /// <summary>A commit batch: the selected head revision plus any unpersisted
@@ -115,15 +121,111 @@ public record RecoveryReport(
     IReadOnlyList<HistoryCheckpoint> CompleteCheckpoints);
 
 /// <summary>An immutable project revision plus decoded text content for its
-/// files. IsReadOnly indicates the writer lock could not be acquired. Recovery
-/// is non-null only when the head is damaged.</summary>
+/// text files and raw bytes for its binary files. IsReadOnly indicates the
+/// writer lock could not be acquired. Recovery is non-null only when the head
+/// is damaged. Binary files are keyed in <see cref="BinaryContent"/> and never
+/// appear in <see cref="Content"/>; their BOM/newline bytes are preserved
+/// exactly and never decoded for editing.</summary>
 public record ProjectSnapshot(
     Project Project,
     ProjectRevision? Revision,
     IReadOnlyDictionary<FileId, string> Content,
+    IReadOnlyDictionary<FileId, byte[]> BinaryContent,
+    IReadOnlyDictionary<FileId, bool> TextHasBom,
     bool IsReadOnly,
     RecoveryReport? Recovery = null);
+
+/// <summary>An arbitrary historical revision read from the repository, with its
+/// objects verified. Used by history comparison and restore.</summary>
+public record RevisionManifest(
+    ProjectRevision Revision,
+    bool Verified,
+    string? FailureReason = null)
+{
+    public static RevisionManifest Ok(ProjectRevision r) => new(r, true);
+    public static RevisionManifest Damaged(ProjectRevision r, string reason) => new(r, false, reason);
+}
 
 public record HistoryPage(
     IReadOnlyList<HistoryCheckpoint> Checkpoints,
     string? NextCursor = null);
+
+/// <summary>A file proposed for a new imported project, before validation has
+/// committed it to the repository. Bytes are exact; the hash is computed by the
+/// caller and re-verified on publish.</summary>
+public record StagedFile(
+    string RelativePath,
+    string MediaKind,
+    bool HasBom,
+    byte[] Bytes,
+    SHA256 Hash,
+    long ByteLength);
+
+/// <summary>A fully validated staged project awaiting publication as a new
+/// project. The repository publishes the project, its initial revision/head and
+/// an import checkpoint atomically; a failed or cancelled import never appears
+/// as an empty project in the list.</summary>
+public record StagedProject(
+    string Name,
+    ImmutableArray<StagedFile> Files,
+    IReadOnlyList<ValidationError> ValidationErrors);
+
+/// <summary>A single validation error from import staging, bound to a path.</summary>
+public record ValidationError(string RelativePath, string Code, string Message);
+
+/// <summary>Result of publishing a staged import. On success, the new project is
+/// immediately openable.</summary>
+public record ImportPublishResult(
+    bool Published,
+    Project? Project,
+    RevisionId? Head,
+    string? ErrorCode = null,
+    string? SafeMessage = null);
+
+/// <summary>A capture token for a restore/transfer preview. It binds the
+/// preview to a specific session, working-generation token and durable head so
+/// any intervening edit, tree change, session switch or head advance invalidates
+/// the preview. A durable revision ID alone cannot establish freshness.</summary>
+public record PreviewToken(
+    Guid SessionId,
+    long WorkingGeneration,
+    RevisionId? ExpectedHead,
+    RevisionId CapturedRevision);
+
+/// <summary>Kind of per-file change between two revisions.</summary>
+public enum FileChangeKind
+{
+    Unchanged,
+    Added,
+    Removed,
+    Renamed,
+    ContentChanged,
+    BinaryChanged,
+}
+
+/// <summary>A per-file comparison result. Renamed files share the same stable
+/// FileId across revisions; content-changed files differ in bytes/hash. Text
+/// files carry an optional bounded line diff; binary files report sizes/hashes.</summary>
+public record FileChange(
+    FileId? FileId,
+    string Path,
+    FileChangeKind Kind,
+    string? OldPath,
+    long OldLength,
+    long NewLength,
+    SHA256? OldHash,
+    SHA256? NewHash,
+    IReadOnlyList<DiffLine>? Diff,
+    string? Note = null);
+
+/// <summary>A single line of a bounded line-based diff.</summary>
+public record DiffLine(DiffOp Op, string Text);
+
+public enum DiffOp { Equal, Insert, Delete }
+
+/// <summary>Summary of a revision comparison, with per-file changes and a flag
+/// if detailed diff computation exceeded its budget and fell back to a summary.</summary>
+public record ComparisonSummary(
+    IReadOnlyList<FileChange> Changes,
+    bool DiffBudgetExceeded,
+    IReadOnlyList<string>? OversizedFiles = null);

@@ -18,8 +18,39 @@ public interface IProjectRepository
     Task<IReadOnlyList<Project>> ListProjectsAsync(CancellationToken ct);
     Task DeleteProjectAsync(ProjectId id, CancellationToken ct);
     Task<CommitResult> RepairHeadAsync(ProjectId id, RevisionId expectedCurrentHead, RevisionId newHead, CancellationToken ct);
+
+    // ---- M1b: byte-aware reads, atomic import publish, restore ----
+
+    /// <summary>Read a specified revision, validating that it belongs to the
+    /// requested project and verifying its referenced content objects. Used by
+    /// history comparison and restore. Does not change the durable head.</summary>
+    Task<RevisionManifest> ReadRevisionAsync(ProjectId projectId, RevisionId revisionId, CancellationToken ct);
+
+    /// <summary>Read the exact content bytes of a content object by hash. Used
+    /// by export, comparison and binary display/download. Never decodes.</summary>
+    Task<byte[]> ReadContentAsync(SHA256 hash, CancellationToken ct);
+
+    /// <summary>Atomically create a project from a completely validated staged
+    /// import: writes and verifies all content objects, then in one IndexedDB
+    /// transaction stores the project, initial revision manifest, an import
+    /// checkpoint and advances the head. A failed or cancelled import must not
+    /// appear as an empty project in the project list. Unreferenced OPFS staging
+    /// objects are allowed.</summary>
+    Task<ImportPublishResult> PublishImportAsync(StagedProject staged, CancellationToken ct);
+
+    /// <summary>Create a new head/checkpoint for restore using the current
+    /// expected head. The new revision's parent is the current head and its file
+    /// set/bytes/IDs match the selected historical revision. A restore reason
+    /// references the historical revision. Old manifests remain intact.</summary>
+    Task<CommitResult> CreateRestoreRevisionAsync(
+        ProjectId projectId,
+        RevisionId expectedHead,
+        ProjectRevision restoredRevision,
+        RevisionId sourceRevisionId,
+        string reason,
+        CancellationToken ct);
 }
 
-/// <summary>Opaque history pagination cursor (M1a returns the full checkpoint
-/// list; the cursor is reserved for future compaction).</summary>
+/// <summary>Opaque history pagination cursor. The value encodes the last item's
+/// (timestamp, id) so the next page resumes after it with a stable tie-break.</summary>
 public record HistoryCursor(string Value);

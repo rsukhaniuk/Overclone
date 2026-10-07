@@ -31,6 +31,17 @@ public readonly record struct CheckpointId(Guid Value)
     public override string ToString() => Value.ToString("N");
 }
 
+/// <summary>Opaque unique id for an in-memory analysis snapshot (M2a). It is
+/// C# orchestration metadata only — NOT a competing Rust revision id and NOT an
+/// extra wire requirement. Generated at capture so a stale capture can be
+/// discarded even when restore/recovery replaced contents without changing
+/// <see cref="WorkspaceCoordinator.WorkingGeneration"/> or session.</summary>
+public readonly record struct AnalysisSnapshotId(Guid Value)
+{
+    public static AnalysisSnapshotId New() => new(Guid.NewGuid());
+    public override string ToString() => Value.ToString("N");
+}
+
 /// <summary>
 /// Lowercased hex SHA-256 of exact UTF-8 bytes. Equality is case-sensitive on
 /// the normalized (lowercase) form.

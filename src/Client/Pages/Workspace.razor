@@ -1,5 +1,9 @@
 @page "/"
 @inject WorkspaceCoordinator Coordinator
+@inject IProjectTransfer Transfer
+@inject FolderTransferService Folders
+@inject AnalysisCoordinator AnalysisCoord
+@inject SourceNavigator Navigator
 @inject IJSRuntime JS
 @implements IAsyncDisposable
 
@@ -13,6 +17,13 @@
     </div>
 }
 
+@if (!string.IsNullOrEmpty(_offlineReadinessNotice))
+{
+    <div class="banner banner-warn" role="status" data-testid="offline-readiness-notice">
+        @_offlineReadinessNotice
+    </div>
+}
+
 @if (!Coordinator.IsOpen)
 {
     <section class="panel" aria-label="Projects">
@@ -20,24 +31,76 @@
         <p class="hint">Local projects are stored in this browser (OPFS + IndexedDB). They survive
             closing the browser and work offline after provisioning.</p>
 
-        <form @onsubmit="@(async () => await CreateProjectAsync())" @onsubmit:preventDefault>
-            <label for="new-project">New project name</label>
-            <input id="new-project" @bind="_newProjectName" @bind:event="oninput"
-                   placeholder="e.g. Diploma 2026" autocomplete="off" />
-            <button type="submit">Create project</button>
-        </form>
+        <div class="transfer-bar">
+            <form @onsubmit="@(async () => await CreateProjectAsync())" @onsubmit:preventDefault>
+                <label for="new-project">New project name</label>
+                <input id="new-project" @bind="_newProjectName" @bind:event="oninput"
+                       placeholder="e.g. Diploma 2026" autocomplete="off" />
+                <button type="submit">Create project</button>
+            </form>
+            <span class="transfer-sep">or import:</span>
+            <InputFile OnChange="OnImportZip" accept=".zip"
+                       data-testid="import-zip" />
+            <button @onclick="OnImportFolder" data-testid="import-folder"
+                    disabled="@( !_folderCap.Picker)">Import folder</button>
+        </div>
+
+        @if (_staged is { } staged)
+        {
+            <section class="staged-preview" data-testid="import-preview">
+                <h2>Import preview</h2>
+                <label for="staged-name">Project name</label>
+                <input id="staged-name" @bind="_stagedName" @bind:event="oninput"
+                       data-testid="staged-name" autocomplete="off" />
+                @if (_stagedExcluded.Count > 0)
+                {
+                    <p class="hint">Excluded trees: @string.Join(", ", _stagedExcluded)</p>
+                }
+                @if (staged.ValidationErrors.Count > 0)
+                {
+                    <ul class="validation-errors" data-testid="validation-errors">
+                        @foreach (var e in staged.ValidationErrors)
+                        {
+                            <li data-testid="validation-error">
+                                <code>@(e.RelativePath.Length == 0 ? "(archive)" : e.RelativePath)</code>
+                                — @e.Code: @e.Message
+                            </li>
+                        }
+                    </ul>
+                }
+                else
+                {
+                    <p class="hint">@(staged.Files.Length) file(s):</p>
+                    <ul class="staged-files">
+                        @foreach (var f in staged.Files)
+                        {
+                            <li>
+                                <span class="kind @(f.MediaKind == "binary" ? "bin" : "text")">[@f.MediaKind]</span>
+                                <span class="path">@f.RelativePath</span>
+                                <span class="meta">@f.ByteLength bytes@(f.HasBom ? ", BOM" : "")</span>
+                            </li>
+                        }
+                    </ul>
+                }
+                <div class="actions">
+                    <button @onclick="PublishStagedAsync" data-testid="publish-import"
+                            disabled="@(staged.ValidationErrors.Count > 0)">Publish as new project</button>
+                    <button class="muted" @onclick="CancelStaged" data-testid="cancel-import">Cancel</button>
+                </div>
+            </section>
+        }
 
         @if (_projects.Count == 0)
         {
-            <p role="status">No local projects yet. Create one to start editing.</p>
+            <p role="status">No local projects yet. Create one or import a ZIP/folder to start editing.</p>
         }
         else
         {
-                <ul class="project-list">
-                    @foreach (var p in _projects)
-                    {
-                        <li data-testid="project-row" data-name="@p.Name">
-                            <span class="project-name">@p.Name</span>
+            <ul class="project-list">
+                @foreach (var p in _projects)
+                {
+                    <li data-testid="project-row" data-name="@p.Name">
+                        <span class="project-name">@p.Name</span>
                         <span class="project-meta">@((p.HeadRevisionId is null ? "empty" : "1+ revisions"))</span>
                         <button @onclick='() => OpenProjectAsync(p.Id)' data-testid="open-project">Open</button>
                         <button class="danger" @onclick='() => DeleteProjectAsync(p.Id)'
@@ -60,6 +123,9 @@ else
                 <button @onclick="SaveAsync" disabled="@SaveDisabled" data-testid="save">
                     @(Coordinator.SavePhase == SavePhase.Saving ? "Saving…" : "Save")
                 </button>
+                <button @onclick="ExportZipAsync" data-testid="export-zip">Export ZIP</button>
+                <button @onclick="ExportFolderAsync" data-testid="export-folder"
+                        disabled="@(!_folderCap.Writable)">Export to folder</button>
                 <button @onclick="CloseAsync">Close</button>
             </div>
         </header>
@@ -105,6 +171,12 @@ else
             </div>
         }
 
+        @if (!string.IsNullOrEmpty(_transferStatus))
+        {
+            <p class="transfer-status @TransferStatusClass" role="status" aria-live="polite"
+               data-testid="transfer-status">@_transferStatus</p>
+        }
+
         <div class="workspace-body">
             <aside class="file-tree" aria-label="Files">
                 <form @onsubmit="@(() => CreateFile())" @onsubmit:preventDefault>
@@ -113,7 +185,7 @@ else
                     <button type="submit" data-testid="new-file">New file</button>
                 </form>
                 <div class="import">
-                    <InputFile OnChange="OnImportFile" accept=".tex,.txt,.bib,.cls,.sty,text/plain"
+                    <InputFile OnChange="OnImportFile" accept=".tex,.txt,.bib,.cls,.sty,.bst,.md,.json,.yaml,.yml,.csv,image/*,application/pdf"
                                data-testid="import-input" />
                 </div>
                 <ul class="files">
@@ -122,8 +194,11 @@ else
                         var id = f.Id;
                         <li class="@(Coordinator.ActiveFileId == id ? "active" : "")">
                             <button class="file-link" @onclick='() => { SelectFile(id); }'
-                                    data-testid="select-file">@f.RelativePath</button>
-                            @if (f.IsNew || f.DirtyContent || f.TreeChanged)
+                                    data-testid="select-file">
+                                <span class="kind @(f.MediaKind == "binary" ? "bin" : "text")">[@f.MediaKind]</span>
+                                @f.RelativePath
+                            </button>
+                            @if (f.IsNew || f.DirtyContent || f.DirtyBinary || f.TreeChanged)
                             {
                                 <span class="dirty-dot" aria-label="unsaved">●</span>
                             }
@@ -142,26 +217,248 @@ else
                         <input id="rename" @bind="_renameTarget" @bind:event="oninput"
                                placeholder="rename to…" autocomplete="off" data-testid="rename-input" />
                         <button @onclick='() => { RenameFile(active.Id); }' data-testid="rename">Rename</button>
-                        <button @onclick="DownloadUnsavedAsync" data-testid="download">Download text</button>
+                        <button @onclick="DownloadFileAsync" data-testid="download">
+                            Download@(active.MediaKind == "binary" ? " file" : " text")
+                        </button>
                     </div>
-                    <label class="sr-only" for="editor">Source for @active.RelativePath</label>
+                    @if (active.MediaKind == "binary")
+                    {
+                        <div class="binary-view" data-testid="binary-view">
+                            <p>This file is binary and is not text-editable.</p>
+                            <dl>
+                                <dt>Path</dt><dd>@active.RelativePath</dd>
+                                <dt>Size</dt><dd>@(active.DurableLength > 0 ? active.DurableLength : (active.BinaryContent?.Length ?? 0)) bytes</dd>
+                                <dt>Type</dt><dd>@(active.DurableHash is null ? "new asset" : "stored asset")</dd>
+                            </dl>
+                            <button @onclick="DownloadFileAsync" data-testid="download-binary">Download</button>
+                        </div>
+                    }
+                    else
+                    {
+                        <label class="sr-only" for="editor">Source for @active.RelativePath</label>
                         <textarea id="editor" @bind="ActiveContent" @bind:event="oninput"
                               disabled="@Coordinator.IsReadOnly"
-                              data-testid="editor" spellcheck="false"></textarea>
+                              data-file-id="@active.Id.ToString()"
+                              data-testid="editor" @ref="_editorRef" spellcheck="false"></textarea>
+                    }
                 }
                 else
                 {
                     <p class="hint">Select a file or create one to start editing.</p>
                 }
             </div>
+
+            <aside class="history-panel" aria-label="History">
+                <h2>History</h2>
+                @if (_history.Count == 0)
+                {
+                    <p class="hint">No checkpoints yet. Save or import to record history.</p>
+                }
+                else
+                {
+                    <ul class="history-list" data-testid="history-list">
+                        @foreach (var cp in _history)
+                        {
+                            var cpId = cp.Id;
+                            <li class="@(SelectedHistoryId == cpId ? "selected" : "")">
+                                <button class="history-link" @onclick='() => SelectHistoryAsync(cpId)'
+                                        data-testid="select-history">
+                                    @cp.Reason
+                                    <span class="meta">@cp.CreatedAt.ToLocalTime().ToString("g")</span>
+                                </button>
+                            </li>
+                        }
+                    </ul>
+                    @if (_historyNextCursor is not null)
+                    {
+                        <button @onclick="LoadMoreHistoryAsync" data-testid="history-more">More…</button>
+                    }
+                }
+
+                @if (_comparison is { } comp)
+                {
+                    <section class="comparison" data-testid="comparison">
+                        <h3>Changes vs current head</h3>
+                        @if (comp.DiffBudgetExceeded)
+                        {
+                            <p class="hint">Detailed diff budget exceeded; showing summary.</p>
+                        }
+                        <ul class="changes">
+                            @foreach (var c in comp.Changes.Where(c => c.Kind != FileChangeKind.Unchanged))
+                            {
+                                <li data-testid="file-change" data-kind="@c.Kind">
+                                    <span class="change-kind">@c.Kind</span>
+                                    <span class="change-path">@c.Path</span>
+                                    @if (c.OldPath is { } op && op != c.Path)
+                                    {
+                                        <span class="change-oldpath">(was @op)</span>
+                                    }
+                                    <span class="change-meta">
+                                        @(c.OldLength)→@(c.NewLength) bytes
+                                    </span>
+                                </li>
+                            }
+                            @if (!comp.Changes.Any(c => c.Kind != FileChangeKind.Unchanged))
+                            {
+                                <li data-testid="no-changes">No changes.</li>
+                            }
+                        </ul>
+                        @if (_selectedDiff is { } diff && diff.Count > 0)
+                        {
+                            <details class="diff" data-testid="diff-detail">
+                                <summary>Diff for @_selectedDiffPath</summary>
+                                <pre class="diff-output">
+@foreach (var line in diff)
+{
+    var cls = line.Op == DiffOp.Insert ? "diff-add" : line.Op == DiffOp.Delete ? "diff-del" : "diff-eq";
+<text><span class="@cls">@line.Op @line.Text</span>
+</text>
+}
+                                </pre>
+                            </details>
+                        }
+                    </section>
+                }
+                @if (_restorePreview is not null || !string.IsNullOrEmpty(_restoreError))
+                {
+                    <section class="restore-actions" data-testid="restore-actions">
+                        @if (_restorePreview is not null)
+                        {
+                            <div class="actions">
+                                <button @onclick="AcceptRestoreAsync" data-testid="restore"
+                                        disabled="@Coordinator.IsReadOnly">Restore this revision</button>
+                            </div>
+                        }
+                        @if (!string.IsNullOrEmpty(_restoreError))
+                        {
+                            <p class="banner banner-error" role="alert" data-testid="restore-error">@_restoreError</p>
+                        }
+                    </section>
+                }
+            </aside>
         </div>
+
+        <section class="analysis-panel" aria-label="Engine analysis" data-testid="analysis-panel">
+            <h2>Engine analysis</h2>
+            <div class="analysis-controls">
+                <button @onclick="AnalyzeNowAsync" data-testid="analyze-now">Analyze now</button>
+                <button @onclick="CancelAnalysis" data-testid="cancel-analysis">Cancel</button>
+            </div>
+            <p class="analysis-status-line @AnalysisStatusClass" role="status" aria-live="polite"
+               data-testid="analysis-status">@AnalysisStatusText</p>
+            @if (AnalysisCurrentReport is { } report)
+            {
+                @if (IsIncomplete(report))
+                {
+                    <p class="hint analysis-incomplete" data-testid="analysis-incomplete">
+                        This analysis is incomplete: some files could not be fully scanned. Known findings are shown below; do not treat them as a complete check or as document correctness.
+                    </p>
+                }
+                <section class="analysis-findings" aria-label="Engine checks">
+                    <h3>Engine checks</h3>
+                    @if (report.Result.Diagnostics.Count == 0 && !IsIncomplete(report))
+                    {
+                        <p class="hint" data-testid="analysis-pass">No engine-check findings in the supported lexical subset. This is not a document-correctness or compliance claim.</p>
+                    }
+                    else
+                    {
+                        <ul class="finding-list" data-testid="finding-list">
+                            @foreach (var d in report.Result.Diagnostics)
+                            {
+                                <li class="finding" data-testid="analysis-finding"
+                                    data-diag-id="@d.Id" data-snapshot-id="@report.Snapshot.Id.ToString()"
+                                    data-epoch="@report.WorkerEpoch">
+                                    <button class="finding-link" @onclick='() => OnFindingClickAsync(d)'
+                                            data-testid="finding-link"
+                                            aria-label='Open diagnostic @d.RuleId'>
+                                        <span class="finding-severity severity-@d.Severity">@d.Severity</span>
+                                        <span class="finding-rule">@d.RuleId</span>
+                                        <span class="finding-file">@FileLabel(report, d.FileId)</span>
+                                        <span class="finding-msg">@d.Message</span>
+                                    </button>
+                                </li>
+                            }
+                        </ul>
+                    }
+                    @if (report.Result.Coverage.Unsupported.Count > 0 || report.Snapshot.Excluded.Length > 0)
+                    {
+                        <section class="analysis-unsupported" data-testid="analysis-unsupported">
+                            <h4>Unsupported (not implemented)</h4>
+                            <p class="hint">These are recorded as not implemented; absence is not compliance.</p>
+                            <ul>
+                                @foreach (var u in report.Result.Coverage.Unsupported)
+                                { <li>@u</li> }
+                                @foreach (var x in report.Snapshot.Excluded)
+                                { <li data-testid="analysis-excluded">@x.RelativePath — @x.Reason</li> }
+                            </ul>
+                        </section>
+                    }
+                    @if (report.Result.UnavailableCapabilities.Count > 0)
+                    {
+                        <section class="analysis-unavailable" data-testid="analysis-unavailable">
+                            <h4>Unavailable</h4>
+                            <p class="hint">These checks require a capability this build does not have.</p>
+                            <ul>
+                                @foreach (var u in report.Result.UnavailableCapabilities)
+                                { <li>@u</li> }
+                            </ul>
+                        </section>
+                    }
+                </section>
+            }
+            @if (!string.IsNullOrEmpty(_navNotice))
+            {
+                <p class="hint nav-notice" role="status" data-testid="nav-notice">@_navNotice</p>
+            }
+        </section>
     </section>
 }
 
 @code {
-    // Active file content is bound through the coordinator so dirty state,
-    // saving/saved/failed phases and the read-only lock are always accurate.
     private System.Threading.CancellationTokenSource? _autosaveCts;
+
+    // ---- independent engine analysis (M2a-2b-2b) ----
+    // The coordinator and analyzer are DI-owned scoped services (app-lifetime in
+    // WASM): the page only subscribes/cancels and must NOT dispose them, so
+    // navigating away and back reuses the SAME coordinator (no disposed-service
+    // reuse) and the worker epoch survives a remount. Analysis is independent
+    // of save/AI/network; lazy worker init never blocks editing/saving.
+    private ElementReference _editorRef;
+    // Single-flight shared import of the tiny editor-select.js DOM module. A
+    // concurrent second navigation reuses the SAME in-flight import Task (no
+    // duplicate module refs). On dispose, the (possibly in-flight) Task is awaited
+    // and its module disposed exactly once; a module arriving after page dispose
+    // is never assigned into a dead page.
+    private System.Threading.Tasks.Task<IJSObjectReference>? _editorSelectTask;
+    // Cross-file selection deferred to OnAfterRenderAsync once the target textarea
+    // renders. Carries the navigation intent token so a newer click / page dispose
+    // cancels the pending application before it can select.
+    private NavigationResult.Selected? _pendingSelect;
+    private System.Threading.CancellationToken _pendingSelectCt;
+    // One navigation intent at a time: a new click cancels the previous, and page
+    // dispose cancels any in flight. Each navigation re-checks its own token after
+    // every await, so a late callback cannot activate/select a stale file.
+    private System.Threading.CancellationTokenSource? _navCts;
+    private string? _navNotice;
+    private bool _pageDisposed;
+
+    // Offline-readiness subscription: JS forwards the service-worker warm-result
+    // event (a browser warm-status event) to this [JSInvokable] method via a
+    // tiny event-glue module; C# owns the visible provisioning/incomplete
+    // notice and guidance. JS only reports the readiness state. The page
+    // stores the opaque subscription id returned by subscribeOfflineReadiness
+    // and calls unsubscribeOfflineReadiness BEFORE disposing the DotNet ref.
+    private DotNetObjectReference<Workspace>? _offlineReadinessRef;
+    private IJSObjectReference? _offlineReadinessModule;
+    private string? _offlineReadinessSubId;
+    private string? _offlineReadinessNotice;
+
+    /// <summary>The CURRENT usable report, or null when the coordinator is not
+    /// Completed. Read fresh from the coordinator on every render so a queued
+    /// render never repaints a stale event argument after a newer state is
+    /// current.</summary>
+    private AnalysisReport? AnalysisCurrentReport
+        => AnalysisCoord.State is AnalysisState.Completed c ? c.Report : null;
 
     private string ActiveContent
     {
@@ -214,15 +511,195 @@ else
         Coordinator.IsReadOnly || Coordinator.Recovery is not null ||
         (!Coordinator.IsDirty && Coordinator.SavePhase != SavePhase.Saving && Coordinator.SavePhase != SavePhase.Failed);
 
+    // ---- independent engine analysis status (honest per-state labels) ----
+    // Local save status stays separate: these labels never mention save/AI/network.
+    private string AnalysisStatusText => AnalysisCoord.State switch
+    {
+        AnalysisState.NoProject => "No project open.",
+        AnalysisState.Pending => "Analysis queued…",
+        AnalysisState.Running => "Analyzing…",
+        AnalysisState.Completed => "Analysis complete.",
+        AnalysisState.Cancelled => "Analysis cancelled.",
+        AnalysisState.InvalidInput i => "Analysis rejected the input: " + i.SafeMessage,
+        AnalysisState.QuotaExceeded q => "Analysis skipped: " + q.SafeMessage,
+        AnalysisState.Unavailable u => "Analysis unavailable: " + u.SafeMessage,
+        AnalysisState.Superseded => "Analysis was superseded by a newer change; run analysis again.",
+        AnalysisState.Failed f => "Analysis failed: " + (f.Error?.SafeMessage ?? "unknown"),
+        AnalysisState.Disposed => "Analysis is no longer available.",
+        _ => "",
+    };
+
+    private string AnalysisStatusClass => AnalysisCoord.State switch
+    {
+        AnalysisState.Completed => "status-saved",
+        AnalysisState.Pending or AnalysisState.Running => "status-saving",
+        AnalysisState.Cancelled or AnalysisState.Superseded => "status-dirty",
+        AnalysisState.InvalidInput or AnalysisState.QuotaExceeded
+            or AnalysisState.Unavailable or AnalysisState.Failed or AnalysisState.Disposed => "status-failed",
+        AnalysisState.NoProject => "status-readonly",
+        _ => "",
+    };
+
+    /// <summary>True when the completed result is a bounded-partial / truncated
+    /// / indeterminate analysis: known findings stay visible, but the UI must
+    /// label it incomplete and must NOT show Pass/compliance.</summary>
+    private static bool IsIncomplete(AnalysisReport report)
+    {
+        var cov = report.Result.Coverage;
+        return report.Result.AggregateOutcome == RuleOutcome.Indeterminate
+            || report.Result.AggregateOutcome == RuleOutcome.Unavailable
+            || cov.DiagnosticsTruncated || cov.ResultTruncated
+            || cov.TruncatedFiles.Count > 0
+            || report.Result.Facts.Files.Any(f => f.Truncated || f.BraceDepthExceeded);
+    }
+
+    private static string FileLabel(AnalysisReport report, string fileId)
+    {
+        var cf = report.Snapshot.Files.FirstOrDefault(f => f.FileId.ToString() == fileId);
+        var x = report.Snapshot.Excluded.FirstOrDefault(f => f.FileId.ToString() == fileId);
+        return cf?.RelativePath ?? x?.RelativePath ?? fileId;
+    }
+
     private List<Project> _projects = new();
     private string _newProjectName = "";
     private string _newFileName = "";
     private string _renameTarget = "";
 
+    // Transfer (ZIP/folder) staging + status, kept separate from local save.
+    private StagedProject? _staged;
+    private IReadOnlyList<string> _stagedExcluded = Array.Empty<string>();
+    private string _stagedName = "";
+    private string? _transferStatus;
+    private bool _transferOk;
+    private FolderCapabilities _folderCap = new(false, false);
+
+    // History + restore preview.
+    private List<HistoryCheckpoint> _history = new();
+    private string? _historyNextCursor;
+    private CheckpointId? SelectedHistoryId;
+    private ComparisonSummary? _comparison;
+    private IReadOnlyList<DiffLine>? _selectedDiff;
+    private string _selectedDiffPath = "";
+    private RestorePreview? _restorePreview;
+    private string? _restoreError;
+
     protected override async Task OnInitializedAsync()
     {
+        // Subscribe BEFORE the first await so no coordinator Changed event is
+        // missed. The handler marshals through InvokeAsync and reads the
+        // CURRENT coordinator.State (never a stale event argument).
+        AnalysisCoord.Changed += OnAnalysisChanged;
         await Coordinator.LoadCapabilitiesAsync(System.Threading.CancellationToken.None);
+        _folderCap = await Folders.GetCapabilitiesAsync(System.Threading.CancellationToken.None);
         await RefreshProjectsAsync();
+        // Entering an already-open project (e.g. navigating back to this page
+        // without closing): request a fresh analysis. Opening a project from
+        // the list raises WorkspaceChanged and the coordinator schedules
+        // automatically, so this only matters for the remount-while-open case.
+        if (Coordinator.IsOpen)
+            AnalysisCoord.RequestReanalyze();
+    }
+
+    private void OnAnalysisChanged(AnalysisState state)
+    {
+        // Marshal onto the renderer and READ the current coordinator.State
+        // (the argument is intentionally unused: a queued render must not
+        // repaint an old event after a newer state became current). Observe
+        // async handler failures so a faulting callback is never unobserved.
+        _ = state; // discard the event argument; the render reads current State
+        _ = InvokeAsync(RenderAnalysisState).ContinueWith(ObserveTaskFault, TaskScheduler.Default);
+    }
+
+    private void RenderAnalysisState()
+    {
+        if (_pageDisposed) return;
+        StateHasChanged();
+    }
+
+    private static void ObserveTaskFault(System.Threading.Tasks.Task t)
+    {
+        if (t.IsFaulted) { var ex = t.Exception; }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // Subscribe to the service-worker warm-result readiness event so the
+            // page can show a C#-owned provisioning/incomplete notice when a
+            // required offline asset could not be cached. The glue module only
+            // forwards the readiness state; it never decides the message.
+            // Post-await page-lifetime checks: a late import must not attach a
+            // dead page/ref, and refs arriving late are cleaned up exactly
+            // once (never assigned into a dead page).
+            if (_offlineReadinessRef is null && !_pageDisposed)
+            {
+                var refObj = DotNetObjectReference.Create(this);
+                try
+                {
+                    // Import the tiny event-glue module and call its subscribe
+                    // export on the module ref (ES module exports are not on
+                    // window). The module only forwards the readiness state.
+                    var mod = await JS.InvokeAsync<IJSObjectReference>("import", "./js/offline-readiness.js");
+                    if (_pageDisposed)
+                    {
+                        // Page disposed during the import: clean up the module
+                        // exactly once and do NOT subscribe a dead page.
+                        try { await mod.DisposeAsync(); } catch (JSException) { /* best-effort */ }
+                        refObj.Dispose();
+                        return;
+                    }
+                    var subId = await mod.InvokeAsync<string>("subscribeOfflineReadiness", refObj);
+                    if (_pageDisposed)
+                    {
+                        // Page disposed during subscribe: the sink was installed,
+                        // so unsubscribe (clears it only if still this one) then drop.
+                        try { await mod.InvokeVoidAsync("unsubscribeOfflineReadiness", subId); } catch (JSException) { /* best-effort */ }
+                        try { await mod.DisposeAsync(); } catch (JSException) { /* best-effort */ }
+                        refObj.Dispose();
+                        return;
+                    }
+                    _offlineReadinessModule = mod;
+                    _offlineReadinessRef = refObj;
+                    _offlineReadinessSubId = subId;
+                }
+                catch (JSException)
+                {
+                    // Offline readiness is best-effort: editing/saving stay
+                    // available regardless. Drop the refs so dispose is clean.
+                    _offlineReadinessModule = null;
+                    _offlineReadinessRef = null;
+                    _offlineReadinessSubId = null;
+                    refObj.Dispose();
+                }
+            }
+            return;
+        }
+
+        // Apply a pending cross-file selection once the target textarea has
+        // rendered (no Task.Delay/Task.Run render guessing). SelectFile does
+        // not bump generation, so this never invalidates the report. The pending
+        // selection carries the navigation intent token; a newer click or page
+        // dispose cancels it before the (possibly stale) application runs.
+        if (_pendingSelect is { } sel && Coordinator.ActiveFileId == sel.FileId)
+        {
+            _pendingSelect = null;
+            var ct = _pendingSelectCt;
+            await ApplySelectionAsync(sel, ct);
+        }
+    }
+
+    [JSInvokable]
+    public async Task OnOfflineReadiness(string state)
+    {
+        // C# owns the visible message; JS only reports the readiness state
+        // ("unknown" | "ready" | "incomplete"). Show an actionable notice ONLY
+        // when warming finished incomplete — not during normal startup.
+        _offlineReadinessNotice = state == "incomplete"
+            ? "Offline analysis is not fully provisioned: a required asset could not be cached. Connect to the network and reload to retry. Editing and saving remain available."
+            : null;
+        if (!_pageDisposed)
+            await InvokeAsync(StateHasChanged);
     }
 
     private async Task RefreshProjectsAsync()
@@ -236,12 +713,19 @@ else
         var p = await Coordinator.CreateProjectAsync(name, System.Threading.CancellationToken.None);
         await Coordinator.OpenAsync(p.Id, System.Threading.CancellationToken.None);
         _newProjectName = "";
+        await LoadHistoryAsync(first: true);
         StateHasChanged();
     }
 
     private async Task OpenProjectAsync(ProjectId id)
     {
         await Coordinator.OpenAsync(id, System.Threading.CancellationToken.None);
+        _history.Clear();
+        _historyNextCursor = null;
+        _comparison = null;
+        _restorePreview = null;
+        _restoreError = null;
+        await LoadHistoryAsync(first: true);
         StateHasChanged();
     }
 
@@ -254,32 +738,23 @@ else
 
     private async Task CloseAsync()
     {
-        // Never silently discard unsaved edits. If there are pending changes and
-        // we hold the writer lock, flush saves first. Because edits can arrive
-        // while a flush save is in flight (and are not part of that commit), loop
-        // until the session is actually clean — or until a save fails, in which
-        // case abort the close so the unsaved revision stays available for
-        // retry/export rather than being discarded.
-        CancelAutosave();
-        while (Coordinator.IsDirty && Coordinator.LockId is not null && Coordinator.Recovery is null)
-        {
-            var saveResult = await Coordinator.SaveAsync(System.Threading.CancellationToken.None);
-            if (saveResult.Status != CommitStatus.Saved)
-            {
-                StateHasChanged();
-                return;
-            }
-        }
+        // CloseAsync flushes saves internally until clean (or aborts on failure),
+        // so just call it. It serializes against save/import/restore.
         await Coordinator.CloseAsync(System.Threading.CancellationToken.None);
         CancelAutosave();
         await RefreshProjectsAsync();
+        _history.Clear();
+        _historyNextCursor = null;
+        _comparison = null;
         StateHasChanged();
     }
 
     private async Task SaveAsync()
     {
         CancelAutosave();
-        await Coordinator.SaveAsync(System.Threading.CancellationToken.None);
+        var result = await Coordinator.SaveAsync(System.Threading.CancellationToken.None);
+        if (result.Status == CommitStatus.Saved)
+            await LoadHistoryAsync(first: true);
         StateHasChanged();
     }
 
@@ -326,26 +801,424 @@ else
         StateHasChanged();
     }
 
-    private async Task DownloadUnsavedAsync()
+    private async Task DownloadFileAsync()
     {
         if (Coordinator.ActiveFile is not { } af) return;
+        var bytes = await Coordinator.GetFileBytesAsync(af, System.Threading.CancellationToken.None);
         var module = await JS.InvokeAsync<IJSObjectReference>("import", "./js/download.js");
-        await module.InvokeVoidAsync("downloadText", af.RelativePath, af.Content);
+        await module.InvokeVoidAsync("downloadBytes", af.RelativePath, bytes);
         await module.DisposeAsync();
     }
 
     private async Task OnImportFile(InputFileChangeEventArgs e)
     {
+        // Byte-aware single-file import: route through the same model as ZIP, so
+        // adding an asset does not require building a ZIP first. Exact bytes are
+        // retained for an unedited import (BOM/CRLF preserved).
         var file = e.File;
-        await using var stream = file.OpenReadStream(maxAllowedSize: 8 * 1024 * 1024);
+        await using var stream = file.OpenReadStream(maxAllowedSize: ArchiveLimits.SingleFile);
         using var ms = new System.IO.MemoryStream();
         await stream.CopyToAsync(ms);
         var bytes = ms.ToArray();
-        var text = System.Text.Encoding.UTF8.GetString(bytes);
         var name = string.IsNullOrWhiteSpace(file.Name) ? "imported.tex" : file.Name.Trim();
-        // Preserve original bytes (including CRLF) for the unedited file; the
-        // textarea normalizes newlines for display only.
-        if (Coordinator.CreateFile(name, text)) StateHasChanged();
+        if (Coordinator.CreateFileFromBytes(name, bytes))
+        {
+            SelectFile(Coordinator.Files.Last().Id);
+            StateHasChanged();
+        }
+        else
+        {
+            _transferStatus = "Import failed: " + (Coordinator.LastError ?? "invalid file");
+            _transferOk = false;
+            StateHasChanged();
+        }
+    }
+
+    // ---- ZIP import ----
+
+    private async Task OnImportZip(InputFileChangeEventArgs e)
+    {
+        var file = e.File;
+        await using var stream = file.OpenReadStream(maxAllowedSize: ArchiveLimits.ZipInputSize);
+        using var ms = new System.IO.MemoryStream();
+        await stream.CopyToAsync(ms);
+        var bytes = ms.ToArray();
+        var defaultName = System.IO.Path.GetFileNameWithoutExtension(file.Name);
+        if (string.IsNullOrEmpty(defaultName)) defaultName = "Imported project";
+        var result = await Transfer.StageZipImportAsync(bytes, defaultName, System.Threading.CancellationToken.None);
+        _staged = result.Staged;
+        _stagedExcluded = result.ExcludedTrees;
+        _stagedName = result.Staged.Name;
+        _transferStatus = result.Valid ? null : "Archive has validation errors; review before publishing.";
+        _transferOk = result.Valid;
+        StateHasChanged();
+    }
+
+    private async Task OnImportFolder()
+    {
+        // Picker must be invoked from a user gesture before unrelated awaits;
+        // FolderTransferService calls showDirectoryPicker as its first await.
+        var result = await Folders.StageImportFromFolderAsync("Imported project", System.Threading.CancellationToken.None);
+        _staged = result.Staged;
+        _stagedExcluded = result.ExcludedTrees;
+        _stagedName = result.Staged.Name;
+        _transferStatus = result.Valid ? null : "Folder import has validation errors; review before publishing.";
+        _transferOk = result.Valid;
+        StateHasChanged();
+    }
+
+    private void CancelStaged()
+    {
+        _staged = null;
+        _stagedExcluded = Array.Empty<string>();
+        _stagedName = "";
+        _transferStatus = null;
+        StateHasChanged();
+    }
+
+    private async Task PublishStagedAsync()
+    {
+        if (_staged is null) return;
+        var result = await Coordinator.PublishImportAsync(_staged, _stagedName, System.Threading.CancellationToken.None);
+        if (result.Published && result.Project is { } p && result.Head is { } head)
+        {
+            _staged = null;
+            _stagedExcluded = Array.Empty<string>();
+            _stagedName = "";
+            _transferStatus = "Imported project published.";
+            _transferOk = true;
+            await RefreshProjectsAsync();
+            // Opening the result follows successful persistence.
+            await Coordinator.OpenAsync(p.Id, System.Threading.CancellationToken.None);
+            await LoadHistoryAsync(first: true);
+        }
+        else
+        {
+            _transferStatus = "Import failed: " + (result.SafeMessage ?? result.ErrorCode ?? "unknown");
+            _transferOk = false;
+        }
+        StateHasChanged();
+    }
+
+    // ---- export ----
+
+    private async Task ExportZipAsync()
+    {
+        try
+        {
+            var source = await Coordinator.CaptureExportSourceAsync(System.Threading.CancellationToken.None);
+            var receipt = await Transfer.ExportZipAsync(source, System.Threading.CancellationToken.None);
+            // Build the actual ZIP bytes for download from the captured revision.
+            var zipBytes = await BuildZipBytesAsync(source, System.Threading.CancellationToken.None);
+            var filename = (Coordinator.Project?.Name ?? "project") + ".zip";
+            var module = await JS.InvokeAsync<IJSObjectReference>("import", "./js/download.js");
+            await module.InvokeVoidAsync("downloadZip", filename, zipBytes);
+            await module.DisposeAsync();
+            _transferStatus = $"Exported revision {receipt.CapturedRevision.ToString().Substring(0,8)} ({receipt.FileCount} files, {receipt.ByteLength} bytes).";
+            _transferOk = true;
+        }
+        catch (System.Exception ex)
+        {
+            _transferStatus = "Export ZIP failed: " + ex.Message;
+            _transferOk = false;
+        }
+        StateHasChanged();
+    }
+
+    private async Task ExportFolderAsync()
+    {
+        try
+        {
+            var source = await Coordinator.CaptureExportSourceAsync(System.Threading.CancellationToken.None);
+            var result = await Folders.ExportToFolderAsync(source, System.Threading.CancellationToken.None);
+            if (result.Complete)
+            {
+                _transferStatus = $"Exported to '{result.DirectoryName}' ({result.Completed.Count} files).";
+                _transferOk = true;
+            }
+            else
+            {
+                _transferStatus = result.PartialNote ?? "Folder export did not complete.";
+                _transferOk = false;
+            }
+        }
+        catch (System.Exception ex)
+        {
+            _transferStatus = "Export to folder failed: " + ex.Message;
+            _transferOk = false;
+        }
+        StateHasChanged();
+    }
+
+    private async Task<byte[]> BuildZipBytesAsync(ExportSource source, System.Threading.CancellationToken ct)
+    {
+        // Stream exact durable bytes of the captured revision into an in-memory ZIP.
+        using var ms = new System.IO.MemoryStream();
+        using (var zip = new System.IO.Compression.ZipArchive(ms, System.IO.Compression.ZipArchiveMode.Create, leaveOpen: true))
+        {
+            foreach (var f in source.Revision.Files)
+            {
+                ct.ThrowIfCancellationRequested();
+                var entry = zip.CreateEntry(f.RelativePath, System.IO.Compression.CompressionLevel.Optimal);
+                using var es = entry.Open();
+                var bytes = await source.ReadContent(f.ContentHash, ct);
+                es.Write(bytes, 0, bytes.Length);
+            }
+        }
+        return ms.ToArray();
+    }
+
+    private string TransferStatusClass => _transferOk ? "status-saved" : "status-failed";
+
+    // ---- history ----
+
+    private async Task LoadHistoryAsync(bool first)
+    {
+        if (Coordinator.Project is null) return;
+        if (first)
+        {
+            _history.Clear();
+            _historyNextCursor = null;
+        }
+        var page = await Coordinator.ReadHistoryAsync(Coordinator.Project.Id,
+            _historyNextCursor is null ? null : new HistoryCursor(_historyNextCursor),
+            System.Threading.CancellationToken.None);
+        _history.AddRange(page.Checkpoints);
+        _historyNextCursor = page.NextCursor;
+    }
+
+    private async Task LoadMoreHistoryAsync()
+    {
+        await LoadHistoryAsync(first: false);
+        StateHasChanged();
+    }
+
+    private async Task SelectHistoryAsync(CheckpointId id)
+    {
+        SelectedHistoryId = id;
+        _restoreError = null;
+        if (Coordinator.Project is null) return;
+        var cp = _history.FirstOrDefault(c => c.Id == id);
+        if (cp is null) return;
+        try
+        {
+            _restorePreview = await Coordinator.CaptureRestorePreviewAsync(cp.RevisionId, System.Threading.CancellationToken.None);
+            _comparison = _restorePreview.Summary;
+            // Pick the first content-changed text file for an optional detailed diff.
+            var changed = _comparison.Changes.FirstOrDefault(c =>
+                c.Kind == FileChangeKind.ContentChanged && c.Diff is not null);
+            if (changed is { } ch && ch.Diff is { } d)
+            {
+                _selectedDiff = d;
+                _selectedDiffPath = ch.Path;
+            }
+            else
+            {
+                _selectedDiff = null;
+                _selectedDiffPath = "";
+            }
+        }
+        catch (System.Exception ex)
+        {
+            _restoreError = ex.Message;
+            _comparison = null;
+            _restorePreview = null;
+        }
+        StateHasChanged();
+    }
+
+    private async Task AcceptRestoreAsync()
+    {
+        if (_restorePreview is null) return;
+        var result = await Coordinator.AcceptRestoreAsync(_restorePreview, System.Threading.CancellationToken.None);
+        if (result.Status == CommitStatus.Saved)
+        {
+            _restoreError = null;
+            _comparison = null;
+            _restorePreview = null;
+            SelectedHistoryId = null;
+            await LoadHistoryAsync(first: true);
+        }
+        else
+        {
+            _restoreError = result.SafeMessage ?? result.ErrorCode ?? "Restore failed.";
+            // The preview is stale; clear it so the user re-captures.
+            _restorePreview = null;
+            _comparison = null;
+        }
+        StateHasChanged();
+    }
+
+    // ---- independent engine analysis actions ----
+
+    private async Task AnalyzeNowAsync()
+    {
+        _navNotice = null;
+        AnalysisCoord.RequestReanalyze();
+        await Task.CompletedTask;
+    }
+
+    private void CancelAnalysis()
+    {
+        _navNotice = null;
+        _pendingSelect = null;
+        _navCts?.Cancel();
+        AnalysisCoord.Cancel();
+    }
+
+    private System.Threading.CancellationToken NavCancelAndStart()
+    {
+        // Cancel any in-flight navigation intent (an older click still awaiting
+        // the worker epoch or DOM module) before starting a new one, so the
+        // older callback cannot later activate/select a stale file.
+        _navCts?.Cancel();
+        _navCts?.Dispose();
+        _navCts = new System.Threading.CancellationTokenSource();
+        return _navCts.Token;
+    }
+
+    private async Task OnFindingClickAsync(AnalysisEngineDiagnosticDto diag)
+    {
+        if (AnalysisCurrentReport is not { } report)
+        {
+            _navNotice = "Run analysis to see this diagnostic.";
+            StateHasChanged();
+            return;
+        }
+        var ct = NavCancelAndStart();
+        _navNotice = null;
+        NavigationResult result;
+        try { result = await Navigator.NavigateAsync(report, diag, ct); }
+        catch (System.OperationCanceledException) { return; }
+        catch (System.Exception)
+        {
+            if (!_pageDisposed && !ct.IsCancellationRequested)
+            { _navNotice = "Analysis could not navigate to this diagnostic; run analysis again."; StateHasChanged(); }
+            return;
+        }
+        if (ct.IsCancellationRequested || _pageDisposed) return;
+
+        switch (result)
+        {
+            case NavigationResult.Selected s:
+                if (Coordinator.ActiveFileId == s.FileId)
+                {
+                    // Already active: validate the existing DOM value BEFORE an
+                    // unnecessary rerender can overwrite a DOM-only mismatch.
+                    await ApplySelectionAsync(s, ct);
+                }
+                else
+                {
+                    // Switch files: SelectFile + render, then OnAfterRenderAsync
+                    // applies the selection once the target textarea has rendered.
+                    if (!Coordinator.SelectFile(s.FileId))
+                    {
+                        if (!ct.IsCancellationRequested && !_pageDisposed)
+                        { _navNotice = "The diagnostic's file is no longer open."; StateHasChanged(); }
+                        return;
+                    }
+                    if (ct.IsCancellationRequested || _pageDisposed) return;
+                    _pendingSelect = s;
+                    _pendingSelectCt = ct;
+                    StateHasChanged();
+                }
+                break;
+            case NavigationResult.NonSelectable ns:
+                _navNotice = ns.Display;
+                if (!_pageDisposed && !ct.IsCancellationRequested) StateHasChanged();
+                break;
+            case NavigationResult.Rejected r:
+                _navNotice = r.Reason;
+                if (!_pageDisposed && !ct.IsCancellationRequested) StateHasChanged();
+                break;
+        }
+    }
+
+    private async Task ApplySelectionAsync(NavigationResult.Selected s, System.Threading.CancellationToken ct)
+    {
+        // Check after EVERY await: a newer navigation, a page dispose, or an
+        // edit/close/worker-reset during any await must prevent a stale
+        // selection. The JS module then atomically verifies the DOM
+        // (data-file-id + live value) in the SAME call as focus/setSelectionRange.
+        if (_pageDisposed || ct.IsCancellationRequested) return;
+
+        // Load/import the DOM module FIRST (shared single-flight import). A late
+        // module arriving after page dispose is disposed, not assigned into a
+        // dead page.
+        var mod = await GetEditorSelectAsync(ct);
+        if (ct.IsCancellationRequested || _pageDisposed) return;
+        if (mod is null)
+        {
+            _navNotice = "Could not load the editor selection module; run analysis again.";
+            if (!_pageDisposed && !ct.IsCancellationRequested) StateHasChanged();
+            return;
+        }
+
+        // Final AWAITED verification: report reference + workspace identity +
+        // worker epoch, checked before AND after the epoch query. This re-runs
+        // the worker-epoch check that NavigateAsync already did — an edit/close/
+        // reset during the module import/render is caught here.
+        var v = await Navigator.VerifyCurrentAsync(s.Report, ct);
+        if (ct.IsCancellationRequested || _pageDisposed) return;
+        if (!v.Ok)
+        {
+            _navNotice = v.Reason ?? "This analysis is no longer current; run analysis again.";
+            if (!_pageDisposed && !ct.IsCancellationRequested) StateHasChanged();
+            return;
+        }
+
+        // Synchronous final checks IMMEDIATELY before the final DOM call (no
+        // unrelated await between these and trySelect): page lifetime, intent,
+        // report currency, and the target file is the active file.
+        if (_pageDisposed || ct.IsCancellationRequested) return;
+        if (!Navigator.IsStillCurrent(s.Report))
+        {
+            _navNotice = "The workspace changed since this analysis; run analysis again.";
+            if (!_pageDisposed && !ct.IsCancellationRequested) StateHasChanged();
+            return;
+        }
+        if (Coordinator.ActiveFileId != s.FileId)
+        {
+            _navNotice = "The target file is not active; run analysis again.";
+            if (!_pageDisposed && !ct.IsCancellationRequested) StateHasChanged();
+            return;
+        }
+
+        try
+        {
+            var ok = await mod.InvokeAsync<bool>("trySelect", _editorRef, s.FileId.ToString(), s.ExpectedTextareaText, s.TextareaStart, s.TextareaEnd);
+            if (ct.IsCancellationRequested || _pageDisposed) return;
+            _navNotice = ok ? null : "The editor no longer matches the analyzed source; run analysis again.";
+        }
+        catch (JSException)
+        {
+            if (ct.IsCancellationRequested || _pageDisposed) return;
+            _navNotice = "Could not select the diagnostic location; run analysis again.";
+        }
+        if (!_pageDisposed && !ct.IsCancellationRequested) StateHasChanged();
+    }
+
+    private async System.Threading.Tasks.Task<IJSObjectReference?> GetEditorSelectAsync(System.Threading.CancellationToken ct)
+    {
+        if (_pageDisposed) return null;
+        // Single-flight shared import: the FIRST caller assigns the import Task
+        // synchronously (before awaiting), so a concurrent second navigation
+        // reuses the SAME Task — no duplicate module refs leak on rapid clicks.
+        var t = _editorSelectTask;
+        if (t is null)
+            t = _editorSelectTask = JS.InvokeAsync<IJSObjectReference>("import", "./js/editor-select.js").AsTask();
+        // Per-caller WaitAsync(ct): a navigation's cancellation finishes promptly
+        // WITHOUT canceling the shared import Task (a newer click reuses it).
+        try { return await t.WaitAsync(ct).ConfigureAwait(false); }
+        catch (System.OperationCanceledException) { return null; } // per-caller cancel; do NOT fault the shared task
+        catch (JSException)
+        {
+            // Genuine interop fault: clear the shared task BY IDENTITY so a
+            // later caller retries, but an old failed/canceled import cannot
+            // clear a newer cached import (different task).
+            if (System.Threading.Tasks.Task<IJSObjectReference>.ReferenceEquals(_editorSelectTask, t)) _editorSelectTask = null;
+            return null;
+        }
     }
 
     private void ScheduleAutosave()
@@ -377,11 +1250,69 @@ else
 
     public async ValueTask DisposeAsync()
     {
-        // Cancel any pending debounced autosave. The scoped coordinator is
-        // owned by the DI scope; its writer lock is released on CloseAsync and
-        // by the browser when the document unloads. Disposing it here would
-        // break a later save after navigating to /smoke and back.
+        if (_pageDisposed) return; // idempotent
+        _pageDisposed = true;
+        // 1. SYNCHRONOUS, bounded teardown FIRST: unsubscribe events and
+        //    cancel analysis/nav/autosave, and release owned refs — BEFORE any
+        //    await that could be unbounded (a blocked editor-module import).
+        //    Never dispose the injected AnalysisCoordinator/ISourceAnalyzer:
+        //    DI owns them (scoped = app lifetime in WASM); returning to this
+        //    page must reuse the same coordinator.
+        AnalysisCoord.Changed -= OnAnalysisChanged;
+        AnalysisCoord.Cancel();
+        _pendingSelect = null;
+        _navCts?.Cancel();
+        _navCts?.Dispose();
+        _navCts = null;
         CancelAutosave();
+        // Unsubscribe the readiness callback BEFORE disposing the DotNet ref
+        // (so no .NET callback fires after the ref is gone). The JS glue
+        // clears the sink only if it is still owned by THIS subscription.
+        var readinessSubId = _offlineReadinessSubId;
+        var readinessMod = _offlineReadinessModule;
+        _offlineReadinessSubId = null;
+        _offlineReadinessModule = null;
+        var refObj = _offlineReadinessRef;
+        _offlineReadinessRef = null;
+        if (readinessMod is not null && readinessSubId is not null)
+        {
+            try { await readinessMod.InvokeVoidAsync("unsubscribeOfflineReadiness", readinessSubId); }
+            catch (JSException) { /* best-effort */ }
+        }
+        refObj?.Dispose();
+        // 2. Editor-select module: do NOT await an in-flight import in the dispose
+        //    path (it could be blocked forever, e.g. a held route in tests or a
+        //    network stall). Snapshot the task BY IDENTITY and attach an OBSERVED
+        //    eventual-cleanup task that disposes the late module exactly once —
+        //    without reviving the page, selecting/activating anything, or calling
+        //    StateHasChanged. A newer page's import is a DIFFERENT task, so an
+        //    old failed/canceled import cannot clear it.
+        var modTask = _editorSelectTask;
+        _editorSelectTask = null;
+        if (modTask is not null)
+            _ = DisposeEditorSelectLaterAsync(modTask);
+        // 3. Dispose the readiness module ref (already imported; bounded await).
+        if (readinessMod is not null)
+        {
+            try { await readinessMod.DisposeAsync(); } catch (JSException) { /* best-effort */ }
+        }
         await ValueTask.CompletedTask;
+    }
+
+    private async System.Threading.Tasks.Task DisposeEditorSelectLaterAsync(
+        System.Threading.Tasks.Task<IJSObjectReference> modTask)
+    {
+        // Observed eventual cleanup: dispose the late module exactly once. The
+        // captured modTask is this page's import (identity); a newer page's
+        // import is a different task and is unaffected. Never selects/activates
+        // or revives the page; no StateHasChanged. All exceptions are caught so
+        // the task never faults (no unobserved exception).
+        try
+        {
+            var m = await modTask.ConfigureAwait(false);
+            await m.DisposeAsync().ConfigureAwait(false);
+        }
+        catch (JSException) { /* best-effort teardown */ }
+        catch (System.OperationCanceledException) { /* best-effort */ }
     }
 }
