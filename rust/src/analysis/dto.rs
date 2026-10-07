@@ -101,6 +101,8 @@ pub struct AnalyzePayload {
     pub base_head_revision_id: Option<String>,
     #[serde(default)]
     pub profile: ProfileRef,
+    #[serde(default, deserialize_with = "super::knu_dto::configuration")]
+    pub configuration: Option<super::knu_dto::Configuration>,
     #[serde(default)]
     pub limits: Limits,
     #[serde(default)]
@@ -198,6 +200,10 @@ pub struct AnalysisResult {
     pub coverage: Coverage,
     #[serde(rename = "unavailableCapabilities", default)]
     pub unavailable_capabilities: Vec<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub configuration: Option<super::knu_dto::Configuration>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub knu: Option<super::knu_dto::KnuAnalysis>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
@@ -289,6 +295,10 @@ pub struct RuleResult {
     pub per_file: Vec<PerFileOutcome>,
     #[serde(default)]
     pub limitations: Vec<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub source: Option<super::knu_dto::SourceRule>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub evidence_ids: Option<Vec<String>>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

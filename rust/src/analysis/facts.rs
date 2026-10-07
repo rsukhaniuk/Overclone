@@ -104,6 +104,8 @@ pub fn rule_result_and_aggregate(
         outcome: aggregate,
         per_file,
         limitations: limitations.to_vec(),
+        source: None,
+        evidence_ids: None,
     };
     (rule, aggregate)
 }

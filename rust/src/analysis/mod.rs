@@ -6,6 +6,9 @@
 
 pub mod dto;
 pub mod facts;
+pub mod knu_dto;
+pub mod profiles;
+pub mod observations;
 pub mod lexer;
 pub mod mapping;
 
@@ -496,6 +499,8 @@ pub fn analyze_source(metadata_json: &str, packed_bytes: &[u8]) -> String {
         aggregate_outcome: aggregate,
         coverage,
         unavailable_capabilities: vec!["pdfFacts".to_string(), "pdfChecks".to_string()],
+        configuration: None,
+        knu: None,
     };
 
     serialize_result_bounded(Some(request_id), &result, resolved.max_result_bytes)

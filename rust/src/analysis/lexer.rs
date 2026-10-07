@@ -92,6 +92,8 @@ pub struct ScanResult {
     /// the file scan stopped early (truncated/Indeterminate) without guessing
     /// unmatched braces or fabricating facts.
     pub lookahead_exhausted: bool,
+    /// Remaining SAME byte-work budget, available to the optional observation pass.
+    pub lookahead: LookaheadBudget,
 }
 
 /// Supported verbatim environment names (case-sensitive). The argument of
@@ -353,7 +355,7 @@ pub fn scan_file(
         lookahead_exhausted,
         budget: _,
         diag_cap_remaining: _,
-        lookahead: _,
+        lookahead,
         file_id: _,
         bytes: _,
         has_bom: _,
@@ -374,6 +376,7 @@ pub fn scan_file(
         optional_unterminated,
         nonliteral_argument,
         lookahead_exhausted,
+        lookahead,
     }
 }
 
