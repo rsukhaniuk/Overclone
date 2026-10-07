@@ -1,0 +1,12 @@
+[package]
+name = "document-engine"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+# Must match wasm-bindgen-cli in docker/rust.Dockerfile.
+wasm-bindgen = "=0.2.105"

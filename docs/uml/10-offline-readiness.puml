@@ -1,0 +1,50 @@
+@startuml
+!include style.iuml
+title Offline shell and compiler asset readiness
+start
+:Open installed PWA or first-load static site;
+if (Verified app shell cached?) then (yes)
+  :Load compatible cached shell;
+else (no)
+  if (Static host reachable?) then (yes)
+    :Download and verify versioned shell;
+    :Publish completed shell cache;
+  else (no)
+    :Explain initial provisioning is required;
+    stop
+  endif
+endif
+:Open repository; validate schema and head;
+if (Storage healthy and compatible?) then (yes)
+  :Enable local editing / saving / source checks;
+else (no)
+  :Offer recovery / read-only export;
+  stop
+endif
+:Check selected engine + bundle inventory;
+if (All required objects verified?) then (yes)
+  :Mark compileReady for that engine / bundle;
+else (no)
+  :Report missing / corrupt assets; editing stays available;
+  if (User requests provisioning and is online?) then (yes)
+    :Estimate storage; obtain approval for asset download;
+    :Download missing objects; verify sizes and hashes;
+    if (Cancelled / interrupted / quota failure?) then (yes)
+      :Keep prior valid inventory; allow explicit retry;
+      stop
+    else (no)
+      :Publish verified inventory atomically;
+    endif
+  else (no)
+    :Compilation unavailable; source work continues;
+    stop
+  endif
+endif
+:Check project-specific dependencies;
+if (Project dependencies available?) then (yes)
+  :Compile locally without network fallback;
+else (no)
+  :Report missing dependency; offer separate provisioning;
+endif
+stop
+@enduml

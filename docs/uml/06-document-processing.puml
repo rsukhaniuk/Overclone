@@ -1,0 +1,46 @@
+@startuml
+!include style.iuml
+title Edit, local persistence and independent analysis pipelines
+autonumber
+actor Author
+participant "WorkspaceCoordinator\nC#" as W
+participant "ProjectRepository\nC# + glue" as Repo
+participant "SourceAnalyzer\nRust worker" as Rust
+participant "TeXEngineAdapter\nC++ worker" as TeX
+participant "PdfEngineAdapter\nC++ worker" as PDF
+Author -> W : edit file
+W -> W : freeze project snapshot R
+par local save (independent)
+  W -> Repo : CommitAsync(R, expectedHead)
+  Repo -> Repo : lock; verify blobs; IDB head transaction
+  alt commit succeeds
+    Repo --> W : saved R
+  else quota / storage failure
+    Repo --> W : typed failure; keep dirty R
+  end
+else source checks (independent)
+  W -> Rust : analyzeSource(R, profile)
+  Rust --> W : source report R
+  W -> W : publish only if R still current
+end
+opt automatic compile enabled or explicit compile
+  W -> W : verify selected engine / bundle readiness
+  W -> TeX : compile(R, VFS, asset inventory)
+  alt compilation succeeds
+    TeX --> W : PDF artifact + logs + source map for R
+    W -> PDF : inspectPdf(artifact R)
+    PDF --> W : normalized facts for artifact R
+    W -> Rust : analyzeCombined(R, profile, facts R)
+    Rust --> W : combined report R
+    W -> W : verify R / profile / artifact; publish
+  else compile failed / missing asset
+    TeX --> W : typed failure + compiler diagnostics
+    W -> W : retain prior PDF labeled by revision
+    W -> W : mark PDF checks for R unavailable
+  end
+end
+note over W, PDF
+A later edit creates R+1; stale R output cannot replace current diagnostics.
+Coordinators delegate calls; native workers never call each other directly.
+end note
+@enduml

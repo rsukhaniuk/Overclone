@@ -1,0 +1,8 @@
+.env
+**/bin/
+**/obj/
+src/Client/wwwroot/native-generated/
+src/Client/wwwroot/rust-generated/
+rust/target/
+.vs/
+.idea/

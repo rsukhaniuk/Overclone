@@ -1,0 +1,32 @@
+@startuml
+!include style.iuml
+title Workspace persistence lifecycle
+hide empty description
+[*] --> Opening
+Opening --> Saved : complete head\n+ writer lock
+Opening --> ReadOnly : other tab\nowns writer lock
+Opening --> Recovery : corrupt /\nunsupported storage
+ReadOnly --> Opening : explicit takeover\nafter lock release
+ReadOnly --> [*] : close
+Saved --> Dirty : edit / accepted fix\n/ restore
+Dirty --> Saving : autosave /\nexplicit save
+Saving --> Saved : commit R\n[R is current]
+Saving --> Dirty : commit R\n[newer edits exist]
+Saving --> SaveFailed : quota / permission /\ntransaction error
+SaveFailed --> Saving : explicit retry
+SaveFailed --> Dirty : further edits / undo
+SaveFailed --> [*] : close after loss\nwarning / export
+Recovery --> Opening : select complete\ncheckpoint; retry
+Recovery --> ReadOnly : inspect / export\nrecoverable content
+Dirty --> [*] : explicit discard /\nexported recovery copy
+Saved --> [*] : close
+note right of Saving
+OPFS verified before IDB head commit.
+Failure never advances the head.
+New edits stay dirty.
+end note
+note bottom of ReadOnly
+Export status is separate.
+It cannot mark local edits saved.
+end note
+@enduml

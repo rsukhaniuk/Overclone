@@ -1,0 +1,66 @@
+@startuml
+!include style.iuml
+title Workspace, immutable revisions and local history
+hide empty members
+class Project {
+  +id: ProjectId
+  +headRevisionId: RevisionId
+  +schemaVersion: int
+}
+class ProjectRevision <<immutable>> {
+  +id: RevisionId
+  +parentRevisionId: RevisionId?
+  +mainFileId: FileId
+  +settings: VersionedSettings
+}
+class ProjectFile <<manifest entry>> {
+  +id: FileId
+  +relativePath: string
+  +contentHash: SHA256
+  +byteLength: long
+}
+class ContentObject <<OPFS>> {
+  +hash: SHA256
+  +byteLength: long
+  +verified: bool
+}
+class HistoryCheckpoint {
+  +id: CheckpointId
+  +revisionId: RevisionId
+  +reason: string
+}
+class ArtifactRef {
+  +hash: SHA256
+  +revisionId: RevisionId
+  +engineBundleOptions: string
+  +kind: ArtifactKind
+}
+interface IProjectRepository {
+  +OpenAsync(projectId)
+  +CommitAsync(batch, expectedHead)
+  +ReadHistoryAsync(projectId, cursor)
+}
+class ProjectRepository <<C# + browser glue>>
+class WorkspaceCoordinator <<C#>> {
+  +currentRevision: ProjectRevision
+  +dirty: bool
+  +Edit(command)
+  +Restore(checkpoint)
+}
+Project "1" o-- "1..*" ProjectRevision : retained revisions
+Project "1" o-- "0..*" HistoryCheckpoint
+ProjectRevision "1" *-- "0..*" ProjectFile
+ProjectFile "0..*" --> "1" ContentObject : exact bytes
+HistoryCheckpoint "0..*" --> "1" ProjectRevision
+ArtifactRef "0..*" --> "1" ProjectRevision : produced from
+ArtifactRef "0..*" --> "1" ContentObject : stored bytes
+WorkspaceCoordinator --> Project : active
+WorkspaceCoordinator ..> IProjectRepository
+ProjectRepository ..|> IProjectRepository
+ProjectRepository --> ContentObject
+note bottom of ProjectRevision
+Restoring/undo creates a new revision.
+Sources, assets and settings share one revision identity.
+Head changes only after verified objects + IDB commit.
+end note
+@enduml

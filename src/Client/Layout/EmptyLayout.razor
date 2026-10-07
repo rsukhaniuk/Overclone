@@ -1,0 +1,12 @@
+@inherits LayoutComponentBase
+
+<article class="app-shell">
+    <header class="app-bar">
+        <a class="brand" href="/">Document workspace</a>
+        <nav>
+            <NavLink class="nav-link" href="/" Match="@NavLinkMatch.All">Workspace</NavLink>
+            <NavLink class="nav-link" href="/smoke">Worker smoke test</NavLink>
+        </nav>
+    </header>
+    @Body
+</article>

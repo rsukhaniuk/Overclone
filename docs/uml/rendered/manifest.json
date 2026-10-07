@@ -1,0 +1,30 @@
+{
+  "renderer": "plantuml/plantuml@sha256:0cd265d12d84b8a0cf307a7dd8c74f237d137b9327b5053bd5aa822f38952caa",
+  "sha256": {
+    "uml/01-use-cases.puml": "7988489a7a999bda2aac294ff97a420368ec0999f7a442884c1e8dd4604de471",
+    "uml/02-components.puml": "b63d34114485c5a0dc00dabbe46553abae5874eddfc28d2ca3236970cf52840b",
+    "uml/03-deployment.puml": "2c5cb4f4a06b390a4e59d53ca5573ef26d0a0c4b2354f7c129664d1fa7cd6b0f",
+    "uml/04-workspace-model.puml": "def445a16dd0cef374196f6a0380bfefb11c7c60203ba5abbe00870368d7a3b1",
+    "uml/05-analysis-model.puml": "36d446715a1d233007206f43dd50deb45438d9c63b4dbadd7ec5adbff27e7470",
+    "uml/06-document-processing.puml": "8d90d55da72ee6b08b818cf1451e9f5c6364caf5cf734fa23b770a8dfba1dde6",
+    "uml/07-reviewed-fix.puml": "6b64f7ff10836f04816ad74d05ce150fea21cceb25d8bae16984e83c52c0fb33",
+    "uml/08-ai-assistance.puml": "c81ce564a7b7ff55bdf45c12b3237a08b596fd3a08acbbc6b9cc68a8803d8025",
+    "uml/09-drive-transfer.puml": "d9254731ad60dd34b2bf2c8820f35e47b7871d2ba37eb2981b25bea4d9904fac",
+    "uml/10-offline-readiness.puml": "bc25ac68db0f545dd0bae7b2a8c73bddd62181323cced685a07f94bf528a2255",
+    "uml/11-persistence-state.puml": "67bbf263794b2fd881ec1f3d990dd49dba9601abf07dbc34c8b91f7abfbef4ec",
+    "uml/12-worker-state.puml": "582d6de664a40a2ba8d1d943b420ce72fe1ef3f6a3d472e62e51182af7218d6b",
+    "uml/rendered/01-use-cases.svg": "df5cc34c615c89ea522804b9965033b0d29e8b1a95565804e3e0305860283c4c",
+    "uml/rendered/02-components.svg": "420a8619b15e04dd85ff719e199e9aab2f8a1227e555e7e18bd7fd80774dd69c",
+    "uml/rendered/03-deployment.svg": "1e7cf4aedf08b5a527ad69c288aeb814fe1ce4ab86683d007e9510c4091dc657",
+    "uml/rendered/04-workspace-model.svg": "c7e313dcef462a5f9a1aa8d9427e1dd2939176c53b5cd1ca26a5353f196df6ac",
+    "uml/rendered/05-analysis-model.svg": "f199c4f56a8f1484ad86c90e7c4e0f5f425601189cc8dc8c60f1fd08a473a3dc",
+    "uml/rendered/06-document-processing.svg": "a6b575c014d55e9863c30a5d4c96c580067ac640fd5cfdebb059c62e46cf5fc2",
+    "uml/rendered/07-reviewed-fix.svg": "4b652f37f91eb0c64c034b3fd35d5e00556e3fb1bc79c3b6c019b7980c2a4b2c",
+    "uml/rendered/08-ai-assistance.svg": "cd7def26683ada78b1e28f24f0cb5218cbbf5eb083c4b1e574277fd570148c35",
+    "uml/rendered/09-drive-transfer.svg": "7cd691f4ab65baae1be2fdba11dec8c32acc5728fab5ee081cb614ccff3a6034",
+    "uml/rendered/10-offline-readiness.svg": "d7abc8f2beac719851e2daabbc24c516471ac3658e7796d6929f53eb8dba187c",
+    "uml/rendered/11-persistence-state.svg": "91fc8acca6bf56b9707c88b227457a939a82e997f0db8b36912eb82abc1d8778",
+    "uml/rendered/12-worker-state.svg": "9ae2d89c2e67d647458089565f2dfcffe2e8c75c1c85dd04cbe6b22e86869238",
+    "uml/style.iuml": "ef5863de1be8f35e1d64028bd7c285c125e87ec985744191d74fcfde0552d23a"
+  }
+}

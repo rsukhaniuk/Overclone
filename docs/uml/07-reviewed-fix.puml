@@ -1,0 +1,46 @@
+@startuml
+!include style.iuml
+title One review path for deterministic and AI source edits
+autonumber
+actor Author
+participant "Workspace UI" as UI
+participant "ChangeReviewService\nC#" as Review
+participant "WorkspaceCoordinator\nC#" as W
+participant "ProjectRepository" as Repo
+UI -> Review : PreviewAsync(ChangeSet based on R)
+Review -> W : obtain current revision
+Review -> Review : validate spans / expected text / no overlap
+Review --> UI : complete diff + preconditions
+UI --> Author : show affected files and origin
+alt author declines
+  Author -> UI : reject
+  UI -> Review : discard proposal; no document change
+else author accepts
+  Author -> UI : accept exact diff
+  UI -> Review : AcceptAsync(id, expectedCurrent=R)
+  Review -> W : compare current revision to R
+  alt stale base or invalid precondition
+    Review --> UI : RevisionConflict / InvalidInput; regenerate
+  else valid
+    Review -> W : apply all edits atomically; create R2 + undo
+    W -> Repo : CommitAsync(R2, expectedHead)
+    alt persisted
+      Repo --> W : committed R2
+      W --> UI : applied and saved
+    else persistence failure
+      Repo --> W : typed storage error
+      W --> UI : applied but unsaved; retry / export / undo
+    end
+  end
+end
+opt later undo of accepted edits
+  Author -> UI : undo
+  UI -> Review : UndoAsync(project, expectedCurrent)
+  Review -> W : validate inverse; create new revision
+  W -> Repo : commit inverse revision with head check
+end
+note over Review, Repo
+Atomic change sets; no edits before acceptance.
+Undo never deletes the original revision/history.
+end note
+@enduml

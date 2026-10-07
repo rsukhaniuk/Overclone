@@ -1,0 +1,183 @@
+name: oop-dev
+
+services:
+  init:
+    image: ${DOTNET_IMAGE:-mcr.microsoft.com/dotnet/sdk:10.0-noble}
+    user: "0:0"
+    environment:
+      DEV_UID: ${DEV_UID:-1000}
+      DEV_GID: ${DEV_GID:-1000}
+    volumes:
+      - dotnet-cache:/cache
+      - dotnet-build:/artifacts/dotnet
+      - native-build:/artifacts/native
+      - wasm:/artifacts/wasm
+      - emscripten-cache:/artifacts/emscripten
+      - rust-cache:/cache/rust
+      - rust-build:/artifacts/rust
+      - rust-wasm:/artifacts/rust-wasm
+    command:
+      ["sh", "-c", 'chown -R "$${DEV_UID}:$${DEV_GID}" /cache /artifacts']
+    restart: "no"
+
+  app:
+    image: oop-dev-dotnet:local
+    build:
+      context: ./docker
+      dockerfile: dotnet.Dockerfile
+      args:
+        DOTNET_IMAGE: ${DOTNET_IMAGE:-mcr.microsoft.com/dotnet/sdk:10.0-noble}
+        DEV_UID: ${DEV_UID:-1000}
+        DEV_GID: ${DEV_GID:-1000}
+    user: "${DEV_UID:-1000}:${DEV_GID:-1000}"
+    working_dir: /workspace
+    init: true
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://0.0.0.0:8080
+      DOTNET_CLI_HOME: /cache/dotnet
+      NUGET_PACKAGES: /cache/nuget
+      DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+      DOTNET_SKIP_FIRST_TIME_EXPERIENCE: "1"
+      DOTNET_USE_POLLING_FILE_WATCHER: "1"
+      DOTNET_WATCH_RESTART_ON_RUDE_EDIT: "1"
+      DOTNET_WATCH_SUPPRESS_LAUNCH_BROWSER: "1"
+    volumes:
+      - .:/workspace
+      - dotnet-cache:/cache
+      - dotnet-build:/artifacts/dotnet
+      - wasm:/workspace/src/Client/wwwroot/native-generated:ro
+      - rust-wasm:/workspace/src/Client/wwwroot/rust-generated:ro
+    ports:
+      - "127.0.0.1:${APP_PORT:-8081}:8080"
+    depends_on:
+      init:
+        condition: service_completed_successfully
+      native:
+        condition: service_healthy
+      rust:
+        condition: service_healthy
+    command:
+      [
+        "dotnet",
+        "watch",
+        "--project",
+        "src/Server/Server.csproj",
+        "run",
+        "--no-launch-profile",
+      ]
+
+  native:
+    image: ${EMSDK_IMAGE:-emscripten/emsdk:6.0.13}
+    user: "${DEV_UID:-1000}:${DEV_GID:-1000}"
+    working_dir: /workspace
+    init: true
+    environment:
+      EM_CACHE: /artifacts/emscripten
+    volumes:
+      - .:/workspace
+      - native-build:/artifacts/native
+      - wasm:/artifacts/wasm
+      - emscripten-cache:/artifacts/emscripten
+    depends_on:
+      init:
+        condition: service_completed_successfully
+    command: ["python3", "-u", "scripts/watch-native.py"]
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "sh",
+          "-c",
+          "test -s /artifacts/wasm/engine.mjs && test -s /artifacts/wasm/engine.wasm",
+        ]
+      interval: 2s
+      timeout: 2s
+      retries: 150
+      start_period: 10s
+
+  rust:
+    image: oop-dev-rust:local
+    build:
+      context: ./docker
+      dockerfile: rust.Dockerfile
+      args:
+        RUST_IMAGE: ${RUST_IMAGE:-rust:1.91.0-slim-bookworm}
+    user: "${DEV_UID:-1000}:${DEV_GID:-1000}"
+    working_dir: /workspace
+    init: true
+    environment:
+      CARGO_HOME: /cache/rust
+      CARGO_TARGET_DIR: /artifacts/rust/target
+      RUSTUP_HOME: /usr/local/rustup
+    volumes:
+      - .:/workspace
+      - rust-cache:/cache/rust
+      - rust-build:/artifacts/rust
+      - rust-wasm:/artifacts/rust-wasm
+    depends_on:
+      init:
+        condition: service_completed_successfully
+    command: ["python3", "-u", "scripts/watch-rust.py"]
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "sh",
+          "-c",
+          "test -s /artifacts/rust-wasm/document_engine.js && test -s /artifacts/rust-wasm/document_engine_bg.wasm",
+        ]
+      interval: 2s
+      timeout: 2s
+      retries: 150
+      start_period: 10s
+
+  browser-test:
+    profiles: ["test"]
+    image: ${BROWSER_IMAGE:-mcr.microsoft.com/playwright:v1.56.1-noble}
+    init: true
+    working_dir: /tmp/browser-test
+    environment:
+      NODE_PATH: /tmp/browser-test/node_modules
+      APP_URL: http://app:8080
+    volumes:
+      - ./scripts:/tests:ro
+    depends_on:
+      app:
+        condition: service_started
+    command:
+      - sh
+      - -ec
+      - |
+        npm install --no-audit --no-fund --prefix /tmp/browser-test playwright@1.56.1
+        node /tests/test-browser.cjs
+
+  workspace-test:
+    profiles: ["test"]
+    image: ${BROWSER_IMAGE:-mcr.microsoft.com/playwright:v1.56.1-noble}
+    init: true
+    working_dir: /tmp/browser-test
+    environment:
+      NODE_PATH: /tmp/browser-test/node_modules
+      APP_URL: http://app:8080
+    volumes:
+      - ./scripts:/tests:ro
+    depends_on:
+      app:
+        condition: service_started
+    command:
+      - sh
+      - -ec
+      - |
+        npm install --no-audit --no-fund --prefix /tmp/browser-test playwright@1.56.1
+        node /tests/test-workspace.cjs
+
+volumes:
+  dotnet-cache:
+  dotnet-build:
+  native-build:
+  wasm:
+  emscripten-cache:
+  rust-cache:
+  rust-build:
+  rust-wasm:

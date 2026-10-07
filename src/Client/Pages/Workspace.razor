@@ -1,0 +1,387 @@
+@page "/"
+@inject WorkspaceCoordinator Coordinator
+@inject IJSRuntime JS
+@implements IAsyncDisposable
+
+<PageTitle>Document workspace</PageTitle>
+
+@if (Coordinator.Capabilities is { } caps && (!caps.Opfs || !caps.IndexedDb))
+{
+    <div class="banner banner-error" role="alert">
+        This browser cannot store documents offline: OPFS or IndexedDB is unavailable.
+        Editing is disabled. Use desktop Chrome or Edge.
+    </div>
+}
+
+@if (!Coordinator.IsOpen)
+{
+    <section class="panel" aria-label="Projects">
+        <h1>Projects</h1>
+        <p class="hint">Local projects are stored in this browser (OPFS + IndexedDB). They survive
+            closing the browser and work offline after provisioning.</p>
+
+        <form @onsubmit="@(async () => await CreateProjectAsync())" @onsubmit:preventDefault>
+            <label for="new-project">New project name</label>
+            <input id="new-project" @bind="_newProjectName" @bind:event="oninput"
+                   placeholder="e.g. Diploma 2026" autocomplete="off" />
+            <button type="submit">Create project</button>
+        </form>
+
+        @if (_projects.Count == 0)
+        {
+            <p role="status">No local projects yet. Create one to start editing.</p>
+        }
+        else
+        {
+                <ul class="project-list">
+                    @foreach (var p in _projects)
+                    {
+                        <li data-testid="project-row" data-name="@p.Name">
+                            <span class="project-name">@p.Name</span>
+                        <span class="project-meta">@((p.HeadRevisionId is null ? "empty" : "1+ revisions"))</span>
+                        <button @onclick='() => OpenProjectAsync(p.Id)' data-testid="open-project">Open</button>
+                        <button class="danger" @onclick='() => DeleteProjectAsync(p.Id)'
+                                aria-label='Delete project @p.Name'>Delete</button>
+                    </li>
+                }
+            </ul>
+        }
+    </section>
+}
+else
+{
+    <section class="panel workspace" aria-label="Workspace @Coordinator.Project?.Name">
+        <header class="workspace-header">
+            <div class="title-block">
+                <h1>@Coordinator.Project?.Name</h1>
+                <p class="status @StatusClass" role="status" aria-live="polite">@StatusText</p>
+            </div>
+            <div class="actions">
+                <button @onclick="SaveAsync" disabled="@SaveDisabled" data-testid="save">
+                    @(Coordinator.SavePhase == SavePhase.Saving ? "Saving…" : "Save")
+                </button>
+                <button @onclick="CloseAsync">Close</button>
+            </div>
+        </header>
+
+        @if (Coordinator.IsReadOnly)
+        {
+            <div class="banner banner-readonly" role="alert">
+                @if (Coordinator.Capabilities?.WebLocks == false)
+                {
+                    <span>Writer locks are unavailable in this browser; the project is read-only.</span>
+                }
+                else
+                {
+                    <span>Another tab is editing this project. Opened read-only.</span>
+                    <button @onclick="TakeOverAsync" data-testid="takeover">Take over editing</button>
+                }
+            </div>
+        }
+
+        @if (Coordinator.Recovery is { } recovery)
+        {
+            <div class="banner banner-recovery" role="alert">
+                <p>The project head could not be verified and may be damaged. Damaged data is
+                    retained. Select a complete checkpoint to recover to:</p>
+                @if (recovery.CompleteCheckpoints.Count == 0)
+                {
+                    <p>No complete checkpoints are available. Export any recoverable content and
+                        start a new project.</p>
+                }
+                else
+                {
+                    <ul class="checkpoint-list">
+                        @foreach (var cp in recovery.CompleteCheckpoints)
+                        {
+                            <li>
+                                <span>@cp.Reason — @(cp.RevisionId.ToString().Substring(0, 8))</span>
+                                <button @onclick='() => RecoverToAsync(cp.RevisionId)'
+                                        data-testid="recover">Recover to this</button>
+                            </li>
+                        }
+                    </ul>
+                }
+            </div>
+        }
+
+        <div class="workspace-body">
+            <aside class="file-tree" aria-label="Files">
+                <form @onsubmit="@(() => CreateFile())" @onsubmit:preventDefault>
+                    <input @bind="_newFileName" @bind:event="oninput" placeholder="new file path"
+                           autocomplete="off" data-testid="new-file-name" />
+                    <button type="submit" data-testid="new-file">New file</button>
+                </form>
+                <div class="import">
+                    <InputFile OnChange="OnImportFile" accept=".tex,.txt,.bib,.cls,.sty,text/plain"
+                               data-testid="import-input" />
+                </div>
+                <ul class="files">
+                    @foreach (var f in Coordinator.Files.Where(f => !f.Deleted))
+                    {
+                        var id = f.Id;
+                        <li class="@(Coordinator.ActiveFileId == id ? "active" : "")">
+                            <button class="file-link" @onclick='() => { SelectFile(id); }'
+                                    data-testid="select-file">@f.RelativePath</button>
+                            @if (f.IsNew || f.DirtyContent || f.TreeChanged)
+                            {
+                                <span class="dirty-dot" aria-label="unsaved">●</span>
+                            }
+                            <button class="icon danger" @onclick='() => { DeleteFile(id); }'
+                                    aria-label='Delete @f.RelativePath' data-testid="delete-file">✕</button>
+                        </li>
+                    }
+                </ul>
+            </aside>
+
+            <div class="editor-area">
+                @if (Coordinator.ActiveFile is { } active)
+                {
+                    <div class="editor-toolbar">
+                        <label for="rename">@active.RelativePath</label>
+                        <input id="rename" @bind="_renameTarget" @bind:event="oninput"
+                               placeholder="rename to…" autocomplete="off" data-testid="rename-input" />
+                        <button @onclick='() => { RenameFile(active.Id); }' data-testid="rename">Rename</button>
+                        <button @onclick="DownloadUnsavedAsync" data-testid="download">Download text</button>
+                    </div>
+                    <label class="sr-only" for="editor">Source for @active.RelativePath</label>
+                        <textarea id="editor" @bind="ActiveContent" @bind:event="oninput"
+                              disabled="@Coordinator.IsReadOnly"
+                              data-testid="editor" spellcheck="false"></textarea>
+                }
+                else
+                {
+                    <p class="hint">Select a file or create one to start editing.</p>
+                }
+            </div>
+        </div>
+    </section>
+}
+
+@code {
+    // Active file content is bound through the coordinator so dirty state,
+    // saving/saved/failed phases and the read-only lock are always accurate.
+    private System.Threading.CancellationTokenSource? _autosaveCts;
+
+    private string ActiveContent
+    {
+        get => Coordinator.ActiveFile?.Content ?? "";
+        set
+        {
+            if (Coordinator.ActiveFile is { } af && Coordinator.EditText(af.Id, value))
+            {
+                ScheduleAutosave();
+                StateHasChanged();
+            }
+        }
+    }
+
+    private string StatusText
+    {
+        get
+        {
+            if (Coordinator.Recovery is not null) return "Recovery required — head is damaged.";
+            if (Coordinator.IsReadOnly) return "Read-only.";
+            return Coordinator.SavePhase switch
+            {
+                SavePhase.Saving => "Saving…",
+                SavePhase.Saved => Coordinator.IsDirty ? "Unsaved changes." : "Saved.",
+                SavePhase.Failed => "Save failed: " + (Coordinator.LastError ?? "unknown"),
+                SavePhase.Dirty => "Unsaved changes.",
+                _ => Coordinator.IsDirty ? "Unsaved changes." : "Saved."
+            };
+        }
+    }
+
+    private string StatusClass
+    {
+        get
+        {
+            if (Coordinator.Recovery is not null) return "status-recovery";
+            if (Coordinator.IsReadOnly) return "status-readonly";
+            return Coordinator.SavePhase switch
+            {
+                SavePhase.Saving => "status-saving",
+                SavePhase.Failed => "status-failed",
+                SavePhase.Saved => Coordinator.IsDirty ? "status-dirty" : "status-saved",
+                SavePhase.Dirty => "status-dirty",
+                _ => Coordinator.IsDirty ? "status-dirty" : "status-saved"
+            };
+        }
+    }
+
+    private bool SaveDisabled =>
+        Coordinator.IsReadOnly || Coordinator.Recovery is not null ||
+        (!Coordinator.IsDirty && Coordinator.SavePhase != SavePhase.Saving && Coordinator.SavePhase != SavePhase.Failed);
+
+    private List<Project> _projects = new();
+    private string _newProjectName = "";
+    private string _newFileName = "";
+    private string _renameTarget = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Coordinator.LoadCapabilitiesAsync(System.Threading.CancellationToken.None);
+        await RefreshProjectsAsync();
+    }
+
+    private async Task RefreshProjectsAsync()
+    {
+        _projects = (await Coordinator.ListProjectsAsync(System.Threading.CancellationToken.None)).ToList();
+    }
+
+    private async Task CreateProjectAsync()
+    {
+        var name = string.IsNullOrWhiteSpace(_newProjectName) ? "Untitled" : _newProjectName.Trim();
+        var p = await Coordinator.CreateProjectAsync(name, System.Threading.CancellationToken.None);
+        await Coordinator.OpenAsync(p.Id, System.Threading.CancellationToken.None);
+        _newProjectName = "";
+        StateHasChanged();
+    }
+
+    private async Task OpenProjectAsync(ProjectId id)
+    {
+        await Coordinator.OpenAsync(id, System.Threading.CancellationToken.None);
+        StateHasChanged();
+    }
+
+    private async Task DeleteProjectAsync(ProjectId id)
+    {
+        await Coordinator.DeleteProjectAsync(id, System.Threading.CancellationToken.None);
+        await RefreshProjectsAsync();
+        StateHasChanged();
+    }
+
+    private async Task CloseAsync()
+    {
+        // Never silently discard unsaved edits. If there are pending changes and
+        // we hold the writer lock, flush saves first. Because edits can arrive
+        // while a flush save is in flight (and are not part of that commit), loop
+        // until the session is actually clean — or until a save fails, in which
+        // case abort the close so the unsaved revision stays available for
+        // retry/export rather than being discarded.
+        CancelAutosave();
+        while (Coordinator.IsDirty && Coordinator.LockId is not null && Coordinator.Recovery is null)
+        {
+            var saveResult = await Coordinator.SaveAsync(System.Threading.CancellationToken.None);
+            if (saveResult.Status != CommitStatus.Saved)
+            {
+                StateHasChanged();
+                return;
+            }
+        }
+        await Coordinator.CloseAsync(System.Threading.CancellationToken.None);
+        CancelAutosave();
+        await RefreshProjectsAsync();
+        StateHasChanged();
+    }
+
+    private async Task SaveAsync()
+    {
+        CancelAutosave();
+        await Coordinator.SaveAsync(System.Threading.CancellationToken.None);
+        StateHasChanged();
+    }
+
+    private async Task TakeOverAsync()
+    {
+        await Coordinator.TakeOverAsync(System.Threading.CancellationToken.None);
+        StateHasChanged();
+    }
+
+    private async Task RecoverToAsync(RevisionId target)
+    {
+        await Coordinator.RecoverToAsync(target, System.Threading.CancellationToken.None);
+        StateHasChanged();
+    }
+
+    private void CreateFile()
+    {
+        var name = string.IsNullOrWhiteSpace(_newFileName) ? "main.tex" : _newFileName.Trim();
+        if (Coordinator.CreateFile(name))
+        {
+            _newFileName = "";
+            StateHasChanged();
+        }
+    }
+
+    private void RenameFile(FileId id)
+    {
+        if (Coordinator.RenameFile(id, _renameTarget))
+        {
+            _renameTarget = "";
+            StateHasChanged();
+        }
+    }
+
+    private void DeleteFile(FileId id)
+    {
+        Coordinator.DeleteFile(id);
+        StateHasChanged();
+    }
+
+    private void SelectFile(FileId id)
+    {
+        Coordinator.SelectFile(id);
+        StateHasChanged();
+    }
+
+    private async Task DownloadUnsavedAsync()
+    {
+        if (Coordinator.ActiveFile is not { } af) return;
+        var module = await JS.InvokeAsync<IJSObjectReference>("import", "./js/download.js");
+        await module.InvokeVoidAsync("downloadText", af.RelativePath, af.Content);
+        await module.DisposeAsync();
+    }
+
+    private async Task OnImportFile(InputFileChangeEventArgs e)
+    {
+        var file = e.File;
+        await using var stream = file.OpenReadStream(maxAllowedSize: 8 * 1024 * 1024);
+        using var ms = new System.IO.MemoryStream();
+        await stream.CopyToAsync(ms);
+        var bytes = ms.ToArray();
+        var text = System.Text.Encoding.UTF8.GetString(bytes);
+        var name = string.IsNullOrWhiteSpace(file.Name) ? "imported.tex" : file.Name.Trim();
+        // Preserve original bytes (including CRLF) for the unedited file; the
+        // textarea normalizes newlines for display only.
+        if (Coordinator.CreateFile(name, text)) StateHasChanged();
+    }
+
+    private void ScheduleAutosave()
+    {
+        CancelAutosave();
+        _autosaveCts = new System.Threading.CancellationTokenSource();
+        var token = _autosaveCts.Token;
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await Task.Delay(TimeSpan.FromSeconds(2), token);
+                await InvokeAsync(async () =>
+                {
+                    await Coordinator.SaveAsync(System.Threading.CancellationToken.None);
+                    StateHasChanged();
+                });
+            }
+            catch (System.Threading.Tasks.TaskCanceledException) { /* debounce superseded */ }
+        });
+    }
+
+    private void CancelAutosave()
+    {
+        _autosaveCts?.Cancel();
+        _autosaveCts?.Dispose();
+        _autosaveCts = null;
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        // Cancel any pending debounced autosave. The scoped coordinator is
+        // owned by the DI scope; its writer lock is released on CloseAsync and
+        // by the browser when the document unloads. Disposing it here would
+        // break a later save after navigating to /smoke and back.
+        CancelAutosave();
+        await ValueTask.CompletedTask;
+    }
+}

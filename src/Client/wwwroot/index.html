@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <base href="/" />
+        <title>Document workspace</title>
+        <link rel="stylesheet" href="app.css" />
+        <link rel="manifest" href="manifest.json" />
+        <meta name="theme-color" content="#202735" />
+        <link
+            rel="icon"
+            type="image/png"
+            sizes="192x192"
+            href="icons/icon-192.png"
+        />
+        <link rel="apple-touch-icon" href="icons/icon-192.png" />
+    </head>
+    <body>
+        <div id="app">Loading workspace…</div>
+        <script src="_framework/blazor.webassembly.js"></script>
+        <script>
+            // Register the service worker for offline provisioning. An update never
+            // force-reloads an active editing session: the page shows a banner and
+            // lets the user reload when ready.
+            //
+            // Offline readiness: the page's first load usually happens before the
+            // worker controls the client, so runtime assets are fetched from the
+            // network and not cached by the fetch handler. On activation the worker
+            // posts {type:'activated'}; the page then sends the worker the list of
+            // same-origin resources it loaded, which the worker fetches+caches.
+            // window.__oopOfflineReady becomes true only once that warming round
+            // reports every asset cached, so callers can wait for a genuinely
+            // provisioned shell rather than a freshly registered worker.
+            if ("serviceWorker" in navigator) {
+                window.__oopOfflineReady = false;
+
+                function warmRuntime() {
+                    const controller = navigator.serviceWorker.controller;
+                    if (!controller) return;
+                    const urls = (
+                        performance.getEntriesByType("resource") || []
+                    )
+                        .map((e) => e.name)
+                        .filter(
+                            (u) =>
+                                new URL(u, location.href).origin ===
+                                location.origin,
+                        )
+                        .map((u) => new URL(u, location.href).pathname);
+                    // Include the document itself and core shell assets.
+                    const set = new Set([
+                        "/",
+                        "/index.html",
+                        "/app.css",
+                        "/manifest.json",
+                    ]);
+                    for (const p of urls) set.add(p);
+                    controller.postMessage({
+                        type: "warm",
+                        urls: Array.from(set),
+                    });
+                }
+
+                function onActivated() {
+                    if (document.readyState === "complete") warmRuntime();
+                    else
+                        window.addEventListener("load", warmRuntime, {
+                            once: true,
+                        });
+                }
+
+                // Service-worker -> client messages arrive on the
+                // ServiceWorkerContainer, not on window. Handle both the
+                // activation signal and the warming readiness reply here.
+                navigator.serviceWorker.addEventListener("message", (event) => {
+                    const data = event.data;
+                    if (!data) return;
+                    if (data.type === "activated") onActivated();
+                    else if (data.type === "warm-result")
+                        window.__oopOfflineReady = !!data.ready;
+                });
+
+                window.addEventListener("load", () => {
+                    navigator.serviceWorker
+                        .register("/service-worker.js")
+                        .then((reg) => {
+                            reg.addEventListener("updatefound", () => {
+                                const installing = reg.installing;
+                                if (!installing) return;
+                                installing.addEventListener(
+                                    "statechange",
+                                    () => {
+                                        if (
+                                            installing.state === "installed" &&
+                                            navigator.serviceWorker.controller
+                                        ) {
+                                            showUpdateBanner();
+                                        }
+                                    },
+                                );
+                            });
+                            // If the worker was already active before this script ran
+                            // (e.g. a reload), drive warming now.
+                            if (navigator.serviceWorker.controller)
+                                onActivated();
+                        })
+                        .catch((error) => {
+                            console.warn(
+                                "Service worker registration failed:",
+                                error,
+                            );
+                        });
+                });
+            }
+
+            function showUpdateBanner() {
+                if (document.getElementById("update-banner")) return;
+                const banner = document.createElement("div");
+                banner.id = "update-banner";
+                banner.className = "update-banner";
+                banner.innerHTML = "<span>A new version is ready.</span>";
+                const btn = document.createElement("button");
+                btn.textContent = "Reload to update";
+                btn.addEventListener("click", () => {
+                    navigator.serviceWorker.controller &&
+                        navigator.serviceWorker.controller.postMessage(
+                            "skipWaiting",
+                        );
+                    location.reload();
+                });
+                banner.appendChild(btn);
+                document.body.prepend(banner);
+            }
+        </script>
+    </body>
+</html>

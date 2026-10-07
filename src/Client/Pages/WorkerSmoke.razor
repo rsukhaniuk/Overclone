@@ -1,0 +1,77 @@
+@page "/smoke"
+@inject IJSRuntime JS
+@implements IAsyncDisposable
+
+<PageTitle>Worker smoke test</PageTitle>
+
+<section class="panel">
+    <h1>Worker smoke test</h1>
+    <p>Blazor → independent C++ and Rust WebAssembly workers. This surface is a
+        toolchain smoke test, not the editor.</p>
+    <label for="document">Document</label>
+    <textarea id="document" @bind="text" @bind:event="oninput"></textarea>
+    <button @onclick='() => ProcessAsync("C++", cppBridge)' disabled="@(busy || !workersReady)">
+        @(busy ? "Processing…" : "Process with C++")
+    </button>
+    <button @onclick='() => ProcessAsync("Rust", rustBridge)' disabled="@(busy || !workersReady)">
+        @(busy ? "Processing…" : "Process with Rust")
+    </button>
+    <p role="status">@status</p>
+</section>
+
+@code {
+    private string text = "Hello from Blazor and C++ WebAssembly!";
+    private string status = "Loading processing worker…";
+    private bool busy;
+    private bool workersReady;
+    private IJSObjectReference? cppBridge;
+    private IJSObjectReference? rustBridge;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        try
+        {
+            cppBridge = await JS.InvokeAsync<IJSObjectReference>("import", "./js/native-bridge.js");
+            rustBridge = await JS.InvokeAsync<IJSObjectReference>("import", "./js/rust-bridge.js");
+            await cppBridge.InvokeVoidAsync("ready");
+            await rustBridge.InvokeVoidAsync("ready");
+            workersReady = true;
+            status = "C++ and Rust WebAssembly workers ready.";
+        }
+        catch (JSException error)
+        {
+            status = error.Message;
+        }
+        StateHasChanged();
+    }
+
+    private async Task ProcessAsync(string language, IJSObjectReference? bridge)
+    {
+        if (bridge is null) return;
+        busy = true;
+        try
+        {
+            var words = await bridge.InvokeAsync<int>("countWords", text);
+            status = $"{language} counted {words} words.";
+        }
+        catch (JSException error)
+        {
+            status = error.Message;
+        }
+        finally
+        {
+            busy = false;
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        foreach (var bridge in new[] { cppBridge, rustBridge })
+        {
+            if (bridge is null) continue;
+            try { await bridge.InvokeVoidAsync("dispose"); } catch { }
+            await bridge.DisposeAsync();
+        }
+    }
+}

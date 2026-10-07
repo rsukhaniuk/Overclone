@@ -1,0 +1,53 @@
+@startuml
+!include style.iuml
+title Explicit Drive ZIP transfers, independent of local saving
+autonumber
+actor Author
+participant "TransferService\nC#" as T
+participant "Google OAuth / Picker\nbrowser glue" as Auth
+participant "Drive adapter\nC#" as Adapter
+participant "Google Drive" as Drive
+participant "ProjectRepository" as Repo
+Author -> T : explicit import or export
+T -> Auth : obtain user-granted drive.file access
+alt consent denied / authorization unavailable
+  Auth --> T : AuthenticationRequired / denied
+  T --> Author : transfer stopped; local project unaffected
+else authorized
+  Auth --> T : memory-only access token / selection
+  alt export local revision R
+    T -> Repo : capture immutable snapshot R
+    Repo --> T : exact revision contents
+    T -> T : build ZIP; exclude secrets / caches / chat
+    T -> Adapter : export as NEW Drive file
+    Adapter -> Drive : upload ZIP snapshot R
+    Drive --> Adapter : file receipt or typed failure
+    Adapter --> T : transfer status for R
+  else import selected ZIP
+    T -> Adapter : download selected file
+    Adapter -> Drive : explicit download
+    Drive --> Adapter : ZIP bytes or failure
+    alt download failed
+      Adapter --> T : typed failure; no staged import
+    else complete ZIP received
+      Adapter --> T : staged content
+      T -> T : validate paths / archive limits / settings
+      opt replacing existing local project
+        T --> Author : request replacement confirmation
+        Author -> T : accept or cancel
+        T -> Repo : preserve checkpoint if accepted
+      end
+      opt valid and accepted import
+        T -> Repo : commit new revision / project; head check
+        Repo --> T : locally committed or storage failure
+      end
+    end
+  end
+  T --> Author : separate transfer / local-save statuses
+end
+note over T, Drive
+Expiry or network failure requires explicit retry / reauthorization.
+No background upload, autosync or existing-Drive-file overwrite.
+Failed download never enters local commit.
+end note
+@enduml

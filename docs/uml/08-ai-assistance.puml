@@ -1,0 +1,42 @@
+@startuml
+!include style.iuml
+title Optional AI chat and reviewed edits
+autonumber
+actor Author
+participant "Workspace UI" as UI
+participant "AiService\nC#" as AI
+participant "IAiProvider\nC# adapter" as Adapter
+participant "Ollama OR\nGemini / Claude" as Provider
+participant "ChangeReviewService" as Review
+Author -> UI : select source / diagnostics; ask question
+UI -> AI : prepare context from revision R
+AI --> UI : exact context + provider / model disclosure
+UI --> Author : preview context and destination
+Author -> UI : approve and provide credential if required
+UI -> AI : approved AiRequest(R)
+AI -> Adapter : RespondAsync(request, cancellation)
+Adapter -> Provider : direct browser request; no proxy
+alt provider available and authorized
+  loop streamed response
+    Provider --> Adapter : response chunk
+    Adapter --> AI : AiEvent
+    AI --> UI : safe display-only text
+  end
+  Provider --> Adapter : completion
+  Adapter --> AI : completed text / proposed edits
+  AI -> AI : validate proposal schema and source spans
+  opt valid source-edit proposal
+    AI -> Review : ChangeSet(baseRevision=R, origin=AI)
+    Review --> UI : preview; explicit acceptance required
+  end
+else auth / CORS / model / quota / network failure
+  Provider --> Adapter : error or browser rejects request
+  Adapter --> AI : sanitized typed failure
+  AI --> UI : explain error; no cloud fallback
+end
+note over AI, Provider
+Cancel aborts the request; partial output never changes files.
+Credentials and chat remain in memory; disconnect clears references.
+Local-to-cloud switching requires new user approval.
+end note
+@enduml

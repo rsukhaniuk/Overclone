@@ -1,0 +1,45 @@
+@startuml
+!include style.iuml
+title Author workflows and optional integrations
+left to right direction
+actor Author
+actor "Google Drive" as Drive
+actor "Local Ollama" as Ollama
+actor "Gemini / Claude" as Cloud
+rectangle "LaTeX PWA" {
+  usecase "Edit multi-file project\nand manage local history" as Edit
+  usecase "Save / recover\nlocal project" as Save
+  usecase "Compile offline and\npreview / navigate PDF" as Compile
+  usecase "Check source + PDF\nagainst KNU profile" as Check
+  usecase "Preview, accept or reject\nchanges; undo" as Review
+  usecase "Import / export\nlocal files or ZIP" as Files
+  usecase "Explicit Drive\nZIP import / export" as Transfer
+  usecase "Ask AI with\napproved context" as AI
+  usecase "Provision offline\nengines, packages, fonts" as Provision
+}
+Author --> Edit
+Author --> Save
+Author --> Compile
+Author --> Check
+Author --> Review
+Author --> Files
+Author --> Transfer
+Author --> AI
+Author --> Provision
+Drive --> Transfer
+Ollama --> AI
+Cloud --> AI
+note bottom of Check
+Source checks work independently.
+PDF checks require matching compiled output.
+Uncertain checks do not imply compliance.
+end note
+note right of Transfer
+Optional online action.
+No automatic synchronization.
+end note
+note right of AI
+No autonomous tools or silent edits.
+No local-to-cloud fallback.
+end note
+@enduml

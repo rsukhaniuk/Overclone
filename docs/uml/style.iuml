@@ -1,0 +1,31 @@
+' Shared local style; no remote includes or external assets.
+skinparam backgroundColor #FFFFFF
+skinparam defaultFontName SansSerif
+skinparam defaultFontSize 14
+skinparam titleFontSize 20
+skinparam shadowing false
+skinparam roundcorner 8
+skinparam ArrowColor #334155
+skinparam defaultTextAlignment center
+skinparam packageStyle rectangle
+skinparam componentStyle uml2
+skinparam classAttributeIconSize 0
+skinparam classBackgroundColor #EFF6FF
+skinparam classBorderColor #3B82F6
+skinparam componentBackgroundColor #EFF6FF
+skinparam componentBorderColor #3B82F6
+skinparam interfaceBackgroundColor #ECFDF5
+skinparam interfaceBorderColor #059669
+skinparam packageBorderColor #94A3B8
+skinparam packageBackgroundColor #F8FAFC
+skinparam noteBackgroundColor #FFFBEB
+skinparam noteBorderColor #D97706
+skinparam sequenceMessageAlign center
+skinparam sequenceParticipantBackgroundColor #EFF6FF
+skinparam sequenceParticipantBorderColor #3B82F6
+skinparam sequenceLifeLineBorderColor #94A3B8
+skinparam activityBackgroundColor #EFF6FF
+skinparam activityBorderColor #3B82F6
+skinparam stateBackgroundColor #EFF6FF
+skinparam stateBorderColor #3B82F6
+footer Proposed architecture | Offline-first LaTeX PWA | 2026-10-25

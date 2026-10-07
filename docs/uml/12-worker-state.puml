@@ -1,0 +1,30 @@
+@startuml
+!include style.iuml
+title Per-operation worker lifecycle
+hide empty description
+[*] --> Queued : immutable\nrevision request
+Queued --> Running : worker ready;\nslot available
+Queued --> Cancelled : cancel / superseded\nbefore dispatch
+Running --> Completed : native result
+Running --> Failed : typed error / invalid output
+Running --> Cancelled : cooperative cancellation
+Running --> Terminating : timeout / crash /\nblocking cancel
+Terminating --> Cancelled : cancel;\nreject pending
+Terminating --> Failed : timeout / crash;\nreject pending
+Completed --> Published : revision + artifact/\nprofile still match
+Completed --> Discarded : stale /\ncancelled request
+Published --> [*]
+Discarded --> [*]
+Failed --> [*]
+Cancelled --> [*]
+note right of Terminating
+Terminate; reject pending map.
+Next dispatch uses fresh worker.
+Do not abandon active native calls.
+end note
+note bottom of Completed
+Progress is not terminal.
+Ignore late terminated-job replies.
+Worker and job lifetimes differ.
+end note
+@enduml

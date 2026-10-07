@@ -1,0 +1,80 @@
+@startuml
+!include style.iuml
+title Components, ports and language ownership
+top to bottom direction
+component "Workspace UI\nC# / Blazor" as UI
+package "Application services | C#" {
+  component WorkspaceCoordinator as Workspace
+  component AnalysisCoordinator as Analysis
+  component CompilationCoordinator as Compilation
+  component ChangeReviewService as Review
+  component TransferService as Transfer
+  component AiService as AI
+  component OfflineAssetManager as Assets
+  Workspace -[hidden]down-> Analysis
+  Analysis -[hidden]down-> Compilation
+  Compilation -[hidden]down-> Review
+  Review -[hidden]down-> Transfer
+  Transfer -[hidden]down-> AI
+  AI -[hidden]down-> Assets
+}
+package "Application ports" {
+  interface IProjectRepository as RepoPort
+  interface ISourceAnalyzer as AnalysisPort
+  interface ICompiler as CompilePort
+  interface IPdfInspector as PdfPort
+  interface IProjectTransfer as TransferPort
+  interface IAiProvider as AiPort
+  RepoPort -[hidden]down-> AnalysisPort
+  AnalysisPort -[hidden]down-> CompilePort
+  CompilePort -[hidden]down-> PdfPort
+  PdfPort -[hidden]down-> TransferPort
+  TransferPort -[hidden]down-> AiPort
+}
+package "Browser / native adapters" {
+  component "ProjectRepository\nC# + browser storage glue" as Repo
+  component "SourceAnalyzer / RuleEvaluator\nRust WASM worker" as Rust
+  component "TeXEngineAdapter\nC++ WASM worker" as TeX
+  component "PdfEngineAdapter\nC++ WASM worker" as PDF
+  component "Local files / Drive\nC# + picker / OAuth glue" as Transfers
+  component "Ollama / Gemini / Claude\nC# HTTP adapters" as Providers
+  Repo -[hidden]down-> Rust
+  Rust -[hidden]down-> TeX
+  TeX -[hidden]down-> PDF
+  PDF -[hidden]down-> Transfers
+  Transfers -[hidden]down-> Providers
+}
+UI --> Workspace
+Workspace --> Analysis
+Workspace --> Compilation
+Workspace --> Review
+Workspace --> Transfer
+Workspace --> AI
+Workspace --> Assets
+Workspace ..> RepoPort
+Review ..> RepoPort
+Analysis ..> AnalysisPort
+Analysis ..> PdfPort
+Compilation ..> CompilePort
+Compilation ..> PdfPort
+Compilation --> Assets : readiness
+Transfer ..> TransferPort
+AI ..> AiPort
+AI --> Review : proposed ChangeSet
+Repo ..|> RepoPort
+Rust ..|> AnalysisPort
+TeX ..|> CompilePort
+PDF ..|> PdfPort
+Transfers ..|> TransferPort
+Providers ..|> AiPort
+note bottom of Rust
+Rust owns rule policy.
+PDF adapter supplies facts only.
+Coordinators connect native modules.
+end note
+note top of UI
+Dependency arrows point from caller to dependency.
+Native transport uses minimal JS glue.
+No application server.
+end note
+@enduml

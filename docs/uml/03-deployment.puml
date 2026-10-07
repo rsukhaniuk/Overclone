@@ -1,0 +1,51 @@
+@startuml
+!include style.iuml
+title Production deployment and trust boundaries
+left to right direction
+node "Static HTTPS host\nNo product API" as Host {
+  artifact "Versioned shell, .NET runtime,\nWASM, rule profiles, bundle manifests" as Static
+}
+node "User device" {
+  node "Chrome / Edge | application origin" as Browser {
+    node "Main browser context" {
+      artifact "Blazor C# UI / orchestration\nMemory-only keys and chat" as Main
+    }
+    node "Dedicated workers" {
+      artifact "Rust analysis WASM" as Rust
+      artifact "C++ TeX WASM" as TeX
+      artifact "C++ PDF WASM" as PDF
+      artifact "Storage API glue" as Storage
+    }
+    node "Service worker" {
+      artifact "Versioned shell cache policy" as SW
+    }
+    database "IndexedDB\nHeads, manifests, metadata" as IDB
+    folder "OPFS\nContent objects, bundles, artifacts" as OPFS
+    folder "Cache Storage\nApp/runtime assets only" as Cache
+  }
+  folder "User-selected files / folders" as Files
+  node "Local Ollama service\nDownloaded model" as Ollama
+}
+cloud "Optional online services" {
+  node "Google OAuth / Picker / Drive" as Drive
+  node "Gemini / Claude APIs" as CloudAI
+}
+Main --> Rust : revision snapshot
+Main --> TeX : project VFS + verified assets
+Main --> PDF : compiled artifact
+Main --> Storage : repository operations
+Storage --> OPFS
+Storage --> IDB
+Main --> Files : granted picker / ZIP
+Main --> Ollama : explicit endpoint
+Main --> Drive : explicit transfer / consent
+Main --> CloudAI : approved context + BYOK
+SW --> Cache
+SW --> Static : provision / update only
+Main --> SW : shell lifecycle
+note bottom of Browser
+Workers share origin authority; they are not an XSS sandbox.
+Compiler has no network callbacks or provider credentials.
+Provisioned local core runs with host/network unavailable.
+end note
+@enduml

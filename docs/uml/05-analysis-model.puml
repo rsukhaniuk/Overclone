@@ -1,0 +1,80 @@
+@startuml
+!include style.iuml
+title Rule profiles, measured evidence and reviewed changes
+hide empty members
+class RuleProfile {
+  +id: ProfileId
+  +version: string
+  +workType: WorkType
+}
+class RuleDefinition {
+  +id: RuleId
+  +severity: Severity
+  +requiredInputs: InputKinds
+}
+class SourceCitation {
+  +documentUrl: string
+  +edition: string
+  +section: string
+  +printedPage: int
+}
+class AnalysisReport {
+  +revisionId: RevisionId
+  +profileVersion: string
+  +pdfArtifactHash: SHA256?
+}
+class RuleResult {
+  +outcome: RuleOutcome
+  +limitations: string[]
+}
+enum RuleOutcome {
+  Pass
+  Fail
+  Indeterminate
+  NotApplicable
+  Unavailable
+}
+class Diagnostic {
+  +id: DiagnosticId
+  +message: string
+  +sourceSpan: SourceSpan?
+  +pdfLocation: PdfLocation?
+}
+class Evidence {
+  +actual: Value
+  +expected: Value
+  +unit: string
+  +method: string
+  +uncertainty: string?
+}
+class ChangeSet {
+  +id: ChangeSetId
+  +baseRevisionId: RevisionId
+  +origin: Rule / AI / User
+}
+class TextEdit {
+  +fileId: FileId
+  +span: SourceSpan
+  +expectedTextHash: SHA256
+  +replacement: UTF8
+}
+RuleProfile "1" *-- "1..*" RuleDefinition
+RuleDefinition "0..*" --> "1..*" SourceCitation
+AnalysisReport "1" *-- "1..*" RuleResult
+RuleResult "0..*" --> "1" RuleDefinition
+RuleResult --> RuleOutcome
+RuleResult "1" *-- "0..*" Diagnostic
+RuleResult "1" o-- "0..*" Evidence
+Diagnostic "0..*" --> "0..1" ChangeSet : proposed fix
+ChangeSet "1" *-- "1..*" TextEdit
+Evidence ..> SourceCitation
+note bottom of ChangeSet
+AI may propose a ChangeSet without a rule.
+Every edit requires review + current base revision.
+AI suggestions never establish rule evidence.
+end note
+note bottom of RuleOutcome
+Missing PDF is Unavailable, not Pass.
+Macro/layout ambiguity is Indeterminate.
+end note
+@enduml
