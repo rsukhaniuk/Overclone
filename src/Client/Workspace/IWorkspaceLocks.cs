@@ -15,6 +15,11 @@ public interface IWorkspaceLocks : IAsyncDisposable
     Task<string> WaitForAsync(string name, CancellationToken ct);
     Task<bool> ReleaseAsync(string lockId, CancellationToken ct);
     Task<bool> IsHeldAsync(string name, CancellationToken ct);
+    /// <summary>Verify THIS instance's lock ID, not any client's named lock.
+    /// Unsupported implementations fail closed. The local check is repeated
+    /// synchronously after the last awaited head verification.</summary>
+    Task<bool> OwnsAsync(string lockId, string name, CancellationToken ct) => Task.FromResult(false);
+    bool IsOwnedLocally(string lockId, string name) => false;
 }
 
 public record WorkspaceCapabilities(bool Opfs, bool IndexedDb, bool WebLocks, bool PersistentStorage);

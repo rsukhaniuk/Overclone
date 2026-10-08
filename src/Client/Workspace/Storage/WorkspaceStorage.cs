@@ -304,6 +304,20 @@ public sealed class WorkspaceStorage : IProjectRepository
 
     // ---- M1b: arbitrary revision read + raw content bytes ----
 
+    public async Task<bool> VerifyHeadAsync(ProjectId id, RevisionId? expectedHead, CancellationToken ct)
+    {
+        var m = await ModuleAsync(ct);
+        async Task<bool> Matches()
+        {
+            var p = await m.InvokeAsync<ProjectRecord?>("getProject", ct, id.ToString());
+            return p is not null && Mapping.ToDomain(p).Id == id && Mapping.ToDomain(p).HeadRevisionId == expectedHead;
+        }
+        if (!await Matches()) return false;
+        if (expectedHead is { } head && !(await ReadRevisionAsync(id, head, ct)).Verified) return false;
+        // Verification can await many OPFS reads. Check the head again afterwards.
+        return await Matches();
+    }
+
     public async Task<RevisionManifest> ReadRevisionAsync(
         ProjectId projectId, RevisionId revisionId, CancellationToken ct)
     {

@@ -19,7 +19,7 @@ namespace Client.Workspace;
 /// history, revision-bound export capture, and explicit project-wide restore
 /// that creates a new revision/checkpoint (never rewinds the head).
 /// </summary>
-public sealed class WorkspaceCoordinator : IAsyncDisposable
+public sealed partial class WorkspaceCoordinator : IAsyncDisposable
 {
     private readonly IProjectRepository _repo;
     private readonly IWorkspaceLocks _locks;
@@ -265,7 +265,7 @@ public sealed class WorkspaceCoordinator : IAsyncDisposable
             // pre-restore content over the restored content.
             bool contentChanged = f.MediaKind == "binary"
                 ? (f.DirtyBinary && !ReferenceEquals(f.BinaryContent, pre.BinaryContent))
-                : f.Content != pre.Content;
+                : f.Content != pre.Content || f.HasBom != pre.HasBom || !ReferenceEquals(f.PendingTextBytes, pre.PendingTextBytes);
             bool pathChanged = f.RelativePath != pre.RelativePath;
             bool deletedNow = f.Deleted && !pre.Deleted;
             if (contentChanged || pathChanged || deletedNow)
@@ -318,6 +318,8 @@ public sealed class WorkspaceCoordinator : IAsyncDisposable
                 f.Content = c.File.Content;
                 f.DirtyContent = true;
                 f.HasBom = c.File.HasBom;
+                f.PendingTextBytes = c.File.PendingTextBytes;
+                f.ImportedBytes = c.File.ImportedBytes;
                 activeCandidate = c.Id;
             }
             else if (c.BinaryChanged && f.MediaKind == "binary" && c.File.BinaryContent is not null)
@@ -457,6 +459,7 @@ public sealed class WorkspaceCoordinator : IAsyncDisposable
         file.DirtyContent = true;
         // An edit discards the pre-edit exact bytes; save now serializes LF + BOM.
         file.ImportedBytes = null;
+        file.PendingTextBytes = null;
         BumpGeneration();
         if (SavePhase != SavePhase.Saving) SavePhase = SavePhase.Dirty;
         return true;
@@ -483,7 +486,8 @@ public sealed class WorkspaceCoordinator : IAsyncDisposable
             if (file.DurableHash is { } bh) return await _repo.ReadContentAsync(bh, ct);
             return file.BinaryContent ?? Array.Empty<byte>();
         }
-        // text
+        // text: an immutable reviewed buffer takes precedence over LF encoding.
+        if (file.PendingTextBytes is { } pending) return pending.ToArray();
         if (file.IsNew && !file.DirtyContent && file.ImportedBytes is not null) return file.ImportedBytes;
         if (file.DirtyContent || (file.IsNew && file.ImportedBytes is null))
             return TextContent.EncodeEdited(file.Content, file.HasBom);
@@ -528,6 +532,10 @@ public sealed class WorkspaceCoordinator : IAsyncDisposable
         if (!CanEdit()) return CommitResult.Unavailable("Project is read-only.");
         if (!IsDirty) { SavePhase = SavePhase.Saved; return CommitResult.Saved(CurrentRevision?.Id ?? RevisionId.New()); }
 
+        var saveProject = Project!;
+        var saveSession = SessionId;
+        var saveParent = CurrentRevision?.Id;
+        bool SameSaveSession() => SessionId == saveSession && Project?.Id == saveProject.Id;
         SavePhase = SavePhase.Saving;
         // Snapshot the working state at the moment the save actually runs, so
         // edits made while a previous save was in flight are picked up by the
@@ -569,26 +577,33 @@ public sealed class WorkspaceCoordinator : IAsyncDisposable
             return CommitResult.Failure("DuplicatePath", LastError);
         }
 
-        var parent = CurrentRevision?.Id;
+        if (!SameSaveSession()) return CommitResult.Unavailable("The save session changed.");
+        var parent = saveParent;
         var newRevision = new ProjectRevision(
-            RevisionId.New(), Project!.Id, parent,
+            RevisionId.New(), saveProject.Id, parent,
             manifestFiles.ToImmutableArray(), DateTimeOffset.UtcNow);
         var commit = new ProjectCommit(
             newRevision,
             ImmutableArray<ProjectRevision>.Empty,
             contentInputs.ToImmutableArray());
 
-        var expectedHead = Project.HeadRevisionId;
+        var expectedHead = saveProject.HeadRevisionId;
         var result = await _repo.CommitAsync(commit, expectedHead, ct);
 
+        if (!SameSaveSession())
+        {
+            if (result.Status == CommitStatus.Saved) RaiseRevisionCommitted(saveSession, newRevision);
+            return result; // old durable work must not replace a newer session
+        }
         if (result.Status == CommitStatus.Saved)
         {
-            Project = Project with { HeadRevisionId = newRevision.Id };
+            Project = Project! with { HeadRevisionId = newRevision.Id };
             CurrentRevision = newRevision;
             var committedByFile = manifestFiles.ToDictionary(f => f.Id);
             ReconcileAfterSave(snapshotById, committedByFile);
             SavePhase = SavePhase.Saved;
             LastError = null;
+            RaiseRevisionCommitted(saveSession, newRevision);
         }
         else
         {
@@ -610,6 +625,7 @@ public sealed class WorkspaceCoordinator : IAsyncDisposable
             return Array.Empty<byte>();
         }
         // text
+        if (f.PendingTextBytes is { } pending) return pending.ToArray();
         if (f.IsNew && !f.DirtyContent && f.ImportedBytes is not null) return f.ImportedBytes;
         return TextContent.EncodeEdited(f.Content, f.HasBom);
     }
@@ -643,7 +659,7 @@ public sealed class WorkspaceCoordinator : IAsyncDisposable
             // computing here); an edit made during the save makes them differ.
             bool contentStable = f.MediaKind == "binary"
                 ? f.BinaryContent == s.BinaryContent
-                : f.Content == s.Content;
+                : f.Content == s.Content && f.HasBom == s.HasBom && ReferenceEquals(f.PendingTextBytes, s.PendingTextBytes);
             var pathStable = f.RelativePath == s.RelativePath;
             f.IsNew = false;
             f.TreeChanged = !pathStable;
@@ -656,12 +672,13 @@ public sealed class WorkspaceCoordinator : IAsyncDisposable
                 f.DirtyContent = !contentStable;
                 // After the first commit, original exact bytes are no longer relevant.
                 f.ImportedBytes = null;
+                if (contentStable) f.PendingTextBytes = null;
             }
             if (committed.TryGetValue(f.Id, out var c))
             {
                 f.DurableHash = c.ContentHash;
                 f.DurableLength = c.ByteLength;
-                f.HasBom = c.HasBom;
+                if (contentStable) f.HasBom = c.HasBom;
             }
             // A deletion made AFTER the snapshot leaves f.Deleted == true and
             // TreeChanged == true, so IsDirty stays true and the next save
@@ -961,6 +978,9 @@ public sealed class WorkingFile
     /// <summary>Exact bytes for an unedited imported text file (preserves
     /// BOM/CRLF); cleared on first edit or after the first commit.</summary>
     public byte[]? ImportedBytes { get; set; }
+    /// <summary>Authoritative exact reviewed bytes until a manual edit or a
+    /// byte-stable successful save. Immutable; safely shared by frozen clones.</summary>
+    public Patching.ExactTextBytes? PendingTextBytes { get; internal set; }
 
     public WorkingFile(
         FileId id, string relativePath, string mediaKind, string content, byte[]? binaryContent, bool hasBom,
@@ -984,7 +1004,8 @@ public sealed class WorkingFile
     }
 
     public WorkingFile Clone() => new(Id, RelativePath, MediaKind, Content, BinaryContent, HasBom,
-        DirtyContent, DirtyBinary, TreeChanged, IsNew, Deleted, DurableHash, DurableLength, ImportedBytes);
+        DirtyContent, DirtyBinary, TreeChanged, IsNew, Deleted, DurableHash, DurableLength, ImportedBytes)
+        { PendingTextBytes = PendingTextBytes };
 }
 
 /// <summary>A restore preview: a freshness token, the read-only change summary

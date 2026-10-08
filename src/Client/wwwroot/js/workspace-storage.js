@@ -408,10 +408,8 @@ export async function tryAcquireLock(name) {
         const heldPromise = new Promise((r) => {
             released = r;
         });
-        navigator.locks.request(
-            name,
-            { mode: "exclusive", ifAvailable: true },
-            (lock) => {
+        navigator.locks
+            .request(name, { mode: "exclusive", ifAvailable: true }, (lock) => {
                 if (!lock) {
                     resolve(null);
                     return null;
@@ -420,8 +418,12 @@ export async function tryAcquireLock(name) {
                 held.set(lockId, { name, released });
                 resolve(lockId);
                 return heldPromise; // hold until released
-            },
-        );
+            })
+            .catch(() => {
+                // A browser-aborted/stolen request no longer owns its entry.
+                if (lockId !== null) held.delete(lockId);
+                resolve(null);
+            });
         // If lock unavailable, navigator.locks.request resolves the callback
         // synchronously with null; the outer resolve(null) fires immediately.
     });
@@ -436,12 +438,17 @@ export async function waitForLock(name) {
         released = r;
     });
     const lockId = "lock" + ++lockSeq;
-    return new Promise((resolve) => {
-        navigator.locks.request(name, { mode: "exclusive" }, () => {
-            held.set(lockId, { name, released });
-            resolve(lockId); // acquired: resolve the outer promise now
-            return heldPromise; // hold the lock until released
-        });
+    return new Promise((resolve, reject) => {
+        navigator.locks
+            .request(name, { mode: "exclusive" }, () => {
+                held.set(lockId, { name, released });
+                resolve(lockId); // acquired: resolve the outer promise now
+                return heldPromise; // hold the lock until released
+            })
+            .catch(() => {
+                held.delete(lockId);
+                reject(new Error("Writer lock request was interrupted."));
+            });
     });
 }
 
@@ -452,6 +459,30 @@ export function releaseLock(lockId) {
     held.delete(lockId);
     entry.released(); // let the navigator.locks.request callback return
     return true;
+}
+
+// Browser API glue only: a lock held by another client is NOT ownership.
+// Check the module's acquired entry before AND after the asynchronous query.
+export async function ownsLock(lockId, name) {
+    if (
+        !locks ||
+        !navigator.locks ||
+        typeof navigator.locks.query !== "function"
+    )
+        return false;
+    const entry = locks.get(lockId);
+    if (!entry || entry.name !== name) return false;
+    try {
+        const snapshot = await navigator.locks.query();
+        return (
+            locks.get(lockId) === entry &&
+            (snapshot.held || []).some(
+                (l) => l.name === name && l.mode === "exclusive",
+            )
+        );
+    } catch {
+        return false;
+    }
 }
 
 export async function lockHeld(name) {

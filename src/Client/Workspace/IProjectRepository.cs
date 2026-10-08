@@ -12,6 +12,10 @@ namespace Client.Workspace;
 public interface IProjectRepository
 {
     Task<ProjectSnapshot> OpenAsync(ProjectId id, CancellationToken ct);
+    /// <summary>Verify the expected durable head and its referenced objects,
+    /// without loading binary content into an editing snapshot. Unsupported
+    /// adapters fail closed. Does not change the head or working set.</summary>
+    Task<bool> VerifyHeadAsync(ProjectId id, RevisionId? expectedHead, CancellationToken ct) => Task.FromResult(false);
     Task<CommitResult> CommitAsync(ProjectCommit batch, RevisionId? expectedHead, CancellationToken ct);
     Task<HistoryPage> ReadHistoryAsync(ProjectId id, HistoryCursor? cursor, CancellationToken ct);
     Task<Project> CreateProjectAsync(string name, CancellationToken ct);

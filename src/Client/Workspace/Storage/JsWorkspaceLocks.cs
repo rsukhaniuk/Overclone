@@ -64,6 +64,17 @@ public sealed class JsWorkspaceLocks : IWorkspaceLocks
         return await m.InvokeAsync<bool>("lockHeld", name);
     }
 
+    public bool IsOwnedLocally(string lockId, string name)
+        => _held.TryGetValue(lockId, out var heldName) && heldName == name;
+
+    public async Task<bool> OwnsAsync(string lockId, string name, CancellationToken ct)
+    {
+        if (!IsOwnedLocally(lockId, name)) return false;
+        var m = await ModuleAsync(ct);
+        var owned = await m.InvokeAsync<bool>("ownsLock", ct, lockId, name);
+        return owned && IsOwnedLocally(lockId, name);
+    }
+
     public async ValueTask DisposeAsync()
     {
         foreach (var id in _held.Keys.ToArray())
