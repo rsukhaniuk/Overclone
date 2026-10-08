@@ -555,3 +555,521 @@ fn includes_missing_traversal_dynamic_and_cycles_are_never_resolved() {
         error(&r, &b, "InvalidInput");
     }
 }
+
+#[test]
+fn unicode_bom_newlines_exact_independent_offsets() {
+    // BOM 3 + 'У' 2 + emoji 4 + combining sequence e+acute 3 + CRLF 2 = 14.
+    let src = "\u{feff}У🙂e\u{301}\r\n\\setlength{\\parindent}{ 10 mm }\r\\section{Кінець.}\n";
+    let r = one(src);
+    let f = &r.knu.as_ref().unwrap().files[0];
+    assert_eq!(
+        f.observations[0].command_span,
+        super::dto::Span {
+            start_byte: 14,
+            end_byte: 24
+        }
+    );
+    assert_eq!(
+        f.observations[0].value_span,
+        super::dto::Span {
+            start_byte: 38,
+            end_byte: 43
+        }
+    );
+    assert_eq!(&src.as_bytes()[38..43], b"10 mm");
+    assert_eq!(
+        f.observations[1].value_span,
+        super::dto::Span {
+            start_byte: 55,
+            end_byte: 68
+        }
+    );
+    assert_eq!(
+        r.diagnostics[1].span,
+        Some(super::dto::Span {
+            start_byte: 67,
+            end_byte: 68
+        })
+    );
+    assert_eq!(
+        r.knu.as_ref().unwrap().engine_aggregate_outcome,
+        Outcome::Pass
+    );
+}
+
+#[test]
+fn emission_caps_share_leftovers_without_rewriting_engine_outcomes() {
+    let (base, b) = request(&[("a.tex", br"\section{Bad.}"), ("b.tex", br"\section{Bad.}")]);
+    let unbounded = completed(&base, &b);
+    let tokens: u32 = unbounded.facts.files.iter().map(|f| f.token_count).sum();
+    for (limits, expected_count) in [
+        (json!({"maxTokensPerProject":tokens}), 0),
+        (json!({"maxTokensPerProject":tokens+1}), 1),
+        (
+            json!({"maxTokensPerFile":unbounded.facts.files[0].token_count}),
+            0,
+        ),
+    ] {
+        let mut req = base.clone();
+        req["payload"]["limits"] = limits;
+        let r = completed(&req, &b);
+        assert_eq!(
+            r.knu.as_ref().unwrap().engine_aggregate_outcome,
+            Outcome::Pass
+        );
+        assert_eq!(outcome(&r, HEADING), Outcome::Indeterminate);
+        assert_eq!(
+            r.knu
+                .as_ref()
+                .unwrap()
+                .files
+                .iter()
+                .map(|f| f.observation_count)
+                .sum::<u32>(),
+            expected_count
+        );
+        assert_eq!(
+            serde_json::to_value(&r.rule_results[0]).unwrap(),
+            serde_json::to_value(&unbounded.rule_results[0]).unwrap()
+        );
+        assert_no_fix(&r);
+    }
+}
+
+#[test]
+fn depth_diagnostic_result_and_lookahead_caps_are_explicit() {
+    for limit in [
+        json!({"maxBraceDepth":0}),
+        json!({"maxTokensPerFile":1}),
+        json!({"maxDiagnosticsPerProject":0}),
+    ] {
+        let (mut r, b) = request(&[("a.tex", br"\setlength{\parindent}{1cm}\section{Bad.}")]);
+        r["payload"]["limits"] = limit;
+        let out = completed(&r, &b);
+        assert_eq!(outcome(&out, INDENT), Outcome::Indeterminate);
+        assert_no_fix(&out);
+    }
+    let (mut r, b) = request(&[("a.tex", br"\section{Bad.}")]);
+    r["payload"]["limits"] = json!({"maxResultBytes":300});
+    error(&r, &b, "QuotaExceeded");
+    // Exercise the actual shared lookahead remainder, deterministically lowered
+    // via pure helper rather than adding a production testing configuration.
+    let normal = one(r"\section{Bad.}");
+    let mut emissions = 100;
+    let o = observations::observe(
+        &normal.facts.files[0],
+        br"\section{Bad.}",
+        true,
+        super::lexer::LookaheadBudget::new(0),
+        100,
+        &mut emissions,
+    );
+    assert!(!o.complete);
+    assert!(o.limitations.contains(&Limitation::LookaheadBudget));
+    assert!(o.observations.is_empty());
+    let src = "\\section[".repeat(1000);
+    let out = one(&src);
+    assert_eq!(outcome(&out, HEADING), Outcome::Indeterminate);
+    assert_no_fix(&out);
+    let (mut r, b) = request(&[("a.tex", br"\section{Bad.}{")]);
+    r["payload"]["limits"] = json!({"maxDiagnosticsPerProject":1});
+    let out = completed(&r, &b);
+    assert_eq!(out.diagnostics.len(), 1);
+    assert_eq!(out.diagnostics[0].origin, "engine");
+    assert!(out.coverage.diagnostics_truncated);
+    assert_no_fix(&out);
+}
+
+#[test]
+fn excerpts_and_overlong_arguments_are_bounded_on_scalar_boundaries() {
+    let r = one(&format!("\\section{{{}.}}", "🙂".repeat(200)));
+    let o = &r.knu.as_ref().unwrap().files[0].observations[0];
+    assert!(o.excerpt_truncated);
+    assert_eq!(o.excerpt.len(), 256);
+    assert_eq!(outcome(&r, HEADING), Outcome::Fail);
+    let r = one(&format!("\\section{{{}}}", "🙂".repeat(2000)));
+    assert_eq!(outcome(&r, HEADING), Outcome::Indeterminate);
+    assert_no_fix(&r);
+    assert!(r.knu.as_ref().unwrap().files[0]
+        .limitations
+        .contains(&Limitation::ArgumentTooLong));
+}
+
+#[test]
+fn engine_only_shape_and_legacy_initialize_are_unchanged() {
+    let (mut req, b) = request(&[("main.tex", br"\unknown{x}{")]);
+    req["payload"]["profile"] = json!({"id":"engine-structural","version":"0"});
+    req["payload"]
+        .as_object_mut()
+        .unwrap()
+        .remove("configuration");
+    let out = wire(&req, &b);
+    assert_eq!(out["status"], "completed");
+    let p = &out["payload"];
+    let mut keys: Vec<_> = p.as_object().unwrap().keys().map(String::as_str).collect();
+    keys.sort();
+    assert_eq!(
+        keys,
+        [
+            "aggregateOutcome",
+            "coverage",
+            "diagnostics",
+            "facts",
+            "profile",
+            "ruleResults",
+            "snapshotId",
+            "unavailableCapabilities"
+        ]
+    );
+    assert_eq!(p["ruleResults"].as_array().unwrap().len(), 1);
+    assert!(p["ruleResults"][0].get("source").is_none());
+    assert!(p["ruleResults"][0].get("evidenceIds").is_none());
+    assert!(p["facts"]["files"][0].get("observationCount").is_none());
+    req["payload"]["configuration"] = json!({"workType":"unspecified"});
+    error(&req, &b, "InvalidInput");
+    let init: Value = serde_json::from_str(&initialize(
+        r#"{"protocolVersion":1,"requestId":"init","operation":"initialize","payload":{}}"#,
+    ))
+    .unwrap();
+    assert_eq!(init["status"], "completed");
+    assert_eq!(init["payload"]["operations"], json!(["analyzeSource"]));
+    assert!(init["payload"].get("profile").is_none());
+    assert!(init["payload"].get("configuration").is_none());
+}
+
+#[test]
+fn f1_exact_identity_trimmed_bytes_simulated_reanalysis_and_other_files() {
+    for (src, hash, start, end) in [
+        (
+            r"\setlength{\parindent}{ 10 mm }",
+            "dbccf105730eee0af0d59b6004eef76835fb86a0c914307ac783d66db5abdfd2",
+            24,
+            29,
+        ),
+        (
+            "\u{feff}У🙂e\u{301}\r\n\\setlength{\\parindent}{ 10 mm }\r\\section{Кінець.}\n",
+            "182667b143be9b431c86289a6d995002a5fd4badad9421fea1f6c6a17879d6ef",
+            38,
+            43,
+        ),
+    ] {
+        let unrelated = b"% untouched CRLF\r\ntext\r\n";
+        let (mut req, b) = request(&[("main.tex", src.as_bytes()), ("other.tex", unrelated)]);
+        req["payload"]["files"][0]["sha256"] = json!(hash);
+        let original_packet = b.clone();
+        let r = completed(&req, &b);
+        let fixes = &r.knu.as_ref().unwrap().fix_descriptors;
+        assert_eq!(fixes.len(), 1);
+        let f = &fixes[0];
+        assert_eq!(f.id, super::profiles::FIX);
+        assert_eq!(f.version, VERSION);
+        assert_eq!(f.rule_id, INDENT);
+        assert_eq!(f.rule_version, VERSION);
+        assert_eq!(f.snapshot_id, "snapshot");
+        assert_eq!(f.project_id, "project");
+        assert_eq!(f.session_id, "session");
+        assert_eq!(f.working_generation, 7);
+        assert_eq!(f.base_head_revision_id.as_deref(), Some("head"));
+        assert_eq!(f.profile.id, KNU_ID);
+        assert_eq!(
+            f.configuration,
+            serde_json::from_value::<super::knu_dto::Configuration>(
+                req["payload"]["configuration"].clone()
+            )
+            .unwrap()
+        );
+        assert_eq!(f.file_id, "f0");
+        assert_eq!(f.relative_path, "main.tex");
+        assert_eq!(f.expected_file_sha256, hash);
+        assert_eq!(
+            f.span,
+            super::dto::Span {
+                start_byte: start,
+                end_byte: end
+            }
+        );
+        assert_eq!(f.expected_original, "10 mm");
+        assert_eq!(f.replacement, "1.27cm");
+        assert!(f.explanation.contains("rendered layout unverified"));
+        assert!(r.rule_results[1]
+            .evidence_ids
+            .as_ref()
+            .unwrap()
+            .contains(&f.evidence_id));
+        let mut patched = src.as_bytes().to_vec();
+        patched.splice(start as usize..end as usize, f.replacement.bytes());
+        assert_eq!(
+            &patched[..start as usize],
+            &src.as_bytes()[..start as usize]
+        );
+        assert_eq!(
+            &patched[start as usize + 6..],
+            &src.as_bytes()[end as usize..]
+        );
+        assert_eq!(b, original_packet); // production analyze never mutates input
+        let (next, b2) = request(&[("main.tex", &patched), ("other.tex", unrelated)]);
+        assert_eq!(&b2[patched.len()..], unrelated);
+        let second = completed(&next, &b2);
+        assert_eq!(second.rule_results[1].per_file[0].outcome, Outcome::Pass);
+        // The untouched second file has no indent observation: do not hide its
+        // missing prerequisite behind the fixed file's local Pass.
+        assert_eq!(outcome(&second, INDENT), Outcome::Unavailable);
+        assert_no_fix(&second);
+        assert_eq!(b2, [patched.clone(), unrelated.to_vec()].concat());
+        // Deterministic repeated analysis, with descriptors remaining data only.
+        assert_eq!(wire(&next, &b2), wire(&next, &b2));
+        // A later review must reject changed snapshot/session/generation/profile;
+        // no apply seam exists here.
+        assert_ne!(f.snapshot_id, "new-snapshot");
+    }
+}
+
+#[test]
+fn f1_all_project_uncertainty_and_uniqueness_gates_are_enforced() {
+    let base = r"\setlength{\parindent}{1cm}";
+    for extra in [
+        r"\unknown",
+        r"\def\x{a}",
+        r"\let\a\b",
+        r"\iftrue",
+        r"\input{missing}",
+        r"{\setlength{\parindent}{1cm}}",
+        r"\parindent=1cm",
+        r"\addtolength{\parindent}{1cm}",
+        r"\usepackage{x}",
+        r"\begin{unknown}\end{unknown}",
+        "$x$",
+        r"\setlength{\parindent}{1cm}",
+        r"\setlength{\parindent}{10mm}",
+        r"\setlength{\parindent}{2cm}",
+        r"\section{\macro}",
+        r"}",
+    ] {
+        let r = one(&format!("{base}{extra}"));
+        assert_no_fix(&r);
+        let (req, b) = request(&[("a.tex", base.as_bytes()), ("b.tex", extra.as_bytes())]);
+        let r = completed(&req, &b);
+        assert_no_fix(&r);
+    }
+    for src in [
+        "",
+        r"\section{Bad.}",
+        r"\setlength{\parindent}{1.27cm}",
+        r"\setlength{\parindent}{12.7mm}",
+        r"\setlength*{\parindent}{1cm}",
+        r"\setlength{\parindent}{1in}",
+        r"\setlength{\parindent}{\x}",
+        r"\setlength{\parindent}{1cm",
+    ] {
+        assert_no_fix(&one(src));
+    }
+    for hash in [
+        "",
+        "bad",
+        "zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz",
+        "a",
+    ] {
+        let (mut req, b) = request(&[("a.tex", base.as_bytes())]);
+        req["payload"]["files"][0]["sha256"] = json!(hash);
+        let r = completed(&req, &b);
+        assert_no_fix(&r);
+        assert_eq!(outcome(&r, INDENT), Outcome::Fail);
+    }
+    let (mut req, b) = request(&[("a.tex", base.as_bytes())]);
+    for limits in [
+        json!({"maxTokensPerFile":0}),
+        json!({"maxTokensPerProject":0}),
+        json!({"maxDiagnosticsPerProject":0}),
+        json!({"maxBraceDepth":0}),
+    ] {
+        req["payload"]["limits"] = limits;
+        assert_no_fix(&completed(&req, &b));
+    }
+}
+
+#[test]
+fn knu_profile_cannot_change_engine_facts_or_engine_diagnostics() {
+    for src in [
+        "",
+        "\u{feff}Привіт🙂\r\n{x",
+        "}",
+        r"\input{\dynamic}",
+        r"\unknown{x}",
+        r"\section{Bad.}",
+        r"\verb|{|",
+    ] {
+        let (knu, b) = request(&[("main.tex", src.as_bytes())]);
+        let with = wire(&knu, &b);
+        let mut engine = knu.clone();
+        engine["payload"]["profile"] = json!({"id":"engine-structural","version":"0"});
+        engine["payload"]
+            .as_object_mut()
+            .unwrap()
+            .remove("configuration");
+        let old = wire(&engine, &b);
+        assert_eq!(with["payload"]["facts"], old["payload"]["facts"], "{src}");
+        assert_eq!(
+            with["payload"]["ruleResults"][0],
+            old["payload"]["ruleResults"][0]
+        );
+        let diags: Vec<_> = with["payload"]["diagnostics"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|d| d["origin"] == "engine")
+            .cloned()
+            .collect();
+        assert_eq!(json!(diags), old["payload"]["diagnostics"]);
+        assert_eq!(
+            with["payload"]["knu"]["engineAggregateOutcome"],
+            old["payload"]["aggregateOutcome"]
+        );
+    }
+    let r = one(r"\begin{custom}\section{Hidden.}\end{custom}\section{Visible.}");
+    assert_eq!(outcome(&r, HEADING), Outcome::Indeterminate);
+    assert_eq!(r.diagnostics.len(), 1);
+    assert_eq!(
+        r.knu.as_ref().unwrap().files[0].observations[0].excerpt,
+        "Visible."
+    );
+}
+
+#[test]
+fn owned_indent_dynamic_syntax_propagates_common_uncertainty() {
+    // These are complete public requests with shape-valid hash metadata: no-fix
+    // assertions cannot pass merely because capture omitted a hash.
+    for (target, value) in [
+        (r"\parindent", r"\def\x{foo}"),
+        (r"\def\x{foo}", "1mm"),
+        (r"\evil", "1mm"),
+        (r"\parindent", r"\newcommand{\x}{foo}"),
+        (r"\newcommand{\x}{foo}", "1mm"),
+        (r"\parindent", r"\csname x\endcsname"),
+        (r"\csname x\endcsname", "1mm"),
+        (r"\parindent", r"\catcode`\@=11"),
+        (r"\catcode`\@=11", "1mm"),
+        (r"\parindent", "{1mm}"),
+        (r"{\parindent}", "1mm"),
+        (r"\parindent", "1#1mm"),
+        (r"\parindent#1", "1mm"),
+        (r"\parindent", "1~mm"),
+        (r"\parindent~", "1mm"),
+        (r"\parindent", "1^mm"),
+        (r"\parindent", "1_mm"),
+        (r"\parindent", "1&mm"),
+        (r"\parindent", "$1$mm"),
+        (r"\parindent", "1% owned comment\nmm"),
+        (r"\parindent", r"\def\x{\section{Hidden.}}"),
+        (r"\def\x{\setlength{\parindent}{1cm}}", "1mm"),
+    ] {
+        let src = format!("\\setlength{{{target}}}{{{value}}}\\section{{Good}}");
+        let (req, bytes) = request(&[("main.tex", src.as_bytes())]);
+        let r = completed(&req, &bytes);
+        assert_eq!(outcome(&r, INDENT), Outcome::Indeterminate, "{src}");
+        assert_eq!(outcome(&r, HEADING), Outcome::Indeterminate, "{src}");
+        assert_no_fix(&r);
+        let file = &r.knu.as_ref().unwrap().files[0];
+        assert!(
+            file.limitations.contains(&Limitation::UnsupportedArgument),
+            "{src}"
+        );
+        assert!(
+            !file.limitations.contains(&Limitation::UnsupportedLength),
+            "{src}"
+        );
+        assert_eq!(
+            file.observations.len(),
+            2,
+            "owned contents must not become live observations: {src}"
+        );
+        assert_eq!(file.observations[0].rule_id, INDENT);
+        assert_eq!(
+            file.observations[0].reason,
+            Some(Limitation::UnsupportedArgument)
+        );
+        assert_eq!(file.observations[1].rule_id, HEADING);
+        assert_eq!(file.observations[1].excerpt, "Good");
+        assert!(r.diagnostics.is_empty()); // no nested Hidden. / 1cm finding
+
+        // Compare real public engine-only output, not a helper-derived oracle.
+        let mut engine_req = req.clone();
+        engine_req["payload"]["profile"] = json!({"id":"engine-structural","version":"0"});
+        engine_req["payload"]
+            .as_object_mut()
+            .unwrap()
+            .remove("configuration");
+        let engine = wire(&engine_req, &bytes);
+        assert_eq!(engine["status"], "completed");
+        assert_eq!(engine["payload"]["aggregateOutcome"], "pass");
+        assert_eq!(
+            serde_json::to_value(&r.facts).unwrap(),
+            engine["payload"]["facts"]
+        );
+        assert_eq!(
+            serde_json::to_value(&r.rule_results[0]).unwrap(),
+            engine["payload"]["ruleResults"][0]
+        );
+        assert_eq!(
+            r.knu.as_ref().unwrap().engine_aggregate_outcome,
+            Outcome::Pass
+        );
+    }
+}
+
+#[test]
+fn owned_indent_literal_length_controls_keep_rule_scope() {
+    for (value, expected) in [
+        ("1pt", Outcome::Indeterminate),
+        ("1in", Outcome::Indeterminate),
+        ("1cm plus 1mm", Outcome::Indeterminate),
+        ("1.27cm", Outcome::Pass),
+    ] {
+        let r = one(&format!(
+            "\\setlength{{\\parindent}}{{{value}}}\\section{{Good}}"
+        ));
+        assert_eq!(outcome(&r, INDENT), expected, "{value}");
+        assert_eq!(outcome(&r, HEADING), Outcome::Pass, "{value}");
+        assert_no_fix(&r);
+        let file = &r.knu.as_ref().unwrap().files[0];
+        assert_eq!(file.observations.len(), 2);
+        if expected == Outcome::Indeterminate {
+            assert_eq!(file.limitations, vec![Limitation::UnsupportedLength]);
+            assert_eq!(
+                file.observations[0].reason,
+                Some(Limitation::UnsupportedLength)
+            );
+        } else {
+            assert!(file.limitations.is_empty());
+            assert_eq!(file.observations[0].reason, None);
+        }
+        assert_eq!(
+            r.knu.as_ref().unwrap().engine_aggregate_outcome,
+            Outcome::Pass
+        );
+    }
+}
+
+#[test]
+fn knu_boundary_still_validates_slices_utf8_bom_and_input_budgets() {
+    let (req, b) = request(&[("main.tex", b"plain")]);
+    let mut r = req.clone();
+    r["payload"]["files"][0]["byteOffset"] = json!(u64::MAX);
+    error(&r, &b, "InvalidInput");
+    let mut r = req.clone();
+    r["payload"]["files"][0]["byteLength"] = json!(6);
+    error(&r, &b, "InvalidInput");
+    let mut r = req.clone();
+    r["payload"]["files"][0]["hasBom"] = json!(true);
+    error(&r, &b, "InvalidInput");
+    let (r, bad) = request(&[("main.tex", b"\xff")]);
+    error(&r, &bad, "InvalidInput");
+    for limits in [
+        json!({"maxBytesPerFile":4}),
+        json!({"maxTotalBytes":4}),
+        json!({"maxFiles":0}),
+    ] {
+        let mut r = req.clone();
+        r["payload"]["limits"] = limits;
+        error(&r, &b, "QuotaExceeded");
+    }
+}
