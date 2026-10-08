@@ -68,6 +68,23 @@ public static class TextContent
         return result;
     }
 
+    /// <summary>Count the strict edited LF+BOM encoding without allocating it.
+    /// Shared by analysis and patch/project preflight.</summary>
+    public static bool TryCountEditedBytes(string content, bool hasBom, out long length)
+    {
+        length = hasBom ? 3 : 0;
+        var remaining = content.AsSpan();
+        while (!remaining.IsEmpty)
+        {
+            if (System.Text.Rune.DecodeFromUtf16(remaining, out var rune, out int consumed) != System.Buffers.OperationStatus.Done)
+                return false;
+            length += rune.Utf8SequenceLength;
+            remaining = remaining[consumed..];
+            if (rune.Value == '\r' && !remaining.IsEmpty && remaining[0] == '\n') remaining = remaining[1..];
+        }
+        return true;
+    }
+
     /// <summary>Split text into lines for line-based diff. A trailing newline
     /// produces a final empty element so diff round trips faithfully.</summary>
     public static IReadOnlyList<string> SplitLines(string text)
