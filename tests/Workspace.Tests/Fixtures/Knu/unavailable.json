@@ -1,0 +1,305 @@
+{
+  "name": "unavailable",
+  "sourceHex": "d09fd180d0bed181d182d0be20d182d0b5d0bad181d182f09f99820d0a",
+  "sourceSha256": "670c0c47bf23f3773006ccac1ec010dc4d8aaa7be5dd41fd0bef9d10083e96bb",
+  "request": {
+    "protocolVersion": 1,
+    "requestId": "fixture-request",
+    "operation": "analyzeSource",
+    "payload": {
+      "snapshotId": "44444444444444444444444444444444",
+      "projectId": "22222222222222222222222222222222",
+      "sessionId": "33333333333333333333333333333333",
+      "workingGeneration": 9007199254740993,
+      "baseHeadRevisionId": "55555555555555555555555555555555",
+      "profile": {
+        "id": "knu-csc-2025-source",
+        "version": "1.0.0"
+      },
+      "configuration": {
+        "workType": "coursework"
+      },
+      "limits": {},
+      "files": [
+        {
+          "fileId": "11111111111111111111111111111111",
+          "relativePath": "main.tex",
+          "mediaKind": "text",
+          "hasBom": false,
+          "sha256": "670c0c47bf23f3773006ccac1ec010dc4d8aaa7be5dd41fd0bef9d10083e96bb",
+          "byteOffset": 0,
+          "byteLength": 29
+        }
+      ]
+    }
+  },
+  "response": {
+    "protocolVersion": 1,
+    "requestId": "fixture-request",
+    "status": "completed",
+    "payload": {
+      "snapshotId": "44444444444444444444444444444444",
+      "profile": {
+        "id": "knu-csc-2025-source",
+        "version": "1.0.0"
+      },
+      "facts": {
+        "files": [
+          {
+            "fileId": "11111111111111111111111111111111",
+            "byteLength": 29,
+            "hasBom": false,
+            "newlineKind": "crlf",
+            "truncated": false,
+            "braceDepthExceeded": false,
+            "tokenCount": 3,
+            "engineOutcome": "pass",
+            "tokens": [
+              {
+                "kind": "text",
+                "startByte": 0,
+                "endByte": 27
+              },
+              {
+                "kind": "text",
+                "startByte": 27,
+                "endByte": 28
+              },
+              {
+                "kind": "text",
+                "startByte": 28,
+                "endByte": 29
+              }
+            ]
+          }
+        ]
+      },
+      "diagnostics": [],
+      "ruleResults": [
+        {
+          "ruleId": "ENGINE-STRUCT-001",
+          "origin": "engine",
+          "outcome": "pass",
+          "perFile": [
+            {
+              "fileId": "11111111111111111111111111111111",
+              "outcome": "pass",
+              "diagnosticIds": []
+            }
+          ],
+          "limitations": []
+        },
+        {
+          "ruleId": "KNU-SRC-PARINDENT-001",
+          "origin": "knu",
+          "outcome": "unavailable",
+          "perFile": [
+            {
+              "fileId": "11111111111111111111111111111111",
+              "outcome": "unavailable",
+              "diagnosticIds": []
+            }
+          ],
+          "limitations": [
+            "Source observations only; effective TeX state and rendered compliance unverified",
+            "no-supported-observation"
+          ],
+          "source": {
+            "ruleId": "KNU-SRC-PARINDENT-001",
+            "version": "1.0.0",
+            "origin": "knu",
+            "evaluationDomain": "sourceObservation",
+            "citation": {
+              "section": "3.1",
+              "printedPages": [
+                18
+              ],
+              "pdfPages": [
+                18
+              ]
+            },
+            "severity": "warning",
+            "severityRationale": "Mandatory requirement, but literal source intent is not effective TeX state or rendered compliance",
+            "applicableWorkTypes": [
+              "unspecified",
+              "coursework",
+              "bachelorQualification",
+              "masterQualification"
+            ],
+            "expected": "12.7 mm (1.27 cm); rendered uniformity unverified",
+            "supportedSyntax": "Top-level unstarred setlength with parindent target and nonnegative decimal mm/cm; <=9 digits and <=3 fractional digits",
+            "limitations": [
+              "Finite syntax/context allowlist; no macro expansion or include resolution",
+              "Source observation only; rendered layout unverified"
+            ]
+          },
+          "evidenceIds": []
+        },
+        {
+          "ruleId": "KNU-SRC-HEADING-DOT-001",
+          "origin": "knu",
+          "outcome": "unavailable",
+          "perFile": [
+            {
+              "fileId": "11111111111111111111111111111111",
+              "outcome": "unavailable",
+              "diagnosticIds": []
+            }
+          ],
+          "limitations": [
+            "Source observations only; effective TeX state and rendered compliance unverified",
+            "no-supported-observation"
+          ],
+          "source": {
+            "ruleId": "KNU-SRC-HEADING-DOT-001",
+            "version": "1.0.0",
+            "origin": "knu",
+            "evaluationDomain": "sourceObservation",
+            "citation": {
+              "section": "3.2",
+              "printedPages": [
+                18,
+                19
+              ],
+              "pdfPages": [
+                18,
+                19
+              ]
+            },
+            "severity": "warning",
+            "severityRationale": "Mandatory requirement, but literal source intent is not effective TeX state or rendered compliance",
+            "applicableWorkTypes": [
+              "unspecified",
+              "coursework",
+              "bachelorQualification",
+              "masterQualification"
+            ],
+            "expected": "No terminal U+002E in a literal heading title",
+            "supportedSyntax": "Top-level chapter/section/subsection/subsubsection/paragraph/subparagraph, optional one star, immediate literal short title and literal display title",
+            "limitations": [
+              "Finite syntax/context allowlist; no macro expansion or include resolution",
+              "Source observation only; rendered layout unverified"
+            ]
+          },
+          "evidenceIds": []
+        }
+      ],
+      "aggregateOutcome": "unavailable",
+      "coverage": {
+        "factKinds": [
+          "text"
+        ],
+        "unsupported": [
+          "macro-expansion",
+          "math-mode",
+          "bibliography",
+          "environment-bodies",
+          "include-resolution",
+          "label-reference-consistency",
+          "pdf-facts",
+          "pdf-checks"
+        ],
+        "truncatedFiles": [],
+        "diagnosticsTruncated": false,
+        "resultTruncated": false
+      },
+      "unavailableCapabilities": [
+        "pdfFacts",
+        "pdfChecks"
+      ],
+      "configuration": {
+        "workType": "coursework"
+      },
+      "knu": {
+        "metadata": {
+          "profile": {
+            "id": "knu-csc-2025-source",
+            "version": "1.0.0"
+          },
+          "guidelineTitle": "Методичні вказівки з підготовки та оформлення кваліфікаційних та курсових робіт для студентів факультету комп’ютерних наук та кібернетики. Т. О. Карнаух, Л. Л. Омельчук, А. Б. Ставровський. Київ, 2025. 58 с.",
+          "approvedUrl": "https://csc.knu.ua/uk/filer/canonical/1740300611/2680/",
+          "guidelineSha256": "8be4d724ac108488e6b1766322e7fd6b3646412aa2b6de12b6945f48fb380714",
+          "rules": [
+            {
+              "ruleId": "KNU-SRC-PARINDENT-001",
+              "version": "1.0.0",
+              "origin": "knu",
+              "evaluationDomain": "sourceObservation",
+              "citation": {
+                "section": "3.1",
+                "printedPages": [
+                  18
+                ],
+                "pdfPages": [
+                  18
+                ]
+              },
+              "severity": "warning",
+              "severityRationale": "Mandatory requirement, but literal source intent is not effective TeX state or rendered compliance",
+              "applicableWorkTypes": [
+                "unspecified",
+                "coursework",
+                "bachelorQualification",
+                "masterQualification"
+              ],
+              "expected": "12.7 mm (1.27 cm); rendered uniformity unverified",
+              "supportedSyntax": "Top-level unstarred setlength with parindent target and nonnegative decimal mm/cm; <=9 digits and <=3 fractional digits",
+              "limitations": [
+                "Finite syntax/context allowlist; no macro expansion or include resolution",
+                "Source observation only; rendered layout unverified"
+              ]
+            },
+            {
+              "ruleId": "KNU-SRC-HEADING-DOT-001",
+              "version": "1.0.0",
+              "origin": "knu",
+              "evaluationDomain": "sourceObservation",
+              "citation": {
+                "section": "3.2",
+                "printedPages": [
+                  18,
+                  19
+                ],
+                "pdfPages": [
+                  18,
+                  19
+                ]
+              },
+              "severity": "warning",
+              "severityRationale": "Mandatory requirement, but literal source intent is not effective TeX state or rendered compliance",
+              "applicableWorkTypes": [
+                "unspecified",
+                "coursework",
+                "bachelorQualification",
+                "masterQualification"
+              ],
+              "expected": "No terminal U+002E in a literal heading title",
+              "supportedSyntax": "Top-level chapter/section/subsection/subsubsection/paragraph/subparagraph, optional one star, immediate literal short title and literal display title",
+              "limitations": [
+                "Finite syntax/context allowlist; no macro expansion or include resolution",
+                "Source observation only; rendered layout unverified"
+              ]
+            }
+          ],
+          "limitations": [
+            "Faculty-specific, not university-wide certification",
+            "PDF page 1 is the unnumbered title; PDF pages 2–58 match printed numbers",
+            "Pass covers observed literals only, never rendered compliance or real-thesis acceptance"
+          ]
+        },
+        "engineAggregateOutcome": "pass",
+        "files": [
+          {
+            "fileId": "11111111111111111111111111111111",
+            "eligible": true,
+            "complete": true,
+            "observationCount": 0,
+            "observations": [],
+            "limitations": []
+          }
+        ],
+        "fixDescriptors": []
+      }
+    }
+  }
+}

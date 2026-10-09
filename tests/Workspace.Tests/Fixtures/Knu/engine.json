@@ -1,0 +1,128 @@
+{
+  "name": "engine",
+  "sourceHex": "5c73656374696f6e7bd09ed0b3d0bbd18fd0b4f09f99827d0a",
+  "sourceSha256": "d266034617ba1db3e8f98a4f08fa8676efcde6e9f115ef0c1cf451e49580448d",
+  "request": {
+    "protocolVersion": 1,
+    "requestId": "fixture-request",
+    "operation": "analyzeSource",
+    "payload": {
+      "snapshotId": "44444444444444444444444444444444",
+      "projectId": "22222222222222222222222222222222",
+      "sessionId": "33333333333333333333333333333333",
+      "workingGeneration": 9007199254740993,
+      "baseHeadRevisionId": "55555555555555555555555555555555",
+      "profile": {
+        "id": "engine-structural",
+        "version": "0"
+      },
+      "limits": {},
+      "files": [
+        {
+          "fileId": "11111111111111111111111111111111",
+          "relativePath": "main.tex",
+          "mediaKind": "text",
+          "hasBom": false,
+          "sha256": "d266034617ba1db3e8f98a4f08fa8676efcde6e9f115ef0c1cf451e49580448d",
+          "byteOffset": 0,
+          "byteLength": 25
+        }
+      ]
+    }
+  },
+  "response": {
+    "protocolVersion": 1,
+    "requestId": "fixture-request",
+    "status": "completed",
+    "payload": {
+      "snapshotId": "44444444444444444444444444444444",
+      "profile": {
+        "id": "engine-structural",
+        "version": "0"
+      },
+      "facts": {
+        "files": [
+          {
+            "fileId": "11111111111111111111111111111111",
+            "byteLength": 25,
+            "hasBom": false,
+            "newlineKind": "lf",
+            "truncated": false,
+            "braceDepthExceeded": false,
+            "tokenCount": 5,
+            "engineOutcome": "pass",
+            "tokens": [
+              {
+                "kind": "command",
+                "startByte": 0,
+                "endByte": 8
+              },
+              {
+                "kind": "braceOpen",
+                "startByte": 8,
+                "endByte": 9
+              },
+              {
+                "kind": "text",
+                "startByte": 9,
+                "endByte": 23
+              },
+              {
+                "kind": "braceClose",
+                "startByte": 23,
+                "endByte": 24
+              },
+              {
+                "kind": "text",
+                "startByte": 24,
+                "endByte": 25
+              }
+            ]
+          }
+        ]
+      },
+      "diagnostics": [],
+      "ruleResults": [
+        {
+          "ruleId": "ENGINE-STRUCT-001",
+          "origin": "engine",
+          "outcome": "pass",
+          "perFile": [
+            {
+              "fileId": "11111111111111111111111111111111",
+              "outcome": "pass",
+              "diagnosticIds": []
+            }
+          ],
+          "limitations": []
+        }
+      ],
+      "aggregateOutcome": "pass",
+      "coverage": {
+        "factKinds": [
+          "command",
+          "braceOpen",
+          "text",
+          "braceClose"
+        ],
+        "unsupported": [
+          "macro-expansion",
+          "math-mode",
+          "bibliography",
+          "environment-bodies",
+          "include-resolution",
+          "label-reference-consistency",
+          "pdf-facts",
+          "pdf-checks"
+        ],
+        "truncatedFiles": [],
+        "diagnosticsTruncated": false,
+        "resultTruncated": false
+      },
+      "unavailableCapabilities": [
+        "pdfFacts",
+        "pdfChecks"
+      ]
+    }
+  }
+}

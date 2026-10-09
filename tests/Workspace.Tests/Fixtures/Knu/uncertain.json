@@ -1,0 +1,428 @@
+{
+  "name": "uncertain",
+  "sourceHex": "5c7365746c656e6774687b5c706172696e64656e747d7b5c6465665c787b666f6f7d7d5c73656374696f6e7b476f6f647d",
+  "sourceSha256": "59accc3d0ba8b54401351254219e362c91dd1530aa76f687d7780813820b9e93",
+  "request": {
+    "protocolVersion": 1,
+    "requestId": "fixture-request",
+    "operation": "analyzeSource",
+    "payload": {
+      "snapshotId": "44444444444444444444444444444444",
+      "projectId": "22222222222222222222222222222222",
+      "sessionId": "33333333333333333333333333333333",
+      "workingGeneration": 9007199254740993,
+      "baseHeadRevisionId": "55555555555555555555555555555555",
+      "profile": {
+        "id": "knu-csc-2025-source",
+        "version": "1.0.0"
+      },
+      "configuration": {
+        "workType": "masterQualification"
+      },
+      "limits": {},
+      "files": [
+        {
+          "fileId": "11111111111111111111111111111111",
+          "relativePath": "main.tex",
+          "mediaKind": "text",
+          "hasBom": false,
+          "sha256": "59accc3d0ba8b54401351254219e362c91dd1530aa76f687d7780813820b9e93",
+          "byteOffset": 0,
+          "byteLength": 49
+        }
+      ]
+    }
+  },
+  "response": {
+    "protocolVersion": 1,
+    "requestId": "fixture-request",
+    "status": "completed",
+    "payload": {
+      "snapshotId": "44444444444444444444444444444444",
+      "profile": {
+        "id": "knu-csc-2025-source",
+        "version": "1.0.0"
+      },
+      "facts": {
+        "files": [
+          {
+            "fileId": "11111111111111111111111111111111",
+            "byteLength": 49,
+            "hasBom": false,
+            "newlineKind": "lf",
+            "truncated": false,
+            "braceDepthExceeded": false,
+            "tokenCount": 15,
+            "engineOutcome": "pass",
+            "tokens": [
+              {
+                "kind": "command",
+                "startByte": 0,
+                "endByte": 10
+              },
+              {
+                "kind": "braceOpen",
+                "startByte": 10,
+                "endByte": 11
+              },
+              {
+                "kind": "command",
+                "startByte": 11,
+                "endByte": 21
+              },
+              {
+                "kind": "braceClose",
+                "startByte": 21,
+                "endByte": 22
+              },
+              {
+                "kind": "braceOpen",
+                "startByte": 22,
+                "endByte": 23
+              },
+              {
+                "kind": "command",
+                "startByte": 23,
+                "endByte": 27
+              },
+              {
+                "kind": "command",
+                "startByte": 27,
+                "endByte": 29
+              },
+              {
+                "kind": "braceOpen",
+                "startByte": 29,
+                "endByte": 30
+              },
+              {
+                "kind": "text",
+                "startByte": 30,
+                "endByte": 33
+              },
+              {
+                "kind": "braceClose",
+                "startByte": 33,
+                "endByte": 34
+              },
+              {
+                "kind": "braceClose",
+                "startByte": 34,
+                "endByte": 35
+              },
+              {
+                "kind": "command",
+                "startByte": 35,
+                "endByte": 43
+              },
+              {
+                "kind": "braceOpen",
+                "startByte": 43,
+                "endByte": 44
+              },
+              {
+                "kind": "text",
+                "startByte": 44,
+                "endByte": 48
+              },
+              {
+                "kind": "braceClose",
+                "startByte": 48,
+                "endByte": 49
+              }
+            ]
+          }
+        ]
+      },
+      "diagnostics": [],
+      "ruleResults": [
+        {
+          "ruleId": "ENGINE-STRUCT-001",
+          "origin": "engine",
+          "outcome": "pass",
+          "perFile": [
+            {
+              "fileId": "11111111111111111111111111111111",
+              "outcome": "pass",
+              "diagnosticIds": []
+            }
+          ],
+          "limitations": []
+        },
+        {
+          "ruleId": "KNU-SRC-PARINDENT-001",
+          "origin": "knu",
+          "outcome": "indeterminate",
+          "perFile": [
+            {
+              "fileId": "11111111111111111111111111111111",
+              "outcome": "indeterminate",
+              "diagnosticIds": []
+            }
+          ],
+          "limitations": [
+            "Source observations only; effective TeX state and rendered compliance unverified"
+          ],
+          "source": {
+            "ruleId": "KNU-SRC-PARINDENT-001",
+            "version": "1.0.0",
+            "origin": "knu",
+            "evaluationDomain": "sourceObservation",
+            "citation": {
+              "section": "3.1",
+              "printedPages": [
+                18
+              ],
+              "pdfPages": [
+                18
+              ]
+            },
+            "severity": "warning",
+            "severityRationale": "Mandatory requirement, but literal source intent is not effective TeX state or rendered compliance",
+            "applicableWorkTypes": [
+              "unspecified",
+              "coursework",
+              "bachelorQualification",
+              "masterQualification"
+            ],
+            "expected": "12.7 mm (1.27 cm); rendered uniformity unverified",
+            "supportedSyntax": "Top-level unstarred setlength with parindent target and nonnegative decimal mm/cm; <=9 digits and <=3 fractional digits",
+            "limitations": [
+              "Finite syntax/context allowlist; no macro expansion or include resolution",
+              "Source observation only; rendered layout unverified"
+            ]
+          },
+          "evidenceIds": [
+            "11111111111111111111111111111111:KNU-SRC-PARINDENT-001:23"
+          ]
+        },
+        {
+          "ruleId": "KNU-SRC-HEADING-DOT-001",
+          "origin": "knu",
+          "outcome": "indeterminate",
+          "perFile": [
+            {
+              "fileId": "11111111111111111111111111111111",
+              "outcome": "indeterminate",
+              "diagnosticIds": []
+            }
+          ],
+          "limitations": [
+            "Source observations only; effective TeX state and rendered compliance unverified"
+          ],
+          "source": {
+            "ruleId": "KNU-SRC-HEADING-DOT-001",
+            "version": "1.0.0",
+            "origin": "knu",
+            "evaluationDomain": "sourceObservation",
+            "citation": {
+              "section": "3.2",
+              "printedPages": [
+                18,
+                19
+              ],
+              "pdfPages": [
+                18,
+                19
+              ]
+            },
+            "severity": "warning",
+            "severityRationale": "Mandatory requirement, but literal source intent is not effective TeX state or rendered compliance",
+            "applicableWorkTypes": [
+              "unspecified",
+              "coursework",
+              "bachelorQualification",
+              "masterQualification"
+            ],
+            "expected": "No terminal U+002E in a literal heading title",
+            "supportedSyntax": "Top-level chapter/section/subsection/subsubsection/paragraph/subparagraph, optional one star, immediate literal short title and literal display title",
+            "limitations": [
+              "Finite syntax/context allowlist; no macro expansion or include resolution",
+              "Source observation only; rendered layout unverified"
+            ]
+          },
+          "evidenceIds": [
+            "11111111111111111111111111111111:KNU-SRC-HEADING-DOT-001:44"
+          ]
+        }
+      ],
+      "aggregateOutcome": "indeterminate",
+      "coverage": {
+        "factKinds": [
+          "command",
+          "braceOpen",
+          "braceClose",
+          "text"
+        ],
+        "unsupported": [
+          "macro-expansion",
+          "math-mode",
+          "bibliography",
+          "environment-bodies",
+          "include-resolution",
+          "label-reference-consistency",
+          "pdf-facts",
+          "pdf-checks"
+        ],
+        "truncatedFiles": [],
+        "diagnosticsTruncated": false,
+        "resultTruncated": false
+      },
+      "unavailableCapabilities": [
+        "pdfFacts",
+        "pdfChecks"
+      ],
+      "configuration": {
+        "workType": "masterQualification"
+      },
+      "knu": {
+        "metadata": {
+          "profile": {
+            "id": "knu-csc-2025-source",
+            "version": "1.0.0"
+          },
+          "guidelineTitle": "Методичні вказівки з підготовки та оформлення кваліфікаційних та курсових робіт для студентів факультету комп’ютерних наук та кібернетики. Т. О. Карнаух, Л. Л. Омельчук, А. Б. Ставровський. Київ, 2025. 58 с.",
+          "approvedUrl": "https://csc.knu.ua/uk/filer/canonical/1740300611/2680/",
+          "guidelineSha256": "8be4d724ac108488e6b1766322e7fd6b3646412aa2b6de12b6945f48fb380714",
+          "rules": [
+            {
+              "ruleId": "KNU-SRC-PARINDENT-001",
+              "version": "1.0.0",
+              "origin": "knu",
+              "evaluationDomain": "sourceObservation",
+              "citation": {
+                "section": "3.1",
+                "printedPages": [
+                  18
+                ],
+                "pdfPages": [
+                  18
+                ]
+              },
+              "severity": "warning",
+              "severityRationale": "Mandatory requirement, but literal source intent is not effective TeX state or rendered compliance",
+              "applicableWorkTypes": [
+                "unspecified",
+                "coursework",
+                "bachelorQualification",
+                "masterQualification"
+              ],
+              "expected": "12.7 mm (1.27 cm); rendered uniformity unverified",
+              "supportedSyntax": "Top-level unstarred setlength with parindent target and nonnegative decimal mm/cm; <=9 digits and <=3 fractional digits",
+              "limitations": [
+                "Finite syntax/context allowlist; no macro expansion or include resolution",
+                "Source observation only; rendered layout unverified"
+              ]
+            },
+            {
+              "ruleId": "KNU-SRC-HEADING-DOT-001",
+              "version": "1.0.0",
+              "origin": "knu",
+              "evaluationDomain": "sourceObservation",
+              "citation": {
+                "section": "3.2",
+                "printedPages": [
+                  18,
+                  19
+                ],
+                "pdfPages": [
+                  18,
+                  19
+                ]
+              },
+              "severity": "warning",
+              "severityRationale": "Mandatory requirement, but literal source intent is not effective TeX state or rendered compliance",
+              "applicableWorkTypes": [
+                "unspecified",
+                "coursework",
+                "bachelorQualification",
+                "masterQualification"
+              ],
+              "expected": "No terminal U+002E in a literal heading title",
+              "supportedSyntax": "Top-level chapter/section/subsection/subsubsection/paragraph/subparagraph, optional one star, immediate literal short title and literal display title",
+              "limitations": [
+                "Finite syntax/context allowlist; no macro expansion or include resolution",
+                "Source observation only; rendered layout unverified"
+              ]
+            }
+          ],
+          "limitations": [
+            "Faculty-specific, not university-wide certification",
+            "PDF page 1 is the unnumbered title; PDF pages 2–58 match printed numbers",
+            "Pass covers observed literals only, never rendered compliance or real-thesis acceptance"
+          ]
+        },
+        "engineAggregateOutcome": "pass",
+        "files": [
+          {
+            "fileId": "11111111111111111111111111111111",
+            "eligible": true,
+            "complete": true,
+            "observationCount": 2,
+            "observations": [
+              {
+                "id": "11111111111111111111111111111111:KNU-SRC-PARINDENT-001:23",
+                "ruleId": "KNU-SRC-PARINDENT-001",
+                "commandSpan": {
+                  "startByte": 0,
+                  "endByte": 10
+                },
+                "declarationSpan": {
+                  "startByte": 0,
+                  "endByte": 35
+                },
+                "valueSpan": {
+                  "startByte": 23,
+                  "endByte": 34
+                },
+                "excerpt": "\\def\\x{foo}",
+                "excerptTruncated": false,
+                "method": "literal-setlength",
+                "value": {
+                  "kind": "indentDeclaration",
+                  "targetSpan": {
+                    "startByte": 11,
+                    "endByte": 21
+                  },
+                  "length": null
+                },
+                "agrees": null,
+                "reason": "unsupportedArgument"
+              },
+              {
+                "id": "11111111111111111111111111111111:KNU-SRC-HEADING-DOT-001:44",
+                "ruleId": "KNU-SRC-HEADING-DOT-001",
+                "commandSpan": {
+                  "startByte": 35,
+                  "endByte": 43
+                },
+                "declarationSpan": {
+                  "startByte": 35,
+                  "endByte": 49
+                },
+                "valueSpan": {
+                  "startByte": 44,
+                  "endByte": 48
+                },
+                "excerpt": "Good",
+                "excerptTruncated": false,
+                "method": "literal-heading-argument",
+                "value": {
+                  "kind": "headingTitle",
+                  "titleKind": "display",
+                  "finalScalar": "d"
+                },
+                "agrees": true,
+                "reason": null
+              }
+            ],
+            "limitations": [
+              "unsupportedArgument"
+            ]
+          }
+        ],
+        "fixDescriptors": []
+      }
+    }
+  }
+}
