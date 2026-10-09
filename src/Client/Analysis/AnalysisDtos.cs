@@ -83,7 +83,8 @@ public sealed record AnalysisRequestPayload(
     string? BaseHeadRevisionId,
     AnalysisProfileDto Profile,
     AnalysisLimitsDto Limits,
-    IReadOnlyList<AnalysisFileDescriptorDto> Files);
+    IReadOnlyList<AnalysisFileDescriptorDto> Files,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] AnalysisConfigurationDto? Configuration = null);
 
 public sealed record AnalysisProfileDto(string Id, string Version)
 {
@@ -134,7 +135,9 @@ public sealed record AnalysisResultDto(
     IReadOnlyList<AnalysisRuleResultDto> RuleResults,
     RuleOutcome AggregateOutcome,
     AnalysisCoverageDto Coverage,
-    IReadOnlyList<string> UnavailableCapabilities);
+    IReadOnlyList<string> UnavailableCapabilities,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] AnalysisConfigurationDto? Configuration = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] AnalysisKnuDto? Knu = null);
 
 public sealed record AnalysisSourceFactsDto(IReadOnlyList<AnalysisSourceFileFactsDto> Files);
 
@@ -175,7 +178,9 @@ public sealed record AnalysisRuleResultDto(
     string Origin,
     RuleOutcome Outcome,
     IReadOnlyList<AnalysisPerFileOutcomeDto> PerFile,
-    IReadOnlyList<string> Limitations);
+    IReadOnlyList<string> Limitations,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] AnalysisSourceRuleDto? Source = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] IReadOnlyList<string>? EvidenceIds = null);
 
 public sealed record AnalysisPerFileOutcomeDto(
     string FileId,

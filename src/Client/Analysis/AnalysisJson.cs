@@ -39,9 +39,11 @@ public static class AnalysisJson
         {
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
             DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+            AllowOutOfOrderMetadataProperties = true,
         };
         // Enum values as lowerCamelCase STRINGS, and REJECT numeric enum tokens
         // (a bare number is not a valid enum spelling).
+        o.Converters.Add(new AnalysisDiagnosticConverter());
         o.Converters.Add(new StrictStringEnumConverterFactory());
         return o;
     }
@@ -50,7 +52,18 @@ public static class AnalysisJson
     /// the metadataJson string. The packed byte buffer is built separately by
     /// <see cref="AnalysisRequestPacker.Pack"/>.</summary>
     public static string SerializeRequest(AnalysisRequestEnvelope envelope)
-        => JsonSerializer.Serialize(envelope, Options);
+    {
+        if (!AnalysisCatalog.IsValid(envelope.Payload.Profile.Id, envelope.Payload.Profile.Version, envelope.Payload.Configuration))
+            throw new ArgumentException("Unknown profile/version or invalid configuration.", nameof(envelope));
+        return JsonSerializer.Serialize(envelope, Options);
+    }
+
+    public static AnalysisConfigurationDto ParseConfiguration(string json)
+    {
+        if (json.Length > 512 || Encoding.UTF8.GetByteCount(json) > 512) throw new JsonException("Configuration too large.");
+        using var doc = JsonDocument.Parse(json);
+        return KnuWireValidation.Configuration(doc.RootElement);
+    }
 
     /// <summary>Deserialize and validate a canonical v1 response envelope from
     /// JSON text. Returns a typed Completed/Failed result; rejects malformed,
@@ -69,12 +82,13 @@ public static class AnalysisJson
 
         using var doc = JsonDocument.Parse(json);
         var root = doc.RootElement;
+        KnuWireValidation.NoDuplicates(root);
         if (root.ValueKind != JsonValueKind.Object)
             throw new JsonException("analysis response is not a JSON object");
 
         // protocolVersion == 1 (an integral number; fractional/huge values are malformed, not 1).
         if (!root.TryGetProperty("protocolVersion", out var pv)
-            || !pv.TryGetInt32(out var pvNum) || pvNum != 1)
+            || pv.ValueKind != JsonValueKind.Number || !pv.TryGetInt32(out var pvNum) || pvNum != 1)
             throw new JsonException("unsupported or missing protocolVersion");
         if (!root.TryGetProperty("status", out var stEl) || stEl.ValueKind != JsonValueKind.String)
             throw new JsonException("missing or non-string status");
@@ -113,6 +127,13 @@ public static class AnalysisJson
         // A completed envelope must NOT carry a non-null error (opposite body).
         if (root.TryGetProperty("error", out var err) && err.ValueKind != JsonValueKind.Null)
             throw new JsonException("a completed envelope must not carry an error");
+
+        var profile = p.GetProperty("profile").Deserialize<AnalysisProfileDto>(Options)!;
+        if (!AnalysisCatalog.IsKnown(profile.Id, profile.Version)) throw new JsonException("Unknown profile/version.");
+        bool knu = profile.Id == AnalysisCatalog.KnuId;
+        if (knu) KnuWireValidation.Shape(root);
+        else if (p.TryGetProperty("configuration", out _) || p.TryGetProperty("knu", out _))
+            throw new JsonException("Engine-only result cannot carry KNU data/configuration.");
 
         // Deserialize the now-validated JSON to typed DTOs for invariant checks.
         var env = root.Deserialize<AnalysisResponseEnvelope>(Options)!;
@@ -175,6 +196,19 @@ public static class AnalysisJson
             }
         }
 
+        if (knu) KnuWireValidation.Validate(payload);
+        else if (payload.RuleResults.Any(r => r.Source is not null || r.EvidenceIds is not null))
+            throw new JsonException("Engine-only rules cannot carry normative metadata.");
+        // Own immutable collections, including legacy DTO lists, after decoding.
+        payload = payload with {
+            Facts = new(payload.Facts.Files.Select(f => f with { Tokens = f.Tokens.ToImmutableArray() }).ToImmutableArray()),
+            Diagnostics = payload.Diagnostics.ToImmutableArray(),
+            RuleResults = payload.RuleResults.Select(r => r with {
+                PerFile = r.PerFile.Select(f => f with { DiagnosticIds = f.DiagnosticIds.ToImmutableArray() }).ToImmutableArray(),
+                Limitations = r.Limitations.ToImmutableArray(), EvidenceIds = r.EvidenceIds?.ToImmutableArray(),
+            }).ToImmutableArray(),
+            UnavailableCapabilities = payload.UnavailableCapabilities.ToImmutableArray(),
+        };
         return new AnalysisResponse.Completed(env.RequestId!, payload);
     }
 
@@ -184,6 +218,8 @@ public static class AnalysisJson
             throw new JsonException("failed envelope is missing its error");
         RequireString(e, "code");
         RequireString(e, "safeMessage");
+        KnuWireValidation.Text(e.GetProperty("code").GetString(), 128);
+        KnuWireValidation.Text(e.GetProperty("safeMessage").GetString(), 4096, empty: true);
         if (!e.TryGetProperty("retryable", out var rt) || rt.ValueKind != JsonValueKind.False && rt.ValueKind != JsonValueKind.True)
             throw new JsonException("failed error is missing retryable");
         // A failed envelope must NOT carry a non-null payload (opposite body).
@@ -406,6 +442,7 @@ public static class AnalysisRequestPacker
         if (!AnalysisIdentity.IsValidOpaqueId(requestId, AnalysisLimits.MaxIdBytes))
             throw new ArgumentException("requestId must be nonempty strict-UTF-8 <=128 bytes", nameof(requestId));
         ValidateProfile(snapshot.Profile);
+        if (!snapshot.Selection.IsValid) throw new ArgumentException("Unknown profile/version or invalid configuration.");
         ValidateLimits(snapshot.Limits);
 
         var limits = snapshot.Limits;
@@ -436,6 +473,10 @@ public static class AnalysisRequestPacker
                 throw new InvalidOperationException($"file {f.FileId} has an invalid fileId");
             if (!AnalysisIdentity.IsValidOpaqueId(f.RelativePath, AnalysisLimits.MaxPathBytes))
                 throw new InvalidOperationException($"file {f.FileId} relativePath exceeds the path bound");
+            if (snapshot.Profile.Id == AnalysisCatalog.KnuId
+                && (Client.Workspace.Transfer.ProjectPathValidator.Validate(f.RelativePath) is not null
+                    || f.RelativePath.Contains('\\') || !KnuWireValidation.IsHash(f.Sha256.ToString())))
+                throw new ArgumentException("Invalid KNU project file path or hash.");
             if (!seenIds.Add(f.FileId.ToString()))
                 throw new InvalidOperationException($"duplicate fileId {f.FileId}");
         }
@@ -477,7 +518,8 @@ public static class AnalysisRequestPacker
             BaseHeadRevisionId: snapshot.BaseHeadRevisionId?.ToString(),
             Profile: new AnalysisProfileDto(snapshot.Profile.Id, snapshot.Profile.Version),
             Limits: limitsDto,
-            Files: descriptors);
+            Files: descriptors,
+            Configuration: snapshot.Configuration);
 
         var envelope = new AnalysisRequestEnvelope(
             ProtocolVersion: 1,
@@ -485,7 +527,7 @@ public static class AnalysisRequestPacker
             Operation: "analyzeSource",
             Payload: payload);
 
-        string metadataJson = JsonSerializer.Serialize(envelope, AnalysisJson.Options);
+        string metadataJson = AnalysisJson.SerializeRequest(envelope);
         if (Encoding.UTF8.GetByteCount(metadataJson) > AnalysisLimits.DMaxResultBytes)
             throw new InvalidOperationException("metadataJson exceeds the 4 MiB JSON cap");
         return (metadataJson, packed);

@@ -269,6 +269,7 @@ public sealed class RustSourceAnalyzer : ISourceAnalyzer
             using var doc = JsonDocument.Parse(json);
             if (doc.RootElement.ValueKind != JsonValueKind.Object)
                 return FailedSafeWithEpoch(requestId, workerEpoch, "InvalidInput", "The analysis worker returned a non-object response.");
+            KnuWireValidation.NoDuplicates(doc.RootElement);
             if (!doc.RootElement.TryGetProperty("status", out var s) || s.ValueKind != JsonValueKind.String)
                 return FailedSafeWithEpoch(requestId, workerEpoch, "InvalidInput", "The analysis worker returned a response without a status.");
             status = s.GetString() ?? "";
@@ -289,6 +290,8 @@ public sealed class RustSourceAnalyzer : ISourceAnalyzer
         {
             case "completed":
                 {
+                    if (Encoding.UTF8.GetByteCount(json) > snapshot.Limits.MaxResultBytes)
+                        return FailedSafeWithEpoch(requestId, workerEpoch, "InvalidInput", "The completed analysis exceeded the requested result limit.");
                     AnalysisResponse.Completed c;
                     try { c = (AnalysisResponse.Completed)AnalysisJson.ParseResponse(json); }
                     catch (JsonException) { return FailedSafeWithEpoch(requestId, workerEpoch, "InvalidInput", "The analysis worker returned a malformed completed response."); }
@@ -300,6 +303,8 @@ public sealed class RustSourceAnalyzer : ISourceAnalyzer
                     if (!string.Equals(c.Result.Profile.Id, snapshot.Profile.Id, StringComparison.Ordinal)
                         || !string.Equals(c.Result.Profile.Version, snapshot.Profile.Version, StringComparison.Ordinal))
                         return FailedSafeWithEpoch(requestId, workerEpoch, "InvalidInput", "The analysis response did not match the requested profile.");
+                    try { KnuWireValidation.Snapshot(c.Result, snapshot); }
+                    catch (JsonException) { return FailedSafeWithEpoch(requestId, workerEpoch, "InvalidInput", "The analysis response did not match the captured bytes or selection."); }
                     return new AnalysisJobResult.Completed(requestId, workerEpoch, c.Result);
                 }
             case "failed":
@@ -343,6 +348,9 @@ public sealed class RustSourceAnalyzer : ISourceAnalyzer
                                 return FailedSafeWithEpoch(requestId, workerEpoch, "UnsupportedProtocol", "The cancelled response has an unsupported protocolVersion.");
                             if (!string.Equals(rid, requestId, StringComparison.Ordinal))
                                 return FailedSafeWithEpoch(requestId, workerEpoch, "InvalidInput", "The cancelled response did not match the request.");
+                            if ((doc.RootElement.TryGetProperty("payload", out var pl) && pl.ValueKind != JsonValueKind.Null)
+                                || (doc.RootElement.TryGetProperty("error", out var er) && er.ValueKind != JsonValueKind.Null))
+                                return FailedSafeWithEpoch(requestId, workerEpoch, "InvalidInput", "The cancelled response carried an unexpected body.");
                             return new AnalysisJobResult.Cancelled(requestId, workerEpoch);
                         }
                     }

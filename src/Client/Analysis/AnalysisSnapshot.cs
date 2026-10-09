@@ -34,9 +34,9 @@ public sealed record AnalysisLimits(
     int MaxDiagnosticsPerProject,
     int MaxBraceDepth)
 {
-    public const long DMaxBytesPerFile = 8L * 1024 * 1024;
-    public const int DMaxFiles = 5000;
-    public const long DMaxTotalBytes = 64L * 1024 * 1024;
+    public const long DMaxBytesPerFile = Client.Workspace.Patching.WorkspaceTextLimits.FileBytes;
+    public const int DMaxFiles = Client.Workspace.Patching.WorkspaceTextLimits.FileCount;
+    public const long DMaxTotalBytes = Client.Workspace.Patching.WorkspaceTextLimits.ProjectBytes;
     public const long DMaxResultBytes = 4L * 1024 * 1024;
     public const int DMaxTokensPerFile = 20000;
     public const int DMaxTokensPerProject = 100000;
@@ -114,7 +114,12 @@ public sealed record AnalysisSnapshot(
     AnalysisProfile Profile,
     AnalysisLimits Limits,
     ImmutableArray<CapturedFile> Files,
-    ImmutableArray<ExcludedFile> Excluded);
+    ImmutableArray<ExcludedFile> Excluded,
+    AnalysisConfigurationDto? Configuration = null,
+    long SelectionVersion = 0)
+{
+    public AnalysisSelection Selection => new(Profile, Configuration);
+}
 
 /// <summary>Typed capture result. Never an untyped exception or an empty fake
 /// snapshot: an all-or-unavailable policy — if any eligible text file's bytes
