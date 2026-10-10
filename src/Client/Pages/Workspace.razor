@@ -4,6 +4,8 @@
 @inject FolderTransferService Folders
 @inject AnalysisCoordinator AnalysisCoord
 @inject SourceNavigator Navigator
+@using Client.Review
+@inject IChangeReviewService ReviewService
 @inject IJSRuntime JS
 @implements IAsyncDisposable
 
@@ -338,9 +340,22 @@ else
             </aside>
         </div>
 
-        <section class="analysis-panel" aria-label="Engine analysis" data-testid="analysis-panel">
-            <h2>Engine analysis</h2>
+        <section class="analysis-panel" aria-label="Source analysis" data-testid="analysis-panel" data-generation="@Coordinator.WorkingGeneration" data-session="@Coordinator.SessionId" data-head="@Coordinator.CurrentRevision?.Id">
+            <h2>@(AnalysisCoord.CurrentProfile.Id == AnalysisCatalog.KnuId ? "Source analysis" : "Engine analysis")</h2>
             <div class="analysis-controls">
+                <label for="analysis-profile">Analysis profile</label>
+                <select id="analysis-profile" data-testid="analysis-profile" value="@AnalysisCoord.CurrentProfile.Id" @onchange="ChangeAnalysisProfile">
+                    <option value="engine-structural">Engine checks</option>
+                    <option value="knu-csc-2025-source">KNU CSC 2025 source observations</option>
+                </select>
+                @if (AnalysisCoord.CurrentConfiguration is { } configuration)
+                {
+                    <label for="analysis-work-type">Work type</label>
+                    <select id="analysis-work-type" data-testid="analysis-work-type" value="@AnalysisPresentation.WorkValue(configuration.WorkType)" @onchange="ChangeWorkType">
+                        @foreach (var work in Enum.GetValues<AnalysisWorkType>())
+                        { <option value="@AnalysisPresentation.WorkValue(work)">@AnalysisPresentation.WorkType(work)</option> }
+                    </select>
+                }
                 <button @onclick="AnalyzeNowAsync" data-testid="analyze-now">Analyze now</button>
                 <button @onclick="CancelAnalysis" data-testid="cancel-analysis">Cancel</button>
             </div>
@@ -356,16 +371,17 @@ else
                 }
                 <section class="analysis-findings" aria-label="Engine checks">
                     <h3>Engine checks</h3>
-                    @if (report.Result.Diagnostics.Count == 0 && !IsIncomplete(report))
+                    <p data-testid="engine-outcome">Independent lexical engine outcome: @EngineOutcome(report).</p>
+                    @if (!report.Result.Diagnostics.Any(d => d.Origin == "engine") && !IsIncomplete(report))
                     {
                         <p class="hint" data-testid="analysis-pass">No engine-check findings in the supported lexical subset. This is not a document-correctness or compliance claim.</p>
                     }
                     else
                     {
                         <ul class="finding-list" data-testid="finding-list">
-                            @foreach (var d in report.Result.Diagnostics)
+                            @foreach (var d in report.Result.Diagnostics.Where(d => d.Origin == "engine"))
                             {
-                                <li class="finding" data-testid="analysis-finding"
+                                <li class="finding" data-testid="analysis-finding" data-origin="engine"
                                     data-diag-id="@d.Id" data-snapshot-id="@report.Snapshot.Id.ToString()"
                                     data-epoch="@report.WorkerEpoch">
                                     <button class="finding-link" @onclick='() => OnFindingClickAsync(d)'
@@ -397,7 +413,7 @@ else
                     {
                         <section class="analysis-unavailable" data-testid="analysis-unavailable">
                             <h4>Unavailable</h4>
-                            <p class="hint">These checks require a capability this build does not have.</p>
+                            <p class="hint">These checks require a capability this build does not have. PDF facts and rendered PDF checks are unavailable; source observations do not measure rendered layout.</p>
                             <ul>
                                 @foreach (var u in report.Result.UnavailableCapabilities)
                                 { <li>@u</li> }
@@ -405,12 +421,16 @@ else
                         </section>
                     }
                 </section>
+                @if (report.Result.Knu is not null)
+                { <KnuReportView Report="report" FindingSelected="OnFindingClickAsync" FixRequested="PreviewFixAsync" ReviewWorking="@(_reviewPending || CurrentReview.Busy)" /> }
             }
             @if (!string.IsNullOrEmpty(_navNotice))
             {
                 <p class="hint nav-notice" role="status" data-testid="nav-notice">@_navNotice</p>
             }
         </section>
+        <ReviewPanel State="CurrentReview" Writable="ReviewWritable" Working="_reviewPending" Notice="@_reviewNotice"
+                     Accept="AcceptReviewAsync" Decline="DeclineReview" Retry="RetryReviewAsync" Undo="UndoReviewAsync" Cancel="CancelReview" />
     </section>
 }
 
@@ -546,11 +566,36 @@ else
     private static bool IsIncomplete(AnalysisReport report)
     {
         var cov = report.Result.Coverage;
-        return report.Result.AggregateOutcome == RuleOutcome.Indeterminate
-            || report.Result.AggregateOutcome == RuleOutcome.Unavailable
-            || cov.DiagnosticsTruncated || cov.ResultTruncated
+        return EngineOutcome(report) == RuleOutcome.Indeterminate
+            || EngineOutcome(report) == RuleOutcome.Unavailable
+            || (report.Result.Knu is null && cov.DiagnosticsTruncated) || cov.ResultTruncated
             || cov.TruncatedFiles.Count > 0
             || report.Result.Facts.Files.Any(f => f.Truncated || f.BraceDepthExceeded);
+    }
+
+    private static RuleOutcome EngineOutcome(AnalysisReport report)
+        => report.Result.Knu?.EngineAggregateOutcome ?? report.Result.AggregateOutcome;
+
+    private void ChangeAnalysisProfile(ChangeEventArgs e)
+    {
+        ClearSelectionIntent();
+        if (e.Value?.ToString() == "engine-structural") AnalysisCoord.SetSelection(AnalysisSelection.EngineStructural());
+        else if (e.Value?.ToString() == AnalysisCatalog.KnuId) AnalysisCoord.SetSelection(AnalysisSelection.Knu(AnalysisWorkType.Unspecified));
+        else AnalysisCoord.SetSelection(default);
+    }
+    private void ChangeWorkType(ChangeEventArgs e)
+    {
+        ClearSelectionIntent();
+        var work = e.Value?.ToString() switch {
+            "unspecified" => AnalysisWorkType.Unspecified, "coursework" => AnalysisWorkType.Coursework,
+            "bachelorQualification" => AnalysisWorkType.BachelorQualification,
+            "masterQualification" => AnalysisWorkType.MasterQualification, _ => (AnalysisWorkType)(-1),
+        };
+        AnalysisCoord.SetSelection(AnalysisSelection.Knu(work));
+    }
+    private void ClearSelectionIntent()
+    {
+        _navCts?.Cancel(); _pendingSelect = null; _navNotice = null;
     }
 
     private static string FileLabel(AnalysisReport report, string fileId)
@@ -589,6 +634,8 @@ else
         // missed. The handler marshals through InvokeAsync and reads the
         // CURRENT coordinator.State (never a stale event argument).
         AnalysisCoord.Changed += OnAnalysisChanged;
+        ReviewService.Changed += OnReviewChanged;
+        _reviewSession = Coordinator.SessionId;
         await Coordinator.LoadCapabilitiesAsync(System.Threading.CancellationToken.None);
         _folderCap = await Folders.GetCapabilitiesAsync(System.Threading.CancellationToken.None);
         await RefreshProjectsAsync();
@@ -738,6 +785,14 @@ else
 
     private async Task CloseAsync()
     {
+        // Closing cancels page-owned pending review authorization, but never
+        // clears accepted recovery if the normal close/save flush must fail.
+        _reviewIntent++;
+        _reviewCts?.Cancel();
+        ReviewService.Cancel();
+        _reviewPending = false;
+        _reviewNotice = null;
+        _seenPreview = null;
         // CloseAsync flushes saves internally until clean (or aborts on failure),
         // so just call it. It serializes against save/import/restore.
         await Coordinator.CloseAsync(System.Threading.CancellationToken.None);
@@ -1224,8 +1279,10 @@ else
     private void ScheduleAutosave()
     {
         CancelAutosave();
-        _autosaveCts = new System.Threading.CancellationTokenSource();
-        var token = _autosaveCts.Token;
+        if (_pageDisposed || Coordinator.Project is not { } project) return;
+        var session = Coordinator.SessionId;
+        var timer = _autosaveCts = new System.Threading.CancellationTokenSource();
+        var token = timer.Token;
         _ = Task.Run(async () =>
         {
             try
@@ -1233,11 +1290,16 @@ else
                 await Task.Delay(TimeSpan.FromSeconds(2), token);
                 await InvokeAsync(async () =>
                 {
-                    await Coordinator.SaveAsync(System.Threading.CancellationToken.None);
-                    StateHasChanged();
+                    // A cancelled debounce can already be queued on the renderer.
+                    // Never let an old page/timer save whichever project is open.
+                    if (_pageDisposed || token.IsCancellationRequested || !ReferenceEquals(_autosaveCts, timer)
+                        || Coordinator.SessionId != session || Coordinator.Project?.Id != project.Id) return;
+                    await Coordinator.SaveSessionAsync(project.Id, session, token);
+                    if (!_pageDisposed && Coordinator.SessionId == session && Coordinator.Project?.Id == project.Id)
+                        StateHasChanged();
                 });
             }
-            catch (System.Threading.Tasks.TaskCanceledException) { /* debounce superseded */ }
+            catch (System.OperationCanceledException) { /* debounce/page/session superseded; no retry loop */ }
         });
     }
 
@@ -1259,6 +1321,10 @@ else
         //    DI owns them (scoped = app lifetime in WASM); returning to this
         //    page must reuse the same coordinator.
         AnalysisCoord.Changed -= OnAnalysisChanged;
+        ReviewService.Changed -= OnReviewChanged;
+        _reviewIntent++;
+        _reviewCts?.Cancel();
+        ReviewService.Cancel(); // cancel page work, never dispose the scoped service or erase accepted recovery
         AnalysisCoord.Cancel();
         _pendingSelect = null;
         _navCts?.Cancel();

@@ -97,7 +97,21 @@ button.muted { color: #6e7781; }
 .analysis-panel h2 { margin: 0 0 .25rem; font-size: 1.1rem; }
 .analysis-panel h3 { margin: .5rem 0 .25rem; font-size: 1rem; }
 .analysis-panel h4 { margin: .5rem 0 .15rem; font-size: .9rem; color: #202735; }
-.analysis-controls { display: flex; gap: .5rem; margin: .25rem 0; }
+.analysis-controls { display: flex; gap: .5rem; margin: .25rem 0; flex-wrap: wrap; align-items: center; }
+.analysis-controls select { padding: .45rem; border: 1px solid #8c959f; border-radius: 6px; max-width: 100%; }
+.knu-report { margin-top: 1rem; border-top: 2px solid #57606a; padding-top: .5rem; }
+.knu-scope { font-weight: 600; }
+.knu-rule { background: #fff; border: 1px solid #d0d7de; border-radius: 6px; margin: .75rem 0; padding: .75rem; }
+.knu-evidence { border-left: 3px solid #8c959f; padding-left: .75rem; margin: .5rem 0; }
+.knu-evidence pre { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 12rem; overflow: auto; }
+.knu-report p { overflow-wrap: anywhere; }
+.review-panel { margin-top: 1rem; padding: .85rem; border: 2px solid #57606a; border-radius: 8px; background: #f6f8fa; }
+.review-preview, .review-file { margin: .65rem 0; padding: .6rem; background: white; border: 1px solid #d0d7de; border-radius: 6px; }
+.review-panel p, .review-panel h4 { overflow-wrap: anywhere; }
+.review-panel pre, .review-diff { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 15rem; overflow: auto; }
+.review-panel pre { padding: .5rem; background: #f6f8fa; }
+.review-panel button { margin: .25rem .4rem .25rem 0; }
+.review-panel [role=alert] { border-left: 4px solid #9a6700; padding-left: .5rem; }
 .analysis-findings { margin-top: .5rem; }
 .finding-list { list-style: none; padding: 0; margin: 0; }
 .finding { border-top: 1px solid #eaeef2; }

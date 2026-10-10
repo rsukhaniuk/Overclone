@@ -2,6 +2,7 @@ using System.Collections.Immutable;
 using System.Text;
 using Client.Analysis;
 using Client.Review;
+using Client.Pages;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;
@@ -371,6 +372,25 @@ public class ChangeReviewServiceTests
         Assert.True(b.Changed);Assert.NotEqual(a.ActionId,b.ActionId);Assert.Equal(ReviewCode.Consumed,(await h.Service.UndoAsync(a.ActionId!.Value,None)).Failure!.Code);
         Assert.Equal(ReviewStatus.UndoSaved,(await h.Service.UndoAsync(b.ActionId!.Value,None)).Status);
         foreach(var f in first.Prepared.Files)Assert.Equal(f.After.ToArray(),await h.F.C.GetFileBytesAsync(h.F.C.Files.Single(w=>w.Id==f.FileId),None));
+    }
+
+    [Fact]
+    public async Task Razor_review_component_escapes_explanations_and_bounds_large_previews_without_changing_owned_edits()
+    {
+        await using var h=await Harness.Open();var file=h.F.C.Files[0];
+        Assert.True(h.F.C.EditText(file.Id,"<img src=x onerror=alert(1)>"+new string('x',1200000)));
+        var inputs=await h.Inputs();var set=TextChangeSet.Create(TextPatchOrigin.User,"<script>untrusted explanation</script>",inputs.Take(1).ToArray()).ChangeSet!;
+        var preview=(await h.Service.PreviewAsync(set,None)).Preview!;
+        using var services=new ServiceCollection().AddLogging().BuildServiceProvider();
+        await using var renderer=new HtmlRenderer(services,services.GetRequiredService<ILoggerFactory>());
+        var html=await renderer.Dispatcher.InvokeAsync(async()=>{
+            var rendered=await renderer.RenderComponentAsync<ReviewPanel>(ParameterView.FromDictionary(new Dictionary<string,object?>{{"State",h.Service.State},{"Writable",true}}));
+            return rendered.ToHtmlString();
+        });
+        Assert.Contains("&lt;script&gt;untrusted explanation&lt;/script&gt;",html);Assert.Contains("&lt;img src=x",html);
+        Assert.DoesNotContain("<script>",html);Assert.DoesNotContain("<img ",html);Assert.Contains("bounded excerpt",html);Assert.Contains("not a complete diff",html);
+        Assert.True(html.Length<20000);Assert.True(preview.Prepared.Files[0].Before.Length>1000000);
+        Assert.Equal(0,h.F.Repo.Commits);Assert.Equal(preview.Id,h.Service.State.Preview!.Id);
     }
 
     private sealed class Harness:IAsyncDisposable

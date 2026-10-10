@@ -1,0 +1,97 @@
+@using Client.Review
+
+<section class="review-panel" aria-label="Reviewed source changes" data-testid="review-panel" data-status="@State.Status" data-busy="@((Working || State.Busy).ToString().ToLowerInvariant())">
+    <h2>Review source changes</h2>
+    <p class="hint" data-testid="review-policy">Explicit acceptance only; analysis and saving never apply fixes. Undo is one level, only in this open-project session. A later accepted change replaces the previous persisted undo entry. Local revision history is separate durable recovery.</p>
+    @if (Working || State.Busy || State.Status == ReviewStatus.Previewing)
+    { <p role="status" data-testid="review-progress">Review operation in progress…</p> }
+    @if (!string.IsNullOrEmpty(Notice))
+    { <p role="status" data-testid="review-page-notice">@Notice</p> }
+    @if (State.Notice is { } failure)
+    { <p role="alert" data-testid="review-notice" data-code="@failure.Code">@failure.SafeMessage</p> }
+    @if (!Writable)
+    { <p class="hint" data-testid="review-readonly">Read-only or recovery session: you may inspect a preview, but acceptance, save retry and undo require this session's writer lock.</p> }
+    @if (State.Preview is { } preview)
+    {
+        <section class="review-preview" aria-label="Proposed exact source edits" data-testid="review-preview" data-preview-id="@preview.Id">
+            <h3>Proposed change — not applied</h3>
+            <p data-testid="review-explanation">@preview.Proposal.Explanation</p>
+            @if (preview.Citation is { } cite)
+            { <p data-testid="review-citation">@cite.RuleId v@cite.Version; guideline §@cite.Section; printed pages @string.Join(", ", cite.PrintedPages); PDF pages @string.Join(", ", cite.PdfPages).</p> }
+            <p class="hint">Changes an explicit source declaration only. Rendered PDF layout is unverified.</p>
+            <p class="hint">Snapshot generation @preview.Binding.Workspace.WorkingGeneration; source selection @preview.Binding.Selection.Profile.Id. Byte spans below are authoritative UTF-8 offsets including any BOM.</p>
+            <p class="hint">Text display marks ⟦BOM⟧, ⟦CR⟧ and ⟦LF⟧. Displays are bounded; the full validated edit is retained.</p>
+            @foreach (var file in preview.Files.Take(ReviewPresentation.MaxFiles))
+            {
+                <section class="review-file" data-testid="review-file">
+                    <h4 data-testid="review-path">@file.Exact.RelativePath</h4>
+                    <p data-testid="review-byte-policy">Before @file.Exact.Before.Length bytes; after @file.Exact.After.Length bytes. BOM retained: @file.Exact.Before.HasBom → @file.Exact.After.HasBom. All bytes outside the exact edits are preserved.</p>
+                    @foreach (var edit in file.Exact.Edits.Take(ReviewPresentation.MaxEdits))
+                    {
+                        <div data-testid="review-edit" data-start-byte="@edit.StartByte" data-end-byte="@edit.EndByte">
+                            <p>UTF-8 bytes [@edit.StartByte, @edit.EndByte); expected @edit.Expected.Length bytes → replacement @edit.Replacement.Length bytes.</p>
+                            <h5>Expected original</h5><pre data-testid="review-expected">@ReviewPresentation.Bytes(edit.Expected.Span)</pre>
+                            <h5>Replacement</h5><pre data-testid="review-replacement">@ReviewPresentation.Bytes(edit.Replacement.Span)</pre>
+                        </div>
+                    }
+                    @if (file.Exact.Edits.Length > ReviewPresentation.MaxEdits)
+                    { <p>Only the first @ReviewPresentation.MaxEdits edits are displayed; review a bounded summary, not a complete edit listing.</p> }
+                    <details>
+                        <summary>Bounded before / after source excerpts</summary>
+                        <h5>Before excerpt</h5><pre data-testid="review-before">@ReviewPresentation.Bytes(file.Exact.Before.Span)</pre>
+                        <h5>After excerpt</h5><pre data-testid="review-after">@ReviewPresentation.Bytes(file.Exact.After.Span)</pre>
+                    </details>
+                    <p class="hint">@file.DiffScope</p>
+                    @if (file.SummaryOnly)
+                    { <p data-testid="review-diff-summary">Detailed line diff exceeds its display budget. Exact lengths, spans and bounded excerpts are shown; this is not a complete diff.</p> }
+                    else
+                    {
+                        <ul class="review-diff" data-testid="review-line-diff">
+                            @foreach (var line in file.Lines.Take(ReviewPresentation.MaxLines))
+                            { <li><code>@line.Op</code> <span>@ReviewPresentation.Text(line.Text)</span></li> }
+                        </ul>
+                        @if (file.Lines.Length > ReviewPresentation.MaxLines) { <p>Line presentation truncated to @ReviewPresentation.MaxLines lines.</p> }
+                    }
+                </section>
+            }
+            @if (preview.Files.Length > ReviewPresentation.MaxFiles) { <p>Only the first @ReviewPresentation.MaxFiles affected files are displayed.</p> }
+            @if (State.Action is { Persisted: false })
+            { <p>Previous accepted recovery has not been saved; persist or recover it before accepting another change.</p> }
+            <button data-testid="review-accept" disabled="@(!Writable || Working || State.Busy || State.Action is { Persisted: false })" @onclick="()=>Accept.InvokeAsync(preview.Id)">Accept reviewed change</button>
+            <button data-testid="review-decline" disabled="@(Working || State.Busy)" @onclick="()=>Decline.InvokeAsync(preview.Id)">Decline</button>
+        </section>
+    }
+    else if (State.Action is null && !Working && State.Status != ReviewStatus.Previewing)
+    { <p class="hint">No pending preview. Eligible source findings offer Preview fix; nothing is applied automatically.</p> }
+    @if (State.Action is { } action)
+    {
+        <section aria-label="Accepted review recovery" data-testid="review-action" data-action-id="@action.Id" data-persisted="@(action.Persisted.ToString().ToLowerInvariant())" data-undone="@(action.UndoApplied.ToString().ToLowerInvariant())">
+            <p role="status" data-testid="review-persistence">@ReviewPresentation.Persistence(action)</p>
+            <p data-testid="review-workspace-state">@(State.WorkspaceDirty ? "Current workspace has unsaved changes (separate from action persistence)." : "Current workspace is clean.")</p>
+            <ul>@foreach (var file in action.Exact.Files.Take(ReviewPresentation.MaxFiles)) { <li>@file.RelativePath</li> }</ul>
+            @if (!action.Persisted)
+            {
+                <p data-testid="review-recovery-guidance">Exact local working bytes and recovery are retained. Retry save persists without reapplying. ZIP/folder export requires a successful save/flush; a failed save cannot export an older head as your current work.</p>
+                <button data-testid="review-retry" disabled="@(!Writable || Working || State.Busy)" @onclick="()=>Retry.InvokeAsync(action.Id)">Retry save</button>
+            }
+            @if (action.CanUndo)
+            { <button data-testid="review-undo" disabled="@(!Writable || Working || State.Busy)" @onclick="()=>Undo.InvokeAsync(action.Id)">Undo reviewed change</button> }
+            else if (action.UndoApplied)
+            { <p data-testid="review-undo-consumed">Undo has been applied and cannot be repeated. If unsaved, use Retry save.</p> }
+        </section>
+    }
+    @if (Working || State.Busy || State.Preview is not null || State.Status == ReviewStatus.Previewing)
+    { <button data-testid="review-cancel" @onclick="()=>Cancel.InvokeAsync()">Cancel pending review work</button> }
+</section>
+
+@code {
+    [Parameter, EditorRequired] public ReviewServiceState State { get; set; } = null!;
+    [Parameter] public bool Writable { get; set; }
+    [Parameter] public bool Working { get; set; }
+    [Parameter] public string? Notice { get; set; }
+    [Parameter] public EventCallback<Guid> Accept { get; set; }
+    [Parameter] public EventCallback<Guid> Decline { get; set; }
+    [Parameter] public EventCallback<Guid> Retry { get; set; }
+    [Parameter] public EventCallback<Guid> Undo { get; set; }
+    [Parameter] public EventCallback Cancel { get; set; }
+}
