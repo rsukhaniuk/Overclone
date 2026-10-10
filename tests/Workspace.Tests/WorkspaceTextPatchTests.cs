@@ -255,7 +255,7 @@ public class WorkspaceTextPatchTests
         internal Project Project=new(ProjectId.New(),"patch-test",null);
         internal ProjectRevision Revision;
         internal Dictionary<SHA256,byte[]> Content=new();internal int Commits,BinaryReads;
-        internal bool FailSave,HeadVerified=true;internal SHA256? ThrowReadHash;
+        internal bool FailSave,IgnoreCommitCancellation,HeadVerified=true;internal SHA256? ThrowReadHash;
         internal Barrier? ReadBarrier,HeadBarrier,CommitBarrier;
         internal Repo(){
             byte[] one=[239,187,191,..B("Привіт🙂\r\nleft\rend\n")];byte[] two=B("second\r\n");byte[] binary=[255,0,1];
@@ -275,7 +275,7 @@ public class WorkspaceTextPatchTests
         }
         public async Task<bool> VerifyHeadAsync(ProjectId id,RevisionId? head,CancellationToken ct){if(HeadBarrier is{} b)await b.Wait(ct);return HeadVerified&&Project.Id==id&&Project.HeadRevisionId==head;}
         public async Task<CommitResult> CommitAsync(ProjectCommit batch,RevisionId? head,CancellationToken ct){
-            if(CommitBarrier is{} b)await b.Wait(ct);if(FailSave)return CommitResult.Failure("QuotaExceeded","Synthetic save failure");
+            if(CommitBarrier is{} b)await b.Wait(IgnoreCommitCancellation?CancellationToken.None:ct);if(FailSave)return CommitResult.Failure("QuotaExceeded","Synthetic save failure");
             if(head!=Project.HeadRevisionId)return CommitResult.Conflict(Project.HeadRevisionId);
             foreach(var c in batch.Content)Content[c.Hash]=c.Bytes.ToArray();Revision=batch.SelectedHead;Project=Project with{HeadRevisionId=Revision.Id};Commits++;return CommitResult.Saved(Revision.Id);
         }

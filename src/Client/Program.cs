@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using Client;
 using Client.Analysis;
+using Client.Review;
 using Client.Workspace;
 using Client.Workspace.History;
 using Client.Workspace.Transfer;
@@ -34,5 +35,7 @@ builder.Services.AddScoped<ISourceAnalyzer, RustSourceAnalyzer>();
 // init/editing/saving.
 builder.Services.AddScoped<AnalysisCoordinator>();
 builder.Services.AddScoped<SourceNavigator>();
+// Session-scoped review/recovery foundation; no UI/on-save caller in 4b.
+builder.Services.AddScoped<IChangeReviewService, ChangeReviewService>();
 
 await builder.Build().RunAsync();
