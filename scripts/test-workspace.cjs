@@ -578,6 +578,15 @@ async function saveAndWait(page) {
       assert.ok(!writable, "After takeover the editor must be writable");
       // The takeover must have reloaded the latest head ("tab1 second save"),
       // not the stale read-only snapshot ("tab1 content").
+      // Permission/banner state changes before TakeOverAsync's awaited load
+      // completes. Wait for its content postcondition, not an arbitrary delay.
+      await page2.waitForFunction(
+        () =>
+          document.querySelector("[data-testid=editor]")?.value ===
+          "tab1 second save",
+        null,
+        { timeout: 20000 },
+      );
       const afterTakeover = await page2
         .locator("[data-testid=editor]")
         .inputValue();

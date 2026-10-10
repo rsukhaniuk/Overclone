@@ -12,7 +12,7 @@ const { chromium } = require("playwright");
         let healthy = false;
         for (let attempt = 0; attempt < 90; attempt++) {
             try {
-                const response = await page.request.get(`${base}/api/health`, {
+                const response = await page.request.get(`${base}/`, {
                     timeout: 2000,
                 });
                 if (response.ok()) {
@@ -24,8 +24,14 @@ const { chromium } = require("playwright");
             }
             await new Promise((resolve) => setTimeout(resolve, 1000));
         }
-        assert.ok(healthy, "ASP.NET Core did not become healthy");
-        await page.goto(`${base}/smoke`);
+        assert.ok(
+            healthy,
+            "The static application shell did not become available",
+        );
+        // Static hosting needs no backend health endpoint or route fallback.
+        // Enter via the shell, then use the actual Blazor navigation route.
+        await page.goto(`${base}/`);
+        await page.locator('a.nav-link[href="/smoke"]').click();
         await page
             .getByRole("status")
             .filter({ hasText: "C++ and Rust WebAssembly workers ready." })
