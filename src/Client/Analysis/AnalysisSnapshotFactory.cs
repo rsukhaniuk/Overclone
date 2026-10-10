@@ -37,12 +37,16 @@ namespace Client.Analysis;
 public sealed class AnalysisSnapshotFactory : IAsyncDisposable
 {
     private readonly WorkspaceCoordinator _coordinator;
+    private readonly Func<AnalysisSelection>? _currentSelection;
+    private readonly Func<long>? _selectionVersion;
     private long _epoch;
     private bool _disposed;
 
-    public AnalysisSnapshotFactory(WorkspaceCoordinator coordinator)
+    public AnalysisSnapshotFactory(WorkspaceCoordinator coordinator, Func<AnalysisSelection>? currentSelection = null, Func<long>? selectionVersion = null)
     {
         _coordinator = coordinator;
+        _currentSelection = currentSelection;
+        _selectionVersion = selectionVersion;
         _coordinator.WorkspaceChanged += OnWorkspaceChanged;
     }
 
@@ -58,11 +62,16 @@ public sealed class AnalysisSnapshotFactory : IAsyncDisposable
     /// synchronous preflight passes before the first await; an unavailable or
     /// corrupt text file fails the whole capture (Unavailable/InvalidInput) with
     /// the affected file metadata and NO empty substitution.</summary>
-    public async Task<CaptureResult> CaptureAsync(
+    public Task<CaptureResult> CaptureAsync(
         AnalysisProfile? profile,
         CancellationToken ct,
         AnalysisLimitsDto? requestLimits = null)
+        => CaptureSelectionAsync(new(profile ?? AnalysisProfile.EngineStructural(), null), ct, requestLimits);
+
+    public async Task<CaptureResult> CaptureSelectionAsync(
+        AnalysisSelection selection, CancellationToken ct, AnalysisLimitsDto? requestLimits = null)
     {
+        // Selection is an immutable value captured BEFORE the first await.
         // ---- synchronous, BEFORE the first await ----
         if (_disposed)
             return new CaptureResult.Disposed();
@@ -71,9 +80,8 @@ public sealed class AnalysisSnapshotFactory : IAsyncDisposable
         if (_coordinator.Project is not { } project)
             return new CaptureResult.NoProject();
 
-        var profileVal = profile ?? AnalysisProfile.EngineStructural();
-        if (!AnalysisIdentity.IsValidOpaqueId(profileVal.Id, AnalysisLimits.MaxIdBytes)
-            || !AnalysisIdentity.IsValidOpaqueId(profileVal.Version, AnalysisLimits.MaxIdBytes))
+        var profileVal = selection.Profile;
+        if (!selection.IsValid)
             return new CaptureResult.InvalidInput(
                 "profile id/version must be nonempty strict-UTF-8 <=128 bytes", Array.Empty<ExcludedFile>());
         if (!LimitsAreNonnegative(requestLimits))
@@ -86,6 +94,11 @@ public sealed class AnalysisSnapshotFactory : IAsyncDisposable
         var projectId = project.Id;
         long generationAtCapture = _coordinator.WorkingGeneration;
         var baseHead = _coordinator.CurrentRevision?.Id;
+        long selectionVersion = _selectionVersion?.Invoke() ?? 0;
+        bool Superseded() => IsSuperseded(sessionAtCapture, projectId, generationAtCapture, epochAtCapture)
+            || _coordinator.CurrentRevision?.Id != baseHead
+            || (_currentSelection is not null && _currentSelection() != selection)
+            || (_selectionVersion is not null && _selectionVersion() != selectionVersion);
 
         // ---- pass1: preflight counts and byte lengths WITHOUT cloning/copying ----
         var excluded = new List<ExcludedFile>();
@@ -104,7 +117,11 @@ public sealed class AnalysisSnapshotFactory : IAsyncDisposable
             }
 
             long declared;
-            if (IsUneditedDurable(wf))
+            if (wf.PendingTextBytes is { } exact)
+            {
+                declared = exact.Length;
+            }
+            else if (IsUneditedDurable(wf))
             {
                 declared = wf.DurableLength;
             }
@@ -178,7 +195,7 @@ public sealed class AnalysisSnapshotFactory : IAsyncDisposable
                 // disposed/cancelled/stale project still resolves first.
                 if (_disposed) return new CaptureResult.Disposed();
                 if (ct.IsCancellationRequested) return new CaptureResult.Cancelled();
-                if (IsSuperseded(sessionAtCapture, projectId, generationAtCapture, epochAtCapture))
+                if (Superseded())
                     return new CaptureResult.Superseded();
                 return new CaptureResult.InvalidInput(
                     "a text file contains malformed UTF-16",
@@ -205,7 +222,7 @@ public sealed class AnalysisSnapshotFactory : IAsyncDisposable
             // disposal must resolve Disposed, never a fresh snapshot.
             if (_disposed) return new CaptureResult.Disposed();
             if (ct.IsCancellationRequested) return new CaptureResult.Cancelled();
-            if (IsSuperseded(sessionAtCapture, projectId, generationAtCapture, epochAtCapture))
+            if (Superseded())
                 return new CaptureResult.Superseded();
 
             // Actual returned byte length and aggregate caps BEFORE any
@@ -234,7 +251,7 @@ public sealed class AnalysisSnapshotFactory : IAsyncDisposable
         // Final recheck before publication.
         if (_disposed) return new CaptureResult.Disposed();
         if (ct.IsCancellationRequested) return new CaptureResult.Cancelled();
-        if (IsSuperseded(sessionAtCapture, projectId, generationAtCapture, epochAtCapture))
+        if (Superseded())
             return new CaptureResult.Superseded();
 
         // A narrowly-caught expected storage failure resolves to Disposed /
@@ -243,7 +260,7 @@ public sealed class AnalysisSnapshotFactory : IAsyncDisposable
         CaptureResult ResolveStorageFailure(WorkingFile f)
             => _disposed ? new CaptureResult.Disposed()
             : ct.IsCancellationRequested ? new CaptureResult.Cancelled()
-            : IsSuperseded(sessionAtCapture, projectId, generationAtCapture, epochAtCapture)
+            : Superseded()
                 ? new CaptureResult.Superseded()
             : new CaptureResult.Unavailable(
                 "a text file's source bytes could not be read",
@@ -259,7 +276,9 @@ public sealed class AnalysisSnapshotFactory : IAsyncDisposable
             Profile: profileVal,
             Limits: limits,
             Files: ImmutableArray.CreateRange(captured.Where(c => c is not null).Cast<CapturedFile>()),
-            Excluded: ImmutableArray.CreateRange(excluded));
+            Excluded: ImmutableArray.CreateRange(excluded),
+            Configuration: selection.Configuration,
+            SelectionVersion: selectionVersion);
 
         return new CaptureResult.Captured(snapshot);
     }
@@ -293,6 +312,8 @@ public sealed class AnalysisSnapshotFactory : IAsyncDisposable
             return null;
         if (actualBom != clone.HasBom)
             return null;
+        if (clone.PendingTextBytes is { } exact && (exact.Content != clone.Content || exact.HasBom != clone.HasBom
+            || !exact.Span.SequenceEqual(bytes))) return null;
 
         var hash = Client.Workspace.Domain.SHA256.FromBytes(System.Security.Cryptography.SHA256.HashData(bytes));
         if (IsUneditedDurable(clone) && hash != clone.DurableHash)
@@ -310,7 +331,7 @@ public sealed class AnalysisSnapshotFactory : IAsyncDisposable
     }
 
     private static bool IsUneditedDurable(WorkingFile f)
-        => !f.IsNew && !f.DirtyContent && f.DurableHash is not null;
+        => f.PendingTextBytes is null && !f.IsNew && !f.DirtyContent && f.DurableHash is not null;
 
     private static ExcludedFile ExcludedFor(WorkingFile f, string reason)
         => new(f.Id, f.RelativePath, f.MediaKind, reason);
@@ -342,40 +363,7 @@ public sealed class AnalysisSnapshotFactory : IAsyncDisposable
     /// Returns false on a lone surrogate: the strict encoder does NOT replace
     /// it, it throws, so the caller reports InvalidInput.</summary>
     private static bool TryCountEditedBytes(string content, bool hasBom, out long length)
-    {
-        length = hasBom ? TextContent.Bom.Length : 0;
-        int i = 0;
-        int n = content.Length;
-        while (i < n)
-        {
-            char c = content[i];
-            if (c == '\r')
-            {
-                length++;
-                i += (i + 1 < n && content[i + 1] == '\n') ? 2 : 1;
-            }
-            else if (c == '\n')
-            {
-                length++;
-                i++;
-            }
-            else if (char.IsHighSurrogate(c))
-            {
-                if (i + 1 < n && char.IsLowSurrogate(content[i + 1])) { length += 4; i += 2; }
-                else { length = 0; return false; } // lone high surrogate
-            }
-            else if (char.IsLowSurrogate(c))
-            {
-                length = 0; return false; // lone low surrogate
-            }
-            else
-            {
-                length += c <= 0x7F ? 1 : c <= 0x7FF ? 2 : 3;
-                i++;
-            }
-        }
-        return true;
-    }
+        => TextContent.TryCountEditedBytes(content, hasBom, out length);
 
     public async ValueTask DisposeAsync()
     {

@@ -466,9 +466,9 @@ public class AnalysisCoordinatorTests
         debounce.MatureLatest();
         await r0.Task; // held with engine-structural
 
-        var prof = new AnalysisProfile("test-profile", "1");
+        var prof = AnalysisSelection.Knu(AnalysisWorkType.Unspecified);
         var rNext = analyzer.NewReached();
-        coord2.SetProfile(prof); // invalidate + immediate
+        coord2.SetSelection(prof); // invalidate + immediate
         // Release the old job echoing the OLD profile -> discarded.
         analyzer.AnalyzeGate!.TrySetResult(CompletedEcho(analyzer.LastSnapshot!, CancellationToken.None));
         analyzer.AnalyzeGate = null;
@@ -476,8 +476,8 @@ public class AnalysisCoordinatorTests
         await AwaitTerminalAsync(coord2);
 
         var completed = Assert.IsType<AnalysisState.Completed>(coord2.State);
-        Assert.Equal(prof, completed.Report.Snapshot.Profile);
-        Assert.Equal(prof.Id, completed.Report.Result.Profile.Id);
+        Assert.Equal(prof, completed.Report.Snapshot.Selection);
+        Assert.Equal(prof.Profile.Id, completed.Report.Result.Profile.Id);
         await coord2.DisposeAsync();
         await coord.DisposeAsync();
     }
@@ -1246,18 +1246,18 @@ public class AnalysisCoordinatorTests
         await gate.Reached.Task; // capture blocked in the read
 
         // Change the profile while the capture is held; then release the read.
-        var newProfile = new AnalysisProfile("switched-profile", "3");
+        var newProfile = AnalysisSelection.Knu(AnalysisWorkType.Coursework);
         // Arm the reached signal BEFORE the profile change so the NEW workflow's
         // AnalyzeAsync sets it (the OLD capture is cancelled via ct by SetProfile and
         // never reaches AnalyzeAsync).
         var r = analyzer.NewReached();
-        coord2.SetProfile(newProfile);
+        coord2.SetSelection(newProfile);
         gate.Release(bytesA); // orphan cleanup (OLD capture already OCE-settled)
         await r.Task; // NEW workflow (new profile) reaches the analyzer
         await AwaitTerminalAsync(coord2);
         var completed = Assert.IsType<AnalysisState.Completed>(coord2.State);
-        Assert.Equal(newProfile, completed.Report.Snapshot.Profile);
-        Assert.Equal(newProfile.Id, completed.Report.Result.Profile.Id);
+        Assert.Equal(newProfile, completed.Report.Snapshot.Selection);
+        Assert.Equal(newProfile.Profile.Id, completed.Report.Result.Profile.Id);
         await coord2.DisposeAsync();
         await coord.DisposeAsync();
     }
@@ -1448,7 +1448,7 @@ public class AnalysisCoordinatorTests
 
     private static AnalysisJobResult CompletedEcho(AnalysisSnapshot snap, CancellationToken ct)
         => new AnalysisJobResult.Completed("rid", 0, BuildResult(snap.Id, snap.Profile,
-            snap.Files.Length > 0 ? snap.Files[0].FileId : (FileId?)null));
+            snap.Files.Length > 0 ? snap.Files[0].FileId : (FileId?)null) with { Configuration = snap.Configuration });
 
     /// <summary>Build a valid canonical AnalysisResultDto echoing the given
     /// snapshot id and profile, with one Pass file facts entry per captured

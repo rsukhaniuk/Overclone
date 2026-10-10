@@ -71,12 +71,13 @@ public sealed class AnalysisCoordinator : IAsyncDisposable
     private readonly object _lock = new();
     // ---- under _lock (NO await while holding _lock) ----
     private long _intent;                   // monotonically increasing intent id
+    private long _selectionVersion;         // detects selection A -> B -> A
     private long _activeIntent = -1;        // intent id that owns _active
     private bool _active;                  // a capture/analyze workflow is in flight
     private bool _ready;                    // debounce matured, waiting to start
     private bool _queued;                   // a latest queued intent exists
-    private AnalysisProfile _queuedProfile; // the queued intent's profile
-    private AnalysisProfile _profile;       // currently selected profile
+    private AnalysisSelection _queuedProfile; // immutable queued profile/configuration
+    private AnalysisSelection _profile;       // current immutable selection
     private CancellationTokenSource? _debounceCts;
     private CancellationTokenSource? _activeCts;
     private Task? _debounceTask;
@@ -117,9 +118,9 @@ public sealed class AnalysisCoordinator : IAsyncDisposable
         _analyzer = analyzer;
         _debounce = db;
         _delayAsync = delayAsync ?? DefaultDelay;
-        _profile = AnalysisProfile.EngineStructural();
+        _profile = AnalysisSelection.EngineStructural();
         // Owned factory, subscribed first.
-        _factory = new AnalysisSnapshotFactory(coordinator);
+        _factory = new AnalysisSnapshotFactory(coordinator, () => CurrentSelection, () => CurrentSelectionVersion);
         _coordinator.WorkspaceChanged += OnWorkspaceChanged;
         if (_coordinator.IsOpen)
             Schedule(immediate: false);
@@ -138,10 +139,13 @@ public sealed class AnalysisCoordinator : IAsyncDisposable
     /// engine-structural version 0 (the single non-normative engine check; no
     /// KNU rules in M2a). Other profiles are used in tests only to exercise
     /// freshness; this coordinator adds no profile selector.</summary>
-    public AnalysisProfile CurrentProfile
+    public AnalysisProfile CurrentProfile => CurrentSelection.Profile;
+    public AnalysisSelection CurrentSelection
     {
         get { lock (_lock) return _profile; }
     }
+    public AnalysisConfigurationDto? CurrentConfiguration => CurrentSelection.Configuration;
+    public long CurrentSelectionVersion { get { lock (_lock) return _selectionVersion; } }
 
     /// <summary>The owned factory's local workspace epoch (delegated). Bumped on
     /// every WorkspaceChanged raise before this coordinator's handler observes
@@ -201,16 +205,18 @@ public sealed class AnalysisCoordinator : IAsyncDisposable
     /// dispatched. A repeated identical profile does not schedule redundant work.
     /// A valid change invalidates even without WorkspaceChanged/generation bump
     /// and reanalyzes immediately with the new profile.</summary>
-    public void SetProfile(AnalysisProfile profile)
+    public void SetProfile(AnalysisProfile profile) => SetSelection(new(profile, null));
+
+    public void SetSelection(AnalysisSelection profile)
     {
         AnalysisState? toRaise = null;
         bool invalid = false;
         lock (_lock)
         {
             if (_disposed) return;
-            if (!AnalysisIdentity.IsValidOpaqueId(profile.Id, AnalysisLimits.MaxIdBytes)
-                || !AnalysisIdentity.IsValidOpaqueId(profile.Version, AnalysisLimits.MaxIdBytes))
+            if (!profile.IsValid)
             {
+                _selectionVersion++;
                 _intent++;
                 CancelDebounceLocked();
                 _activeCts?.Cancel();
@@ -218,12 +224,13 @@ public sealed class AnalysisCoordinator : IAsyncDisposable
                 _ready = false;
                 _queuedProfile = default;
                 _state = new AnalysisState.InvalidInput(
-                    "profile id/version must be nonempty strict-UTF-8 <=128 bytes");
+                    "profile id/version or explicit configuration is invalid");
                 toRaise = _state;
                 invalid = true;
             }
             else if (_profile != profile)
             {
+                _selectionVersion++;
                 _profile = profile;
             }
             else
@@ -251,7 +258,7 @@ public sealed class AnalysisCoordinator : IAsyncDisposable
         AnalysisState? toRaise = null;
         CancellationTokenSource? debounceCts = null; // owned by this Schedule call
         long debIntent = 0;
-        AnalysisProfile debProfile = default;
+        AnalysisSelection debProfile = default;
         bool startDebounce = false;
         bool startImmediate = false;
         lock (_lock)
@@ -336,7 +343,7 @@ public sealed class AnalysisCoordinator : IAsyncDisposable
         if (startImmediate) TryStart();
     }
 
-    private async Task DebounceAsync(long myIntent, AnalysisProfile profile, CancellationToken ct)
+    private async Task DebounceAsync(long myIntent, AnalysisSelection profile, CancellationToken ct)
     {
         // Expected token cancellation (a newer invalidation/Cancel/Dispose) is
         // normal: it must not repaint a newer state.
@@ -367,7 +374,7 @@ public sealed class AnalysisCoordinator : IAsyncDisposable
     // synchronously-completing routine does not re-enter the held lock).
     private void TryStart()
     {
-        (long myIntent, AnalysisProfile profile, CancellationToken ct)? start = null;
+        (long myIntent, AnalysisSelection profile, CancellationToken ct)? start = null;
         AnalysisState? toRaise = null;
         lock (_lock)
         {
@@ -382,7 +389,7 @@ public sealed class AnalysisCoordinator : IAsyncDisposable
         }
     }
 
-    private AnalysisState? TryStartLocked(out (long, AnalysisProfile, CancellationToken)? start)
+    private AnalysisState? TryStartLocked(out (long, AnalysisSelection, CancellationToken)? start)
     {
         start = null;
         if (_disposed) return null;
@@ -408,13 +415,13 @@ public sealed class AnalysisCoordinator : IAsyncDisposable
     // stale job (intent bumped) never overrides a newer state. The finally
     // clears ONLY its own active ownership and then tries to start the queued
     // latest (no implicit restart on a terminal outcome).
-    private async Task RunWorkflowAsync(long myIntent, AnalysisProfile profile, CancellationToken ct)
+    private async Task RunWorkflowAsync(long myIntent, AnalysisSelection profile, CancellationToken ct)
     {
         try
         {
             // ---- CAPTURE (reuses the factory; no live Files enumeration) ----
             CaptureResult cap;
-            try { cap = await _factory.CaptureAsync(profile, ct).ConfigureAwait(false); }
+            try { cap = await _factory.CaptureSelectionAsync(profile, ct).ConfigureAwait(false); }
             catch (OperationCanceledException)
             {
                 SetStateIfLatest(myIntent, new AnalysisState.Cancelled());
@@ -464,6 +471,13 @@ public sealed class AnalysisCoordinator : IAsyncDisposable
                     return;
             }
 
+            // Recheck after capture: a head/selection change can occur without
+            // modifying the source bytes. Never dispatch an already stale capture.
+            if (!SnapshotMatches(snapshot) || ct.IsCancellationRequested)
+            {
+                SetStateIfLatest(myIntent, new AnalysisState.Superseded());
+                return;
+            }
             // ---- DISPATCH (only on Captured) ----
             AnalysisJobResult job;
             try { job = await _analyzer.AnalyzeAsync(snapshot, ct).ConfigureAwait(false); }
@@ -515,7 +529,7 @@ public sealed class AnalysisCoordinator : IAsyncDisposable
         }
         finally
         {
-            (long, AnalysisProfile, CancellationToken)? start = null;
+            (long, AnalysisSelection, CancellationToken)? start = null;
             AnalysisState? toRaise = null;
             lock (_lock)
             {
@@ -544,6 +558,11 @@ public sealed class AnalysisCoordinator : IAsyncDisposable
         // Pre-await: if a newer intent/dispose already owns the state, do not
         // publish (the invalidator set Pending/NoProject/Disposed).
         if (!IsCurrentIntent(myIntent)) return;
+        if (!SnapshotMatches(snapshot) || ct.IsCancellationRequested)
+        {
+            SetStateIfLatest(myIntent, new AnalysisState.Superseded());
+            return;
+        }
 
         // Awaited worker-epoch check. An edit/close/restore during this await
         // bumps the intent (the invalidator's handler took _lock after we
@@ -574,7 +593,10 @@ public sealed class AnalysisCoordinator : IAsyncDisposable
                 && _coordinator.SessionId == snapshot.SessionId
                 && _coordinator.WorkingGeneration == snapshot.WorkingGeneration
                 && _factory.CurrentWorkspaceEpoch == snapshot.LocalEpoch
-                && _profile == snapshot.Profile
+                && _coordinator.CurrentRevision?.Id == snapshot.BaseHeadRevisionId
+                && _profile == snapshot.Selection
+                && _selectionVersion == snapshot.SelectionVersion
+                && completed.Result.Configuration == snapshot.Configuration
                 && string.Equals(completed.Result.SnapshotId, snapshot.Id.ToString(), StringComparison.Ordinal)
                 && string.Equals(completed.Result.Profile.Id, snapshot.Profile.Id, StringComparison.Ordinal)
                 && string.Equals(completed.Result.Profile.Version, snapshot.Profile.Version, StringComparison.Ordinal);
@@ -603,6 +625,18 @@ public sealed class AnalysisCoordinator : IAsyncDisposable
             toRaise = newState;
         }
         if (toRaise is { } r) RaiseChanged(r);
+    }
+
+    private bool SnapshotMatches(AnalysisSnapshot snapshot)
+    {
+        lock (_lock)
+            return _coordinator.Project?.Id == snapshot.ProjectId
+                && _coordinator.SessionId == snapshot.SessionId
+                && _coordinator.WorkingGeneration == snapshot.WorkingGeneration
+                && _factory.CurrentWorkspaceEpoch == snapshot.LocalEpoch
+                && _coordinator.CurrentRevision?.Id == snapshot.BaseHeadRevisionId
+                && _profile == snapshot.Selection
+                && _selectionVersion == snapshot.SelectionVersion;
     }
 
     private bool IsCurrentIntent(long myIntent)

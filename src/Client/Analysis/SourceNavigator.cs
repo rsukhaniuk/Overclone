@@ -272,7 +272,9 @@ public sealed class SourceNavigator
             && _workspace.SessionId == snap.SessionId
             && _workspace.WorkingGeneration == snap.WorkingGeneration
             && _analysis.CurrentWorkspaceEpoch == snap.LocalEpoch
-            && _analysis.CurrentProfile == snap.Profile;
+            && _workspace.CurrentRevision?.Id == snap.BaseHeadRevisionId
+            && _analysis.CurrentSelection == snap.Selection
+            && _analysis.CurrentSelectionVersion == snap.SelectionVersion;
     }
 
     private static string FormatLocation(string path, int line, int column, long startByte, long endByte, string? excerpt)
