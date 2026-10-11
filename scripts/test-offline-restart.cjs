@@ -4,10 +4,12 @@
 // compose's publish-client `dotnet publish`es the Blazor WASM client to a
 // static wwwroot, and static-origin (scripts/static-server.cjs) serves it.
 // This test provisions against that published static origin, closes Chromium
-// fully, blocks the origin (network disabled — equivalent to stopping the
-// host for offline purposes), reopens the SAME persistent browser profile
-// offline, and exercises ZIP import/export, history/restore and local
-// saving. No external requests succeed: the service worker serves the cached
+// fully, stops the actual browser-facing proxy (verified connection refusal),
+// disables Chromium networking, and reopens the SAME persistent browser profile
+// offline. Exercises KNU WASM/citations/navigation, a second saved-edit cold
+// reopen, ZIP import/export and history/restore. The internal static-origin
+// remains up but the browser's proxy is stopped. No external requests succeed:
+// the service worker serves the cached
 // published shell and all work is local.
 //
 // A warm page reload does NOT establish cold-start support; this test closes the
@@ -18,12 +20,35 @@ const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
 const http = require("node:http");
+const { createHash } = require("node:crypto");
+const {
+  fixtures: knuFixtures,
+  hashes: knuHashes,
+} = require("./knu-fixtures.cjs");
 const { chromium } = require("playwright");
 const { buildZip } = require("./zip-util.cjs");
+const review = require("./review-ui-helpers.cjs");
 
 const UPSTREAM = process.env.APP_URL || "http://static-origin:8080";
 const PROXY_PORT = 8092;
 const BASE = `http://127.0.0.1:${PROXY_PORT}`;
+
+function upstreamBytes(pathname) {
+  return new Promise((resolve, reject) =>
+    http
+      .get(new URL(pathname, UPSTREAM), (r) => {
+        if (r.statusCode !== 200) {
+          reject(new Error(`${pathname}: ${r.statusCode}`));
+          r.resume();
+          return;
+        }
+        const chunks = [];
+        r.on("data", (d) => chunks.push(d));
+        r.on("end", () => resolve(Buffer.concat(chunks)));
+      })
+      .on("error", reject),
+  );
+}
 
 function startProxy() {
   return http.createServer((cr, res) => {
@@ -110,6 +135,16 @@ async function awaitTerminalAnalysis(page, timeout = 30000) {
   const userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), "oop-profile-"));
   let browser, ctx, page;
   try {
+    const index = await upstreamBytes("/index.html");
+    const wasm = await upstreamBytes("/rust-generated/document_engine_bg.wasm");
+    assert.deepEqual(Array.from(wasm.subarray(0, 4)), [0, 97, 115, 109]);
+    console.log(
+      "Published build identity:",
+      JSON.stringify({
+        indexSha256: createHash("sha256").update(index).digest("hex"),
+        rustWasmSha256: createHash("sha256").update(wasm).digest("hex"),
+      }),
+    );
     // ---- online: provision, create a project, wait for the shell to be cached
     browser = await chromium.launchPersistentContext(userDataDir, {
       headless: true,
@@ -120,6 +155,24 @@ async function awaitTerminalAnalysis(page, timeout = 30000) {
     page.on("requestfailed", (r) => failedReqs.push(r.url()));
     await page.goto(BASE);
     await waitForReady(page);
+    const clientUrls = await page.evaluate(() =>
+      performance
+        .getEntriesByType("resource")
+        .map((r) => r.name)
+        .filter((n) => /\/_framework\/Client\.[^/]+\.wasm$/.test(n)),
+    );
+    assert.equal(
+      clientUrls.length,
+      1,
+      "exactly one fingerprinted current Client assembly loaded",
+    );
+    const clientAssembly = await upstreamBytes(new URL(clientUrls[0]).pathname);
+    console.log(
+      "Published loaded Client:",
+      new URL(clientUrls[0]).pathname,
+      "SHA-256",
+      createHash("sha256").update(clientAssembly).digest("hex"),
+    );
     await page.evaluate(async () => {
       const m = await import("./js/workspace-storage.js");
       await m.clearAll();
@@ -137,7 +190,23 @@ async function awaitTerminalAnalysis(page, timeout = 30000) {
     // A13: also import a file with an unmatched brace so analysis can run on a
     // saved project both online and offline via the real Rust worker.
     await importSingleFile(page, "brace.tex", enc("Розділ {текст\n"));
+    await importSingleFile(page, "knu.tex", knuFixtures.negative);
     await saveAndWait(page);
+    // Current published UI + actual native KNU capability, not a warm old demo.
+    await page
+      .locator("[data-testid=analysis-profile]")
+      .selectOption("knu-csc-2025-source");
+    await analyzeNow(page);
+    await awaitTerminalAnalysis(page);
+    await page.locator("[data-testid=knu-report]").waitFor();
+    assert.match(
+      await page.locator("[data-testid=knu-edition]").innerText(),
+      /2025.*1.0.0/,
+    );
+    assert.equal(await page.locator("[data-testid=knu-finding]").count(), 2);
+    await page
+      .locator("[data-testid=analysis-profile]")
+      .selectOption("engine-structural");
 
     // Provision the shell via the service worker and wait until genuinely ready.
     // __oopOfflineReady is honest only when ALL required assets (including the
@@ -155,6 +224,14 @@ async function awaitTerminalAnalysis(page, timeout = 30000) {
         .count()) >= 1,
       "online analysis reports the brace.tex diagnostic before going offline",
     );
+
+    // Separate real eligible F1 project: the legacy multi-file brace project
+    // deliberately has uncertainty and must not be forged into fix eligibility.
+    await page.getByRole("button", { name: "Close", exact: true }).click();
+    const reviewName = await review.create(page, review.negative, "review.tex");
+    await page.getByRole("button", { name: "Close", exact: true }).click();
+    await review.open(page, name);
+    await page.waitForFunction(() => window.__oopOfflineReady === true);
 
     // ---- close the browser fully, keep the same persistent profile
     await page.close();
@@ -268,7 +345,165 @@ async function awaitTerminalAnalysis(page, timeout = 30000) {
       "offline click selected the exact brace span",
     );
 
-    // Local save offline.
+    // M2b: real KNU rules, bundled citations and exact Unicode navigation with
+    // the actual origin still stopped. No guideline/CDN/provider request.
+    await page
+      .locator("[data-testid=analysis-profile]")
+      .selectOption("knu-csc-2025-source");
+    await analyzeNow(page);
+    await awaitTerminalAnalysis(page);
+    await page.locator("[data-testid=knu-report]").waitFor();
+    assert.match(
+      await page.locator("[data-testid=knu-citation]").first().innerText(),
+      /§3.1; printed pages 18/,
+    );
+    assert.match(
+      await page.locator("[data-testid=knu-citation]").last().innerText(),
+      /§3.2; printed pages 18, 19/,
+    );
+    const knuFinding = page.locator(
+      '[data-testid=knu-finding][data-rule-id="KNU-SRC-HEADING-DOT-001"]',
+    );
+    const byteStart = Number(await knuFinding.getAttribute("data-start-byte"));
+    const byteEnd = Number(await knuFinding.getAttribute("data-end-byte"));
+    assert.equal(
+      knuFixtures.negative.subarray(byteStart, byteEnd).toString(),
+      ".",
+    );
+    const normalizedPrefix = knuFixtures.negative
+      .subarray(0, byteStart)
+      .toString()
+      .replace(/^\uFEFF/, "")
+      .replace(/\r\n?/g, "\n");
+    await knuFinding.locator("[data-testid=knu-finding-link]").click();
+    await page.waitForFunction((n) => {
+      const e = document.querySelector("[data-testid=editor]");
+      return (
+        e.selectionStart === n &&
+        e.selectionEnd === n + 1 &&
+        e.value.substring(n, n + 1) === "."
+      );
+    }, normalizedPrefix.length);
+    assert.match(
+      await page.locator(".editor-toolbar label").innerText(),
+      /knu.tex/,
+    );
+    // Actual offline reviewed-fix workflow, not a service/test injection.
+    await page.getByRole("button", { name: "Close", exact: true }).click();
+    await review.open(page, reviewName);
+    await review.selectKnu(page);
+    assert.equal(await page.locator("[data-testid=review-action]").count(), 0);
+    const reviewBefore = await review.head(page, reviewName);
+    await review.declineNoChange(page, reviewName);
+    await review.preview(page);
+    await review.accept(page);
+    const reviewApplied = await review.assertBytes(
+      page,
+      reviewName,
+      review.after,
+      "review.tex",
+    );
+    assert.equal(reviewApplied.parent, reviewBefore.id);
+    await review.analyze(page);
+    assert.equal(await page.locator("[data-testid=preview-fix]").count(), 0);
+    assert.equal(
+      await page
+        .locator(
+          "[data-testid=knu-finding][data-rule-id=KNU-SRC-HEADING-DOT-001]",
+        )
+        .count(),
+      1,
+    );
+    await review.undo(page);
+    const reviewRestored = await review.assertBytes(
+      page,
+      reviewName,
+      review.negative,
+      "review.tex",
+    );
+    assert.equal(reviewRestored.parent, reviewApplied.id);
+    assert.notEqual(reviewRestored.id, reviewBefore.id);
+    assert.equal(await page.locator("[data-testid=review-undo]").count(), 0);
+    await page.getByRole("button", { name: "Close", exact: true }).click();
+    await review.open(page, name);
+    await page
+      .locator("[data-testid=select-file]", { hasText: "knu.tex" })
+      .click();
+    const knuEdited = "\\setlength{\\parindent}{1.27cm}\n\\section{Офлайн🙂}\n";
+    await page.locator("[data-testid=editor]").fill(knuEdited);
+    assert.ok((await saveAndWait(page)).startsWith("Saved"));
+    // A SECOND fully closed browser restart proves offline edits really persist.
+    await ctx.close();
+    browser = null;
+    browser = await chromium.launchPersistentContext(userDataDir, {
+      headless: true,
+    });
+    ctx = browser;
+    await ctx.setOffline(true);
+    page = await ctx.newPage();
+    page.on("pageerror", (e) => offErrors.push(String(e)));
+    await page.goto(BASE, { waitUntil: "domcontentloaded" });
+    await waitForReady(page);
+    await page
+      .locator("[data-testid=project-row]", { hasText: name })
+      .locator("[data-testid=open-project]")
+      .click();
+    await page
+      .locator("[data-testid=select-file]", { hasText: "knu.tex" })
+      .click();
+    assert.equal(
+      await page.locator("[data-testid=editor]").inputValue(),
+      knuEdited,
+    );
+    assert.equal(
+      await page.locator("[data-testid=analysis-profile]").inputValue(),
+      "engine-structural",
+      "selection is session-local, not persisted",
+    );
+    await page
+      .locator("[data-testid=analysis-profile]")
+      .selectOption("knu-csc-2025-source");
+    await analyzeNow(page);
+    await awaitTerminalAnalysis(page);
+    await page.locator("[data-testid=knu-report]").waitFor();
+    const persisted = await page.evaluate(async (name) => {
+      const m = await import("./js/workspace-storage.js");
+      const p = (await m.listProjects()).find((p) => p.name === name);
+      const r = await m.getRevision(p.headRevisionId);
+      const f = r.files.find((f) => f.relativePath === "knu.tex");
+      return Array.from(await m.readContent(f.contentHash));
+    }, name);
+    assert.deepEqual(
+      persisted,
+      [239, 187, 191, ...enc(knuEdited)],
+      "offline edited bytes preserve BOM and accepted edited LF policy",
+    );
+    // The second whole-browser reopen also proves exact undo output persisted,
+    // and honestly exposes no previous session's in-memory recovery entry.
+    await page.getByRole("button", { name: "Close", exact: true }).click();
+    await review.open(page, reviewName);
+    const coldReview = await review.assertBytes(
+      page,
+      reviewName,
+      review.negative,
+      "review.tex",
+    );
+    assert.equal(coldReview.id, reviewRestored.id);
+    assert.equal(await page.locator("[data-testid=review-action]").count(), 0);
+    assert.equal(await page.locator("[data-testid=review-undo]").count(), 0);
+    await page.getByRole("button", { name: "Close", exact: true }).click();
+    await review.open(page, name);
+    console.log(
+      "PASS M2 review offline: native preview/decline/accept/save/reanalysis/undo/new revision, exact bytes after second whole-browser reopen; no durable in-memory undo",
+    );
+    console.log(
+      "PASS M2b offline: KNU citations/evidence/navigation, save and second cold reopen; fixture SHA-256",
+      knuHashes.negative,
+    );
+    await page
+      .locator("[data-testid=select-file]", { hasText: "brace.tex" })
+      .click();
+    // Local save offline (existing M1b regression).
     await page.locator("[data-testid=editor]").fill("edited offline");
     const st = await saveAndWait(page);
     assert.ok(st.startsWith("Saved"), `offline save must succeed, got: ${st}`);
@@ -436,6 +671,9 @@ async function awaitTerminalAnalysis(page, timeout = 30000) {
       `local save still works with the asset missing, got: ${stMissing}`,
     );
     // Analysis now fails honestly: a fresh worker cannot load the missing WASM offline.
+    await page
+      .locator("[data-testid=analysis-profile]")
+      .selectOption("knu-csc-2025-source");
     await analyzeNow(page);
     await awaitTerminalAnalysis(page);
     const failStatus = await analysisStatusText(page);
@@ -454,6 +692,11 @@ async function awaitTerminalAnalysis(page, timeout = 30000) {
       await page.locator("[data-testid=analysis-finding]").count(),
       0,
       "no fake engine success/diagnostic with the asset missing",
+    );
+    assert.equal(
+      await page.locator("[data-testid=knu-report]").count(),
+      0,
+      "no fabricated KNU success while WASM is absent",
     );
     // The C#-owned readiness notice must be VISIBLE with actionable guidance
     // (connect/reload/retry) — not merely the hidden window flag — while
