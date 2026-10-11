@@ -192,6 +192,46 @@ services:
         npm install --no-audit --no-fund --prefix /tmp/browser-test playwright@1.56.1
         node /tests/test-analysis-ui.cjs
 
+  knu-ui-test:
+    profiles: ["test"]
+    image: ${BROWSER_IMAGE:-mcr.microsoft.com/playwright:v1.56.1-noble}
+    init: true
+    working_dir: /tmp/browser-test
+    environment:
+      NODE_PATH: /tmp/browser-test/node_modules
+      APP_URL: http://app:8080
+    volumes:
+      - ./scripts:/tests:ro
+    depends_on:
+      app:
+        condition: service_started
+    command:
+      - sh
+      - -ec
+      - |
+        npm install --no-audit --no-fund --prefix /tmp/browser-test playwright@1.56.1
+        node /tests/test-knu-ui.cjs
+
+  review-ui-test:
+    profiles: ["test"]
+    image: ${BROWSER_IMAGE:-mcr.microsoft.com/playwright:v1.56.1-noble}
+    init: true
+    working_dir: /tmp/browser-test
+    environment:
+      NODE_PATH: /tmp/browser-test/node_modules
+      APP_URL: http://static-origin:8080
+    volumes:
+      - ./scripts:/tests:ro
+    depends_on:
+      static-origin:
+        condition: service_healthy
+    command:
+      - sh
+      - -ec
+      - |
+        npm install --no-audit --no-fund --prefix /tmp/browser-test playwright@1.56.1
+        node /tests/test-review-ui.cjs
+
   workspace-test:
     profiles: ["test"]
     image: ${BROWSER_IMAGE:-mcr.microsoft.com/playwright:v1.56.1-noble}
@@ -211,6 +251,7 @@ services:
       - |
         npm install --no-audit --no-fund --prefix /tmp/browser-test playwright@1.56.1
         node /tests/test-workspace.cjs
+        node /tests/test-workspace-locks.cjs
 
   transfer-test:
     profiles: ["test"]
@@ -335,7 +376,7 @@ services:
       [
         "sh",
         "-c",
-        "dotnet publish src/Client/Client.csproj -c Release -o /artifacts/publish",
+        "rm -rf /artifacts/publish/wwwroot && dotnet publish src/Client/Client.csproj -c Release -o /artifacts/publish",
       ]
     restart: "no"
 
