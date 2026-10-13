@@ -1,4 +1,14 @@
 .env
+.env.*
+!.env.example
+core
+core.*
+*.core
+**/TestResults/
+*.pem
+*.key
+*.p12
+*.pfx
 **/bin/
 **/obj/
 src/Client/wwwroot/native-generated/
@@ -6,3 +16,20 @@ src/Client/wwwroot/rust-generated/
 rust/target/
 .vs/
 .idea/
+
+# B2a/B2b local evidence captures (not committed)
+.b2a-evidence/
+.b2b-evidence/
+
+# A1d local LaTeX provisioning captures (not committed)
+# (closure dir + browser output live under /tmp; only recipes/fixtures/evidence are committed)
+__pycache__/
+*.pyc
+
+# Local research, review captures and editor automation settings
+**/.pi-lens.json
+/docs/evidence/
+/docs/m3-*.md
+/docs/prompts/m3*.md
+/docs/\?/
+/spikes/
