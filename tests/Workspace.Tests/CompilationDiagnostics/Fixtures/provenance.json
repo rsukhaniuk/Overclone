@@ -1,0 +1,176 @@
+{
+  "schemaVersion": 1,
+  "scope": "Small exact genuine excerpts; all other test text is labelled synthetic in tests. No synthetic log is represented as executed native output. Full raw captures are archived separately; captured byte hashes and excerpt offsets remain recorded here.",
+  "records": [
+    {
+      "kind": "genuine-native-log-excerpt",
+      "fixture": "tests/Workspace.Tests/CompilationDiagnostics/Fixtures/missing-class.log",
+      "capture": {
+        "bytes": 489,
+        "sha256": "cf097ff0bc70200f52c5e7da2e49b77a1d5f3285bc425e025379ef1d60b60a0d",
+        "name": "negative-missing-class-pass1.log"
+      },
+      "acceptedArtifactKey": "negative-missing-class-pass1.log",
+      "startByte": 178,
+      "endByte": 399,
+      "excerpt": {
+        "path": "tests/Workspace.Tests/CompilationDiagnostics/Fixtures/missing-class.log",
+        "bytes": 221,
+        "sha256": "efc0d90d2a3b24dc8ce7bdd3ccc181623f668f82a317486c9140dba846ac8982"
+      }
+    },
+    {
+      "kind": "genuine-native-log-excerpt",
+      "fixture": "tests/Workspace.Tests/CompilationDiagnostics/Fixtures/encoding.log",
+      "capture": {
+        "bytes": 759,
+        "sha256": "4c9e4b6a85935f984b4fec60f04c8f7aaf0a943c12c78c7986a7655b139c4b46",
+        "name": "native.log"
+      },
+      "acceptedArtifactKey": "missing-encoding/native.log",
+      "startByte": 289,
+      "endByte": 669,
+      "excerpt": {
+        "path": "tests/Workspace.Tests/CompilationDiagnostics/Fixtures/encoding.log",
+        "bytes": 380,
+        "sha256": "18acbff2bd7ac445ad404395c144b460d34049ace8e4864f1a1aaa944faeaf78"
+      }
+    },
+    {
+      "kind": "genuine-native-log-excerpt",
+      "fixture": "tests/Workspace.Tests/CompilationDiagnostics/Fixtures/metric.log",
+      "capture": {
+        "bytes": 632,
+        "sha256": "0d46a371dbe7d64d7bc802b8554e15936ff249dd8faaa4e8fdfb9664ea4ccae4",
+        "name": "native.log"
+      },
+      "acceptedArtifactKey": "missing-metric/native.log",
+      "startByte": 313,
+      "endByte": 542,
+      "excerpt": {
+        "path": "tests/Workspace.Tests/CompilationDiagnostics/Fixtures/metric.log",
+        "bytes": 229,
+        "sha256": "234ab2accc6797fe50ba1daeb5ac2d9adeb3da3dbced576ce93083357411a621"
+      }
+    },
+    {
+      "kind": "genuine-native-log-excerpt",
+      "fixture": "tests/Workspace.Tests/CompilationDiagnostics/Fixtures/unicode.log",
+      "capture": {
+        "bytes": 871,
+        "sha256": "c5fce1f7eb9a4410abe5329f403c9121b3980479418002167611e702e8c03586",
+        "name": "native.log"
+      },
+      "acceptedArtifactKey": "emoji-only/native.log",
+      "startByte": 397,
+      "endByte": 781,
+      "excerpt": {
+        "path": "tests/Workspace.Tests/CompilationDiagnostics/Fixtures/unicode.log",
+        "bytes": 384,
+        "sha256": "8befe4556f97591d09de47349ac6e5ac949321f431be88ed3de5778ea2c47712"
+      }
+    },
+    {
+      "kind": "genuine-native-log-excerpt",
+      "fixture": "tests/Workspace.Tests/CompilationDiagnostics/Fixtures/warnings.log",
+      "capture": {
+        "bytes": 1017,
+        "sha256": "c70d3ad83c87e149013afc8bd881b8cc609d6c41a6f00b3715b705935be6285c",
+        "name": "multifile-refs-pass1.log"
+      },
+      "acceptedArtifactKey": "multifile-refs-pass1.log",
+      "startByte": 308,
+      "endByte": 532,
+      "excerpt": {
+        "path": "tests/Workspace.Tests/CompilationDiagnostics/Fixtures/warnings.log",
+        "bytes": 224,
+        "sha256": "5bb04585bd8871c340b054abbf8976e2251e374b2f87433ba5f5b884c905dd90"
+      }
+    },
+    {
+      "kind": "genuine-native-log-excerpt",
+      "fixture": "tests/Workspace.Tests/CompilationDiagnostics/Fixtures/bibtex-tail.log",
+      "capture": {
+        "bytes": 1017,
+        "sha256": "c70d3ad83c87e149013afc8bd881b8cc609d6c41a6f00b3715b705935be6285c",
+        "name": "multifile-refs-pass1.log"
+      },
+      "acceptedArtifactKey": "multifile-refs-pass1.log",
+      "startByte": 810,
+      "endByte": 1017,
+      "excerpt": {
+        "path": "tests/Workspace.Tests/CompilationDiagnostics/Fixtures/bibtex-tail.log",
+        "bytes": 207,
+        "sha256": "91ecaa902b6135c13766d1de2735e2fe369192f5b23ed94408cc6ea2c7c81aad"
+      }
+    },
+    {
+      "kind": "genuine-native-log-excerpt",
+      "fixture": "tests/Workspace.Tests/CompilationDiagnostics/Fixtures/info.log",
+      "capture": {
+        "bytes": 537,
+        "sha256": "5f9663dd1442f67e664b7e23c4450706cff876ca889cfdf8d921950b6f357652",
+        "name": "native.log"
+      },
+      "acceptedArtifactKey": "ascii-control/native.log",
+      "startByte": 0,
+      "endByte": 132,
+      "excerpt": {
+        "path": "tests/Workspace.Tests/CompilationDiagnostics/Fixtures/info.log",
+        "bytes": 132,
+        "sha256": "30bfdafe2e0c17d4a3ac4e14a12c13f9077d22e6d8c42b8df537565be5ba6d1f"
+      }
+    },
+    {
+      "kind": "genuine-native-source-excerpt",
+      "fixture": "tests/Workspace.Tests/CompilationDiagnostics/Fixtures/emoji-only.tex",
+      "capture": {
+        "bytes": 235,
+        "sha256": "c234c843d8fdb71ac14bb9069f50cddc256364e4bb3209ed9aa2ce917bebc96b",
+        "name": "main.tex"
+      },
+      "acceptedArtifactKey": "emoji-only/main.tex",
+      "startByte": 0,
+      "endByte": 235,
+      "excerpt": {
+        "path": "tests/Workspace.Tests/CompilationDiagnostics/Fixtures/emoji-only.tex",
+        "bytes": 235,
+        "sha256": "c234c843d8fdb71ac14bb9069f50cddc256364e4bb3209ed9aa2ce917bebc96b"
+      }
+    },
+    {
+      "kind": "genuine-native-source-excerpt",
+      "fixture": "tests/Workspace.Tests/CompilationDiagnostics/Fixtures/missing-encoding.tex",
+      "capture": {
+        "bytes": 247,
+        "sha256": "89e36bc1581e64e29005216f4235a281e794b78ea4836c2e86fcd9745b872d08",
+        "name": "main.tex"
+      },
+      "acceptedArtifactKey": "missing-encoding/main.tex",
+      "startByte": 0,
+      "endByte": 247,
+      "excerpt": {
+        "path": "tests/Workspace.Tests/CompilationDiagnostics/Fixtures/missing-encoding.tex",
+        "bytes": 247,
+        "sha256": "89e36bc1581e64e29005216f4235a281e794b78ea4836c2e86fcd9745b872d08"
+      }
+    },
+    {
+      "kind": "genuine-native-source-excerpt",
+      "fixture": "tests/Workspace.Tests/CompilationDiagnostics/Fixtures/missing-metric.tex",
+      "capture": {
+        "bytes": 247,
+        "sha256": "89e36bc1581e64e29005216f4235a281e794b78ea4836c2e86fcd9745b872d08",
+        "name": "main.tex"
+      },
+      "acceptedArtifactKey": "missing-metric/main.tex",
+      "startByte": 0,
+      "endByte": 247,
+      "excerpt": {
+        "path": "tests/Workspace.Tests/CompilationDiagnostics/Fixtures/missing-metric.tex",
+        "bytes": 247,
+        "sha256": "89e36bc1581e64e29005216f4235a281e794b78ea4836c2e86fcd9745b872d08"
+      }
+    }
+  ]
+}

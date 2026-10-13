@@ -1,0 +1,9 @@
+! Package inputenc Error: Unicode char ^^f0^^9f^^98^^80 (U+1F600)
+(inputenc)                not set up for use with LaTeX.
+
+See the inputenc package documentation for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.10 \noindent ^^f0^^9f^^98^^80
+                               

@@ -1,0 +1,9 @@
+! Package fontenc Error: Encoding file `t2aenc.def' not found.
+(fontenc)                You might have misspelt the name of the encoding.
+
+See the fontenc package documentation for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.104 \ProcessOptions*
+                      
