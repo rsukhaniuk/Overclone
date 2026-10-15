@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "origin": "owned corrected E1 project ABI; inherited implementation is not PDFium source closure",
+  "sources": {
+    "e1.cpp": {
+      "bytes": 18147,
+      "sha256": "b6fc46a3acd900cf30fce0e8d047e534c6587bb18edd439c99d333be8b500454"
+    },
+    "e1.h": {
+      "bytes": 3352,
+      "sha256": "05d4dd4a64f7686c7b9268ac5822eafeca30e2d8dd46e3b7ed46692a30b8e29b"
+    }
+  },
+  "runtimeBaseline": {
+    "bytes": 3407442,
+    "sha256": "10ebf70f88e40fb0af914122f5046c1be5d747e95f0c4de353508602cfe7a55f"
+  },
+  "changes": [
+    "e1.cpp only appends actions.inc include",
+    "e1.h qualifies raw coordinate units and adds two optional declarations",
+    "actions.inc implements passive action metadata/capability JSON"
+  ],
+  "abiVersion": 1,
+  "budgetBytes": 36,
+  "legacyGeometry": "numeric fields, algorithms, statuses and precision tolerances unchanged; physical measurement indeterminate",
+  "integration": "optional standalone build only, no root build enablement or bundled PDFium",
+  "provenanceGate": "explicit cached headers/library for private testing; renderer producer, full dependency source and notice/license closure unresolved"
+}
