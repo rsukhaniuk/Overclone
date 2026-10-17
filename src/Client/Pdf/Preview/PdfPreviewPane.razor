@@ -1,0 +1,189 @@
+@namespace Client.Pdf.Preview
+@using System.Globalization
+@using Microsoft.AspNetCore.Components
+@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.JSInterop
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+<section class="pdf-preview @(View.DocumentSha256 is null ? "pdf-empty" : "pdf-loaded")" aria-label="PDF preview" data-testid="pdf-pane" data-generation="@View.Generation" data-document="@View.DocumentSha256">
+    <header>
+        <h2>PDF preview</h2>
+        <span>@View.DisplayName</span>
+    </header>
+    <div role="toolbar" aria-label="PDF page controls" hidden="@(View.DocumentSha256 is null)">
+        <button aria-label="Previous page" disabled="@(View.PageCount == 0 || View.PageIndex == 0)" @onclick="Previous">Previous</button>
+        <label>Page <input aria-label="Go to page" type="number" min="1" max="@View.PageCount" value="@(View.PageIndex + 1)" @onchange="Go" disabled="@(View.PageCount == 0)" /></label>
+        <span data-testid="page-label">@(View.PageCount == 0 ? "No pages" : $"Page {View.PageIndex + 1} of {View.PageCount}")</span>
+        <button aria-label="Next page" disabled="@(View.PageCount == 0 || View.PageIndex + 1 >= View.PageCount)" @onclick="Next">Next</button>
+        <label>Zoom <select aria-label="Zoom" value="@View.ZoomPercent" @onchange="Zoom" disabled="@(View.DocumentSha256 is null)">
+            @foreach (int value in new[] { 25, 50, 75, 100, 125, 150, 200, 300 }) { <option value="@value">@value%</option> }
+        </select></label>
+        <button aria-label="Fit width" @onclick="Fit" disabled="@(View.DocumentSha256 is null)">Fit width</button>
+        <button aria-label="Cancel preview" @onclick="Cancel" disabled="@(View.Status != PdfPreviewStatus.Loading)">Cancel</button>
+        <button aria-label="Retry preview" @onclick="Retry" disabled="@(_current.ActualWorkPending || View.DocumentSha256 is null)">Retry</button>
+    </div>
+    <div role="search" aria-label="PDF full document search" hidden="@(View.DocumentSha256 is null)">
+        <label>Search <input aria-label="Search PDF" maxlength="255" value="@_query" @oninput="QueryChanged" @onkeydown="SearchKey" /></label>
+        <button aria-label="Search document" @onclick="Search" disabled="@(View.DocumentSha256 is null)">Search document</button>
+        <button aria-label="Previous result" disabled="@(View.Search.Hits.Count == 0)" @onclick="PreviousHit">Previous result</button>
+        <button aria-label="Next result" disabled="@(View.Search.Hits.Count == 0)" @onclick="NextHit">Next result</button>
+        <output aria-live="polite" data-testid="search-status" data-search-status="@View.Search.Status">@SearchMessage</output>
+        <output data-testid="selected-result">@(View.SelectedHit < 0 ? "No result selected" : $"Result {View.SelectedHit + 1} / {View.Search.Hits.Count}")</output>
+    </div>
+    <p role="status" data-testid="preview-status" data-preview-status="@View.Status">@PreviewMessage</p>
+    @if (View.DocumentSha256 is null)
+    {
+        <div class="pdf-empty-state">
+            <span class="empty-file-icon" aria-hidden="true"></span>
+            <h3>Your PDF will appear here</h3>
+            <p>Compile your project to preview the result.</p>
+            <small>Compilation requires an available compiler.<br />Your source files can still be edited and saved locally.</small>
+        </div>
+    }
+    <div class="pdf-scroll" hidden="@(View.DocumentSha256 is null)" tabindex="0" aria-label="PDF viewport keyboard navigation" @onkeydown="PageKey">
+        <div class="pdf-surface" style="@SurfaceStyle">
+            <canvas @ref="_element" aria-label="PDF page" data-testid="pdf-canvas"></canvas>
+            @if (View.Frame is not null)
+            {
+                <div class="pdf-highlights" aria-label="Native glyph highlights">
+                    @foreach (var hit in VisibleHits())
+                    {
+                        @foreach (var box in hit.NormalizedBoxes)
+                        { <span class="pdf-highlight" data-testid="glyph-highlight" title="@hit.GeometryStatus" style="@BoxStyle(box)"></span> }
+                    }
+                </div>
+            }
+        </div>
+    </div>
+    <div class="pdf-limit-note" hidden="@(View.DocumentSha256 is null)">
+        <button aria-label="Go to source" disabled>Go to source</button>
+        <small>Source navigation unavailable. Up to 32 pages; search and image limits may stop results early.</small>
+    </div>
+    <details data-testid="pdf-details">
+        <summary>PDF details</summary>
+        <p data-testid="pdf-provenance">Caller label: @View.Provenance. This is unverified display information, not compilation freshness.</p>
+        <code data-testid="pdf-hash">@(View.DocumentSha256 ?? "No PDF")</code>
+        <p>Request: @View.NativeRequestId; epoch: @View.NativeEpoch; generation: @View.Generation.</p>
+        <p>Runtime: @View.Runtime</p>
+        <p>@View.Detail</p>
+        <p data-testid="canvas-status">@(_canvas?.Status ?? "Not drawn")</p>
+        <p data-testid="geometry-status">@SelectedGeometry</p>
+        <p data-testid="source-navigation">@View.SourceNavigationStatus</p>
+        <p data-testid="physical-size">@View.PhysicalSizeStatus</p>
+        <small>@View.Compatibility</small>
+        <details><summary>Extracted page text</summary><pre data-testid="page-text">@View.Text</pre></details>
+    </details>
+</section>
+@code {
+    [Parameter] public PdfPreviewController? Controller { get; set; }
+    [Parameter] public bool OwnsController { get; set; }
+    private PdfPreviewController _current = new();
+    private bool _ownsCurrent = true, _disposed;
+    private ElementReference _element;
+    private PdfPreviewCanvas? _canvas;
+    private string _query = "", _lastSearchQuery = "";
+    private string? _lastDocument;
+    private long _submittedGeneration = -1;
+    private PdfPreviewFrame? _submittedFrame;
+    private PdfPreviewState View => _current.State;
+    private string SurfaceStyle => View.Frame is { } f ? $"width:{f.Width}px;height:{f.Height}px" : "width:360px;min-height:100px";
+    private string PreviewMessage => View.Status switch
+    {
+        PdfPreviewStatus.Empty => "No PDF is available.",
+        PdfPreviewStatus.Loading => "Loading page…",
+        PdfPreviewStatus.Available => "Page ready.",
+        PdfPreviewStatus.Unavailable => "Preview unavailable.",
+        PdfPreviewStatus.Busy => "Preview is busy. Retry when ready.",
+        PdfPreviewStatus.Cancelled => _current.ActualWorkPending ? "Preview cancelled. Finishing previous request." : "Preview cancelled.",
+        PdfPreviewStatus.TimedOut => "Preview took too long. Retry when ready.",
+        PdfPreviewStatus.Disposed => "Preview closed.",
+        _ => "Could not display the PDF. Try again."
+    };
+    private string SearchMessage => View.Search.Status switch
+    {
+        PdfPreviewSearchStatus.Empty => "Enter a search term.",
+        PdfPreviewSearchStatus.Scanning => $"Searching PDF… {View.Search.ScannedPages} of {View.Search.TotalPages} pages checked.",
+        PdfPreviewSearchStatus.Complete when View.Search.Hits.Count == 0 => "No matches.",
+        PdfPreviewSearchStatus.Complete => $"{View.Search.Hits.Count} {(View.Search.Hits.Count == 1 ? "match" : "matches")} across {View.Search.TotalPages} {(View.Search.TotalPages == 1 ? "page" : "pages")}.",
+        PdfPreviewSearchStatus.Partial => $"Search incomplete: {View.Search.Hits.Count} {(View.Search.Hits.Count == 1 ? "match" : "matches")} on {View.Search.ScannedPages} of {View.Search.TotalPages} pages checked. A search limit or deadline was reached.",
+        PdfPreviewSearchStatus.Cancelled => "Search cancelled. Results are incomplete.",
+        _ => "Search could not finish. Results may be incomplete. Try again."
+    };
+    private string SelectedGeometry => View.SelectedHit >= 0 && View.SelectedHit < View.Search.Hits.Count ? View.Search.Hits[View.SelectedHit].GeometryStatus : "No native result selected; no guessed source/geometry mapping.";
+    protected override void OnInitialized() => _current.Changed += Changed;
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Controller is null || ReferenceEquals(Controller, _current)) return;
+        _current.Changed -= Changed;
+        if (_ownsCurrent) await _current.DisposeAsync();
+        if (_canvas is not null) { _canvas.Changed -= CanvasChanged; await _canvas.DisposeAsync(); _canvas = null; }
+        _current = Controller; _ownsCurrent = OwnsController; _current.Changed += Changed;
+        _submittedGeneration = -1; _submittedFrame = null; _query = View.Search.Query; _lastSearchQuery = _query; _lastDocument = View.DocumentSha256;
+    }
+    protected override Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!_disposed)
+        {
+            if (_canvas is null) { _canvas = new(JS, _element); _canvas.Changed += CanvasChanged; }
+            DrawLatest();
+        }
+        return Task.CompletedTask;
+    }
+    private void DrawLatest()
+    {
+        if (_disposed || _canvas is null) return;
+        var state = View;
+        if (_submittedGeneration == state.Generation && ReferenceEquals(_submittedFrame, state.Frame)) return;
+        _submittedGeneration = state.Generation; _submittedFrame = state.Frame;
+        _canvas.Select(state.Generation, state.Frame);
+    }
+    private void Changed()
+    {
+        if (_disposed) return;
+        if (_lastDocument != View.DocumentSha256 || _lastSearchQuery != View.Search.Query)
+        { _lastDocument = View.DocumentSha256; _lastSearchQuery = View.Search.Query; _query = _lastSearchQuery; }
+        DrawLatest(); // synchronous invalidation precedes queued Razor labels
+        _ = Refresh();
+    }
+    private void CanvasChanged() { if (!_disposed) _ = Refresh(); }
+    private async Task Refresh()
+    {
+        try { await InvokeAsync(() => { if (!_disposed) StateHasChanged(); }).ConfigureAwait(false); }
+        catch (ObjectDisposedException) { }
+        catch (InvalidOperationException) when (_disposed) { }
+    }
+    private void Previous() => _current.GoToPage(View.PageIndex);
+    private void Next() => _current.GoToPage(View.PageIndex + 2);
+    private void Go(ChangeEventArgs e) { if (int.TryParse(e.Value?.ToString(), out int p)) _current.GoToPage(p); }
+    private void Zoom(ChangeEventArgs e) { if (int.TryParse(e.Value?.ToString(), out int z)) _current.Zoom(z); }
+    private void Fit() => _current.Fit(_canvas?.MeasureFitWidth() ?? 360);
+    private void Cancel() => _current.Cancel();
+    private void Retry() => _current.Retry();
+    private void QueryChanged(ChangeEventArgs e) { _query = e.Value?.ToString() ?? ""; if (_query.Length == 0) _current.Search(""); }
+    private void Search() => _current.Search(_query);
+    private void SearchKey(KeyboardEventArgs e) { if (e.Key == "Enter") Search(); }
+    private void PreviousHit() { int n = View.Search.Hits.Count; if (n > 0) _current.SelectHit((View.SelectedHit <= 0 ? n : View.SelectedHit) - 1); }
+    private void NextHit() { int n = View.Search.Hits.Count; if (n > 0) _current.SelectHit((View.SelectedHit + 1) % n); }
+    private void PageKey(KeyboardEventArgs e)
+    {
+        if (e.Key == "ArrowRight" || e.Key == "PageDown") Next();
+        if (e.Key == "ArrowLeft" || e.Key == "PageUp") Previous();
+        if (e.Key == "Home") _current.GoToPage(1);
+        if (e.Key == "End") _current.GoToPage(View.PageCount);
+    }
+    private IEnumerable<PdfPreviewHit> VisibleHits() => View.SelectedHit >= 0 && View.SelectedHit < View.Search.Hits.Count
+        ? View.Search.Hits.Where((h, i) => i == View.SelectedHit && h.PageIndex == View.PageIndex)
+        : View.Search.Hits.Where(h => h.PageIndex == View.PageIndex);
+    private string BoxStyle(PdfPreviewRect normalized)
+    {
+        if (View.Frame is not { } frame) return "display:none";
+        var b = PdfPreviewPixels.RasterBox(normalized, frame.Width, frame.Height);
+        return FormattableString.Invariant($"left:{b.Left}px;top:{b.Top}px;width:{b.Width}px;height:{b.Height}px");
+    }
+    public async ValueTask DisposeAsync()
+    {
+        if (_disposed) return; _disposed = true; _current.Changed -= Changed;
+        if (_canvas is not null) { _canvas.Changed -= CanvasChanged; await _canvas.DisposeAsync(); }
+        if (_ownsCurrent) await _current.DisposeAsync();
+    }
+}
