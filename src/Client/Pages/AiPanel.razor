@@ -1,0 +1,122 @@
+@using Client.AI
+@implements IDisposable
+@inject AiSessionFactory Factory
+
+<section class="integration-panel" aria-label="Optional AI assistance" data-testid="ai-panel">
+    <h2>AI assistance</h2>
+    <p class="hint">Optional, active text file only. Keys, context and answers stay in app memory. Nothing is sent until you choose Send.</p>
+    <details><summary>Privacy &amp; request behavior</summary>
+        <p>No automatic uploads, saves, compilation, retries or provider fallback. Cloud providers receive the disclosed request and their app key for authentication. Browser-held keys are accessible to code on this origin, not isolated secrets.</p>
+    </details>
+    <fieldset disabled="@(_session.Connection is not null)">
+        <legend>Provider configuration</legend>
+        <label>Provider
+            <select value="@_provider" @onchange="ProviderChanged" data-testid="ai-provider">
+                <option value="@AiProviderKind.Ollama">Local Ollama</option>
+                <option value="@AiProviderKind.Gemini">Google Gemini (BYOK)</option>
+                <option value="@AiProviderKind.Claude">Anthropic Claude (BYOK)</option>
+            </select>
+        </label>
+        <label>Model ID <input @bind="_model" maxlength="128" autocomplete="off" data-testid="ai-model" /></label>
+        @if (_provider == AiProviderKind.Ollama)
+        {
+            <label>Local service base URL <input @bind="_localUrl" maxlength="256" autocomplete="off" data-testid="ai-local-url" /></label>
+            <p>Install Ollama and download a model separately. Loopback or private IPv4 addresses only.
+                Browser origin, local-network or mixed-content policy may prevent access. Internet-offline status does not disable local requests.</p>
+        }
+        else
+        {
+            <label>Separate app API key (memory only)
+                <input @key="_keyInputVersion" type="password" @oninput="KeyChanged" maxlength="512" autocomplete="new-password" spellcheck="false" data-testid="ai-key" />
+            </label>
+            <p>Use your own provider key. Claude browser requests explicitly opt in to direct browser access.</p>
+        }
+        <button @onclick="Connect" data-testid="ai-connect">Connect in memory (no request)</button>
+    </fieldset>
+    @if (_session.Connection is { } connection)
+    {
+        <p data-testid="ai-destination">Provider: @connection.Provider · Model: @connection.Model · Destination: @connection.Destination.AbsoluteUri</p>
+    }
+    <button @onclick="Prepare" disabled="@(_session.Busy || _session.Connection is null)">Prepare active-file context</button>
+    @if (_session.Context is { } context)
+    {
+        <p>File: @context.Filename · @context.ByteLength UTF-8 bytes</p>
+        <details><summary>Context verification</summary><p>BOM: @context.HasBom · Exact hash: @context.Hash</p></details>
+        <pre data-testid="ai-context" style="white-space:pre-wrap">@context.Text</pre>
+    }
+    <label>Your request (at most 8192 UTF-8 bytes)
+        <textarea @bind="_instruction" @bind:event="oninput" maxlength="8192" disabled="@_session.Busy"></textarea>
+    </label>
+    <label><input type="checkbox" @bind="_propose" disabled="@_session.Busy" /> Request an edit proposal instead of a chat answer</label>
+    <p class="hint">Proposed edits are untrusted. Preview them in Review, then explicitly accept or decline.</p>
+    <details>
+        <summary>Advanced: exact request payload</summary>
+        <p>Edit proposals use strict JSON for this file. Model output is never a tool call or command.</p>
+        <pre data-testid="ai-payload" style="white-space:pre-wrap">@_session.PayloadPreview(_instruction, _propose)</pre>
+    </details>
+    <p>The explicit Send action consents to sending the displayed file context and request to the displayed provider/model/destination.
+        Previous answers are not sent.</p>
+    <button @onclick="Send" disabled="@(_session.Busy || _session.Context is null || _session.Connection is null)">Send disclosed request</button>
+    <button @onclick="Preview" disabled="@(_session.Busy || !_session.HasProposal)">Preview proposal in Review (not acceptance)</button>
+    <button @onclick="Cancel" disabled="@(!_session.Busy)">Cancel</button>
+    <button @onclick="Disconnect">Disconnect and clear memory</button>
+    <p role="status" data-testid="ai-status">@_session.Status</p>
+    @if (_session.Busy) { <small>Operation slot remains occupied until the actual request settles, even after cancellation.</small> }
+    @if (_session.Answer is { } answer)
+    {
+        <h3>Answer (plain text; not applied)</h3>
+        <pre data-testid="ai-answer" style="white-space:pre-wrap">@answer</pre>
+    }
+</section>
+
+@code {
+    // Optional borrowed session is fixed for this mount; otherwise this panel owns one.
+    [Parameter] public AiSession? Session { get; set; }
+    private AiSession _session = default!;
+    private bool _ownsSession;
+    private int _keyInputVersion;
+    private AiProviderKind _provider;
+    private string _model = "", _key = "", _localUrl = "http://localhost:11434", _instruction = "";
+    private bool _propose, _disposed;
+    protected override void OnInitialized()
+    {
+        _ownsSession = Session is null;
+        _session = Session ?? Factory.Create();
+        _session.Changed += Changed;
+    }
+    private Task ProviderChanged(ChangeEventArgs e) => InvokeAsync(() =>
+    {
+        if (_session.Connection is not null || !Enum.TryParse<AiProviderKind>(e.Value as string, out var provider)
+            || !Enum.IsDefined(provider) || provider == _provider) return;
+        // An unsubmitted credential belongs only to the provider where it was entered.
+        // Changing between cloud providers keeps the password branch mounted unless
+        // its key changes, so clear both the reference and the uncontrolled DOM node.
+        _key = ""; _keyInputVersion++;
+        _model = ""; _localUrl = "http://localhost:11434";
+        _provider = provider;
+    });
+    private Task Connect() => InvokeAsync(() =>
+    {
+        _session.Connect(_provider, _model, _key, _localUrl);
+        _key = ""; _keyInputVersion++; // Remount to clear the DOM input without ever rendering a credential value attribute.
+    });
+    private Task KeyChanged(ChangeEventArgs e) => InvokeAsync(() => { _key = e.Value as string ?? ""; });
+    private Task Prepare() => InvokeAsync(_session.PrepareAsync);
+    private Task Send() => InvokeAsync(() => _session.SendAsync(_instruction, _propose, consent: true));
+    private Task Preview() => InvokeAsync(_session.PreviewProposalAsync);
+    private Task Cancel() => InvokeAsync(_session.Cancel);
+    private Task Disconnect() => InvokeAsync(() => { _session.Disconnect(); _key = ""; _keyInputVersion++; _instruction = ""; });
+    private void Changed() { if (!_disposed) _ = Render(); }
+    private async Task Render()
+    {
+        try { await InvokeAsync(() => { if (!_disposed) StateHasChanged(); }).ConfigureAwait(false); }
+        catch (ObjectDisposedException) { }
+        catch (InvalidOperationException) when (_disposed) { }
+    }
+    public void Dispose()
+    {
+        _disposed = true;
+        if (_session is not null) { _session.Changed -= Changed; if (_ownsSession) _session.Dispose(); }
+        _key = ""; _instruction = "";
+    }
+}
