@@ -1,0 +1,108 @@
+@using Client.Compilation
+@using Client.Compilation.Diagnostics
+@using Client.Compilation.History
+@using Client.Compilation.Presentation
+@using Client.Pdf.Preview
+@using Client.Workspace
+@using Client.Workspace.Domain
+@implements IDisposable
+@inject WorkspaceCoordinator Workspace
+@inject CompileWorkspaceSession Session
+@inject CompileHistoryUiSession History
+<aside class="authoring-compile" aria-label="Compilation and PDF" data-testid="compile-panel" data-selection-version="@Session.SelectionVersion" data-is-current="@(Session.State?.IsCurrent.ToString().ToLowerInvariant())" data-output-hash="@Session.DisplayedOutput?.OutputHash?.Hex">
+    <header class="compile-toolbar">
+        <h2>PDF</h2>
+        <div class="actions">
+            <button class="primary" @onclick="Session.CompileAsync" disabled="@(!Session.Readiness.Ready || Session.ReadingTools || Session.MainFile is null || Session.EngineChoice.Length == 0)" data-testid="compile">Compile</button>
+            <button @onclick="Session.Cancel" disabled="@(Session.State is not { } s || s.Active is null && s.Pending is null && s.UnsettledJobs == 0)" data-testid="cancel-compile">Cancel</button>
+        </div>
+    </header>
+    <p class="compiler-readiness" role="status" data-testid="compiler-readiness">@(Session.Readiness.Ready ? "Compiler ready" : "Compiler unavailable — this build cannot compile your project.")</p>
+    <details class="compiler-settings" data-testid="compiler-settings">
+    <summary>Compiler settings</summary>
+    <div class="settings-content">
+    <label>Main file
+        <select aria-label="Compile main file" value="@Session.MainFile?.ToString()" @onchange="MainChanged">
+            <option value="">Choose a main file</option>
+            @foreach (var file in Workspace.Files.Where(f => !f.Deleted && f.MediaKind == "text"))
+            { <option value="@file.Id.ToString()">@file.RelativePath</option> }
+        </select>
+    </label>
+    <label>Engine
+        <select aria-label="Compile engine" value="@Session.EngineChoice" @onchange="EngineChanged">
+            <option value="">Choose an available engine</option>
+            @if (Session.ConfiguredPorts is { } ports)
+            { <option value="@ports.CapabilityId" disabled="@(!Session.Readiness.Ready)">@ports.Label</option> }
+            <option value="xelatex" disabled>XeLaTeX — unavailable</option>
+            <option value="lualatex" disabled>LuaLaTeX — unavailable</option>
+            <option value="latex-dvi" disabled>LaTeX DVI mode — unavailable</option>
+        </select>
+    </label>
+    @if (Session.ConfiguredPorts is { SelectableBibliography: true })
+    {
+        <label><input type="checkbox" checked="@Session.UseBibtex" @onchange="BibliographyChanged" disabled="@(!Session.CanSelectBibtex || !Session.Readiness.Ready)" data-testid="use-bibtex" /> Use BibTeX</label>
+        <p class="hint">Enable BibTeX for documents that use a BibTeX bibliography. Leave it off for plain documents.</p>
+    }
+    <p class="hint">Settings apply to this session. Unsupported engines and packages are not substituted.</p>
+    <details><summary>Runtime availability &amp; compatibility</summary>
+        <p>@Session.Readiness.Status: @Session.Readiness.Message</p>
+        <p>This adapter supports main.tex and historical pdfLaTeX, with BibTeX where configured.</p>
+        <p data-testid="renderer-readiness">@(Session.ConfiguredPorts?.Inspector is null ? "Preview unavailable — no renderer configured." : "PDF renderer configured.")</p>
+    </details>
+    <button @onclick="Session.RefreshToolsAsync" disabled="@Session.ReadingTools" data-testid="refresh-compile-tools">Check tools</button>
+    </div>
+    </details>
+    <div class="compile-notices">
+        <p role="status" data-testid="compile-status">@Session.Notice</p>
+        <p data-testid="compiled-pdf-status">@Session.PdfLabel</p>
+    </div>
+    @if (Session.State is { } state)
+    {
+        <p data-testid="compile-work-status">@(state.Active is not null ? "Compiling…" : state.UnsettledJobs > 0 ? "Finishing previous work…" : "Idle") @(state.Pending is not null ? "Latest request queued." : "")</p>
+        @if (Session.Attempt is { } presentation)
+        {
+            <section aria-label="Compiler diagnostics" data-testid="compiler-diagnostics">
+                <h3>Compiler diagnostics @(!state.IsAttemptCurrent ? "— previous attempt" : "")</h3>
+                <p>Compiler log completeness is unknown. Source checks remain independent.</p>
+                @if (presentation.ParserResult is CompilerLogParseResult.Parsed parsed)
+                {
+                    @foreach (var finding in parsed.Report.Diagnostics)
+                    {
+                        <p data-testid="compiler-finding">@finding.Severity: @finding.SafeMessage
+                            @if (finding.Location is { } location) { <span>@location.RelativePath:@location.Line (captured line; source navigation unavailable)</span> }
+                            else { <span>Location unavailable: @finding.LocationIssue</span> }
+                        </p>
+                    }
+                }
+                else { <p>Compiler log interpretation unavailable: @presentation.Issue</p> }
+            </section>
+        }
+        <details data-testid="compile-details"><summary>Compile details and log</summary>
+            <p>Outcome: @Session.LastReason; selection version: @Session.SelectionVersion; unsettled operations: @state.UnsettledJobs.</p>
+            <p>Request: @Session.DisplayedOutput?.RequestId; epoch: @Session.DisplayedOutput?.WorkerEpoch.</p>
+            <p>Input: @Session.DisplayedOutput?.InputContentDigest.Hex; PDF: @Session.DisplayedOutput?.OutputHash?.Hex.</p>
+            <pre data-testid="compiler-log">@state.LastAttempt?.LogText</pre>
+        </details>
+    }
+    <PdfPreviewPane Controller="@Session.Preview" OwnsController="false" />
+    <CompileHistoryPanel Session="@History" />
+</aside>
+@code {
+    private bool _disposed;
+    protected override async Task OnInitializedAsync()
+    {
+        Session.AttachRenderer(action => InvokeAsync(action)); Session.Changed += Changed;
+        await Session.RefreshToolsAsync();
+    }
+    private void MainChanged(ChangeEventArgs e) => Session.SelectMain(Guid.TryParse(e.Value?.ToString(), out var id) ? new FileId(id) : null);
+    private void EngineChanged(ChangeEventArgs e) => Session.SelectEngine(e.Value?.ToString() ?? "");
+    private void BibliographyChanged(ChangeEventArgs e) => Session.SelectBibliography(e.Value is true);
+    private void Changed() { if (!_disposed) _ = Render(); }
+    private async Task Render()
+    {
+        try { await InvokeAsync(() => { if (!_disposed) StateHasChanged(); }).ConfigureAwait(false); }
+        catch (ObjectDisposedException) { }
+        catch (InvalidOperationException) when (_disposed) { }
+    }
+    public void Dispose() { _disposed = true; Session.Changed -= Changed; } // DI/app owns session, not this page
+}
