@@ -1,0 +1,90 @@
+@using Client.Workspace.Drive
+@using Client.Workspace.Domain
+@implements IDisposable
+@inject DriveTransferSession Transfer
+
+<section class="integration-panel" aria-label="Optional Google Drive ZIP transfers">
+    <h2>Google Drive</h2>
+    <p class="hint">Import or export ZIP copies. No sync, background transfers or remote replacement. Local editing and saving remain independent.</p>
+    <details><summary>Connection &amp; permissions</summary>
+        <p>Optional Google libraries load only when you use Drive. Only selected-file access is requested. Access expires; reconnect explicitly when needed.</p>
+    </details>
+    <fieldset disabled="@Transfer.Busy">
+        <legend>Your public Google configuration (memory only)</legend>
+        <label>OAuth web client ID <input @bind="_clientId" maxlength="256" autocomplete="off" /></label>
+        <label>Restricted public Picker API key <input @bind="_pickerKey" maxlength="256" autocomplete="off" /></label>
+        <label>Cloud project number (Picker app ID) <input @bind="_projectNumber" maxlength="30" autocomplete="off" /></label>
+        <button @onclick="Connect">Connect / reconnect explicitly</button>
+    </fieldset>
+    <p>Authorization: @Transfer.AuthStatus. Only <code>drive.file</code> is requested. Access expires; no automatic reauthorization. Disconnect clears the app's memory token, not your Google account's authorization grant.</p>
+    <button @onclick="Transfer.Disconnect">Disconnect</button>
+    <button @onclick="Transfer.Cancel" disabled="@(!Transfer.Busy)">Cancel transfer</button>
+    <p role="status">@Transfer.Notice</p>
+    <p role="status">Remote upload status (not local save state): @Transfer.RemoteNotice</p>
+    @if (Transfer.Busy)
+    {
+        <p>A request is still settling. This does not lock local editing or saving.</p>
+    }
+    <h3>Import as a new project</h3>
+    <button @onclick="Transfer.ChooseAsync" disabled="@(Transfer.Busy || Transfer.AuthStatus != DriveCode.Ready)">Choose ZIP with Google Picker</button>
+    <details><summary>Which files can I import?</summary><p>Picker grants selected-file access. A drive.file listing cannot see all existing files. Use Picker to select a ZIP; arbitrary download URLs are not supported.</p></details>
+    @if (Transfer.Selection is { } selected)
+    {
+        <p>Selected: @selected.Name</p>
+        <button @onclick="Transfer.DownloadAndStageAsync" disabled="@Transfer.Busy">Download and stage for local review</button>
+    }
+    @if (Transfer.ImportPreview is { } stage)
+    {
+        <p>Proposed new project: @stage.Staged.Name — @stage.Staged.Files.Length files. No project has been published yet.</p>
+        <details>
+            <summary>Staged files and validation</summary>
+            <ul>@foreach (var file in stage.Staged.Files) { <li>@file.RelativePath — @file.ByteLength bytes</li> }</ul>
+            <ul>@foreach (var error in stage.Staged.ValidationErrors) { <li>@error.RelativePath: @error.Code — @error.Message</li> }</ul>
+        </details>
+        <button @onclick="Accept" disabled="@(!Transfer.CanAccept)">Accept: create NEW local project</button>
+        <p>The current draft stays open. Opening the import is a separate workspace action.</p>
+    }
+    <h3>Export a saved copy</h3>
+    <button @onclick="Transfer.PrepareExportAsync" disabled="@Transfer.Busy">Save locally and preview Drive export</button>
+    @if (Transfer.ExportPreview is { } preview)
+    {
+        <dl>
+            <dt>Captured project</dt><dd>@preview.ProjectName (@preview.ProjectId)</dd>
+            <dt>Captured revision</dt><dd>@preview.Revision</dd>
+            <dt>Files / ZIP size</dt><dd>@preview.FileCount / @preview.ZipBytes bytes</dd>
+            <dt>Proposed Drive filename</dt><dd>@preview.ProposedName</dd>
+        </dl>
+        <p>Only captured manifest files are included, not app databases, credentials, chat, history or caches. Upload always creates a new remote ZIP. Check Drive before retrying any uncertain outcome.</p>
+        <button @onclick="Transfer.UploadNewAsync" disabled="@(!Transfer.CanUpload)">Confirm: upload NEW ZIP to Drive</button>
+    }
+</section>
+
+@code {
+    [Parameter] public EventCallback<ImportPublishResult> Imported { get; set; }
+    private string _clientId = "", _pickerKey = "", _projectNumber = "";
+    private bool _disposed;
+    protected override void OnInitialized() => Transfer.Changed += Changed;
+    private async Task Connect()
+    {
+        Transfer.Configure(new(_clientId.Trim(), _pickerKey.Trim(), _projectNumber.Trim()));
+        await Transfer.ConnectAsync().ConfigureAwait(false);
+    }
+    private async Task Accept()
+    {
+        var receipt = await Transfer.AcceptImportAsync().ConfigureAwait(false);
+        if (receipt is { Published: true } && !_disposed)
+            await InvokeAsync(() => { if (!_disposed) return Imported.InvokeAsync(receipt); return Task.CompletedTask; }).ConfigureAwait(false);
+    }
+    private void Changed() { if (!_disposed) _ = Render(); }
+    private async Task Render()
+    {
+        try { await InvokeAsync(() => { if (!_disposed) StateHasChanged(); }).ConfigureAwait(false); }
+        catch (ObjectDisposedException) { }
+        catch (InvalidOperationException) when (_disposed) { }
+    }
+    public void Dispose()
+    {
+        _disposed = true; Transfer.Changed -= Changed;
+        Transfer.Disconnect(); Transfer.Dispose();
+    }
+}
