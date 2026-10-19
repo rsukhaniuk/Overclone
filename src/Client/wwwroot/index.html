@@ -18,8 +18,22 @@
     </head>
     <body>
         <div id="app">Loading workspace…</div>
-        <script src="_framework/blazor.webassembly.js"></script>
+        <script src="_framework/blazor.webassembly.js?v=v9" autostart="false"></script>
         <script>
+            // Bound framework fetch admission through the supported runtime builder.
+            let appStartupSucceeded = false;
+            const appStarted = Blazor.start({
+                // Stable boot filenames contain build-specific assembly names.
+                // Version both entry points so an older active worker cannot
+                // combine its cached runtime config with the new application.
+                loadBootResource: (type, name, defaultUri) =>
+                    type === "dotnetjs" ? `${defaultUri}?v=v9` : undefined,
+                configureRuntime: (builder) =>
+                    builder.withConfig({ maxParallelDownloads: 8 }),
+            }).then(() => {
+                appStartupSucceeded = true;
+            });
+
             // Register the service worker for offline provisioning. An update never
             // force-reloads an active editing session: the page shows a banner and
             // lets the user reload when ready.
@@ -77,7 +91,9 @@
                     }
                 };
 
-                function warmRuntime() {
+                async function warmRuntime() {
+                    // Document load alone does not mean bounded runtime downloads finished.
+                    await appStarted;
                     const controller = navigator.serviceWorker.controller;
                     if (!controller) return;
                     const urls = (
@@ -89,7 +105,13 @@
                                 new URL(u, location.href).origin ===
                                 location.origin,
                         )
-                        .map((u) => new URL(u, location.href).pathname);
+                        .map((u) => {
+                            const url = new URL(u, location.href);
+                            const versionedBoot =
+                                url.pathname === "/_framework/blazor.webassembly.js" ||
+                                url.pathname === "/_framework/dotnet.js";
+                            return url.pathname + (versionedBoot ? url.search : "");
+                        });
                     // Include the document itself and core shell assets.
                     const set = new Set([
                         "/",
@@ -121,6 +143,9 @@
                         "/js/download.js",
                         "/js/folder-transfer.js",
                         "/js/offline-readiness.js",
+                        "/js/compile-history-index.js",
+                        "/js/compile-artifacts-storage.js",
+                        "/js/google-drive-auth.js",
                     ];
                     for (const a of ANALYSIS_ASSETS) set.add(a);
                     for (const a of ON_DEMAND_GLUE) set.add(a);
@@ -146,7 +171,7 @@
                     const data = event.data;
                     if (!data) return;
                     if (data.type === "activated") onActivated();
-                    else if (data.type === "warm-result") {
+                    else if (data.type === "warm-result" && appStartupSucceeded) {
                         window.__oopOfflineReady = !!data.ready;
                         window.__oopOfflineReadiness = data.ready
                             ? "ready"
@@ -188,6 +213,10 @@
                             // (e.g. a reload), drive warming now.
                             if (navigator.serviceWorker.controller)
                                 onActivated();
+                            // A previously installed update may already be waiting
+                            // when this page opens; updatefound will not fire again.
+                            if (reg.waiting && navigator.serviceWorker.controller)
+                                showUpdateBanner(reg);
                         })
                         .catch((error) => {
                             console.warn(

@@ -18,7 +18,7 @@
 // each one. Only then is offline provisioned. The page exposes
 // window.__oopOfflineReady so callers can wait for a genuinely provisioned shell.
 
-const CACHE_VERSION = "v3";
+const CACHE_VERSION = "v9";
 const SHELL_CACHE = `oop-workspace-shell-${CACHE_VERSION}`;
 const CORE_ASSETS = [
     "/",
@@ -81,7 +81,10 @@ self.addEventListener("activate", (event) => {
 
 // Non-hashed shell assets whose URL does not change across deploys, so they must
 // be revalidated over the network to avoid serving a stale version.
-const REVALIDATE = new Set(["/app.css", "/manifest.json", "/index.html", "/"]);
+const REVALIDATE = new Set([
+    "/app.css", "/manifest.json", "/index.html", "/",
+    "/_framework/blazor.webassembly.js", "/_framework/dotnet.js",
+]);
 
 self.addEventListener("fetch", (event) => {
     const request = event.request;
@@ -160,6 +163,61 @@ self.addEventListener("fetch", (event) => {
     );
 });
 
+// Warm rounds share one four-worker IO budget. Identical overlapping requests
+// share a round instead of scheduling duplicate downloads; each caller still gets
+// its own ordered result/reply. Failed assets are retried only on a later message.
+const WARM_CONCURRENCY = 4;
+const warmRounds = new Map();
+let warmTail = Promise.resolve();
+
+function warmAssets(urls) {
+    const requested = urls.slice();
+    const key = requested.every((url) => typeof url === "string")
+        ? JSON.stringify(requested)
+        : null;
+    if (key !== null && warmRounds.has(key)) return warmRounds.get(key);
+    const round = warmTail.then(async () => {
+        let cache;
+        try {
+            cache = await caches.open(SHELL_CACHE);
+        } catch (error) {
+            return requested.map((url) => ({ url, cached: false, error: String(error) }));
+        }
+        const results = new Array(requested.length);
+        let next = 0;
+        async function worker() {
+            while (next < requested.length) {
+                const index = next++;
+                const url = requested[index];
+                try {
+                    const req = new Request(url, { cache: "reload" });
+                    if (await cache.match(req)) {
+                        results[index] = { url, cached: true };
+                        continue;
+                    }
+                    const fresh = await fetch(req);
+                    if (!fresh.ok) {
+                        results[index] = { url, cached: false };
+                        continue;
+                    }
+                    await cache.put(req, fresh.clone());
+                    results[index] = { url, cached: true };
+                } catch (error) {
+                    results[index] = { url, cached: false, error: String(error) };
+                }
+            }
+        }
+        await Promise.all(Array.from({ length: Math.min(WARM_CONCURRENCY, requested.length) }, () => worker()));
+        return results;
+    });
+    if (key !== null) warmRounds.set(key, round);
+    warmTail = round.then(
+        () => { if (key !== null) warmRounds.delete(key); },
+        () => { if (key !== null) warmRounds.delete(key); },
+    );
+    return round;
+}
+
 self.addEventListener("message", (event) => {
     const data = event.data;
     if (data === "skipWaiting") {
@@ -174,28 +232,7 @@ self.addEventListener("message", (event) => {
     if (data && data.type === "warm" && Array.isArray(data.urls)) {
         event.waitUntil(
             (async () => {
-                const cache = await caches.open(SHELL_CACHE);
-                const results = await Promise.all(
-                    data.urls.map(async (u) => {
-                        const req = new Request(u, { cache: "reload" });
-                        if (await cache.match(req))
-                            return { url: u, cached: true };
-                        try {
-                            const fresh = await fetch(req);
-                            if (fresh.ok) {
-                                await cache.put(req, fresh.clone());
-                                return { url: u, cached: true };
-                            }
-                            return { url: u, cached: false };
-                        } catch (error) {
-                            return {
-                                url: u,
-                                cached: false,
-                                error: String(error),
-                            };
-                        }
-                    }),
-                );
+                const results = await warmAssets(data.urls);
                 const ready = results.every((r) => r.cached);
                 const source = event.source;
                 if (source)
