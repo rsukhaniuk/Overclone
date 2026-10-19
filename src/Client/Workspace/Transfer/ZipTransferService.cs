@@ -16,7 +16,7 @@ namespace Client.Workspace.Transfer;
 /// entries are optional and are not persisted as project objects. A round trip
 /// preserves paths and bytes, not the source application's IDs or history.
 /// </summary>
-public sealed class ZipTransferService : IProjectTransfer
+public sealed class ZipTransferService : IProjectTransfer, IArchiveExport
 {
     private readonly IProjectRepository _repo;
 
@@ -285,6 +285,9 @@ public sealed class ZipTransferService : IProjectTransfer
     // ---- export ----
 
     public async Task<ExportReceipt> ExportZipAsync(ExportSource source, CancellationToken ct)
+        => (await BuildZipAsync(source, ct)).Receipt;
+
+    public async Task<ArchiveExport> BuildZipAsync(ExportSource source, CancellationToken ct)
     {
         var revision = source.Revision;
         ct.ThrowIfCancellationRequested();
@@ -301,7 +304,7 @@ public sealed class ZipTransferService : IProjectTransfer
         if (revision.Files.Length > ArchiveLimits.MaxEntries)
             throw new InvalidOperationException("Too many entries to export.");
 
-        var ms = new MemoryStream();
+        using var ms = new MemoryStream();
         using (var zip = new ZipArchive(ms, ZipArchiveMode.Create, leaveOpen: true))
         {
             var used = new HashSet<string>(StringComparer.Ordinal);
@@ -320,8 +323,8 @@ public sealed class ZipTransferService : IProjectTransfer
             }
         }
 
-        ms.Position = 0;
-        return new ExportReceipt(revision.Id, ms.Length, revision.Files.Length, null);
+        ct.ThrowIfCancellationRequested();
+        return new ArchiveExport(revision.Id, ms.ToArray(), revision.Files.Length);
     }
 }
 
