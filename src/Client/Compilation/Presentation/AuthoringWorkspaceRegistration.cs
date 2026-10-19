@@ -1,0 +1,55 @@
+using Client.Analysis;
+using Client.AI;
+using Client.Compilation.History;
+using Client.Compilation.History.Index;
+using Client.Compilation.Native;
+using Microsoft.JSInterop;
+using Client.Review;
+using Client.Workspace;
+using Client.Workspace.History;
+using Client.Workspace.Transfer;
+using Client.Workspace.Drive;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+
+namespace Client.Compilation.Presentation;
+
+public static class AuthoringWorkspaceRegistration
+{
+    /// <summary>Shared actual app services. No executable runtime/binary is selected.
+    /// A trusted TEST/application builder may explicitly replace the configuration.</summary>
+    public static IServiceCollection AddAuthoringWorkspace(this IServiceCollection services)
+    {
+        services.AddSingleton<IProjectRepository, WorkspaceStorage>();
+        services.AddSingleton<IWorkspaceLocks, JsWorkspaceLocks>();
+        services.AddSingleton<IProjectTransfer, ZipTransferService>();
+        services.AddSingleton<HistoryService>();
+        services.AddScoped<FolderTransferService>();
+        services.AddScoped<WorkspaceCoordinator>();
+        services.AddScoped<ISourceAnalyzer, RustSourceAnalyzer>();
+        services.AddScoped<AnalysisCoordinator>();
+        services.AddScoped<SourceNavigator>();
+        services.AddScoped<IChangeReviewService, ChangeReviewService>();
+        services.AddAiAssistance();
+        services.AddDriveTransfers();
+        services.TryAddScoped<ICompileWorkspaceConfiguration, UnavailableCompileWorkspaceConfiguration>();
+        services.AddScoped<CompileWorkspaceSession>();
+        services.AddScoped<CompileHistoryUiSession>(provider =>
+        {
+            var workspace = provider.GetRequiredService<WorkspaceCoordinator>();
+            var compile = provider.GetRequiredService<CompileWorkspaceSession>();
+            var js = provider.GetRequiredService<IJSRuntime>();
+            // The same output descriptors used by CompileWorkspaceSession's B3
+            // request options. Metadata contracts only: no runtime is selected,
+            // provisioned or approved here, including the unavailable default.
+            var store = new CompileArtifactHistoryStore(new ArtifactStorageBackend(js),
+                provider.GetRequiredService<IProjectRepository>(), NativeRuntimePackage.Pdf, NativeRuntimePackage.Adapter);
+            var index = new CompileHistoryIndex(new JsHistoryIndexBackend(js));
+            return new(workspace, compile, store, index,
+                new(new(64, 1048576, 8388608, 131072), 8388608, 262144,
+                    new(new(2, 256, 8388608, 16777216, 65536, 256, 256), 16384, 64, 128, 15000)),
+                new(64, 65536, 15000));
+        });
+        return services;
+    }
+}
