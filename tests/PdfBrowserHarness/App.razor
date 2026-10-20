@@ -1,0 +1,17 @@
+@using Microsoft.JSInterop
+@inject IJSRuntime Js
+@inject HttpClient Http
+<h1>Private PDF port browser harness</h1>
+<p id="ready">@_state</p>
+<pre id="observed">@HarnessApi.LastObservation</pre>
+<canvas id="raster"></canvas>
+@code {
+    private string _state = "provisioning";
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        try { await HarnessApi.InitializeAsync(Js, Http); _state = "ready"; }
+        catch (Exception error) { _state = "failed: " + error.GetType().Name; }
+        StateHasChanged();
+    }
+}
