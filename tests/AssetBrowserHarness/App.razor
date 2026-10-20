@@ -1,0 +1,14 @@
+@using Microsoft.JSInterop
+@inject IJSRuntime JS
+@inject HttpClient Http
+<h1>Private runtime storage test harness</h1>
+<div id="ready">@_ready</div>
+<pre id="observed">@HarnessApi.Last</pre>
+@code {
+    private string _ready = "loading";
+    protected override async Task OnInitializedAsync()
+    {
+        try { await HarnessApi.Initialize(JS, Http); _ready = "ready"; }
+        catch (Exception error) { _ready = "failed:" + error.GetType().Name; }
+    }
+}
