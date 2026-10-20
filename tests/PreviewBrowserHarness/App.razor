@@ -1,0 +1,115 @@
+@namespace PreviewBrowserHarness
+@using System.Text.Json
+@using Client.Pdf
+@using Client.Pdf.Preview
+@using Microsoft.JSInterop
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+@inject HttpClient Http
+<h1>N18 canonical PDF pane — private TEST host</h1>
+<p data-testid="harness-ready">@_ready</p>
+<label>Local editing sentinel <textarea aria-label="Local editing sentinel" @bind="_sentinel" @bind:event="oninput"></textarea></label>
+<nav aria-label="Explicit private fixture selection">
+    <button @onclick='() => Load("n11")' disabled="@(_fixture is null || _closed)">Load N11 PDF</button>
+    <button @onclick='() => Load("regular")' disabled="@(_fixture is null || _closed)">Load Ukrainian PDF</button>
+    <button @onclick='() => Load("scan")' disabled="@(_fixture is null || _closed)">Load color scan</button>
+    <button @onclick='() => Load("crop")' disabled="@(_fixture is null || _closed)">Load rotated crop</button>
+    <button @onclick="Absent" disabled="@(_fixture is null || _closed)">Unavailable runtime</button>
+    <button @onclick="CallerCurrent" disabled="@(_fixture is null || _closed)">Use caller current label</button>
+    <button @onclick="FullProfile" disabled="@(_fixture is null || _closed)">Full search profile</button>
+    <button @onclick="PartialProfile" disabled="@(_fixture is null || _closed)">One page search profile</button>
+    <button @onclick="Hold" disabled="@(_fixture is null || _closed)">Hold next completed native call</button>
+    <button @onclick="Release" disabled="@(_fixture is null || _closed)">Release injected hold</button>
+    <button @onclick="Fail" disabled="@(_fixture is null || _closed)">Inject next completion failure</button>
+    <button @onclick="Close" disabled="@(_fixture is null || _closed)">Close preview and drain</button>
+</nav>
+<p data-testid="injection-status">@(_fixture?.Inspector.Held == true ? "INJECTED: native completion held" : "No held native completion")</p>
+@if (_showPane)
+{
+    <div style="width:400px"><PdfPreviewPane Controller="@_controller" OwnsController="false" /></div>
+}
+<pre data-testid="harness-observations">@Snapshot()</pre>
+@code {
+    private NativeFixture? _fixture;
+    private PdfPreviewController _controller = new();
+    private string _ready = "Provisioning explicit TEST fixtures; no PDF selected", _sentinel = "Local document sentinel Україна 😀";
+    private bool _nativeMode, _showPane = true, _closed, _disposing;
+    private readonly List<object> _states = [];
+    private readonly List<string> _events = [];
+    protected override async Task OnAfterRenderAsync(bool first)
+    {
+        if (!first) return;
+        try
+        {
+            _fixture = await NativeFixture.Create(JS, Http); _fixture.Inspector.Changed += Changed; _controller.Changed += Changed;
+            _ready = "Provisioned explicit accepted private store/fixtures; no PDF selected";
+        }
+        catch (Exception error) { _ready = "Setup error: " + error; }
+        StateHasChanged();
+    }
+    private void Event(string value) { if (_events.Count >= 128) throw new InvalidOperationException("Finite UI event cap"); _events.Add(value); }
+    private async Task Load(string name)
+    {
+        Event("load-" + name); if (_fixture is null) return;
+        if (!_nativeMode) await Replace(new(_fixture.Inspector), true);
+        _controller.Provide(_fixture.Documents[name], "Explicit provided fixture: " + name);
+    }
+    private async Task Replace(PdfPreviewController next, bool native)
+    {
+        _fixture?.Inspector.Release(); _controller.Changed -= Changed; await _controller.DisposeAsync();
+        await _controller.WhenSettled.WaitAsync(TimeSpan.FromSeconds(10));
+        _controller = next; _nativeMode = native; _controller.Changed += Changed;
+    }
+    private async Task Absent()
+    {
+        Event("absent-runtime"); if (_fixture is null) return;
+        await Replace(new(), false); _controller.Provide(_fixture.Documents["n11"], "Provided PDF with NO selected runtime");
+    }
+    private void CallerCurrent()
+    { Event("caller-current-metadata-only"); if (_fixture is not null) _controller.Provide(_fixture.Documents["n11"], "Caller labelled PDF", PdfDisplayProvenance.CallerSaysCurrent); }
+    private async Task FullProfile()
+    { Event("full-profile"); if (_fixture is null) return; await Replace(new(_fixture.Inspector), true); _controller.Provide(_fixture.Documents["n11"], "Explicit full scan profile"); }
+    private async Task PartialProfile()
+    { Event("partial-profile"); if (_fixture is null) return; await Replace(new(_fixture.Inspector, new(MaxSearchPages: 1)), true); _controller.Provide(_fixture.Documents["n11"], "Explicit1page scan cap; incomplete beyond1page"); }
+    private void Hold() { Event("INJECTED-hold-next"); if (_fixture is not null) _fixture.Inspector.HoldNext = true; }
+    private void Release() { Event("release-INJECTED-hold"); _fixture?.Inspector.Release(); }
+    private void Fail() { Event("INJECTED-failure-next"); if (_fixture is not null) _fixture.Inspector.FailNext = true; }
+    private void Changed()
+    {
+        if (_disposing || _closed) return;
+        var s = _controller.State;
+        if (_states.Count < 160) _states.Add(new { s.Generation, hash = s.DocumentSha256, s.PageIndex, s.PageCount, status = s.Status.ToString(), query = s.Search.Query,
+            searchStatus = s.Search.Status.ToString(), s.Search.ScannedPages, hits = s.Search.Hits.Count, frame = s.Frame is null ? null : new { s.Frame.Generation, s.Frame.DocumentSha256, s.Frame.PageIndex, s.Frame.Width, s.Frame.Height } });
+        _ = Refresh();
+    }
+    private async Task Refresh()
+    {
+        try { await InvokeAsync(() => { if (!_disposing && !_closed) StateHasChanged(); }); }
+        catch (ObjectDisposedException) { }
+        catch (InvalidOperationException) when (_disposing || _closed) { }
+    }
+    private string Snapshot()
+    {
+        var s = _controller.State;
+        return JsonSerializer.Serialize(new { ready = _ready, closed = _closed, sentinel = _sentinel, nativeMode = _nativeMode, inspectorActive = _fixture?.Inspector.Active ?? 0,
+            inspectorPeak = _fixture?.Inspector.Peak ?? 0, fixtureDisposed = _fixture?.Disposed ?? false, actualPending = _controller.ActualWorkPending, pending = _controller.PendingSelections,
+            selected = new { s.Generation, status = s.Status.ToString(), s.Detail, s.DocumentSha256, s.DisplayName, provenance = s.Provenance.ToString(), s.PageIndex, s.PageCount, s.ZoomPercent, s.FitWidth,
+                s.Text, s.Utf16Units, s.Glyphs, search = new { status = s.Search.Status.ToString(), s.Search.Query, s.Search.ScannedPages, s.Search.TotalPages, s.Search.Hits, s.Search.Detail }, s.SelectedHit, s.NativeRequestId, s.NativeEpoch, s.Runtime,
+                frame = s.Frame is null ? null : new { s.Frame.Generation, s.Frame.DocumentSha256, s.Frame.PageIndex, s.Frame.Width, s.Frame.Height, rgbaSha256 = PdfHashes.Of(s.Frame.CopyRgba()) } },
+            installation = _fixture?.Installation.ToString(), inventoryDigest = _fixture?.InventoryDigest, verifiedInputs = _fixture?.VerifiedInputs, events = _events, states = _states, nativeCalls = _fixture?.Inspector.Calls });
+    }
+    private async Task Close()
+    {
+        Event("close-and-drain"); if (_fixture is null) return;
+        _fixture.Inspector.Release(); _controller.Changed -= Changed; await _controller.DisposeAsync();
+        await _controller.WhenSettled.WaitAsync(TimeSpan.FromSeconds(10));
+        _fixture.Inspector.Changed -= Changed; _showPane = false; StateHasChanged();
+        await _fixture.DisposeAsync(); _closed = true;
+    }
+    public async ValueTask DisposeAsync()
+    {
+        if (_disposing) return; _disposing = true; _controller.Changed -= Changed;
+        _fixture?.Inspector.Release(); if (_fixture is not null) _fixture.Inspector.Changed -= Changed;
+        await _controller.DisposeAsync(); if (_fixture is not null) await _fixture.DisposeAsync();
+    }
+}
