@@ -2,11 +2,15 @@
 
 <article class="app-shell">
     <header class="app-bar">
-        <a class="brand" href="/">Document workspace</a>
-        <nav>
-            <NavLink class="nav-link" href="/" Match="@NavLinkMatch.All">Workspace</NavLink>
-            <NavLink class="nav-link" href="/smoke">Worker smoke test</NavLink>
+        <a class="brand" href="/">Overclone</a>
+        <span class="workspace-badge">Local workspace</span>
+        <nav aria-label="Workspace navigation">
+            <NavLink class="nav-link" href="/" Match="@NavLinkMatch.All">Projects</NavLink>
         </nav>
+        <details class="app-tools">
+            <summary>Tools</summary>
+            <NavLink class="nav-link" href="/smoke">Worker smoke test</NavLink>
+        </details>
     </header>
     @Body
 </article>

@@ -1,6 +1,7 @@
 @page "/"
 @inject WorkspaceCoordinator Coordinator
 @inject IProjectTransfer Transfer
+@inject IArchiveExport ArchiveExport
 @inject FolderTransferService Folders
 @inject AnalysisCoordinator AnalysisCoord
 @inject SourceNavigator Navigator
@@ -9,7 +10,9 @@
 @inject IJSRuntime JS
 @implements IAsyncDisposable
 
-<PageTitle>Document workspace</PageTitle>
+<PageTitle>Overclone · Document workspace</PageTitle>
+
+<main class="@(Coordinator.IsOpen ? "workbench" : "project-dashboard")">
 
 @if (Coordinator.Capabilities is { } caps && (!caps.Opfs || !caps.IndexedDb))
 {
@@ -28,24 +31,97 @@
 
 @if (!Coordinator.IsOpen)
 {
-    <section class="panel" aria-label="Projects">
-        <h1>Projects</h1>
-        <p class="hint">Local projects are stored in this browser (OPFS + IndexedDB). They survive
-            closing the browser and work offline after provisioning.</p>
+    var displayedProjects = _projects.Where(p => p.Name.Contains(_projectQuery.Trim(), StringComparison.OrdinalIgnoreCase)).ToArray();
 
-        <div class="transfer-bar">
-            <form @onsubmit="@(async () => await CreateProjectAsync())" @onsubmit:preventDefault>
-                <label for="new-project">New project name</label>
-                <input id="new-project" @bind="_newProjectName" @bind:event="oninput"
-                       placeholder="e.g. Diploma 2026" autocomplete="off" />
-                <button type="submit">Create project</button>
-            </form>
-            <span class="transfer-sep">or import:</span>
-            <InputFile OnChange="OnImportZip" accept=".zip"
-                       data-testid="import-zip" />
-            <button @onclick="OnImportFolder" data-testid="import-folder"
-                    disabled="@( !_folderCap.Picker)">Import folder</button>
+    <aside class="dashboard-sidebar" aria-label="Project manager navigation">
+        <a class="dashboard-brand" href="/">
+            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none"><path d="M6 3h8l4 4v14H6z" stroke="currentColor" stroke-width="1.6" /><path d="M14 3v5h4M9 12h6M9 16h6" stroke="currentColor" stroke-width="1.6" /></svg>
+            Overclone
+        </a>
+        <nav aria-label="Projects navigation">
+            <a class="dashboard-nav active" href="#all-projects" aria-current="page">Projects</a>
+            <a class="dashboard-nav" href="#dashboard-import">Import projects</a>
+            <a class="dashboard-nav" href="#dashboard-drive">Google Drive</a>
+        </nav>
+        <div class="dashboard-sidebar-bottom">
+            <details class="dashboard-tools">
+                <summary>Developer tools</summary>
+                <NavLink href="/smoke">Worker smoke test</NavLink>
+            </details>
+            <p>Local workspace</p>
+            <small>Keep an exported copy as a backup.</small>
         </div>
+    </aside>
+
+    <section class="projects-panel" id="all-projects" aria-label="Projects">
+        <header class="projects-heading"><h1>All projects</h1></header>
+        <div class="dashboard-toolbar">
+            <div class="project-search">
+                <svg aria-hidden="true" viewBox="0 0 24 24" fill="none"><circle cx="10.5" cy="10.5" r="6.5" stroke="currentColor" stroke-width="1.8" /><path d="m16 16 4 4" stroke="currentColor" stroke-width="1.8" /></svg>
+                <label class="sr-only" for="project-search">Search projects</label>
+                <input id="project-search" type="search" @bind="_projectQuery" @bind:event="oninput"
+                       placeholder="Search projects" autocomplete="off" data-testid="project-search" />
+                @if (_projectQuery.Length > 0)
+                {
+                    <button class="clear-search" @onclick='() => _projectQuery = ""' aria-label="Clear search">✕</button>
+                }
+            </div>
+            <details class="new-project-menu" data-testid="new-project-disclosure">
+                <summary>New project <span aria-hidden="true">▾</span></summary>
+                <form class="new-project-popover" @onsubmit="@(async () => await CreateProjectAsync())" @onsubmit:preventDefault>
+                    <label for="new-project">Project name</label>
+                    <input id="new-project" @bind="_newProjectName" @bind:event="oninput"
+                           placeholder="Untitled project" autocomplete="off" />
+                    <button class="dashboard-primary" type="submit">Create project</button>
+                </form>
+            </details>
+        </div>
+
+        <div class="project-table-scroll" tabindex="0" role="region" aria-label="Local projects table">
+            <table class="project-table">
+                <thead><tr><th scope="col">Title</th><th scope="col">Storage</th><th scope="col">Status</th><th scope="col">Actions</th></tr></thead>
+                <tbody>
+                    @foreach (var p in displayedProjects)
+                    {
+                        <tr data-testid="project-row" data-name="@p.Name">
+                            <td><button class="project-title" @onclick='() => OpenProjectAsync(p.Id)' data-testid="open-project">@p.Name</button></td>
+                            <td class="project-storage">This device</td>
+                            <td><span class="project-status">@(p.HeadRevisionId is null ? "Empty" : "Saved revision")</span></td>
+                            <td><button class="project-delete" @onclick='() => DeleteProjectAsync(p.Id)' aria-label='Delete project @p.Name'>Delete</button></td>
+                        </tr>
+                    }
+                    @if (displayedProjects.Length == 0)
+                    {
+                        <tr><td colspan="4" class="project-table-empty">
+                            @if (_projects.Count == 0)
+                            {
+                                <h2>No projects yet</h2>
+                                <p>Choose New project to create one, or <a href="#dashboard-import">import a ZIP or folder</a>.</p>
+                            }
+                            else
+                            {
+                                <h2>No matching projects</h2>
+                                <p>Try another name, or use Clear search to show all projects.</p>
+                            }
+                        </td></tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        <footer class="projects-footer">
+            <span role="status" aria-live="polite" data-testid="project-count">Showing @displayedProjects.Length of @_projects.Count projects</span>
+            <span>Local projects stay on this device. Export a copy for backup.</span>
+        </footer>
+
+        <details class="dashboard-import" id="dashboard-import" data-testid="project-import-disclosure">
+            <summary>Import projects <span>ZIP or folder</span></summary>
+            <div class="dashboard-import-body">
+                <label class="zip-import">Import ZIP
+                    <InputFile OnChange="OnImportZip" accept=".zip" data-testid="import-zip" />
+                </label>
+                <button @onclick="OnImportFolder" data-testid="import-folder"
+                        disabled="@( !_folderCap.Picker)">Import folder</button>
+            </div>
 
         @if (_staged is { } staged)
         {
@@ -92,31 +168,16 @@
             </section>
         }
 
-        @if (_projects.Count == 0)
-        {
-            <p role="status">No local projects yet. Create one or import a ZIP/folder to start editing.</p>
-        }
-        else
-        {
-            <ul class="project-list">
-                @foreach (var p in _projects)
-                {
-                    <li data-testid="project-row" data-name="@p.Name">
-                        <span class="project-name">@p.Name</span>
-                        <span class="project-meta">@((p.HeadRevisionId is null ? "empty" : "1+ revisions"))</span>
-                        <button @onclick='() => OpenProjectAsync(p.Id)' data-testid="open-project">Open</button>
-                        <button class="danger" @onclick='() => DeleteProjectAsync(p.Id)'
-                                aria-label='Delete project @p.Name'>Delete</button>
-                    </li>
-                }
-            </ul>
-        }
+        </details>
     </section>
 }
 else
 {
     <section class="panel workspace" aria-label="Workspace @Coordinator.Project?.Name">
         <header class="workspace-header">
+            <button class="project-back" @onclick="CloseAsync" aria-label="Close" title="Back to projects">←</button>
+            <a class="brand" href="/">Overclone</a>
+            <span class="workspace-badge">Local workspace</span>
             <div class="title-block">
                 <h1>@Coordinator.Project?.Name</h1>
                 <p class="status @StatusClass" role="status" aria-live="polite">@StatusText</p>
@@ -125,10 +186,15 @@ else
                 <button @onclick="SaveAsync" disabled="@SaveDisabled" data-testid="save">
                     @(Coordinator.SavePhase == SavePhase.Saving ? "Saving…" : "Save")
                 </button>
-                <button @onclick="ExportZipAsync" data-testid="export-zip">Export ZIP</button>
-                <button @onclick="ExportFolderAsync" data-testid="export-folder"
-                        disabled="@(!_folderCap.Writable)">Export to folder</button>
-                <button @onclick="CloseAsync">Close</button>
+                <details class="project-menu">
+                    <summary>Project</summary>
+                    <div class="menu-items">
+                        <button @onclick="ExportZipAsync" data-testid="export-zip">Export ZIP</button>
+                        <button @onclick="ExportFolderAsync" data-testid="export-folder"
+                                disabled="@(!_folderCap.Writable)">Export to folder</button>
+                        <NavLink class="project-smoke-link" href="/smoke">Worker smoke test</NavLink>
+                    </div>
+                </details>
             </div>
         </header>
 
@@ -181,13 +247,15 @@ else
 
         <div class="workspace-body">
             <aside class="file-tree" aria-label="Files">
+                <h2 class="pane-title">Project files</h2>
                 <form @onsubmit="@(() => CreateFile())" @onsubmit:preventDefault>
-                    <input @bind="_newFileName" @bind:event="oninput" placeholder="new file path"
+                    <input aria-label="New file path" @bind="_newFileName" @bind:event="oninput" placeholder="New file path…"
                            autocomplete="off" data-testid="new-file-name" />
                     <button type="submit" data-testid="new-file">New file</button>
                 </form>
                 <div class="import">
-                    <InputFile OnChange="OnImportFile" accept=".tex,.txt,.bib,.cls,.sty,.bst,.md,.json,.yaml,.yml,.csv,image/*,application/pdf"
+                    <label for="import-file">Import file</label>
+                    <InputFile id="import-file" OnChange="OnImportFile" accept=".tex,.txt,.bib,.cls,.sty,.bst,.md,.json,.yaml,.yml,.csv,image/*,application/pdf"
                                data-testid="import-input" />
                 </div>
                 <ul class="files">
@@ -197,8 +265,8 @@ else
                         <li class="@(Coordinator.ActiveFileId == id ? "active" : "")">
                             <button class="file-link" @onclick='() => { SelectFile(id); }'
                                     data-testid="select-file">
-                                <span class="kind @(f.MediaKind == "binary" ? "bin" : "text")">[@f.MediaKind]</span>
-                                @f.RelativePath
+                                <span class="file-icon @(f.MediaKind == "binary" ? "bin" : "text")" aria-label="@f.MediaKind"></span>
+                                <span class="file-name">@f.RelativePath</span>
                             </button>
                             @if (f.IsNew || f.DirtyContent || f.DirtyBinary || f.TreeChanged)
                             {
@@ -215,13 +283,19 @@ else
                 @if (Coordinator.ActiveFile is { } active)
                 {
                     <div class="editor-toolbar">
-                        <label for="rename">@active.RelativePath</label>
-                        <input id="rename" @bind="_renameTarget" @bind:event="oninput"
-                               placeholder="rename to…" autocomplete="off" data-testid="rename-input" />
-                        <button @onclick='() => { RenameFile(active.Id); }' data-testid="rename">Rename</button>
-                        <button @onclick="DownloadFileAsync" data-testid="download">
-                            Download@(active.MediaKind == "binary" ? " file" : " text")
-                        </button>
+                        <label class="source-tab" for="editor">@active.RelativePath</label>
+                        <details class="file-menu">
+                            <summary>File actions</summary>
+                            <div class="menu-items">
+                                <label for="rename">Rename file</label>
+                                <input id="rename" @bind="_renameTarget" @bind:event="oninput"
+                                       placeholder="New path…" autocomplete="off" data-testid="rename-input" />
+                                <button @onclick='() => { RenameFile(active.Id); }' data-testid="rename">Rename</button>
+                                <button @onclick="DownloadFileAsync" data-testid="download">
+                                    Download@(active.MediaKind == "binary" ? " file" : " text")
+                                </button>
+                            </div>
+                        </details>
                     </div>
                     @if (active.MediaKind == "binary")
                     {
@@ -246,12 +320,18 @@ else
                 }
                 else
                 {
-                    <p class="hint">Select a file or create one to start editing.</p>
+                    <div class="editor-empty"><span class="eyebrow">Source editor</span><h2>No file selected</h2><p>Select a project file, or use <strong>New file</strong> or <strong>Import file</strong> on the left to begin.</p></div>
                 }
             </div>
 
-            <aside class="history-panel" aria-label="History">
-                <h2>History</h2>
+            <CompilePanel />
+
+        </div>
+
+        <div class="secondary-tools" aria-label="Project tools">
+            <details class="tool-disclosure history-panel" data-testid="source-history-disclosure">
+                <summary>Source history <span>Compare &amp; restore</span></summary>
+                <div class="tool-content">
                 @if (_history.Count == 0)
                 {
                     <p class="hint">No checkpoints yet. Save or import to record history.</p>
@@ -337,10 +417,12 @@ else
                         }
                     </section>
                 }
-            </aside>
-        </div>
+                </div>
+            </details>
 
-        <section class="analysis-panel" aria-label="Source analysis" data-testid="analysis-panel" data-generation="@Coordinator.WorkingGeneration" data-session="@Coordinator.SessionId" data-head="@Coordinator.CurrentRevision?.Id">
+        <details class="tool-disclosure" data-testid="analysis-disclosure">
+            <summary>Analysis <span class="@AnalysisStatusClass">@AnalysisStatusText</span></summary>
+        <section class="analysis-panel tool-content" aria-label="Source analysis" data-testid="analysis-panel" data-generation="@Coordinator.WorkingGeneration" data-session="@Coordinator.SessionId" data-head="@Coordinator.CurrentRevision?.Id">
             <h2>@(AnalysisCoord.CurrentProfile.Id == AnalysisCatalog.KnuId ? "Source analysis" : "Engine analysis")</h2>
             <div class="analysis-controls">
                 <label for="analysis-profile">Analysis profile</label>
@@ -429,10 +511,26 @@ else
                 <p class="hint nav-notice" role="status" data-testid="nav-notice">@_navNotice</p>
             }
         </section>
-        <ReviewPanel State="CurrentReview" Writable="ReviewWritable" Working="_reviewPending" Notice="@_reviewNotice"
-                     Accept="AcceptReviewAsync" Decline="DeclineReview" Retry="RetryReviewAsync" Undo="UndoReviewAsync" Cancel="CancelReview" />
+        </details>
+        <details class="tool-disclosure review-disclosure" data-testid="review-disclosure"
+                 open="@(_reviewPending || CurrentReview.Busy || CurrentReview.Preview is not null || CurrentReview.Action is not null || CurrentReview.Notice is not null || !string.IsNullOrEmpty(_reviewNotice))">
+            <summary>Review <span>Preview &amp; accept edits</span></summary>
+            <ReviewPanel State="CurrentReview" Writable="ReviewWritable" Working="_reviewPending" Notice="@_reviewNotice"
+                         Accept="AcceptReviewAsync" Decline="DeclineReview" Retry="RetryReviewAsync" Undo="UndoReviewAsync" Cancel="CancelReview" />
+        </details>
+        <details class="tool-disclosure" data-testid="ai-disclosure">
+            <summary>AI assistance</summary>
+            <div class="tool-content"><AiPanel /></div>
+        </details>
+        </div>
     </section>
 }
+
+<details class="tool-disclosure drive-disclosure" id="@(Coordinator.IsOpen ? null : "dashboard-drive")" data-testid="drive-disclosure">
+    <summary>Google Drive <span>Import &amp; export</span></summary>
+    <div class="tool-content"><DriveTransferPanel Imported="@(_ => RefreshProjectsAsync())" /></div>
+</details>
+</main>
 
 @code {
     private System.Threading.CancellationTokenSource? _autosaveCts;
@@ -605,6 +703,7 @@ else
         return cf?.RelativePath ?? x?.RelativePath ?? fileId;
     }
 
+    private string _projectQuery = "";
     private List<Project> _projects = new();
     private string _newProjectName = "";
     private string _newFileName = "";
@@ -962,12 +1061,11 @@ else
         try
         {
             var source = await Coordinator.CaptureExportSourceAsync(System.Threading.CancellationToken.None);
-            var receipt = await Transfer.ExportZipAsync(source, System.Threading.CancellationToken.None);
-            // Build the actual ZIP bytes for download from the captured revision.
-            var zipBytes = await BuildZipBytesAsync(source, System.Threading.CancellationToken.None);
+            var archive = await ArchiveExport.BuildZipAsync(source, System.Threading.CancellationToken.None);
+            var receipt = archive.Receipt;
             var filename = (Coordinator.Project?.Name ?? "project") + ".zip";
             var module = await JS.InvokeAsync<IJSObjectReference>("import", "./js/download.js");
-            await module.InvokeVoidAsync("downloadZip", filename, zipBytes);
+            await module.InvokeVoidAsync("downloadZip", filename, archive.Bytes);
             await module.DisposeAsync();
             _transferStatus = $"Exported revision {receipt.CapturedRevision.ToString().Substring(0,8)} ({receipt.FileCount} files, {receipt.ByteLength} bytes).";
             _transferOk = true;
@@ -1003,24 +1101,6 @@ else
             _transferOk = false;
         }
         StateHasChanged();
-    }
-
-    private async Task<byte[]> BuildZipBytesAsync(ExportSource source, System.Threading.CancellationToken ct)
-    {
-        // Stream exact durable bytes of the captured revision into an in-memory ZIP.
-        using var ms = new System.IO.MemoryStream();
-        using (var zip = new System.IO.Compression.ZipArchive(ms, System.IO.Compression.ZipArchiveMode.Create, leaveOpen: true))
-        {
-            foreach (var f in source.Revision.Files)
-            {
-                ct.ThrowIfCancellationRequested();
-                var entry = zip.CreateEntry(f.RelativePath, System.IO.Compression.CompressionLevel.Optimal);
-                using var es = entry.Open();
-                var bytes = await source.ReadContent(f.ContentHash, ct);
-                es.Write(bytes, 0, bytes.Length);
-            }
-        }
-        return ms.ToArray();
     }
 
     private string TransferStatusClass => _transferOk ? "status-saved" : "status-failed";
