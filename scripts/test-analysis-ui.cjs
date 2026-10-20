@@ -17,6 +17,7 @@
 const assert = require("node:assert/strict");
 const http = require("node:http");
 const { chromium } = require("playwright");
+const { reveal } = require("./review-ui-helpers.cjs");
 
 const UPSTREAM = process.env.APP_URL || "http://app:8080";
 const PROXY_PORT = 8094;
@@ -139,7 +140,7 @@ async function waitForReady(page) {
     try {
       if (
         await page.evaluate(
-          () => !!document.querySelector("#new-project, [data-testid=editor]"),
+          () => !!document.querySelector(".project-dashboard, [data-testid=new-file-name]"),
         )
       )
         return;
@@ -150,9 +151,11 @@ async function waitForReady(page) {
 }
 
 async function createProject(page, name) {
+  await reveal(page, page.locator("#new-project"));
   await page.locator("#new-project").fill(name);
   await page.getByRole("button", { name: "Create project" }).click();
   await page.locator("[data-testid=new-file-name]").waitFor({ timeout: 20000 });
+  await reveal(page, page.locator("[data-testid=analyze-now]"));
 }
 
 async function importSingleFile(page, name, bytes) {
@@ -194,6 +197,7 @@ async function readHeadContent(page, wantName) {
 }
 
 async function analyzeNow(page) {
+  await reveal(page, page.locator("[data-testid=analyze-now]"));
   await page.locator("[data-testid=analyze-now]").click();
 }
 
@@ -335,7 +339,7 @@ async function runU1HappyAndMultiFile(browser) {
     return {
       fileId: e?.getAttribute("data-file-id"),
       sub: e ? e.value.substring(e.selectionStart, e.selectionEnd) : null,
-      label: document.querySelector(".editor-toolbar label")?.textContent,
+      label: document.querySelector(".editor-toolbar .source-tab")?.textContent,
     };
   });
   assert.equal(
@@ -398,7 +402,7 @@ async function runU2Invalidation(browser) {
   // replaced by the project list. The coordinator retains NoProject internally; the
   // UI no longer shows a stale report.
   await page.getByRole("button", { name: "Close", exact: true }).click();
-  await page.locator("#new-project").waitFor({ state: "visible" });
+  await page.locator(".project-dashboard").waitFor({ state: "visible" });
   assert.equal(
     await page.locator("[data-testid=analysis-panel]").count(),
     0,
@@ -493,7 +497,7 @@ async function runU2HeldReplyLateNeverRepaints(browser) {
   await page.locator("[data-testid=editor]").fill("a{b again");
   await saveAndWait(page);
   await page.getByRole("button", { name: "Close", exact: true }).click();
-  await page.locator("#new-project").waitFor({ state: "visible" });
+  await page.locator(".project-dashboard").waitFor({ state: "visible" });
   assert.equal(
     await page.locator("[data-testid=analysis-panel]").count(),
     0,
@@ -913,7 +917,9 @@ async function runU6Lifecycle(browser) {
 
   // Navigate to the smoke route via the client-side NavLink (Blazor router),
   // NOT a full page load, so the scoped coordinator survives the remount.
-  await page.locator('a.nav-link[href="/smoke"]').click();
+  const link = page.locator(".project-menu a.project-smoke-link");
+  await reveal(page, link);
+  await link.click();
   await page.waitForTimeout(400);
   // Navigate back to the workspace via the client-side NavLink.
   await page.locator('a.nav-link[href="/"]').click();
@@ -1136,7 +1142,8 @@ async function runU2bNavigationLifetime(browser) {
       finalSel = await page.evaluate(() => {
         const e = document.querySelector("[data-testid=editor]");
         return {
-          label: document.querySelector(".editor-toolbar label")?.textContent,
+          label: document.querySelector(".editor-toolbar .source-tab")
+            ?.textContent,
           sub: e ? e.value.substring(e.selectionStart, e.selectionEnd) : null,
         };
       });
@@ -1207,7 +1214,9 @@ async function runU2bNavigationLifetime(browser) {
     // disposes synchronously (events unsubscribed, nav/autosave cancelled, the
     // readiness subscription unsubscribed, the DotNet ref disposed) without
     // waiting for the blocked import.
-    await page.locator('a.nav-link[href="/smoke"]').click();
+    const link = page.locator(".project-menu a.project-smoke-link");
+    await reveal(page, link);
+    await link.click();
     await page.waitForTimeout(400);
     // No retained readiness subscription fires into a dead .NET ref and no
     // autosave runs while the page is away.

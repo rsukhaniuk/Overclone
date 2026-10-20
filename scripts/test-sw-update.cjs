@@ -5,13 +5,9 @@
 // delete them). No force-reload before explicit acceptance; active editing is
 // not interrupted by the install.
 //
-// This is a coherent deployment of the new cache version (v3 here), not a new
-// feature milestone. It uses the PUBLISHED static build served by static-origin
-// (like test-offline-restart.cjs) and a persistent browser profile so the SW
-// registration survives reloads. A "new" worker is staged by routing the SW
-// script to a copy with a bumped CACHE_VERSION (v4), so the browser detects a
-// byte-difference and installs it as WAITING while the v3 worker keeps
-// controlling the page.
+// Uses the PUBLISHED static build and a persistent browser profile. Detect the
+// published CACHE_VERSION and stage the next numeric version through the proxy,
+// so the new worker waits while the original worker keeps controlling the page.
 
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
@@ -19,6 +15,7 @@ const os = require("node:os");
 const path = require("node:path");
 const http = require("node:http");
 const { chromium } = require("playwright");
+const { reveal } = require("./review-ui-helpers.cjs");
 
 const UPSTREAM = process.env.APP_URL || "http://static-origin:8080";
 const PROXY_PORT = 8096;
@@ -64,7 +61,7 @@ async function waitForReady(page) {
     try {
       if (
         await page.evaluate(
-          () => !!document.querySelector("#new-project, [data-testid=editor]"),
+          () => !!document.querySelector(".project-dashboard, [data-testid=new-file-name]"),
         )
       )
         return;
@@ -125,6 +122,7 @@ async function cacheHas(page, name) {
 
     // 1. Create a durable project and wait until v3 is fully provisioned.
     const name = unique("SWUp");
+    await reveal(page, page.locator("#new-project"));
     await page.locator("#new-project").fill(name);
     await page.getByRole("button", { name: "Create project" }).click();
     await page
@@ -135,26 +133,22 @@ async function cacheHas(page, name) {
     await page.waitForFunction(() => window.__oopOfflineReady === true, null, {
       timeout: 30000,
     });
-    assert.ok(
-      await cacheHas(page, "oop-workspace-shell-v3"),
-      "v3 cache provisioned",
-    );
-    assert.ok(
-      !(await cacheHas(page, "oop-workspace-shell-v4")),
-      "v4 cache not yet present",
-    );
-
-    // 2. Stage a NEW worker (bumped CACHE_VERSION v3 -> v4). The browser's SW
-    // update check fetches /service-worker.js THROUGH the proxy (Playwright
-    // page.route does not intercept the SW script fetch), so the PROXY serves
-    // the modified v4 SW on demand: the next reload's update check installs v4
-    // as WAITING while v3 keeps controlling the page.
     const realSw = await page.evaluate(() =>
       fetch("/service-worker.js").then((r) => r.text()),
     );
+    const version = realSw.match(/const CACHE_VERSION = "v([0-9]+)"/);
+    assert.ok(version, "published worker declares a numeric shell version");
+    const currentVersion = `v${version[1]}`;
+    const nextVersion = `v${Number(version[1]) + 1}`;
+    const currentCache = `oop-workspace-shell-${currentVersion}`;
+    const nextCache = `oop-workspace-shell-${nextVersion}`;
+    assert.ok(await cacheHas(page, currentCache), "original cache provisioned");
+    assert.ok(!(await cacheHas(page, nextCache)), "next cache not yet present");
+
+    // 2. Stage a NEW worker through the proxy; leave the current worker active.
     const v4Sw = realSw.replace(
-      'const CACHE_VERSION = "v3"',
-      'const CACHE_VERSION = "v4"',
+      `const CACHE_VERSION = "${currentVersion}"`,
+      `const CACHE_VERSION = "${nextVersion}"`,
     );
     assert.notEqual(
       v4Sw,
@@ -205,12 +199,12 @@ async function cacheHas(page, name) {
       `active editing/save works under v3 while v4 waits; got ${st}`,
     );
     assert.ok(
-      await cacheHas(page, "oop-workspace-shell-v3"),
-      "v3 cache still active (not yet activated v4)",
+      await cacheHas(page, currentCache),
+      "original cache still active (next worker not yet activated)",
     );
     assert.ok(
-      await cacheHas(page, "oop-workspace-shell-v4"),
-      "v4 cache precached during install (waiting)",
+      await cacheHas(page, nextCache),
+      "next cache precached during install (waiting)",
     );
 
     // 4. EXPLICIT acceptance: click "Reload to update". The button posts
@@ -234,14 +228,17 @@ async function cacheHas(page, name) {
     let activated = false;
     for (let i = 0; i < 60; i++) {
       const s = await page
-        .evaluate(async () => {
-          const reg = await navigator.serviceWorker.getRegistration();
-          return {
-            active: reg?.active?.state,
-            v3: await caches.has("oop-workspace-shell-v3"),
-            v4: await caches.has("oop-workspace-shell-v4"),
-          };
-        })
+        .evaluate(
+          async ({ currentCache, nextCache }) => {
+            const reg = await navigator.serviceWorker.getRegistration();
+            return {
+              active: reg?.active?.state,
+              v3: await caches.has(currentCache),
+              v4: await caches.has(nextCache),
+            };
+          },
+          { currentCache, nextCache },
+        )
         .catch(() => null);
       if (s && s.active === "activated" && s.v3 === false && s.v4 === true) {
         activated = true;
@@ -255,13 +252,10 @@ async function cacheHas(page, name) {
     );
     await waitForReady(page);
     assert.ok(
-      !(await cacheHas(page, "oop-workspace-shell-v3")),
-      "v3 cache purged after v4 activation",
+      !(await cacheHas(page, currentCache)),
+      "original cache purged after next activation",
     );
-    assert.ok(
-      await cacheHas(page, "oop-workspace-shell-v4"),
-      "v4 cache is now active",
-    );
+    assert.ok(await cacheHas(page, nextCache), "next cache is now active");
 
     // 5. Durable documents persist across the update (OPFS/IDB not cleared).
     await page

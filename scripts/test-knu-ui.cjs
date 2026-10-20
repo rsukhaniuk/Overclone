@@ -4,6 +4,7 @@ const assert = require("node:assert/strict");
 const http = require("node:http");
 const { chromium } = require("playwright");
 const { fixtures, hashes } = require("./knu-fixtures.cjs");
+const { reveal } = require("./review-ui-helpers.cjs");
 const UPSTREAM = process.env.APP_URL || "http://app:8080";
 const BASE = "http://127.0.0.1:8097";
 const $ = (p, id) => p.locator(`[data-testid="${id}"]`);
@@ -94,8 +95,8 @@ const instrumentation = () => {
  };
 };
 async function ready(p) {
- await $(p, "analysis-profile")
-  .or(p.locator("#new-project"))
+ await $(p, "new-file-name")
+  .or(p.locator(".project-dashboard"))
   .first()
   .waitFor({ timeout: 60000 });
 }
@@ -111,6 +112,7 @@ async function save(p) {
  );
 }
 async function analyze(p) {
+ await reveal(p, $(p, "analyze-now"));
  await $(p, "analyze-now").click();
  await p.waitForFunction(
   () =>
@@ -121,6 +123,7 @@ async function analyze(p) {
  );
 }
 async function knu(p) {
+ await reveal(p, $(p, "analysis-profile"));
  await $(p, "analysis-profile").selectOption("knu-csc-2025-source");
  await analyze(p);
 }
@@ -142,6 +145,7 @@ async function head(p, name) {
 }
 async function create(p, bytes = fixtures.negative, file = "main.tex") {
  const name = "KNU-" + Date.now() + "-" + Math.random().toString(36).slice(2);
+ await reveal(p, p.locator("#new-project"));
  await p.locator("#new-project").fill(name);
  await p.getByRole("button", { name: "Create project", exact: true }).click();
  await $(p, "import-input").setInputFiles({
@@ -149,7 +153,7 @@ async function create(p, bytes = fixtures.negative, file = "main.tex") {
   mimeType: "text/plain",
   buffer: bytes,
  });
- await p.locator(".editor-toolbar label", { hasText: file }).waitFor();
+ await p.locator(".editor-toolbar .source-tab", { hasText: file }).waitFor();
  await save(p);
  return name;
 }
@@ -358,8 +362,11 @@ async function races(browser) {
    await create(p, fixtures.positive);
   }
   if (change === "route") {
-   await p.locator('a.nav-link[href="/smoke"]').click();
+   const link = p.locator(".project-menu a.project-smoke-link");
+   await reveal(p, link);
+   await link.click();
    await p.locator('a.nav-link[href="/"]').click();
+   await reveal(p, $(p, "analysis-profile"));
    await $(p, "analysis-profile").waitFor();
   }
   await release(p);
@@ -424,7 +431,9 @@ async function navigationRaces(browser) {
     .click();
   }
   if (change === "route") {
-   await p.locator('a.nav-link[href="/smoke"]').click();
+   const link = p.locator(".project-menu a.project-smoke-link");
+   await reveal(p, link);
+   await link.click();
    await p.locator('a.nav-link[href="/"]').click();
   }
   unblock();

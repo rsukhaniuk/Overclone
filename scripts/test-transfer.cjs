@@ -27,6 +27,7 @@ const fs = require("node:fs");
 const http = require("node:http");
 const { chromium } = require("playwright");
 const { buildZip } = require("./zip-util.cjs");
+const { reveal } = require("./review-ui-helpers.cjs");
 
 const UPSTREAM = process.env.APP_URL || "http://app:8080";
 const PROXY_PORT = 8091;
@@ -55,7 +56,7 @@ async function waitForReady(page) {
     try {
       if (
         await page.evaluate(
-          () => !!document.querySelector("#new-project, [data-testid=editor]"),
+          () => !!document.querySelector(".project-dashboard, [data-testid=new-file-name]"),
         )
       )
         return;
@@ -73,6 +74,7 @@ async function clear(page) {
   await waitForReady(page);
 }
 async function createProject(page, name) {
+  await reveal(page, page.locator("#new-project"));
   await page.locator("#new-project").fill(name);
   await page.getByRole("button", { name: "Create project" }).click();
   await page.locator("[data-testid=new-file-name]").waitFor({ timeout: 20000 });
@@ -235,6 +237,7 @@ async function selectFileByPath(page, path) {
         .waitFor({ state: "visible" });
 
       // Export ZIP via the UI and capture the download.
+      await reveal(page, page.locator("[data-testid=export-zip]"));
       const [dl] = await Promise.all([
         page.waitForEvent("download"),
         page.locator("[data-testid=export-zip]").click(),
@@ -246,7 +249,7 @@ async function selectFileByPath(page, path) {
       // Importing the ZIP creates a NEW project from the project-list view, so
       // close the current project first.
       await page.getByRole("button", { name: "Close", exact: true }).click();
-      await page.locator("#new-project").waitFor({ state: "visible" });
+      await page.locator(".project-dashboard").waitFor({ state: "visible" });
 
       // Verify the exported zip itself round-trips through the C# validator by
       // importing it as a NEW project and comparing every file's bytes.
@@ -255,6 +258,7 @@ async function selectFileByPath(page, path) {
         mimeType: "application/zip",
         buffer: zipBytes,
       });
+      await reveal(page, page.locator("[data-testid=import-preview]"));
       await page
         .locator("[data-testid=import-preview]")
         .waitFor({ state: "visible" });
@@ -317,6 +321,7 @@ async function selectFileByPath(page, path) {
         mimeType: "application/zip",
         buffer: badZip,
       });
+      await reveal(page, page.locator("[data-testid=validation-errors]"));
       await page
         .locator("[data-testid=validation-errors]")
         .waitFor({ state: "visible" });
@@ -358,6 +363,10 @@ async function selectFileByPath(page, path) {
       await waitForReady(page);
       await clear(page);
       await createProject(page, unique("History"));
+      await reveal(
+        page,
+        page.locator("[data-testid=source-history-disclosure] > summary"),
+      );
       await importSingleFile(page, "main.tex", enc("rev0\n"));
       await saveAndWait(page);
       await importSingleFile(page, "notes.tex", enc("added later\n"));
@@ -435,6 +444,10 @@ async function selectFileByPath(page, path) {
       await waitForReady(page);
       await clear(page);
       await createProject(page, unique("Stale"));
+      await reveal(
+        page,
+        page.locator("[data-testid=source-history-disclosure] > summary"),
+      );
       await importSingleFile(page, "main.tex", enc("base\n"));
       await saveAndWait(page);
       const baseHead = (await readHeadBytes(page)).head;
@@ -494,6 +507,7 @@ async function selectFileByPath(page, path) {
         .locator("[data-testid=open-project]")
         .click();
       await page2.locator(".banner-readonly").waitFor({ state: "visible" });
+      await reveal(page2, page2.locator("[data-testid=history-list]"));
       await page2
         .locator("[data-testid=history-list]")
         .waitFor({ state: "visible" });
@@ -521,6 +535,10 @@ async function selectFileByPath(page, path) {
       await waitForReady(page);
       await clear(page);
       await createProject(page, unique("CorruptHist"));
+      await reveal(
+        page,
+        page.locator("[data-testid=source-history-disclosure] > summary"),
+      );
       await importSingleFile(page, "main.tex", enc("good1\n"));
       await saveAndWait(page);
       const r1Head = (await readHeadBytes(page)).head;
@@ -581,6 +599,10 @@ async function selectFileByPath(page, path) {
       await waitForReady(page);
       await clear(page);
       await createProject(page, unique("RestoreDuringIO"));
+      await reveal(
+        page,
+        page.locator("[data-testid=source-history-disclosure] > summary"),
+      );
       await importSingleFile(page, "main.tex", enc("v1\n"));
       await saveAndWait(page);
       await page.locator("[data-testid=editor]").fill("v2\n");
@@ -664,6 +686,7 @@ async function selectFileByPath(page, path) {
       });
 
       // The export must abort (no download of the stale previous revision).
+      await reveal(page, page.locator("[data-testid=export-zip]"));
       let downloadFired = false;
       page.on("download", () => (downloadFired = true));
       await page.locator("[data-testid=export-zip]").click();
@@ -710,6 +733,10 @@ async function selectFileByPath(page, path) {
       await waitForReady(page);
       await clear(page);
       await createProject(page, unique("PreviewDuringCapture"));
+      await reveal(
+        page,
+        page.locator("[data-testid=source-history-disclosure] > summary"),
+      );
       await importSingleFile(page, "main.tex", enc("v1\n"));
       await saveAndWait(page);
       await page.locator("[data-testid=editor]").fill("v2\n");
@@ -775,6 +802,10 @@ async function selectFileByPath(page, path) {
       await waitForReady(page);
       await clear(page);
       await createProject(page, unique("ReloadDuringRestore"));
+      await reveal(
+        page,
+        page.locator("[data-testid=source-history-disclosure] > summary"),
+      );
       await importSingleFile(page, "main.tex", enc("v1\n"));
       await saveAndWait(page);
       await page.locator("[data-testid=editor]").fill("v2\n");
@@ -852,6 +883,10 @@ async function selectFileByPath(page, path) {
       await waitForReady(page);
       await clear(page);
       await createProject(page, unique("ReconcileMultiFile"));
+      await reveal(
+        page,
+        page.locator("[data-testid=source-history-disclosure] > summary"),
+      );
       // r1: a.tex = "a1", b.tex = "b1"
       await importSingleFile(page, "a.tex", enc("a1\n"));
       await importSingleFile(page, "b.tex", enc("b1\n"));
@@ -991,6 +1026,10 @@ async function selectFileByPath(page, path) {
       await waitForReady(page);
       await clear(page);
       await createProject(page, unique("RenameDuringRestore"));
+      await reveal(
+        page,
+        page.locator("[data-testid=source-history-disclosure] > summary"),
+      );
       // r1: a.tex = "old A" (the historical content to restore to)
       await importSingleFile(page, "a.tex", enc("old A\n"));
       await saveAndWait(page);
@@ -1039,6 +1078,7 @@ async function selectFileByPath(page, path) {
       await page
         .locator("[data-testid=select-file]", { hasText: "a.tex" })
         .click();
+      await reveal(page, page.locator("[data-testid=rename-input]"));
       await page.locator("[data-testid=rename-input]").fill("renamed-a.tex");
       await page.locator("[data-testid=rename]").click();
       await page.waitForTimeout(3000);
@@ -1097,6 +1137,10 @@ async function selectFileByPath(page, path) {
       await waitForReady(page);
       await clear(page);
       await createProject(page, unique("AbsentFileRestore"));
+      await reveal(
+        page,
+        page.locator("[data-testid=source-history-disclosure] > summary"),
+      );
       // r1: only b.tex (historical). a.tex is added AFTER this revision.
       await importSingleFile(page, "b.tex", enc("b1\n"));
       await saveAndWait(page);
@@ -1229,10 +1273,15 @@ async function selectFileByPath(page, path) {
       await waitForReady(page);
       await clear(page);
       await createProject(page, unique("RenameCollisionRestore"));
+      await reveal(
+        page,
+        page.locator("[data-testid=source-history-disclosure] > summary"),
+      );
       await importSingleFile(page, "a.tex", enc("old A\n"));
       await importSingleFile(page, "b.tex", enc("b1\n"));
       await saveAndWait(page);
       // r2: rename a.tex[A]→c.tex (same ID), keep b.tex[B].
+      await reveal(page, page.locator("[data-testid=rename-input]"));
       await page
         .locator("[data-testid=select-file]", { hasText: "a.tex" })
         .click();
@@ -1265,6 +1314,7 @@ async function selectFileByPath(page, path) {
       await page
         .locator("[data-testid=select-file]", { hasText: "b.tex" })
         .click();
+      await reveal(page, page.locator("[data-testid=rename-input]"));
       await page.locator("[data-testid=rename-input]").fill("a.tex");
       await page.evaluate(() =>
         document.querySelector('[data-testid="rename"]').click(),
@@ -1347,6 +1397,7 @@ async function selectFileByPath(page, path) {
       );
 
       // ZIP export must refuse the invalid tree (no download).
+      await reveal(page, page.locator("[data-testid=export-zip]"));
       let downloadFired = false;
       page.on("download", () => (downloadFired = true));
       await page.locator("[data-testid=export-zip]").click();
@@ -1369,6 +1420,7 @@ async function selectFileByPath(page, path) {
       // Resolve by renaming one file uniquely, save, then assert unique durable
       // paths and a successful export.
       await aButtons.nth(1).click();
+      await reveal(page, page.locator("[data-testid=rename-input]"));
       await page.locator("[data-testid=rename-input]").fill("b.tex");
       await page.evaluate(() =>
         document.querySelector('[data-testid="rename"]').click(),
@@ -1381,6 +1433,7 @@ async function selectFileByPath(page, path) {
         `durable paths unique after resolve, got: ${JSON.stringify(durable.files)}`,
       );
       // Export now succeeds (a download fires).
+      await reveal(page, page.locator("[data-testid=export-zip]"));
       const dl = page.waitForEvent("download", { timeout: 15000 });
       await page.locator("[data-testid=export-zip]").click();
       await dl;
@@ -1404,10 +1457,15 @@ async function selectFileByPath(page, path) {
       await waitForReady(page);
       await clear(page);
       await createProject(page, unique("CreateCollisionRestore"));
+      await reveal(
+        page,
+        page.locator("[data-testid=source-history-disclosure] > summary"),
+      );
       await importSingleFile(page, "a.tex", enc("old A\n"));
       await importSingleFile(page, "b.tex", enc("b1\n"));
       await saveAndWait(page);
       // r2: rename a.tex[A]→c.tex, keep b.tex[B].
+      await reveal(page, page.locator("[data-testid=rename-input]"));
       await page
         .locator("[data-testid=select-file]", { hasText: "a.tex" })
         .click();
@@ -1481,6 +1539,7 @@ async function selectFileByPath(page, path) {
       );
 
       // Export refuses the invalid tree (no download).
+      await reveal(page, page.locator("[data-testid=export-zip]"));
       let downloadFired = false;
       page.on("download", () => (downloadFired = true));
       await page.locator("[data-testid=export-zip]").click();
@@ -1501,6 +1560,7 @@ async function selectFileByPath(page, path) {
 
       // Resolve by renaming the new a.tex→created.tex, save, export.
       await aButtons.nth(1).click();
+      await reveal(page, page.locator("[data-testid=rename-input]"));
       await page.locator("[data-testid=rename-input]").fill("created.tex");
       await page.evaluate(() =>
         document.querySelector('[data-testid="rename"]').click(),
@@ -1512,6 +1572,7 @@ async function selectFileByPath(page, path) {
         durable.files.length,
         `durable paths unique after resolve, got: ${JSON.stringify(durable.files)}`,
       );
+      await reveal(page, page.locator("[data-testid=export-zip]"));
       const dl = page.waitForEvent("download", { timeout: 15000 });
       await page.locator("[data-testid=export-zip]").click();
       await dl;
@@ -1536,6 +1597,10 @@ async function selectFileByPath(page, path) {
       await waitForReady(page);
       await clear(page);
       await createProject(page, unique("PrefixCollisionRestore"));
+      await reveal(
+        page,
+        page.locator("[data-testid=source-history-disclosure] > summary"),
+      );
       await importSingleFile(page, "p/refs.tex", enc("r1\n"));
       await importSingleFile(page, "other.tex", enc("v1\n"));
       await importSingleFile(page, "q.tex", enc("q\n"));
@@ -1544,6 +1609,7 @@ async function selectFileByPath(page, path) {
       await page
         .locator("[data-testid=select-file]", { hasText: "p/refs.tex" })
         .click();
+      await reveal(page, page.locator("[data-testid=rename-input]"));
       await page.locator("[data-testid=rename-input]").fill("refs.tex");
       await page.locator("[data-testid=rename]").click();
       await page
@@ -1572,6 +1638,7 @@ async function selectFileByPath(page, path) {
       await page
         .locator("[data-testid=select-file]", { hasText: "other.tex" })
         .click();
+      await reveal(page, page.locator("[data-testid=rename-input]"));
       await page.locator("[data-testid=rename-input]").fill("p");
       await page.evaluate(() =>
         document.querySelector('[data-testid="rename"]').click(),
@@ -1632,6 +1699,7 @@ async function selectFileByPath(page, path) {
 
       // Resolve by renaming p[B]→other.tex (back), save, export.
       await selectFileByPath(page, "p");
+      await reveal(page, page.locator("[data-testid=rename-input]"));
       await page.locator("[data-testid=rename-input]").fill("other.tex");
       await page.evaluate(() =>
         document.querySelector('[data-testid="rename"]').click(),
@@ -1643,6 +1711,7 @@ async function selectFileByPath(page, path) {
         durable.files.length,
         `durable paths unique after resolve, got: ${JSON.stringify(durable.files)}`,
       );
+      await reveal(page, page.locator("[data-testid=export-zip]"));
       const dl = page.waitForEvent("download", { timeout: 15000 });
       await page.locator("[data-testid=export-zip]").click();
       await dl;

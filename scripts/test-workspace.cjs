@@ -18,6 +18,7 @@
 const assert = require("node:assert/strict");
 const http = require("node:http");
 const { chromium } = require("playwright");
+const { reveal } = require("./review-ui-helpers.cjs");
 
 const UPSTREAM = process.env.APP_URL || "http://app:8080";
 const PROXY_PORT = 8090;
@@ -47,12 +48,12 @@ function unique(n) {
 }
 
 async function waitForReady(page) {
-  // The .NET WASM app takes a moment to boot. Either the project-list form
-  // (#new-project, shown when no project is open) or an editor is present.
+  // The .NET WASM app takes a moment to boot. Wait for the visible dashboard
+  // or open-project file controls, not the collapsed creation form.
   for (let i = 0; i < 90; i++) {
     try {
       const ok = await page.evaluate(
-        () => !!document.querySelector("#new-project, [data-testid=editor]"),
+        () => !!document.querySelector(".project-dashboard, [data-testid=new-file-name]"),
       );
       if (ok) return;
     } catch {
@@ -64,6 +65,7 @@ async function waitForReady(page) {
 }
 
 async function createProject(page, name) {
+  await reveal(page, page.locator("#new-project"));
   await page.locator("#new-project").fill(name);
   await page.getByRole("button", { name: "Create project" }).click();
   await page.locator("[data-testid=new-file-name]").waitFor({ timeout: 20000 });
@@ -653,7 +655,7 @@ async function saveAndWait(page) {
       // The fixed CloseAsync loops the flush save until clean, so the
       // during-save edit must be committed too. Wait for the project list.
       await page
-        .locator("#new-project")
+        .locator(".project-dashboard")
         .waitFor({ state: "visible", timeout: 30000 });
 
       // Reopen and verify BOTH edits survived (no silent discard).

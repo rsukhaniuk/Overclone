@@ -7,9 +7,17 @@ const after = Buffer.from(
 );
 async function ready(p) {
  await p
-  .locator("#new-project,[data-testid=analysis-profile]")
+  .locator(".project-dashboard,[data-testid=new-file-name]")
   .first()
   .waitFor({ timeout: 60000 });
+}
+async function reveal(p, target) {
+ // Open real disclosure controls from the outside inward; never inject UI state.
+ await target.waitFor({ state: "attached" });
+ for (const detail of await target.locator("xpath=ancestor::details").all()) {
+  if ((await detail.getAttribute("open")) === null)
+   await detail.locator(":scope > summary").click();
+ }
 }
 async function idle(p) {
  await p.waitForFunction(
@@ -33,6 +41,7 @@ async function save(p) {
  );
 }
 async function analyze(p) {
+ await reveal(p, $(p, "analyze-now"));
  await $(p, "analyze-now").click();
  await p.waitForFunction(
   () =>
@@ -43,6 +52,7 @@ async function analyze(p) {
  );
 }
 async function selectKnu(p) {
+ await reveal(p, $(p, "analysis-profile"));
  await $(p, "analysis-profile").selectOption("knu-csc-2025-source");
  await $(p, "analysis-work-type").selectOption("bachelorQualification");
  await analyze(p);
@@ -50,6 +60,7 @@ async function selectKnu(p) {
 async function create(p, bytes = fixtures.negative, file = "main.tex") {
  const name =
   "Review-" + Date.now() + "-" + Math.random().toString(36).slice(2);
+ await reveal(p, p.locator("#new-project"));
  await p.locator("#new-project").fill(name);
  await p.getByRole("button", { name: "Create project", exact: true }).click();
  await $(p, "import-input").setInputFiles({
@@ -67,6 +78,7 @@ async function open(p, name) {
   .locator("[data-testid=project-row]", { hasText: name })
   .locator("[data-testid=open-project]")
   .click();
+ await reveal(p, $(p, "analysis-profile"));
  await $(p, "analysis-profile").waitFor();
 }
 async function head(p, name) {
@@ -207,6 +219,7 @@ async function releaseOwnership(p) {
  });
 }
 module.exports = {
+ reveal,
  $,
  ready,
  idle,

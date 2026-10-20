@@ -31,7 +31,8 @@ const { chromium } = require("playwright");
         // Static hosting needs no backend health endpoint or route fallback.
         // Enter via the shell, then use the actual Blazor navigation route.
         await page.goto(`${base}/`);
-        await page.locator('a.nav-link[href="/smoke"]').click();
+        await page.locator("details.app-tools > summary:visible, details.dashboard-tools > summary:visible").click();
+        await page.locator('a[href="/smoke"]:visible').click();
         await page
             .getByRole("status")
             .filter({ hasText: "C++ and Rust WebAssembly workers ready." })

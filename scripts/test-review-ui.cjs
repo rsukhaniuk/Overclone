@@ -3,7 +3,7 @@ const assert = require("node:assert/strict");
 const http = require("node:http");
 const { chromium } = require("playwright");
 const H = require("./review-ui-helpers.cjs");
-const { $ } = H;
+const { $, reveal } = H;
 const UPSTREAM = process.env.APP_URL || "http://static-origin:8080",
  BASE = "http://127.0.0.1:8099";
 const proxy = http.createServer((req, res) => {
@@ -39,12 +39,12 @@ async function context(browser) {
 }
 async function closeProject(p) {
  await p.getByRole("button", { name: "Close", exact: true }).click();
- await p.locator("#new-project").waitFor();
+ await p.locator(".project-dashboard").waitFor();
 }
 async function addNote(p, name = "notes.txt") {
  await $(p, "new-file-name").fill(name);
  await $(p, "new-file").click();
- await p.locator(".editor-toolbar label", { hasText: name }).waitFor();
+ await p.locator(".editor-toolbar .source-tab", { hasText: name }).waitFor();
 }
 // Persistence is polled from Node with explicit awaited immutable-head reads.
 // An async page.waitForFunction predicate is not evidence that a commit occurred.
@@ -198,7 +198,9 @@ async function autosaveLifetime(browser) {
   // query, not a guessed sleep. Route disposal must cancel it before persistence.
   await H.holdOwnership(p);
   await H.reached(p);
-  await p.locator('a.nav-link[href="/smoke"]').click();
+  const link = p.locator(".project-menu a.project-smoke-link");
+  await reveal(p, link);
+  await link.click();
   if (departure === "route") {
    await H.releaseOwnership(p);
    await unchangedHead(p, name, before.id, H.negative);
@@ -257,7 +259,7 @@ async function basic(browser) {
   await $(p, "review-byte-policy").innerText(),
   /77 bytes; after 78 bytes.*True → True/,
  );
- await $(p, "review-before").evaluate((e) => (e.parentElement.open = true));
+ await reveal(p, $(p, "review-before"));
  assert.match(await $(p, "review-before").innerText(), /⟦BOM⟧Привіт🙂⟦CR⟧⟦LF⟧/);
  await H.accept(p);
  const applied = await H.assertBytes(p, name, H.after);
@@ -281,7 +283,9 @@ async function basic(browser) {
  );
  // App-scoped recovery survives route remount even though the old report doesn't.
  const actionId = await $(p, "review-action").getAttribute("data-action-id");
- await p.locator('a.nav-link[href="/smoke"]').click();
+ const link = p.locator(".project-menu a.project-smoke-link");
+ await reveal(p, link);
+ await link.click();
  await p.locator('a.nav-link[href="/"]').click();
  await $(p, "review-action").waitFor();
  assert.equal(
@@ -340,6 +344,7 @@ async function staleness(browser) {
   if (change === "other-edit")
    await $(p, "editor").fill("new unrelated content🙂");
   if (change === "rename") {
+   await reveal(p, $(p, "rename-input"));
    await $(p, "rename-input").fill("renamed.tex");
    await $(p, "rename").click();
   }
@@ -400,7 +405,9 @@ async function held(browser) {
   }
   if (change === "edit") await $(p, "editor").fill("edited during validation");
   if (change === "route") {
-   await p.locator('a.nav-link[href="/smoke"]').click();
+   const link = p.locator(".project-menu a.project-smoke-link");
+   await reveal(p, link);
+   await link.click();
    await p.locator('a.nav-link[href="/"]').click();
   }
   if (change === "project") {
@@ -519,6 +526,7 @@ async function conflictsAndUnrelated(browser) {
   /^Reviewed change saved/,
  );
  await H.save(p);
+ await reveal(p, $(p, "rename-input"));
  await $(p, "rename-input").fill("renamed.txt");
  await $(p, "rename").click();
  await H.save(p);
@@ -532,6 +540,7 @@ async function conflictsAndUnrelated(browser) {
  await H.preview(p);
  await H.accept(p);
  await p.locator("[data-testid=select-file]", { hasText: "main.tex" }).click();
+ await reveal(p, $(p, "rename-input"));
  await $(p, "rename-input").fill("affected.tex");
  await $(p, "rename").click();
  await H.save(p);
@@ -544,6 +553,7 @@ async function conflictsAndUnrelated(browser) {
  );
  assert.deepEqual(await H.head(p, name), before);
  assert.equal(await $(p, "review-undo").isEnabled(), true);
+ await reveal(p, $(p, "rename-input"));
  await $(p, "rename-input").fill("main.tex");
  await $(p, "rename").click();
  await H.save(p);

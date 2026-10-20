@@ -73,7 +73,7 @@ async function waitForReady(page) {
     try {
       if (
         await page.evaluate(
-          () => !!document.querySelector("#new-project, [data-testid=editor]"),
+          () => !!document.querySelector(".project-dashboard, [data-testid=new-file-name]"),
         )
       )
         return;
@@ -107,6 +107,7 @@ async function importSingleFile(page, name, bytes) {
 }
 
 async function analyzeNow(page) {
+  await review.reveal(page, page.locator("[data-testid=analyze-now]"));
   await page.locator("[data-testid=analyze-now]").click();
 }
 async function analysisStatusText(page) {
@@ -181,6 +182,7 @@ async function awaitTerminalAnalysis(page, timeout = 30000) {
     await waitForReady(page);
 
     const name = unique("OfflineM1b");
+    await review.reveal(page, page.locator("#new-project"));
     await page.locator("#new-project").fill(name);
     await page.getByRole("button", { name: "Create project" }).click();
     await page
@@ -193,6 +195,7 @@ async function awaitTerminalAnalysis(page, timeout = 30000) {
     await importSingleFile(page, "knu.tex", knuFixtures.negative);
     await saveAndWait(page);
     // Current published UI + actual native KNU capability, not a warm old demo.
+    await review.reveal(page, page.locator("[data-testid=analysis-profile]"));
     await page
       .locator("[data-testid=analysis-profile]")
       .selectOption("knu-csc-2025-source");
@@ -204,6 +207,7 @@ async function awaitTerminalAnalysis(page, timeout = 30000) {
       /2025.*1.0.0/,
     );
     assert.equal(await page.locator("[data-testid=knu-finding]").count(), 2);
+    await review.reveal(page, page.locator("[data-testid=analysis-profile]"));
     await page
       .locator("[data-testid=analysis-profile]")
       .selectOption("engine-structural");
@@ -347,6 +351,7 @@ async function awaitTerminalAnalysis(page, timeout = 30000) {
 
     // M2b: real KNU rules, bundled citations and exact Unicode navigation with
     // the actual origin still stopped. No guideline/CDN/provider request.
+    await review.reveal(page, page.locator("[data-testid=analysis-profile]"));
     await page
       .locator("[data-testid=analysis-profile]")
       .selectOption("knu-csc-2025-source");
@@ -385,7 +390,7 @@ async function awaitTerminalAnalysis(page, timeout = 30000) {
       );
     }, normalizedPrefix.length);
     assert.match(
-      await page.locator(".editor-toolbar label").innerText(),
+      await page.locator(".editor-toolbar .source-tab").innerText(),
       /knu.tex/,
     );
     // Actual offline reviewed-fix workflow, not a service/test injection.
@@ -460,6 +465,7 @@ async function awaitTerminalAnalysis(page, timeout = 30000) {
       "engine-structural",
       "selection is session-local, not persisted",
     );
+    await review.reveal(page, page.locator("[data-testid=analysis-profile]"));
     await page
       .locator("[data-testid=analysis-profile]")
       .selectOption("knu-csc-2025-source");
@@ -519,6 +525,7 @@ async function awaitTerminalAnalysis(page, timeout = 30000) {
       mimeType: "application/zip",
       buffer: zipBytes,
     });
+    await review.reveal(page, page.locator("[data-testid=import-preview]"));
     await page
       .locator("[data-testid=import-preview]")
       .waitFor({ state: "visible" });
@@ -552,6 +559,7 @@ async function awaitTerminalAnalysis(page, timeout = 30000) {
 
     // ZIP export offline (download captured from cache-served shell).
     const exportBtn = page.locator("[data-testid=export-zip]");
+    await review.reveal(page, exportBtn);
     console.log(
       "  [offline] export-zip visible:",
       await exportBtn.isVisible().catch(() => "?"),
@@ -588,6 +596,7 @@ async function awaitTerminalAnalysis(page, timeout = 30000) {
       .locator("[data-testid=project-row]", { hasText: name })
       .locator("[data-testid=open-project]")
       .click();
+    await review.reveal(page, page.locator("[data-testid=history-list]"));
     await page
       .locator("[data-testid=history-list]")
       .waitFor({ state: "visible" });
@@ -631,8 +640,13 @@ async function awaitTerminalAnalysis(page, timeout = 30000) {
     await client.send("Network.clearBrowserCache");
     const ASSET = "/rust-generated/document_engine_bg.wasm";
     const removed = await page.evaluate(async (asset) => {
-      const cache = await caches.open("oop-workspace-shell-v3");
-      return await cache.delete(new Request(asset, { cache: "reload" }));
+      let deleted = false;
+      for (const name of await caches.keys()) {
+        if (!name.startsWith("oop-workspace-shell-")) continue;
+        const cache = await caches.open(name);
+        deleted = (await cache.delete(new Request(asset, { cache: "reload" }))) || deleted;
+      }
+      return deleted && !(await caches.match(asset));
     }, ASSET);
     assert.ok(
       removed,
@@ -671,6 +685,7 @@ async function awaitTerminalAnalysis(page, timeout = 30000) {
       `local save still works with the asset missing, got: ${stMissing}`,
     );
     // Analysis now fails honestly: a fresh worker cannot load the missing WASM offline.
+    await review.reveal(page, page.locator("[data-testid=analysis-profile]"));
     await page
       .locator("[data-testid=analysis-profile]")
       .selectOption("knu-csc-2025-source");

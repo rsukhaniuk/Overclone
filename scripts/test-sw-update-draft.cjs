@@ -23,6 +23,7 @@ const os = require("node:os");
 const path = require("node:path");
 const http = require("node:http");
 const { chromium } = require("playwright");
+const { reveal } = require("./review-ui-helpers.cjs");
 
 const UPSTREAM = process.env.APP_URL || "http://static-origin:8080";
 const PROXY_PORT = 8097;
@@ -60,7 +61,7 @@ async function waitForReady(page) {
     try {
       if (
         await page.evaluate(
-          () => !!document.querySelector("#new-project, [data-testid=editor]"),
+          () => !!document.querySelector(".project-dashboard, [data-testid=new-file-name]"),
         )
       )
         return;
@@ -207,6 +208,7 @@ let proxy;
     await waitForReady(page);
 
     const name = unique("DraftUp");
+    await reveal(page, page.locator("#new-project"));
     await page.locator("#new-project").fill(name);
     await page.getByRole("button", { name: "Create project" }).click();
     await page
@@ -218,9 +220,20 @@ let proxy;
       timeout: 30000,
     });
 
+    const realSw = await page.evaluate(() =>
+      fetch("/service-worker.js").then((r) => r.text()),
+    );
+    const version = realSw.match(/const CACHE_VERSION = "v([0-9]+)"/);
+    assert.ok(version, "published worker declares a numeric shell version");
+    const shellVersions = Array.from(
+      { length: 5 },
+      (_, i) => `v${Number(version[1]) + i}`,
+    );
+    const shellCaches = shellVersions.map((v) => `oop-workspace-shell-${v}`);
+
     // ============================================================ Scenario #1
-    // Waiting v4; type v2 and click update BEFORE the 2s autosave.
-    await stageWaiting(page, "v4");
+    // Stage the next worker; type v2 and click update BEFORE the 2s autosave.
+    await stageWaiting(page, shellVersions[1]);
     await openProject(page, name);
     assert.equal(
       await page.locator("[data-testid=editor]").inputValue(),
@@ -255,14 +268,14 @@ let proxy;
     let activated1 = false;
     for (let i = 0; i < 60; i++) {
       const s = await page
-        .evaluate(async () => {
+        .evaluate(async (shellCaches) => {
           const r = await navigator.serviceWorker.getRegistration();
           return {
             active: r && r.active ? r.active.state : null,
-            v3: await caches.has("oop-workspace-shell-v3"),
-            v4: await caches.has("oop-workspace-shell-v4"),
+            v3: await caches.has(shellCaches[0]),
+            v4: await caches.has(shellCaches[1]),
           };
-        })
+        }, shellCaches)
         .catch(() => null);
       if (s && s.active === "activated" && s.v3 === false && s.v4 === true) {
         activated1 = true;
@@ -285,7 +298,7 @@ let proxy;
     // ============================================================ Scenario #2
     // A failed save with an unsaved draft → click update refused (no reload,
     // draft + head intact, visible failure); restore fault, Save+retry reload.
-    await stageWaiting(page, "v5");
+    await stageWaiting(page, shellVersions[2]);
     await openProject(page, name);
     assert.equal(
       await page.locator("[data-testid=editor]").inputValue(),
@@ -334,14 +347,14 @@ let proxy;
     let activated2 = false;
     for (let i = 0; i < 60; i++) {
       const s = await page
-        .evaluate(async () => {
+        .evaluate(async (shellCaches) => {
           const r = await navigator.serviceWorker.getRegistration();
           return {
             active: r && r.active ? r.active.state : null,
-            v4: await caches.has("oop-workspace-shell-v4"),
-            v5: await caches.has("oop-workspace-shell-v5"),
+            v4: await caches.has(shellCaches[1]),
+            v5: await caches.has(shellCaches[2]),
           };
-        })
+        }, shellCaches)
         .catch(() => null);
       if (s && s.active === "activated" && s.v4 === false && s.v5 === true) {
         activated2 = true;
@@ -364,7 +377,7 @@ let proxy;
     // ============================================================ Scenario #3a
     // Edit during a HELD guard await → stale clean approval must NOT cause
     // draft loss; the pre-reload (controllerchange) recheck refuses.
-    await stageWaiting(page, "v6");
+    await stageWaiting(page, shellVersions[3]);
     await openProject(page, name);
     assert.equal(
       await page.locator("[data-testid=editor]").inputValue(),
@@ -422,14 +435,14 @@ let proxy;
     let activated3 = false;
     for (let i = 0; i < 60; i++) {
       const s = await page
-        .evaluate(async () => {
+        .evaluate(async (shellCaches) => {
           const r = await navigator.serviceWorker.getRegistration();
           return {
             active: r && r.active ? r.active.state : null,
-            v5: await caches.has("oop-workspace-shell-v5"),
-            v6: await caches.has("oop-workspace-shell-v6"),
+            v5: await caches.has(shellCaches[2]),
+            v6: await caches.has(shellCaches[3]),
           };
-        })
+        }, shellCaches)
         .catch(() => null);
       if (s && s.active === "activated" && s.v5 === false && s.v6 === true) {
         activated3 = true;
@@ -454,13 +467,15 @@ let proxy;
     // guard is app-scoped (App.razor), not page-local. Stage v7, dirty the
     // workspace, navigate to /smoke, click update there → refused, no reload,
     // draft retained.
-    await stageWaiting(page, "v7");
+    await stageWaiting(page, shellVersions[4]);
     await openProject(page, name);
     await page.locator("[data-testid=editor]").fill("draft v5\n");
     await page.evaluate(() => (window.__testAlive4 = "alive"));
     // Navigate to the worker-smoke route (client-side NavLink, preserves the
     // scoped coordinator + dirty working set).
-    await page.getByRole("link", { name: /Worker smoke test/ }).click();
+    const link = page.locator(".project-menu a.project-smoke-link");
+    await reveal(page, link);
+    await link.click();
     await page
       .locator("text=Worker smoke test")
       .locator("xpath=ancestor::article")
@@ -500,14 +515,14 @@ let proxy;
     let activated4 = false;
     for (let i = 0; i < 60; i++) {
       const s = await page
-        .evaluate(async () => {
+        .evaluate(async (shellCaches) => {
           const r = await navigator.serviceWorker.getRegistration();
           return {
             active: r && r.active ? r.active.state : null,
-            v6: await caches.has("oop-workspace-shell-v6"),
-            v7: await caches.has("oop-workspace-shell-v7"),
+            v6: await caches.has(shellCaches[3]),
+            v7: await caches.has(shellCaches[4]),
           };
-        })
+        }, shellCaches)
         .catch(() => null);
       if (s && s.active === "activated" && s.v6 === false && s.v7 === true) {
         activated4 = true;
