@@ -1,0 +1,20 @@
+@namespace AuthoringBrowserHarness
+@using Client.Workspace
+@using Microsoft.AspNetCore.Components
+@using Microsoft.AspNetCore.Components.Web
+@implements IDisposable
+@inject OwnerMeasurements Measurements
+<Client.App />
+<ToolsPanel />
+<section aria-label="TEST owner observations">
+    <button @onclick="Toggle">Toggle owner probe</button>
+    @if (_show) { <OwnerProbe /> }
+    <pre data-testid="owner-observations">@Measurements.Json</pre>
+</section>
+@code {
+    private bool _show = true;
+    protected override void OnInitialized() => Measurements.Changed += Changed;
+    private void Toggle() => _show = !_show;
+    private void Changed() => _ = InvokeAsync(StateHasChanged);
+    public void Dispose() => Measurements.Changed -= Changed;
+}

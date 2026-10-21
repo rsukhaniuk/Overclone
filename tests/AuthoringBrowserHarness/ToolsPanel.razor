@@ -1,0 +1,79 @@
+@namespace AuthoringBrowserHarness
+@using System.Text.Json
+@using Client.Compilation.Presentation
+@using Client.Workspace
+@using Microsoft.AspNetCore.Components
+@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.JSInterop
+@implements IDisposable
+@inject PrivateTools Tools
+@inject CompileWorkspaceSession Session
+@inject WorkspaceCoordinator Workspace
+@inject IJSRuntime JS
+<section aria-label="Private TEST controls">
+    <button @onclick="Provision" data-testid="test-provision" disabled="@_busy">Provision private trusted tools</button>
+    <button @onclick="Hold" data-testid="test-hold">Hold next completed native phase</button>
+    <button @onclick="Release" data-testid="test-release">Release native hold</button>
+    <button @onclick="Corrupt" data-testid="test-corrupt" disabled="@_busy">Corrupt private compiler format</button>
+    <button @onclick="Recover" data-testid="test-recover" disabled="@_busy">Reinstall private compiler</button>
+    <button @onclick="OwnerCheck" data-testid="test-owner">Measure compile owner bridge</button>
+    <button @onclick="RefreshObservations" data-testid="test-refresh-observations">Refresh observations</button>
+    <button @onclick="CloseSession" data-testid="test-close-session">Close compile session</button>
+    <p data-testid="test-tools-status">@Tools.Status @_notice @(Tools.Held ? "Native phase held after completion" : "No native hold")</p>
+    <pre data-testid="authoring-observations">@Snapshot()</pre>
+</section>
+@code {
+    private bool _busy, _disposed;
+    private string _notice = "";
+    private object? _ownerCheck;
+    protected override void OnInitialized() { Tools.Changed += Changed; Session.Changed += Changed; Workspace.WorkspaceChanged += Changed; }
+    private async Task Provision()
+    {
+        _busy = true;
+        try { await Tools.Provision(); await Session.RefreshToolsAsync(); _notice = "Explicit TEST provision complete"; }
+        catch (Exception error) { _notice = "TEST provisioning failed: " + error; }
+        finally { _busy = false; }
+    }
+    private void Hold() => Tools.HoldNext = true;
+    private void Release() => Tools.Release();
+    private async Task Corrupt()
+    {
+        _busy = true;
+        try
+        {
+            var observations = JsonSerializer.SerializeToElement(Tools.Observations());
+            var mapping = observations.GetProperty("mapping"); var id = mapping.GetProperty("InstallationId").GetGuid();
+            var resources = mapping.GetProperty("Resources").EnumerateArray().OrderBy(r => r.GetProperty("RelativePath").GetString(), StringComparer.Ordinal).ToArray();
+            int index = Array.FindIndex(resources, r => r.GetProperty("Pin").GetProperty("Name").GetString() == "pdflatex.fmt");
+            var module = await JS.InvokeAsync<IJSObjectReference>("import", "./test-hooks.js");
+            await module.InvokeVoidAsync("damageRuntime", id.ToString("N"), index); await module.DisposeAsync();
+            await Session.RefreshToolsAsync(); _notice = "Actual private format damaged; explicit refusal expected";
+        }
+        finally { _busy = false; }
+    }
+    private async Task Recover()
+    { _busy = true; try { await Tools.Recover(); await Session.RefreshToolsAsync(); _notice = "New private installation verified"; } finally { _busy = false; } }
+    private void OwnerCheck()
+    {
+        var before = SynchronizationContext.Current?.GetType().FullName;
+        _ownerCheck = Session.Owner?.Run(() => new { before, inside = SynchronizationContext.Current?.GetType().FullName, thread = Environment.CurrentManagedThreadId, state = Session.State?.IsCurrent });
+        _notice = "Owner bridge measured; ambient context restored: " + (SynchronizationContext.Current?.GetType().FullName ?? "null");
+    }
+    private void RefreshObservations() => StateHasChanged();
+    private async Task CloseSession() { await Session.DisposeAsync(); _notice = "Session disposed; workspace services remain borrowed"; }
+    private string Snapshot()
+    {
+        var state = Session.State; var output = Session.DisplayedOutput; var snapshot = Session.LastTicket?.Snapshot; var preview = Session.Preview.State;
+        return JsonSerializer.Serialize(new { tools = Tools.Observations(), ownerCheck = _ownerCheck, sessionDisposed = Session.Disposed, Session.Notice, lastReason = Session.LastReason?.ToString(),
+            readiness = Session.Readiness, selectionVersion = Session.SelectionVersion, Session.MainFile, Session.EngineChoice,
+            state = state is null ? null : new { state.IsCurrent, state.IsAttemptCurrent, state.Active, state.Pending, state.UnsettledJobs },
+            workspace = new { Workspace.WorkingGeneration, Workspace.SessionId, head = Workspace.Project?.HeadRevisionId, Workspace.IsDirty, Workspace.SavePhase },
+            output = output is null ? null : new { output.RequestId, output.WorkerEpoch, output.InputContentDigest, output.SnapshotIdentity, output.OutputHash, output.OutputLength, output.OutputFormat, output.OutputAdapter, output.ContentIdentity, pdf = Convert.ToBase64String(output.ToPayloadArray()!) },
+            snapshot = snapshot is null ? null : new { snapshot.Identity, snapshot.ContentDigest, snapshot.Selection, files = snapshot.Files.Select(f => new { f.FileId, f.RelativePath, f.MediaKind, f.HasBom, f.ByteLength, f.Hash, bytes = Convert.ToBase64String(f.ToArray()) }) },
+            preview = new { status = preview.Status.ToString(), preview.Generation, preview.DocumentSha256, preview.PageIndex, preview.PageCount, preview.NativeRequestId, preview.NativeEpoch,
+                search = new { status = preview.Search.Status.ToString(), preview.Search.Query, preview.Search.ScannedPages, preview.Search.TotalPages, preview.Search.Hits }, frame = preview.Frame is { } frame ? new { frame.DocumentSha256, frame.Generation, frame.PageIndex, frame.Width, frame.Height } : null },
+            owner = Session.Owner is { } owner ? new { owner.PendingPosts, owner.PendingOwned, settled = owner.WhenSettled.IsCompleted } : null });
+    }
+    private void Changed() { if (!_disposed) _ = InvokeAsync(() => { if (!_disposed) StateHasChanged(); }); }
+    public void Dispose() { _disposed = true; Tools.Release(); Tools.Changed -= Changed; Session.Changed -= Changed; Workspace.WorkspaceChanged -= Changed; }
+}

@@ -1,0 +1,13 @@
+using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
+using Microsoft.AspNetCore.Components.Web;
+using Client.Compilation.Presentation;
+using AuthoringBrowserHarness;
+var builder = WebAssemblyHostBuilder.CreateDefault(args);
+builder.RootComponents.Add<OwnerProbeApp>("#app");
+builder.RootComponents.Add<HeadOutlet>("head::after");
+builder.Services.AddAuthoringWorkspace();
+builder.Services.AddSingleton<OwnerMeasurements>();
+builder.Services.AddScoped(_ => new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) });
+builder.Services.AddScoped<PrivateTools>();
+builder.Services.AddScoped<ICompileWorkspaceConfiguration>(services => services.GetRequiredService<PrivateTools>());
+await builder.Build().RunAsync();

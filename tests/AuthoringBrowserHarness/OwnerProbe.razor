@@ -1,0 +1,21 @@
+@namespace AuthoringBrowserHarness
+@using Client.Workspace
+@using Microsoft.AspNetCore.Components
+@using Microsoft.AspNetCore.Components.Web
+@implements IDisposable
+@inject WorkspaceCoordinator Workspace
+@inject OwnerMeasurements Measurements
+<button @onclick="Measure">Measure real renderer owner</button>
+@code {
+    protected override void OnInitialized() { Measurements.Record("component-initialize", Workspace); Workspace.WorkspaceChanged += WorkspaceChanged; }
+    protected override void OnAfterRender(bool first) { if (first) Measurements.Record("component-after-render", Workspace); }
+    private void WorkspaceChanged() => Measurements.Record("actual-workspace-event", Workspace);
+    private async Task Measure()
+    {
+        Measurements.Record("actual-click", Workspace);
+        await InvokeAsync(() => Measurements.Record("actual-renderer-dispatch", Workspace));
+        await Measurements.ProbeB3(Workspace);
+        await Task.Yield(); Measurements.Record("after-yield", Workspace);
+    }
+    public void Dispose() { Workspace.WorkspaceChanged -= WorkspaceChanged; Measurements.Record("component-dispose", Workspace); }
+}
