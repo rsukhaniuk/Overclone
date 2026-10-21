@@ -1,11 +1,13 @@
 # Application architecture
 
-Status: proposed implementation blueprint, 2026-10-25. The repository currently
-demonstrates Blazor calling independent C++ and Rust word-count workers. None of
-the editor, persistence, compiler, analyzer or AI capabilities below is implemented
-by this documentation. See [decisions](decisions.md) for accepted constraints and
-unproven dependencies, [contracts](contracts.md) for boundary semantics and
-[roadmap](roadmap.md) for implementation acceptance criteria.
+Current implementation includes a local multi-file workspace, OPFS/IndexedDB
+persistence, source analysis, explicit review/undo, a project manager, optional
+AI/Drive adapters, and compile/PDF contracts, storage and presentation boundaries.
+The production compiler/renderer remains unavailable pending runtime adoption.
+Diagrams describe the target architecture and do not certify complete native APIs,
+compiler compatibility or rendered thesis compliance. See [decisions](decisions.md),
+[contracts](contracts.md), [roadmap](roadmap.md) and
+[compilation status](compilation.md).
 
 ## Product boundary
 
@@ -29,7 +31,7 @@ TeX package. Feature compatibility is a measured target, not a parity claim.
 ![Components and language ownership](uml/rendered/02-components.svg)
 
 | Component | Owner | Responsibility and allowed dependencies |
-|---|---|---|
+| --- | --- | --- |
 | Workspace UI | C#/Blazor | Project tree, source editor, PDF surface, diagnostics, history, review and AI panels; calls application services |
 | WorkspaceCoordinator | C# | Owns current immutable revision, dirty state and commands; schedules independent save and analysis/compile jobs |
 | ProjectRepository | C# + browser glue | Recoverable local revision commits, checkpoints and artifact references; OPFS and IndexedDB only |
