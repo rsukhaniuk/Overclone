@@ -13,6 +13,10 @@
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Fixtures/Knu/*.json" />
+    <EmbeddedResource Include="Fixtures/KnuMarginFixes/*.json" />
+    <EmbeddedResource Include="Fixtures/GeometryPackage/*.json" />
+    <EmbeddedResource Include="Fixtures/SourceReferences/*.json" />
+    <EmbeddedResource Include="Fixtures/RenderedSections/*.json" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\Client\Client.csproj" />

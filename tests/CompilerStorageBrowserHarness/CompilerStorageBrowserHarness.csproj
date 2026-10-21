@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk.BlazorWebAssembly">
   <PropertyGroup><TargetFramework>net10.0</TargetFramework><Nullable>enable</Nullable><ImplicitUsings>enable</ImplicitUsings><PublishTrimmed>false</PublishTrimmed><CompressionEnabled>false</CompressionEnabled></PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="10.0.13" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="10.0.14" />
     <!-- Actual Client assembly from THIS private scoped/full co-build, not a
          ProjectReference to a second standalone app/static-web-asset shell. -->
     <Reference Include="Client"><HintPath>$(BaseOutputPath)../Client/Debug/net10.0/Client.dll</HintPath><Private>true</Private></Reference>

@@ -1,9 +1,28 @@
 <Project Sdk="Microsoft.NET.Sdk.BlazorWebAssembly">
+  <PropertyGroup>
+    <!-- Standard Blazor PWA SDK support: publish emits wwwroot/service-worker-assets.js
+         with per-asset SRI integrity hashes and a version derived from the
+         build output. The custom service-worker.js imports it to build an immutable,
+         integrity-checked per-release cache. The generated manifest is NOT committed. -->
+    <ServiceWorkerAssetsManifest>service-worker-assets.js</ServiceWorkerAssetsManifest>
+  </PropertyGroup>
   <ItemGroup>
     <EmbeddedResource Include="Analysis/knu-profile-metadata.json" />
+    <EmbeddedResource Include="Analysis/knu-profile-v1_1-metadata.json" />
+    <EmbeddedResource Include="Analysis/knu-profile-v1_2-metadata.json" />
+    <EmbeddedResource Include="Analysis/knu-profile-v1_3-metadata.json" />
+    <EmbeddedResource Include="Analysis/knu-profile-v1_4-metadata.json" />
     <Content Remove="wwwroot/**/.pi-lens.json" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="10.0.13" />
+    <!-- Standard Blazor PWA SDK activation: the ServiceWorker item makes the SDK
+         generate service-worker-assets.js at build/publish (content hashes + a
+         calculated version) and prepend a manifest-version comment to the published
+         worker so content-only republishes are byte-distinguishable for updates.
+         PublishedContent selects the manifest-required production worker. -->
+    <ServiceWorker Include="wwwroot/service-worker.js" PublishedContent="wwwroot/service-worker.published.js" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="10.0.14" />
   </ItemGroup>
 </Project>

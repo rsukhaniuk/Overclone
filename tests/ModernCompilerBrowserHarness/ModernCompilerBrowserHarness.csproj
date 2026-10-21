@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk.BlazorWebAssembly">
+  <PropertyGroup><TargetFramework>net10.0</TargetFramework><Nullable>enable</Nullable><ImplicitUsings>enable</ImplicitUsings><PublishTrimmed>false</PublishTrimmed><CompressionEnabled>false</CompressionEnabled></PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="10.0.14" />
+    <Reference Include="Client"><HintPath>$(BaseOutputPath)../Client/Debug/net10.0/Client.dll</HintPath><Private>true</Private></Reference>
+    <Compile Include="../CompilerStorageBrowserHarness/OwnerContext.cs" Link="OwnerContext.cs" />
+    <Content Include="../../src/Client/wwwroot/js/runtime-assets-storage.js" Link="wwwroot/js/runtime-assets-storage.js" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="../../src/Client/wwwroot/js/workspace-storage.js" Link="wwwroot/js/workspace-storage.js" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="../../src/Client/wwwroot/js/compile-port-bridge.js" Link="wwwroot/js/compile-port-bridge.js" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="../../src/Client/wwwroot/js/compile-port-worker.js" Link="wwwroot/js/compile-port-worker.js" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

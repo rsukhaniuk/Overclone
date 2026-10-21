@@ -1,5 +1,14 @@
 name: oop-dev
 
+# All browser suites share one cached Playwright installation.
+x-browser-test: &browser-test
+  image: oop-dev-browser:local
+  build:
+    context: ./docker
+    dockerfile: browser.Dockerfile
+    args:
+      BROWSER_IMAGE: ${BROWSER_IMAGE:-mcr.microsoft.com/playwright:v1.56.1-noble}
+
 services:
   init:
     image: ${DOTNET_IMAGE:-mcr.microsoft.com/dotnet/sdk:10.0-noble}
@@ -132,13 +141,23 @@ services:
       retries: 150
       start_period: 10s
 
+  # Finite, network-independent contracts; no app/native/rust dependency graph.
+  js-test:
+    <<: *browser-test
+    profiles: ["test"]
+    init: true
+    working_dir: /workspace
+    network_mode: none
+    volumes:
+      - .:/workspace:ro
+    command: ["sh", "scripts/test-js.sh"]
+
   browser-test:
     profiles: ["test"]
-    image: ${BROWSER_IMAGE:-mcr.microsoft.com/playwright:v1.56.1-noble}
+    <<: *browser-test
     init: true
     working_dir: /tmp/browser-test
     environment:
-      NODE_PATH: /tmp/browser-test/node_modules
       APP_URL: http://app:8080
     volumes:
       - ./scripts:/tests:ro
@@ -149,16 +168,14 @@ services:
       - sh
       - -ec
       - |
-        npm install --no-audit --no-fund --prefix /tmp/browser-test playwright@1.56.1
         node /tests/test-browser.cjs
 
   analysis-worker-test:
     profiles: ["test"]
-    image: ${BROWSER_IMAGE:-mcr.microsoft.com/playwright:v1.56.1-noble}
+    <<: *browser-test
     init: true
     working_dir: /tmp/browser-test
     environment:
-      NODE_PATH: /tmp/browser-test/node_modules
       APP_URL: http://app:8080
     volumes:
       - ./scripts:/tests:ro
@@ -169,16 +186,14 @@ services:
       - sh
       - -ec
       - |
-        npm install --no-audit --no-fund --prefix /tmp/browser-test playwright@1.56.1
         node /tests/test-analysis-worker.cjs
 
   analysis-ui-test:
     profiles: ["test"]
-    image: ${BROWSER_IMAGE:-mcr.microsoft.com/playwright:v1.56.1-noble}
+    <<: *browser-test
     init: true
     working_dir: /tmp/browser-test
     environment:
-      NODE_PATH: /tmp/browser-test/node_modules
       APP_URL: http://app:8080
     volumes:
       - ./scripts:/tests:ro
@@ -189,16 +204,14 @@ services:
       - sh
       - -ec
       - |
-        npm install --no-audit --no-fund --prefix /tmp/browser-test playwright@1.56.1
         node /tests/test-analysis-ui.cjs
 
   knu-ui-test:
     profiles: ["test"]
-    image: ${BROWSER_IMAGE:-mcr.microsoft.com/playwright:v1.56.1-noble}
+    <<: *browser-test
     init: true
     working_dir: /tmp/browser-test
     environment:
-      NODE_PATH: /tmp/browser-test/node_modules
       APP_URL: http://app:8080
     volumes:
       - ./scripts:/tests:ro
@@ -209,16 +222,14 @@ services:
       - sh
       - -ec
       - |
-        npm install --no-audit --no-fund --prefix /tmp/browser-test playwright@1.56.1
         node /tests/test-knu-ui.cjs
 
   review-ui-test:
     profiles: ["test"]
-    image: ${BROWSER_IMAGE:-mcr.microsoft.com/playwright:v1.56.1-noble}
+    <<: *browser-test
     init: true
     working_dir: /tmp/browser-test
     environment:
-      NODE_PATH: /tmp/browser-test/node_modules
       APP_URL: http://static-origin:8080
     volumes:
       - ./scripts:/tests:ro
@@ -229,16 +240,14 @@ services:
       - sh
       - -ec
       - |
-        npm install --no-audit --no-fund --prefix /tmp/browser-test playwright@1.56.1
         node /tests/test-review-ui.cjs
 
   workspace-test:
     profiles: ["test"]
-    image: ${BROWSER_IMAGE:-mcr.microsoft.com/playwright:v1.56.1-noble}
+    <<: *browser-test
     init: true
     working_dir: /tmp/browser-test
     environment:
-      NODE_PATH: /tmp/browser-test/node_modules
       APP_URL: http://app:8080
     volumes:
       - ./scripts:/tests:ro
@@ -249,17 +258,15 @@ services:
       - sh
       - -ec
       - |
-        npm install --no-audit --no-fund --prefix /tmp/browser-test playwright@1.56.1
         node /tests/test-workspace.cjs
         node /tests/test-workspace-locks.cjs
 
   transfer-test:
     profiles: ["test"]
-    image: ${BROWSER_IMAGE:-mcr.microsoft.com/playwright:v1.56.1-noble}
+    <<: *browser-test
     init: true
     working_dir: /tmp/browser-test
     environment:
-      NODE_PATH: /tmp/browser-test/node_modules
       APP_URL: http://app:8080
     volumes:
       - ./scripts:/tests:ro
@@ -270,16 +277,14 @@ services:
       - sh
       - -ec
       - |
-        npm install --no-audit --no-fund --prefix /tmp/browser-test playwright@1.56.1
         node /tests/test-transfer.cjs
 
   offline-restart-test:
     profiles: ["test"]
-    image: ${BROWSER_IMAGE:-mcr.microsoft.com/playwright:v1.56.1-noble}
+    <<: *browser-test
     init: true
     working_dir: /tmp/browser-test
     environment:
-      NODE_PATH: /tmp/browser-test/node_modules
       # The offline restart test verifies the PUBLISHED static build served by
       # static-origin, not the development server (app). The static origin
       # is later blocked with setOffline(true), simulating "stop its static
@@ -294,16 +299,14 @@ services:
       - sh
       - -ec
       - |
-        npm install --no-audit --no-fund --prefix /tmp/browser-test playwright@1.56.1
         node /tests/test-offline-restart.cjs
 
   sw-update-test:
     profiles: ["test"]
-    image: ${BROWSER_IMAGE:-mcr.microsoft.com/playwright:v1.56.1-noble}
+    <<: *browser-test
     init: true
     working_dir: /tmp/browser-test
     environment:
-      NODE_PATH: /tmp/browser-test/node_modules
       # The SW update-path test verifies the PUBLISHED static build served by
       # static-origin (same origin as offline-restart-test) and stages a new
       # worker by routing the SW script to a bumped-CACHE_VERSION copy.
@@ -317,16 +320,14 @@ services:
       - sh
       - -ec
       - |
-        npm install --no-audit --no-fund --prefix /tmp/browser-test playwright@1.56.1
         node /tests/test-sw-update.cjs
 
   sw-update-draft-test:
     profiles: ["test"]
-    image: ${BROWSER_IMAGE:-mcr.microsoft.com/playwright:v1.56.1-noble}
+    <<: *browser-test
     init: true
     working_dir: /tmp/browser-test
     environment:
-      NODE_PATH: /tmp/browser-test/node_modules
       # The SW update-DRAFT preservation test verifies the PUBLISHED static build
       # served by static-origin and stages new workers by bumping CACHE_VERSION
       # through a proxy (same approach as sw-update-test, separate proxy port).
@@ -340,7 +341,6 @@ services:
       - sh
       - -ec
       - |
-        npm install --no-audit --no-fund --prefix /tmp/browser-test playwright@1.56.1
         node /tests/test-sw-update-draft.cjs
 
   # Publishes the Blazor WASM client to a static wwwroot (the production
