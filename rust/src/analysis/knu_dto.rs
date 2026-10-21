@@ -81,6 +81,12 @@ pub enum Limitation {
     LookaheadBudget,
     DiagnosticBudget,
     NoSupportedObservation,
+    UnsupportedGeometry,
+    MissingMarginSides,
+    MultipleGeometryDeclarations,
+    PaperUncertain,
+    LineSpacingUncertain,
+    CaptionUncertain,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
@@ -115,9 +121,71 @@ impl Length {
 
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
+pub enum MarginSide {
+    Left,
+    Right,
+    Top,
+    Bottom,
+}
+
+impl MarginSide {
+    pub fn minimum_mm(self) -> u64 {
+        match self {
+            Self::Left => 25,
+            Self::Right => 10,
+            Self::Top | Self::Bottom => 20,
+        }
+    }
+    pub fn agrees(self, length: &Length) -> bool {
+        length.denominator != 0
+            && length
+                .denominator
+                .checked_mul(self.minimum_mm())
+                .is_some_and(|minimum| length.numerator_mm >= minimum)
+    }
+    pub fn bit(self) -> u8 {
+        match self {
+            Self::Left => 1,
+            Self::Right => 2,
+            Self::Top => 4,
+            Self::Bottom => 8,
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
 pub enum TitleKind {
     Short,
     Display,
+}
+
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub enum PaperSize {
+    A4,
+    A3,
+    A5,
+    B5,
+    Letter,
+    Legal,
+    Executive,
+}
+
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub enum SpacingSyntax {
+    OneHalfSpacing,
+    SetStretch,
+    LineSpread,
+    BaselineStretch,
+}
+
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub enum CaptionEnvironment {
+    Figure,
+    Table,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -127,6 +195,22 @@ pub enum TitleKind {
     rename_all_fields = "camelCase"
 )]
 pub enum ObservationValue {
+    PaperDeclaration {
+        paper: Option<PaperSize>,
+    },
+    LineSpacingDeclaration {
+        syntax: SpacingSyntax,
+        numerator: Option<u64>,
+        denominator: Option<u64>,
+    },
+    CaptionTitle {
+        environment: CaptionEnvironment,
+        final_scalar: Option<char>,
+    },
+    MarginDeclaration {
+        side: MarginSide,
+        length: Option<Length>,
+    },
     IndentDeclaration {
         target_span: Span,
         length: Option<Length>,

@@ -114,7 +114,7 @@ pub fn rule_result_and_aggregate(
 /// `Unavailable`; else `Fail` if any `Fail`; else `Pass` if any eligible file;
 /// else `NotApplicable`. `NotApplicable` file outcomes are filtered out
 /// before roll-up, so they never appear as `file_outcome` here.
-fn roll_up(aggregate: Outcome, file_outcome: Outcome) -> Outcome {
+pub(super) fn roll_up(aggregate: Outcome, file_outcome: Outcome) -> Outcome {
     use Outcome::*;
     match file_outcome {
         Indeterminate | Unavailable => Indeterminate,

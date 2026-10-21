@@ -103,6 +103,8 @@ pub struct AnalyzePayload {
     pub profile: ProfileRef,
     #[serde(default, deserialize_with = "super::knu_dto::configuration")]
     pub configuration: Option<super::knu_dto::Configuration>,
+    #[serde(default, deserialize_with = "super::references::configuration")]
+    pub reference_configuration: Option<super::references::ReferenceConfiguration>,
     #[serde(default)]
     pub limits: Limits,
     #[serde(default)]
@@ -202,6 +204,12 @@ pub struct AnalysisResult {
     pub unavailable_capabilities: Vec<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub configuration: Option<super::knu_dto::Configuration>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "super::references::configuration"
+    )]
+    pub reference_configuration: Option<super::references::ReferenceConfiguration>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub knu: Option<super::knu_dto::KnuAnalysis>,
 }

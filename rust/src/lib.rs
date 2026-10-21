@@ -1,6 +1,7 @@
 use wasm_bindgen::prelude::*;
 
 pub mod analysis;
+pub mod rendered_extent;
 
 /// Counts words separated by ASCII whitespace, matching the C++ example.
 /// Non-ASCII whitespace remains word content; this is not a tokenizer.
@@ -27,6 +28,13 @@ pub fn initialize(request_json: &str) -> String {
 #[wasm_bindgen]
 pub fn analyze_source(metadata_json: &str, packed_bytes: &[u8]) -> String {
     analysis::analyze_source(metadata_json, packed_bytes)
+}
+
+/// Pure, bounded usual-extent observation over caller-supplied PDF page count.
+/// The caller owns measurement/revision authority; this is not compliance proof.
+#[wasm_bindgen]
+pub fn evaluate_rendered_extent(request_json: &str) -> String {
+    rendered_extent::evaluate(request_json)
 }
 
 #[cfg(test)]

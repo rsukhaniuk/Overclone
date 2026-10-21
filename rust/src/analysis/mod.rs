@@ -10,7 +10,10 @@ pub mod knu_dto;
 pub mod lexer;
 pub mod mapping;
 pub mod observations;
+mod ownership;
 pub mod profiles;
+mod reference_wire;
+pub mod references;
 pub mod rules;
 
 use dto::{
@@ -344,14 +347,22 @@ pub fn analyze_source(metadata_json: &str, packed_bytes: &[u8]) -> String {
             "unknown profile or version",
         );
     };
-    if (selected_profile == profiles::Profile::Knu) != payload.configuration.is_some() {
+    if selected_profile.is_knu() != payload.configuration.is_some() {
         return failed_response(
             Some(request_id),
             "InvalidInput",
             "KNU requires configuration; engine-only requests must omit it",
         );
     }
-    if selected_profile == profiles::Profile::Knu
+    let is_references = selected_profile == profiles::Profile::SourceReferences;
+    if is_references != payload.reference_configuration.is_some() {
+        return failed_response(
+            Some(request_id),
+            "InvalidInput",
+            "referenceConfiguration is required only for source references",
+        );
+    }
+    if selected_profile.is_knu()
         && payload
             .files
             .iter()
@@ -389,6 +400,21 @@ pub fn analyze_source(metadata_json: &str, packed_bytes: &[u8]) -> String {
             "InvalidInput",
             format!("duplicate fileId: {dup}"),
         );
+    }
+
+    // New-profile map/path allocations follow the existing metadata, buffer,
+    // file-count and opaque-identity preflight, and still precede all lexing.
+    if is_references {
+        if !reference_wire::validate(metadata_json) {
+            return failed_response(
+                Some(request_id),
+                "InvalidInput",
+                "invalid source-reference request shape",
+            );
+        }
+        if let Err(message) = references::validate(&payload) {
+            return failed_response(Some(request_id), "InvalidInput", message);
+        }
     }
 
     // Validate slices, UTF-8, BOM consistency, and total/size caps BEFORE lexing.
@@ -526,9 +552,10 @@ pub fn analyze_source(metadata_json: &str, packed_bytes: &[u8]) -> String {
         coverage,
         unavailable_capabilities: vec!["pdfFacts".to_string(), "pdfChecks".to_string()],
         configuration: None,
+        reference_configuration: None,
         knu: None,
     };
-    if selected_profile == profiles::Profile::Knu {
+    if selected_profile.is_knu() {
         let mut remaining = resolved
             .max_tokens_per_project
             .saturating_sub(budget.tokens_per_project_used);
@@ -544,14 +571,40 @@ pub fn analyze_source(metadata_json: &str, packed_bytes: &[u8]) -> String {
                 && f.relative_path
                     .rsplit_once('.')
                     .is_some_and(|(_, ext)| ext.eq_ignore_ascii_case("tex"));
-            observations.push(observations::observe(
-                facts,
-                &packed_bytes[off..off + len as usize],
-                eligible,
-                work,
-                resolved.max_tokens_per_file,
-                &mut remaining,
-            ));
+            observations.push(
+                if selected_profile == profiles::Profile::KnuWithFormatting {
+                    observations::observe_formatting(
+                        facts,
+                        &packed_bytes[off..off + len as usize],
+                        eligible,
+                        work,
+                        resolved.max_tokens_per_file,
+                        &mut remaining,
+                    )
+                } else if selected_profile == profiles::Profile::KnuWithGeometryPackage {
+                    observations::observe_geometry_package(
+                        facts,
+                        &packed_bytes[off..off + len as usize],
+                        eligible,
+                        work,
+                        resolved.max_tokens_per_file,
+                        &mut remaining,
+                    )
+                } else {
+                    observations::observe_version(
+                        facts,
+                        &packed_bytes[off..off + len as usize],
+                        eligible,
+                        work,
+                        resolved.max_tokens_per_file,
+                        &mut remaining,
+                        matches!(
+                            selected_profile,
+                            profiles::Profile::KnuLatest | profiles::Profile::KnuWithMarginFixes
+                        ),
+                    )
+                },
+            );
         }
         rules::evaluate(
             &mut result,
@@ -559,6 +612,18 @@ pub fn analyze_source(metadata_json: &str, packed_bytes: &[u8]) -> String {
             observations,
             packed_bytes,
             diag_cap_remaining,
+        );
+    } else if is_references {
+        references::evaluate(
+            &mut result,
+            &payload,
+            packed_bytes,
+            &validated,
+            lookaheads,
+            resolved,
+            resolved
+                .max_tokens_per_project
+                .saturating_sub(budget.tokens_per_project_used),
         );
     }
 
@@ -763,4 +828,14 @@ mod tests {
 #[cfg(test)]
 mod contract_tests;
 #[cfg(test)]
+mod formatting_tests;
+#[cfg(test)]
+mod geometry_package_tests;
+#[cfg(test)]
+mod geometry_tests;
+#[cfg(test)]
 mod knu_tests;
+#[cfg(test)]
+mod margin_fix_tests;
+#[cfg(test)]
+mod reference_tests;

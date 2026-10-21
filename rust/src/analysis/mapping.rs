@@ -82,33 +82,54 @@ pub fn utf8_scalar_len(b: u8) -> usize {
 /// line break is counted at the `\n`. A lone `\r` is a newline at the `\r`.
 /// This never panics or underflows for valid boundaries.
 pub fn line_column(bytes: &[u8], offset: usize) -> (u32, u32) {
-    let mut line: u32 = 1;
-    let mut line_start: usize = 0;
-    let mut i = 0;
-    while i < offset {
-        let b = bytes[i];
-        if b == b'\n' {
-            line += 1;
-            line_start = i + 1;
-            i += 1;
-        } else if b == b'\r' {
-            if i + 1 < bytes.len() && bytes[i + 1] == b'\n' {
-                // Defer the line break to the \n: the CRLF is complete only once
-                // the whole pair precedes `offset`. Skip the \r here; the \n
-                // is processed on the next iteration (which increments the line).
-                i += 1;
-            } else {
-                // lone \r: a completed newline at the \r.
+    let mut cursor = LineCursor::default();
+    cursor.advance(bytes, offset)
+}
+
+/// Same display mapping, with linear TOTAL work for ordered observation spans.
+/// Caller charges the newly visited byte interval before calling `advance`.
+#[derive(Default)]
+pub(super) struct LineCursor {
+    offset: usize,
+    line_breaks: u32,
+    line_start: usize,
+}
+impl LineCursor {
+    pub(super) fn offset(&self) -> usize {
+        self.offset
+    }
+    pub(super) fn advance(&mut self, bytes: &[u8], offset: usize) -> (u32, u32) {
+        let mut line = self.line_breaks + 1;
+        let mut line_start = self.line_start;
+        let mut i = self.offset;
+        while i < offset {
+            let b = bytes[i];
+            if b == b'\n' {
                 line += 1;
                 line_start = i + 1;
                 i += 1;
+            } else if b == b'\r' {
+                if i + 1 < bytes.len() && bytes[i + 1] == b'\n' {
+                    // Defer the line break to the \n: the CRLF is complete only once
+                    // the whole pair precedes `offset`. Skip the \r here; the \n
+                    // is processed on the next iteration (which increments the line).
+                    i += 1;
+                } else {
+                    // lone \r: a completed newline at the \r.
+                    line += 1;
+                    line_start = i + 1;
+                    i += 1;
+                }
+            } else {
+                i += 1;
             }
-        } else {
-            i += 1;
         }
+        // `offset >= line_start` always holds: line_start only ever advances to a
+        // position <= the loop's current `i`, and `i <= offset` when the loop exits.
+        let column = (offset - line_start) as u32;
+        self.offset = offset;
+        self.line_breaks = line - 1;
+        self.line_start = line_start;
+        (line, column)
     }
-    // `offset >= line_start` always holds: line_start only ever advances to a
-    // position <= the loop's current `i`, and `i <= offset` when the loop exits.
-    let column = (offset - line_start) as u32;
-    (line, column)
 }

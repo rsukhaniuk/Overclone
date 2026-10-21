@@ -2,10 +2,13 @@
 //! Argument ownership is consumed once. Unknown context remains explicit.
 use super::dto::{Outcome, SourceFileFacts, Span, Token, TokenKind, MAX_TOKEN_TEXT_BYTES};
 use super::knu_dto::{
-    FileObservations, Length, Limitation, Observation, ObservationValue, TitleKind,
+    FileObservations, Length, Limitation, MarginSide, Observation, ObservationValue, TitleKind,
 };
-use super::lexer::LookaheadBudget;
-use super::profiles::{HEADING, INDENT};
+use super::lexer::{LookaheadBudget, LookaheadResult};
+use super::ownership::{self, Argument};
+use super::profiles::{HEADING, INDENT, MARGINS};
+
+mod formatting;
 
 pub const MAX_EXCERPT_BYTES: usize = 256;
 
@@ -95,14 +98,6 @@ fn heading(name: &[u8]) -> bool {
     )
 }
 
-#[derive(Clone, Copy)]
-struct Argument {
-    start: usize,
-    end: usize,
-    next: usize,
-    owned_end: usize,
-}
-
 struct Pass<'a> {
     bytes: &'a [u8],
     tokens: &'a [Token],
@@ -113,6 +108,15 @@ struct Pass<'a> {
     project_remaining: &'a mut u32,
     result: FileObservations,
     stopped: bool,
+    margins_enabled: bool,
+    packages_enabled: bool,
+    geometry_count: u32,
+    geometry_imports: u32,
+    package_needs_declaration: bool,
+    formatting_enabled: bool,
+    formatting_safe: bool,
+    setspace_imports: u32,
+    caption_environment: Option<super::knu_dto::CaptionEnvironment>,
 }
 
 impl Pass<'_> {
@@ -132,37 +136,17 @@ impl Pass<'_> {
     }
 
     /// Only trivia tokens can intervene; matching closes come from the lexer.
-    fn group(&mut self, mut i: usize) -> Option<Argument> {
-        while let Some(t) = self.tokens.get(i) {
-            match t.kind {
-                TokenKind::Comment => {
-                    if !self.spend((t.end_byte - t.start_byte) as usize) {
-                        return None;
-                    }
-                    i += 1;
-                }
-                TokenKind::Text => {
-                    let b = &self.bytes[t.start_byte as usize..t.end_byte as usize];
-                    if !self.spend(b.len()) || !b.iter().all(u8::is_ascii_whitespace) {
-                        return None;
-                    }
-                    i += 1;
-                }
-                TokenKind::IncludePath | TokenKind::Label | TokenKind::Reference => i += 1,
-                TokenKind::BraceOpen => {
-                    let close = self.closes[i]?;
-                    let end = self.tokens[close].start_byte as usize;
-                    return Some(Argument {
-                        start: t.end_byte as usize,
-                        end,
-                        next: close + 1,
-                        owned_end: end + 1,
-                    });
-                }
-                _ => return None,
+    fn group(&mut self, i: usize) -> Option<Argument> {
+        match ownership::group(self.tokens, self.bytes, &self.closes, i, &mut self.work) {
+            LookaheadResult::Found(a) => Some(a),
+            LookaheadResult::NotFound => None,
+            LookaheadResult::Exhausted => {
+                self.result.limit(Limitation::LookaheadBudget);
+                self.result.complete = false;
+                self.stopped = true;
+                None
             }
         }
-        None
     }
 
     fn bounded_argument(&mut self, a: Argument) -> bool {
@@ -233,8 +217,16 @@ impl Pass<'_> {
             },
             excerpt,
             excerpt_truncated,
-            method: if rule == INDENT {
+            method: if rule == super::profiles::PAPER {
+                "literal-paper-intent"
+            } else if rule == super::profiles::LINE_SPACING {
+                "declared-line-spacing-intent"
+            } else if rule == super::profiles::CAPTION {
+                "literal-caption-title"
+            } else if rule == INDENT {
                 "literal-setlength"
+            } else if rule == MARGINS {
+                "literal-geometry-option"
             } else {
                 "literal-heading-argument"
             }
@@ -310,6 +302,188 @@ impl Pass<'_> {
             reason,
         );
         Some(value.owned_end)
+    }
+
+    /// Finite options within the lexer's owned group, never a source-file scan.
+    /// Reject active/nested syntax before splitting so nested commas cannot
+    /// masquerade as independent margin declarations. Each group is visited once.
+    fn geometry(&mut self, i: usize, command: Span, starred: bool) -> Option<usize> {
+        self.geometry_count += 1;
+        if self.geometry_count > 1 {
+            self.result.limit(Limitation::MultipleGeometryDeclarations);
+        }
+        let Some(a) = self.group(i + 1) else {
+            self.result.limit(Limitation::UnsupportedGeometry);
+            return None;
+        };
+        self.geometry_options(a, command, starred)
+    }
+
+    // Shared finite body parser: argument/declaration ownership comes ONLY from
+    // the existing lexer. Old command callers retain identical work accounting.
+    fn geometry_options(&mut self, a: Argument, command: Span, starred: bool) -> Option<usize> {
+        if !self.bounded_argument(a) || !self.spend((a.end - a.start).saturating_mul(2)) {
+            self.result.limit(Limitation::UnsupportedGeometry);
+            return Some(a.owned_end);
+        }
+        let dynamic = self.slice(a).iter().any(|b| {
+            matches!(
+                b,
+                b'\\' | b'{' | b'}' | b'%' | b'$' | b'&' | b'#' | b'^' | b'_' | b'~'
+            )
+        });
+        if starred || dynamic {
+            self.result.limit(Limitation::UnsupportedGeometry);
+            // Owned arguments must not hide arbitrary executable TeX context
+            // from the existing rules/fix gates (same policy as setlength).
+            if dynamic {
+                if self.formatting_enabled {
+                    self.formatting_safe = false;
+                }
+                self.result.limit(Limitation::UnsupportedArgument);
+            }
+            return Some(a.owned_end);
+        }
+        let mut seen = 0u8;
+        let mut offset = a.start;
+        while offset <= a.end && !self.stopped {
+            let end = self.bytes[offset..a.end]
+                .iter()
+                .position(|b| *b == b',')
+                .map_or(a.end, |p| offset + p);
+            if self.formatting_enabled && self.formatting_safe {
+                self.paper_option(
+                    command.clone(),
+                    Argument {
+                        start: offset,
+                        end,
+                        next: a.next,
+                        owned_end: a.owned_end,
+                    },
+                );
+                if self.stopped {
+                    return Some(a.owned_end);
+                }
+            }
+            let option = &self.bytes[offset..end];
+            if let Some(eq) = option.iter().position(|b| *b == b'=') {
+                let side = match trim(&option[..eq]) {
+                    b"left" => Some(MarginSide::Left),
+                    b"right" => Some(MarginSide::Right),
+                    b"top" => Some(MarginSide::Top),
+                    b"bottom" => Some(MarginSide::Bottom),
+                    _ => None,
+                };
+                if let Some(side) = side {
+                    if seen & side.bit() != 0 {
+                        self.result.limit(Limitation::MultipleGeometryDeclarations);
+                    }
+                    seen |= side.bit();
+                    let value = Argument {
+                        start: offset + eq + 1,
+                        end,
+                        next: a.next,
+                        owned_end: a.owned_end,
+                    };
+                    let length = parse_length(self.slice(value));
+                    let agrees = length.as_ref().map(|n| side.agrees(n));
+                    let reason = if length.is_some() {
+                        None
+                    } else {
+                        Some(Limitation::UnsupportedGeometry)
+                    };
+                    if let Some(r) = reason {
+                        self.result.limit(r);
+                    }
+                    self.emit(
+                        MARGINS,
+                        command.clone(),
+                        value,
+                        ObservationValue::MarginDeclaration { side, length },
+                        agrees,
+                        reason,
+                    );
+                } else {
+                    self.result.limit(Limitation::UnsupportedGeometry);
+                }
+            } else {
+                self.result.limit(Limitation::UnsupportedGeometry);
+            }
+            if end == a.end {
+                break;
+            }
+            offset = end + 1;
+        }
+        if seen != 15 {
+            self.result.limit(Limitation::MissingMarginSides);
+        }
+        Some(a.owned_end)
+    }
+
+    fn geometry_package(&mut self, i: usize, command: Span, starred: bool) -> Option<usize> {
+        let mut next = i + 1;
+        let mut options = None;
+        if let Some(t) = self.tokens.get(next) {
+            // Exactly the already lexed immediate optional argument. Do not scan
+            // for brackets or reinterpret missing/unterminated optional metadata.
+            if t.kind == TokenKind::OptionalArg && t.start_byte == command.end_byte {
+                let start = t.start_byte as usize;
+                let end = t.end_byte as usize;
+                next += 1;
+                while next < self.tokens.len() && self.tokens[next].start_byte < end as u64 {
+                    if !self.spend(1) {
+                        return None;
+                    }
+                    next += 1;
+                }
+                options = Some(Argument {
+                    start: start + 1,
+                    end: end - 1,
+                    next,
+                    owned_end: end,
+                });
+            }
+        }
+        let package = self.group(next)?;
+        if self.formatting_enabled
+            && !starred
+            && self.bounded_argument(package)
+            && trim(self.slice(package)) == b"setspace"
+            && options.is_none()
+        {
+            self.setspace_imports += 1;
+            if self.setspace_imports > 1 {
+                self.result.limit(Limitation::LineSpacingUncertain);
+            }
+            return Some(package.owned_end);
+        }
+        if starred || !self.bounded_argument(package) || trim(self.slice(package)) != b"geometry" {
+            if self.formatting_enabled {
+                self.formatting_safe = false;
+            }
+            self.result.limit(Limitation::UnknownSemantics);
+            return Some(package.owned_end);
+        }
+        self.geometry_imports += 1;
+        if self.geometry_imports > 1 {
+            self.result.limit(Limitation::MultipleGeometryDeclarations);
+        }
+        if let Some(mut a) = options {
+            self.geometry_count += 1;
+            if self.geometry_count > 1 {
+                self.result.limit(Limitation::MultipleGeometryDeclarations);
+            }
+            a.owned_end = package.owned_end;
+            self.geometry_options(a, command, false)
+        } else {
+            // A no-option import is context, not a second margin declaration.
+            // This precise form must precede exactly one explicit declaration.
+            if self.geometry_count != 0 {
+                self.result.limit(Limitation::MultipleGeometryDeclarations);
+            }
+            self.package_needs_declaration = true;
+            Some(package.owned_end)
+        }
     }
 
     fn title(&mut self, command: Span, a: Argument, kind: TitleKind) {
@@ -401,6 +575,9 @@ impl Pass<'_> {
                     if b.iter()
                         .any(|b| matches!(b, b'$' | b'#' | b'&' | b'^' | b'_' | b'~'))
                     {
+                        if self.formatting_enabled {
+                            self.formatting_safe = false;
+                        }
                         self.result.limit(Limitation::UnsupportedContext);
                     }
                     continue;
@@ -419,6 +596,9 @@ impl Pass<'_> {
                             | b"\\\\"
                             | b"\\ "
                     ) {
+                        if self.formatting_enabled {
+                            self.formatting_safe = false;
+                        }
                         self.result.limit(Limitation::UnsupportedContext);
                     }
                     continue;
@@ -446,10 +626,52 @@ impl Pass<'_> {
             if matches!(name, b"input" | b"include") {
                 self.result.limit(Limitation::IncludeNotResolved);
             }
+            if self.formatting_enabled
+                && (name.starts_with(b"if")
+                    || matches!(
+                        name,
+                        b"else"
+                            | b"fi"
+                            | b"newcommand"
+                            | b"renewcommand"
+                            | b"def"
+                            | b"let"
+                            | b"catcode"
+                    ) && name != b"renewcommand")
+            {
+                self.formatting_safe = false;
+                self.result.limit(Limitation::UnsupportedContext);
+            }
+            if self.formatting_enabled
+                && name == b"caption"
+                && self.depths[i] == 0
+                && !document_closed
+            {
+                let command = Span {
+                    start_byte: t.start_byte,
+                    end_byte: t.end_byte,
+                };
+                if self.formatting_safe
+                    && other_env_depth == 1
+                    && self.caption_environment.is_some()
+                {
+                    if let Some(end) = self.caption(i, command, starred) {
+                        owned_end = end as u64;
+                    } else {
+                        self.result.limit(Limitation::CaptionUncertain);
+                    }
+                } else {
+                    self.result.limit(Limitation::CaptionUncertain);
+                }
+                continue;
+            }
             if self.depths[i] != 0
                 || (other_env_depth != 0 && !matches!(name, b"begin" | b"end"))
                 || document_closed
             {
+                if self.formatting_enabled && !matches!(name, b"begin" | b"end") {
+                    self.formatting_safe = false;
+                }
                 self.result.limit(Limitation::UnsupportedContext);
                 continue;
             }
@@ -457,8 +679,26 @@ impl Pass<'_> {
                 start_byte: t.start_byte,
                 end_byte: t.end_byte,
             };
-            let end = if name == b"setlength" {
+            let end = if self.formatting_enabled && name == b"documentclass" {
+                self.formatting_class(i, command, starred, &mut class_seen, document_open)
+            } else if self.formatting_enabled
+                && matches!(
+                    name,
+                    b"onehalfspacing" | b"setstretch" | b"linespread" | b"renewcommand"
+                )
+            {
+                self.spacing(i, command, name, starred)
+            } else if name == b"setlength" {
                 self.indent(i, command, starred)
+            } else if name == b"geometry" && self.margins_enabled {
+                self.geometry(i, command, starred)
+            } else if name == b"usepackage" && self.packages_enabled {
+                if document_open {
+                    self.result.limit(Limitation::UnsupportedContext);
+                    Some(t.end_byte as usize)
+                } else {
+                    self.geometry_package(i, command, starred)
+                }
             } else if heading(name) {
                 self.titles(i, command)
             } else if !starred
@@ -478,16 +718,56 @@ impl Pass<'_> {
                     if !self.literal(a) {
                         self.result.limit(Limitation::UnsupportedArgument);
                     }
-                    let arg = trim(self.slice(a));
+                    // Finish all byte borrowing before mutating pass state.
+                    // Only finite classifications escape this scope; no copies,
+                    // new lookahead or changes to argument ownership/budgets.
+                    let (is_document, standard_class, environment, expected_caption_end) = {
+                        let arg = trim(self.slice(a));
+                        (
+                            arg == b"document",
+                            matches!(arg, b"article" | b"report" | b"book"),
+                            match arg {
+                                b"figure" => Some(super::knu_dto::CaptionEnvironment::Figure),
+                                b"table" => Some(super::knu_dto::CaptionEnvironment::Table),
+                                _ => None,
+                            },
+                            match self.caption_environment {
+                                Some(super::knu_dto::CaptionEnvironment::Figure) => {
+                                    arg == b"figure"
+                                }
+                                Some(super::knu_dto::CaptionEnvironment::Table) => arg == b"table",
+                                None => arg.is_empty(),
+                            },
+                        )
+                    };
                     match name {
                         b"documentclass" => {
-                            if class_seen || !matches!(arg, b"article" | b"report" | b"book") {
+                            if class_seen || !standard_class {
                                 self.result.limit(Limitation::UnknownSemantics);
                             }
                             class_seen = true;
                         }
                         b"begin" => {
-                            if arg != b"document" {
+                            if self.formatting_enabled && !is_document {
+                                self.caption_environment = if document_open
+                                    && other_env_depth == 0
+                                    && self.formatting_safe
+                                {
+                                    environment
+                                } else {
+                                    None
+                                };
+                                if self.caption_environment.is_some() {
+                                    other_env_depth += 1;
+                                    let end = self.float_placement(a);
+                                    owned_end = end as u64;
+                                    continue;
+                                }
+                            }
+                            if !is_document {
+                                if self.formatting_enabled {
+                                    self.formatting_safe = false;
+                                }
                                 other_env_depth += 1;
                                 self.result.limit(Limitation::UnknownSemantics);
                             } else if document_open {
@@ -497,11 +777,25 @@ impl Pass<'_> {
                             }
                         }
                         b"end" => {
-                            if arg != b"document" && other_env_depth > 0 {
+                            if self.formatting_enabled {
+                                if other_env_depth == 1 && expected_caption_end {
+                                    self.caption_environment = None;
+                                    other_env_depth = 0;
+                                    owned_end = a.owned_end as u64;
+                                    continue;
+                                }
+                                if self.caption_environment.is_some() {
+                                    self.result.limit(Limitation::CaptionUncertain);
+                                    self.result.limit(Limitation::UnsupportedContext);
+                                    self.formatting_safe = false;
+                                }
+                                self.caption_environment = None;
+                            }
+                            if !is_document && other_env_depth > 0 {
                                 // Still unknown semantics, but later outside-body
                                 // literal evidence must not be silently lost.
                                 other_env_depth -= 1;
-                            } else if arg != b"document" || !document_open {
+                            } else if !is_document || !document_open {
                                 self.result.limit(Limitation::UnsupportedContext);
                             } else {
                                 document_open = false;
@@ -522,6 +816,9 @@ impl Pass<'_> {
             {
                 Some(t.end_byte as usize)
             } else {
+                if self.formatting_enabled {
+                    self.formatting_safe = false;
+                }
                 self.result.limit(Limitation::UnknownSemantics);
                 Some(t.end_byte as usize)
             };
@@ -533,6 +830,23 @@ impl Pass<'_> {
         }
         if document_open || other_env_depth != 0 {
             self.result.limit(Limitation::UnsupportedContext);
+        }
+        if self.packages_enabled {
+            if self.package_needs_declaration && self.geometry_count != 1 {
+                self.result.limit(Limitation::UnsupportedGeometry);
+            }
+            // New syntax must never make invalid/ambiguous package geometry a
+            // route to ANY proposal, including F1. Old profiles are untouched.
+            if self.result.limitations.iter().any(|r| {
+                matches!(
+                    r,
+                    Limitation::UnsupportedGeometry
+                        | Limitation::MultipleGeometryDeclarations
+                        | Limitation::MissingMarginSides
+                )
+            }) {
+                self.result.limit(Limitation::UnsupportedArgument);
+            }
         }
     }
 }
@@ -546,6 +860,96 @@ pub fn observe(
     work: LookaheadBudget,
     per_file_cap: u32,
     project_remaining: &mut u32,
+) -> FileObservations {
+    observe_version(
+        facts,
+        bytes,
+        eligible,
+        work,
+        per_file_cap,
+        project_remaining,
+        false,
+    )
+}
+
+#[derive(Clone, Copy)]
+enum GeometrySupport {
+    None,
+    Command,
+    Package,
+    Formatting,
+}
+
+pub fn observe_formatting(
+    facts: &SourceFileFacts,
+    bytes: &[u8],
+    eligible: bool,
+    work: LookaheadBudget,
+    per_file_cap: u32,
+    project_remaining: &mut u32,
+) -> FileObservations {
+    observe_features(
+        facts,
+        bytes,
+        eligible,
+        work,
+        per_file_cap,
+        project_remaining,
+        GeometrySupport::Formatting,
+    )
+}
+
+pub fn observe_geometry_package(
+    facts: &SourceFileFacts,
+    bytes: &[u8],
+    eligible: bool,
+    work: LookaheadBudget,
+    per_file_cap: u32,
+    project_remaining: &mut u32,
+) -> FileObservations {
+    observe_features(
+        facts,
+        bytes,
+        eligible,
+        work,
+        per_file_cap,
+        project_remaining,
+        GeometrySupport::Package,
+    )
+}
+
+pub fn observe_version(
+    facts: &SourceFileFacts,
+    bytes: &[u8],
+    eligible: bool,
+    work: LookaheadBudget,
+    per_file_cap: u32,
+    project_remaining: &mut u32,
+    margins_enabled: bool,
+) -> FileObservations {
+    observe_features(
+        facts,
+        bytes,
+        eligible,
+        work,
+        per_file_cap,
+        project_remaining,
+        if margins_enabled {
+            GeometrySupport::Command
+        } else {
+            GeometrySupport::None
+        },
+    )
+}
+
+fn observe_features(
+    facts: &SourceFileFacts,
+    bytes: &[u8],
+    eligible: bool,
+    work: LookaheadBudget,
+    per_file_cap: u32,
+    project_remaining: &mut u32,
+    support: GeometrySupport,
 ) -> FileObservations {
     let result = FileObservations {
         file_id: facts.file_id.clone(),
@@ -568,6 +972,18 @@ pub fn observe(
         project_remaining,
         result,
         stopped: false,
+        margins_enabled: !matches!(support, GeometrySupport::None),
+        packages_enabled: matches!(
+            support,
+            GeometrySupport::Package | GeometrySupport::Formatting
+        ),
+        formatting_enabled: matches!(support, GeometrySupport::Formatting),
+        formatting_safe: true,
+        setspace_imports: 0,
+        caption_environment: None,
+        geometry_count: 0,
+        geometry_imports: 0,
+        package_needs_declaration: false,
     };
     if matches!(
         facts.engine_outcome,
