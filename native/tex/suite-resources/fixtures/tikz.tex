@@ -1,0 +1,13 @@
+\documentclass{article}
+\usepackage{tikz,pgfplots}
+\usetikzlibrary{arrows.meta,positioning,calc}
+\pgfplotsset{compat=1.18}
+\begin{document}
+\begin{tikzpicture}[node distance=20mm]
+\node[draw] (a) {Input};\node[draw,right=of a] (b) {Output};
+\draw[-{Stealth}] (a)--(b);
+\end{tikzpicture}
+\begin{tikzpicture}\begin{axis}[width=6cm,xlabel={$x$},ylabel={$x^2$}]
+\addplot[blue,domain=-2:2,samples=20]{x^2};
+\end{axis}\end{tikzpicture}
+\end{document}
