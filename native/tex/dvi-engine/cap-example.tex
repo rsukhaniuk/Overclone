@@ -1,0 +1,16 @@
+% Synthetic stress fixture. Genuine TeX output, not hand-authored DVI bytes.
+\pdfoutput=0
+\RequirePackage[backend=dvipdfmx]{expl3}
+\documentclass{article}
+\usepackage[dvipdfmx]{graphicx}
+\pagestyle{empty}
+\newcount\converterpage
+\begin{document}
+\converterpage=0
+\loop
+\advance\converterpage by 1
+Cap \the\converterpage.
+\newpage
+\ifnum\converterpage<60000
+\repeat
+\end{document}
