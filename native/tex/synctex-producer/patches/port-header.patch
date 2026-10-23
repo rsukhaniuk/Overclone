@@ -1,0 +1,12 @@
+--- a/texmfmp.h
++++ b/texmfmp.h
+@@ -12,6 +12,9 @@
+ #include <limits.h>
+ #include <stddef.h>
+ #include "xmemory.h"
++#include <sys/types.h>
++#include "oc_synctex_internal.h"
++#define ocsynctexpdfclose oc_synctex_pdf_close
+ 
+ 
+ 

@@ -1,0 +1,43 @@
+--- a/main.c
++++ b/main.c
+@@ -13,6 +13,8 @@
+ #include <md5.h>
+ #include <setjmp.h>
+ #include "bibtex.h"
++#include "oc_synctex_internal.h"
++#include "oc_synctex_memory_sink.h"
+ string fullnameoffile;
+ string output_directory;
+ 
+@@ -553,21 +555,30 @@
+ }
+ 
+ int compileLaTeX() {
++    if (!oc_synctex_begin()) return -1;
++    synctexoption = oc_synctex_enabled() ? -1 : 0;
+     if (strlen(main_entry_file) == 0) {
++      oc_synctex_finish(-1);
+       return -1;
+     }
+     strncpy(bootstrapcmd, main_entry_file, MAXMAINFILENAME);
+     bootstrapcmd[MAXMAINFILENAME - 1] = 0;
+-    return _compile();
++    exit_code = -1; /* no retained/default success across longjmp */
++    const int actual_native_result = _compile();
++    oc_synctex_finish(actual_native_result);
++    return actual_native_result;
+ }
+ 
+ int compileFormat() {
++    oc_mem_discard(); /* INITEX never publishes mapping */
++    synctexoption = 0;
+     iniversion = 1;
+     strncpy(bootstrapcmd, "*pdflatex.ini", MAXMAINFILENAME);
+     return _compile();
+ }
+ 
+ int compileBibtex() {
++    oc_mem_discard(); /* must use a different fresh module for final LaTeX pass */
+     char main_aux_file[MAXMAINFILENAME];
+     strncpy(main_aux_file, main_entry_file, MAXMAINFILENAME);
+     main_aux_file[MAXMAINFILENAME - 1] = 0;

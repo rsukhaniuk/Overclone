@@ -1,0 +1,27 @@
+{
+  "prefix": [
+    "pdftexdir/pdftex.web",
+    "pdftexdir/tex.ch0",
+    "tex.ch",
+    "tracingstacklevels.ch",
+    "zlib-fmt.ch",
+    "enctexdir/enctex1.ch",
+    "enctexdir/enctex-pdftex.ch",
+    "enctexdir/enctex2.ch"
+  ],
+  "suffix": [
+    "pdftexdir/pdftex.ch",
+    "pdftexdir/char-warning-pdftex.ch",
+    "tex-binpool.ch"
+  ],
+  "synctex": [
+    "synctexdir/synctex-def.ch0",
+    "synctexdir/synctex-mem.ch0",
+    "synctexdir/synctex-e-mem.ch0",
+    "synctexdir/synctex-e-mem.ch1",
+    "synctexdir/synctex-rec.ch0",
+    "synctexdir/synctex-rec.ch1",
+    "synctexdir/synctex-e-rec.ch0",
+    "synctexdir/synctex-pdf-rec.ch2"
+  ]
+}

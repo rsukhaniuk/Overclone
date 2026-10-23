@@ -1,0 +1,151 @@
+--- a/tex.ch
++++ b/tex.ch
+@@ -54,7 +54,7 @@
+   \def\?##1]{\hbox to 1in{\hfil##1.\ }}
+   }
+ @y 83
+-  \def\?##1]{\hbox{Changes to ##1.\ }}
++  \def\?##1]{\hbox{Changes to \hbox to 1em{\hfil##1}.\ }}
+   }
+ \let\maybe=\iffalse
+ @z
+@@ -72,10 +72,10 @@
+ @z
+ 
+ @x [1.2] l.188
+-@d banner=='This is TeX, Version 3.141592653' {printed when \TeX\ starts}
+-@y
+-@d TeX_banner_k=='This is TeXk, Version 3.141592653' {printed when \TeX\ starts}
+-@d TeX_banner=='This is TeX, Version 3.141592653' {printed when \TeX\ starts}
++@d banner=='This is TeX, Version 3.14159265' {printed when \TeX\ starts}
++@y
++@d TeX_banner_k=='This is TeXk, Version 3.14159265' {printed when \TeX\ starts}
++@d TeX_banner=='This is TeX, Version 3.14159265' {printed when \TeX\ starts}
+ @#
+ @d banner==TeX_banner
+ @d banner_k==TeX_banner_k
+@@ -897,14 +897,14 @@
+ @z
+ 
+ @x [6.84] l.1903 - Implement the switch-to-editor option.
+-"E": if base_ptr>0 then if input_stack[base_ptr].name_field>=256 then
++"E": if base_ptr>0 then
+   begin print_nl("You want to edit file ");
+ @.You want to edit file x@>
+   slow_print(input_stack[base_ptr].name_field);
+   print(" at line "); print_int(line);
+   interaction:=scroll_mode; jump_out;
+ @y
+-"E": if base_ptr>0 then if input_stack[base_ptr].name_field>=256 then
++"E": if base_ptr>0 then
+     begin edit_name_start:=str_start[edit_file.name_field];
+     edit_name_length:=str_start[edit_file.name_field+1] -
+                       str_start[edit_file.name_field];
+@@ -1291,19 +1291,19 @@
+ {|tracing_char_sub_def:=0| is already done}@/
+ @z
+ 
+-@x [17.241] l.5219 - Do `fix_date_and_time' in C.
++@x [17.241] selected 1.40.21 date/time preimage
+ @ The following procedure, which is called just before \TeX\ initializes its
+ input and output, establishes the initial values of the date and time.
+ @^system dependencies@>
+ Since standard \PASCAL\ cannot provide such information, something special
+-is needed. The program here simply assumes that suitable values appear in
+-the global variables \\{sys\_time}, \\{sys\_day}, \\{sys\_month}, and
+-\\{sys\_year} (which are initialized to noon on 4 July 1776,
+-in case the implementor is careless).
++is needed. The program here simply specifies July 4, 1776, at noon; but
++users probably want a better approximation to the truth.
+ 
+ @p procedure fix_date_and_time;
+-begin sys_time:=12*60;
+-sys_day:=4; sys_month:=7; sys_year:=1776;  {self-evident truths}
++begin time:=12*60; {minutes since midnight}
++day:=4; {fourth day of the month}
++month:=7; {seventh month of the year}
++year:=1776; {Anno Domini}
+ @y
+ @ The following procedure, which is called just before \TeX\ initializes
+ its input and output, establishes the initial values of the date and
+@@ -1318,7 +1318,7 @@
+ @^system dependencies@>
+ 
+ @p procedure fix_date_and_time;
+-begin date_and_time(sys_time,sys_day,sys_month,sys_year);
++begin date_and_time(time,day,month,year);
+ @z
+ 
+ @x [17.252] l.5420 - hash_extra
+@@ -2125,7 +2125,7 @@
+ @z
+ 
+ @x [29.537] l.10360 - start_input: don't return filename to string pool.
+-if name=str_ptr-1 then {conserve string pool space (but see note above)}
++if name=str_ptr-1 then {we can conserve string pool space now}
+   begin flush_string; name:=cur_name;
+   end;
+ @y
+@@ -2168,7 +2168,7 @@
+   {start of |lig_kern| program for left boundary character,
+   |non_address| if there is none}
+ @!font_bchar:array[internal_font_number] of min_quarterword..non_char;
+-  {boundary character, |non_char| if there is none}
++  {right boundary character, |non_char| if there is none}
+ @!font_false_bchar:array[internal_font_number] of min_quarterword..non_char;
+   {|font_bchar| if it doesn't exist in the font, otherwise |non_char|}
+ @y
+@@ -2199,7 +2199,7 @@
+   {start of |lig_kern| program for left boundary character,
+   |non_address| if there is none}
+ @!font_bchar: ^nine_bits;
+-  {boundary character, |non_char| if there is none}
++  {right boundary character, |non_char| if there is none}
+ @!font_false_bchar: ^nine_bits;
+   {|font_bchar| if it doesn't exist in the font, otherwise |non_char|}
+ @z
+@@ -2951,7 +2951,7 @@
+ @z
+ 
+ @x [43.943] l.18346 - web2c can't parse negative lower bounds in arrays.  Sorry.
+-@!init @!trie_op_hash:array[-trie_op_size..trie_op_size] of 0..trie_op_size;
++@!init@! trie_op_hash:array[-trie_op_size..trie_op_size] of 0..trie_op_size;
+ @y
+ @!init @!trie_op_hash:array[neg_trie_op_size..trie_op_size] of 0..trie_op_size;
+ @z
+@@ -3069,7 +3069,7 @@
+ @z
+ 
+ @x [43.590] l.18524 - Dynamically allocate & larger tries.
+-@!init @!trie_taken:packed array[1..trie_size] of boolean;
++@!init@!trie_taken:packed array[1..trie_size] of boolean;
+   {does a family start here?}
+ @t\hskip10pt@>@!trie_min:array[ASCII_code] of trie_pointer;
+   {the first possible slot for each character}
+@@ -4293,8 +4293,8 @@
+ % running.  The best approximation is to do a core dump, then run the
+ % debugger on it later.
+ @x [52.1338] l.24411 - Core-dump in debugging mode on 0 input.
+-    begin goto breakpoint;@/ {go to every declared label at least once}
+-    breakpoint: m:=0; @{'BREAKPOINT'@}@/
++    begin goto breakpoint;@\ {go to every label at least once}
++    breakpoint: m:=0; @{'BREAKPOINT'@}@\
+     end
+ @y
+     dump_core {do something to cause a core dump}
+--- a/pdftexdir/tex.ch0
++++ b/pdftexdir/tex.ch0
+@@ -20,11 +20,11 @@
+ % pdfetex.web and tex.ch
+ 
+ @x [1.2] l.188
+-@d TeX_banner=='This is TeX, Version 3.141592653' {printed when \TeX\ starts}
++@d TeX_banner=='This is TeX, Version 3.14159265' {printed when \TeX\ starts}
+ @#
+ @d banner==pdfTeX_banner
+ @y
+-@d banner=='This is TeX, Version 3.141592653' {printed when \TeX\ starts}
++@d banner=='This is TeX, Version 3.14159265' {printed when \TeX\ starts}
+ @z
+ 
+ @x [17.236] l.4960 - first web2c, then pdfTeX, then e-TeX additional integer parameters

@@ -1,0 +1,2 @@
+{ Owned native callback declared before Web2C conversion; never generated-C edits. }
+@define procedure ocsynctexpdfclose();

@@ -1,0 +1,457 @@
+--- a/synctexdir/synctex.c
++++ b/synctexdir/synctex.c
+@@ -376,7 +376,7 @@
+ 
+ #   include <stdio.h>
+ #   include <stdarg.h>
+-#   include "zlib.h"
++/* In-memory raw output: no zlib/file sink dependency. */
+ 
+ typedef void (*synctex_recorder_t) (halfword);  /* recorders know how to record a node */
+ typedef int (*synctex_fprintf_t) (void *, const char *, ...);   /* print formatted to either FILE * or gzFile */
+@@ -490,21 +490,8 @@
+ #   if SYNCTEX_DEBUG
+     printf("\nSynchronize DEBUG: synctex_abort\n");
+ #   endif
+-    if (SYNCTEX_FILE) {
+-        if (SYNCTEX_NO_GZ) {
+-            xfclose((FILE *) SYNCTEX_FILE, synctex_ctxt.busy_name);
+-        } else {
+-            gzclose((gzFile) SYNCTEX_FILE);
+-        }
+-        SYNCTEX_FILE = NULL;
+-#if defined(W32UPTEXSYNCTEX)
+-        fsyscp_remove(synctex_ctxt.busy_name);
+-#else
+-        remove(synctex_ctxt.busy_name);
+-#endif /* W32UPTEXSYNCTEX */
+-        SYNCTEX_FREE(synctex_ctxt.busy_name);
+-        synctex_ctxt.busy_name = NULL;
+-    }
++    oc_mem_abort();
++    SYNCTEX_FILE = NULL;
+     if (NULL != synctex_ctxt.root_name) {
+         SYNCTEX_FREE(synctex_ctxt.root_name);
+         synctex_ctxt.root_name = NULL;
+@@ -514,89 +501,6 @@
+ 
+ static inline int synctex_record_preamble(void);
+ static inline int synctex_record_input(integer tag, char *name);
+-
+-static const char *synctex_suffix = ".synctex";
+-static const char *synctex_suffix_gz = ".gz";
+-static const char *synctex_suffix_busy = "(busy)";
+-
+-/*  for DIR_SEP_STRING */
+-#   include <kpathsea/c-pathch.h>
+-/*  for kpse_absolute_p */
+-#   include <kpathsea/absolute.h>
+-
+-#ifdef W32UPTEXSYNCTEX
+-static char *chgto_oem(char *src)
+-{
+-  wchar_t *sw = NULL;
+-  char    *dst = NULL;
+-  static int f_codepage = 0;
+-
+-  if(f_codepage == 0) {
+-    f_codepage = AreFileApisANSI() ? GetACP() : GetOEMCP();
+-  }
+-
+-  if(file_system_codepage == 0 || f_codepage == file_system_codepage) {
+-    dst = xstrdup(src);
+-    return dst;
+-  }
+-
+-  sw = get_wstring_from_mbstring(file_system_codepage, src, sw);
+-  dst = get_mbstring_from_wstring(f_codepage, sw, dst);
+-  if(sw) free(sw);
+-  return dst;
+-}
+-
+-static gzFile fsyscp_gzopen(const char *path, const char *mode)
+-{
+-  gzFile  gzf;
+-  wchar_t *pathw = NULL;
+-
+-  if(!file_system_codepage)
+-    return gzopen(path, mode);
+-
+-  pathw = get_wstring_from_fsyscp(path, pathw);
+-  gzf = gzopen_w(pathw, mode);
+-  free(pathw);
+-  return gzf;
+-}
+-
+-static int fsyscp_remove(char *s)
+-{
+-  wchar_t *sw = NULL;
+-  int ret;
+-
+-  if(!file_system_codepage)
+-    return remove(s);
+-
+-  sw = get_wstring_from_fsyscp(s, sw);
+-  ret = _wremove(sw);
+-  if(sw) free(sw);
+-  return ret;
+-}
+-
+-static int fsyscp_rename(char *s1, char *s2)
+-{
+-  wchar_t *sw1 = NULL, *sw2 = NULL;
+-  int ret;
+-
+-  if(!file_system_codepage)
+-    return rename(s1, s2);
+-
+-  sw1 = get_wstring_from_fsyscp(s1, sw1);
+-  sw2 = get_wstring_from_fsyscp(s2, sw2);
+-  ret = _wrename(sw1, sw2);
+-  if(sw1) free(sw1);
+-  if(sw2) free(sw2);
+-  return ret;
+-}
+-
+-#undef fopen
+-extern FILE *f_fsyscp_fopen(const char *filename, const char *mode);
+-#define fopen f_fsyscp_fopen
+-#define gzopen fsyscp_gzopen
+-#define rename fsyscp_rename
+-#define remove fsyscp_remove
+-#endif /* W32UPTEXSYNCTEX */
+ 
+ /*  synctex_dot_open ensures that the foo.synctex file is open.
+  *  In case of problem, it definitely disables synchronization.
+@@ -607,128 +511,27 @@
+  *  information for page i alone.
+  *  Options given through \synctex=Number are managed here too.
+  */
++/* Browser adaptation: the record writer and all real engine callbacks below
++ * are upstream. Only file creation/rename/compression is replaced by the sink. */
+ static void *synctex_dot_open(void)
+ {
+-    SYNCTEX_RETURN_IF_DISABLED;
+-#   if SYNCTEX_DEBUG
+-    printf("\nwarning: Synchronize DEBUG: synctex_dot_open\n");
+-    printf("\nwarning: SYNCTEX_VALUE=%0X\n", SYNCTEX_VALUE);
+-    printf("\nwarning: synctex_options=%0X\n", synctex_ctxt.options);
+-#   endif
+-    if (SYNCTEX_IS_OFF || !SYNCTEX_VALUE) {
+-        return NULL;            /*  synchronization is disabled: do nothing  */
+-    }
+-    if (SYNCTEX_FILE) {
+-        return SYNCTEX_FILE;    /*  synchronization is already enabled  */
+-    }
++    if (SYNCTEX_IS_OFF || !SYNCTEX_VALUE) return NULL;
++    if (SYNCTEX_FILE) return SYNCTEX_FILE;
+     _synctex_read_command_line_option();
+-#   if SYNCTEX_DEBUG
+-    printf("\nwarning: Synchronize DEBUG: synctex_dot_open 1\n");
+-#   endif
+-    /*  this is the first time we are asked to open the file
+-     this part of code is executed only once:
+-     either SYNCTEX_FILE is nonnegative or synchronization is
+-     definitely disabled. */
+-    {
+-        char *tmp = SYNCTEX_GET_JOB_NAME();
+-        size_t len = strlen(tmp);
+-        if (len>0) {
+-            /*  jobname was set by the \jobname command on the *TeX side  */
+-            char *the_busy_name = xmalloc((size_t)
+-                ( len
+-                 + strlen(synctex_suffix)
+-                 + strlen(synctex_suffix_busy)
+-                 + 1
+-                 + (output_directory?strlen(output_directory) + strlen(DIR_SEP_STRING):0)));
+-            if (!the_busy_name) {
+-                SYNCTEX_FREE(tmp);
+-                tmp = NULL;
+-                synctexabort(0);
+-                return NULL;
+-            }
+-            /* Initialize the_busy_name to the void string */
+-            the_busy_name[0] = (char)0;
+-            /* If an output directory was specified, use it instead of cwd.  */
+-            if (output_directory && !kpse_absolute_p(tmp, false)) {
+-                synctex_ctxt.flags.output_p = 1;
+-                strcat(the_busy_name, output_directory);
+-                strcat(the_busy_name, DIR_SEP_STRING);
+-            }
+-#  if defined(XeTeX)
+-            synctex_ctxt.flags.quoted = 0;
+-            strcat(the_busy_name, tmp);
+-#  else
+-            if (tmp[0] == '"' && tmp[len - 1] == '"') {
+-                /*  We are certainly on a pdftex like engine and the input file name did contain spaces inside.
+-                 Quotes where added around that file name. We prefer to remove the quotes to have a human readable name.
+-                 As of Fri Sep 19 14:00:01 UTC 2008, the file names containing quotes are not supported by pdfTeX
+-                 nor SyncTeX. */
+-                synctex_ctxt.flags.quoted = 1;      /* we will have to add quotes around the file name in the log file. */
+-                tmp[len - 1] = (char)0;             /* Remove the trailing " in order not to copy it */
+-                strcat(the_busy_name, tmp + 1);     /* only copy what follows the leading " character */
+-            } else {
+-                synctex_ctxt.flags.quoted = 0;
+-                strcat(the_busy_name, tmp);
+-            }
+-#  endif
+-            SYNCTEX_FREE(tmp);
+-            tmp = NULL;
+-            strcat(the_busy_name, synctex_suffix);
+-            /*  Initialize SYNCTEX_NO_GZ with the content of \synctex to let the user choose the format. */
+-            strcat(the_busy_name, synctex_suffix_busy);
+-            if (SYNCTEX_NO_GZ) {
+-                SYNCTEX_FILE = fopen(the_busy_name, FOPEN_W_MODE);
+-                synctex_ctxt.fprintf = (synctex_fprintf_t) (&fprintf);
+-            } else {
+-                SYNCTEX_FILE = gzopen(the_busy_name, FOPEN_WBIN_MODE);
+-                synctex_ctxt.fprintf = (synctex_fprintf_t) (&gzprintf);
+-            }
+-#   if SYNCTEX_DEBUG
+-            printf("\nwarning: Synchronize DEBUG: synctex_dot_open 2\n");
+-#   endif
+-            if (SYNCTEX_FILE) {
+-                if (SYNCTEX_NO_ERROR == synctex_record_preamble()) {
+-                    /*  Initialization of the context */
+-                    if (synctex_ctxt.magnification == 0)
+-                        synctex_ctxt.magnification = 1000;
+-                    synctex_ctxt.unit = SYNCTEX_UNIT_FACTOR;
+-                    /*  synctex_ctxt.busy_name was NULL before, it now owns the_busy_name */
+-                    synctex_ctxt.busy_name = the_busy_name;
+-                    the_busy_name = NULL;
+-                    /*  print the preamble, this is quite an UTF8 file  */
+-                    if (NULL != synctex_ctxt.root_name) {
+-                        synctex_record_input(1, synctex_ctxt.root_name);
+-                        SYNCTEX_FREE(synctex_ctxt.root_name);
+-                        synctex_ctxt.root_name = NULL;
+-                    }
+-                    synctex_ctxt.count = 0;
+-#   if SYNCTEX_DEBUG
+-                    fprintf(stdout,
+-                            "\nwarning: Synchronize DEBUG: synctex_dot_open SYNCTEX AVAILABLE\n");
+-#   endif
+-                    SYNCTEX_FREE(the_busy_name);
+-                    the_busy_name = NULL;
+-                    return SYNCTEX_FILE;
+-                } else {
+-                    printf("\nSyncTeX warning: no synchronization, problem with %s\n",
+-                           the_busy_name);
+-                }
+-            }
+-            SYNCTEX_FREE(the_busy_name);
+-            the_busy_name = NULL;
+-        } else {
+-            printf("\nSyncTeX information: no synchronization with keyboard input\n");
+-        }
+-        /*  no .synctex file available, so disable synchronization  */
+-        SYNCTEX_FREE(tmp);
+-        tmp = NULL;
+-        synctexabort(0);
+-        return NULL;
+-#   if SYNCTEX_DEBUG
+-        fprintf(stdout,
+-                "\nwarning: Synchronize DEBUG: synctex_dot_open SYNCTEX DISABLED\n");
+-#   endif
+-    }
++    SYNCTEX_FILE = oc_mem_open();
++    synctex_ctxt.fprintf = oc_mem_printf;
++    if (!SYNCTEX_FILE || synctex_record_preamble() != SYNCTEX_NO_ERROR) {
++        synctexabort(0); return NULL;
++    }
++    if (synctex_ctxt.magnification == 0) synctex_ctxt.magnification = 1000;
++    synctex_ctxt.unit = SYNCTEX_UNIT_FACTOR;
++    if (synctex_ctxt.root_name) {
++        int result = synctex_record_input(1, synctex_ctxt.root_name);
++        SYNCTEX_FREE(synctex_ctxt.root_name);
++        synctex_ctxt.root_name = NULL;
++        if (result != SYNCTEX_NO_ERROR) { synctexabort(0); return NULL; }
++    }
++    synctex_ctxt.count = 0;
+     return SYNCTEX_FILE;
+ }
+ 
+@@ -878,173 +681,17 @@
+  */
+ void synctexterminate(boolean log_opened)
+ {
+-    char *tmp = NULL;
+-    char *the_real_syncname = NULL;
+-    SYNCTEX_RETURN_IF_DISABLED;
+-#   if SYNCTEX_DEBUG
+-    printf("\nSynchronize DEBUG: synctexterminate\n");
+-#   endif
+-    if (log_opened && (tmp = SYNCTEX_GET_LOG_NAME())) {
+-        /* In version 1, the jobname was used but it caused problems regarding spaces in file names. */
+-        the_real_syncname =
+-        xmalloc((unsigned)(strlen(tmp)
+-                           + strlen(synctex_suffix)
+-                           + strlen(synctex_suffix_gz)
+-                           + 1));
+-        if (!the_real_syncname) {
+-            SYNCTEX_FREE(tmp);
+-            synctexabort(0);
+-            return;
+-        }
+-        strcpy(the_real_syncname, tmp);
+-        SYNCTEX_FREE(tmp);
+-        tmp = NULL;
+-        /* now remove the last path extension which is in general log */
+-        tmp = the_real_syncname + strlen(the_real_syncname);
+-        while (tmp > the_real_syncname) {
+-            --tmp;
+-            if (*tmp == '.') {
+-                *tmp = (char)0;    /* end the string here */
+-                break;
+-            }
+-        }
+-        strcat(the_real_syncname, synctex_suffix);
+-        if (!SYNCTEX_NO_GZ) {
+-            /*  Remove any uncompressed synctex file, from a previous build. */
+-            remove(the_real_syncname);
+-            if (!SYNCTEX_NO_GZ_AUX_NAME) {
+-                strcat(the_real_syncname, synctex_suffix_gz);
+-            }
+-        }
+-        /* allways remove the synctex output file before renaming it, windows requires it. */
+-        if (0 != remove(the_real_syncname) && errno == EACCES) {
+-            fprintf(stderr,
+-                    "SyncTeX: Can't remove %s (file is open or read only)\n",
+-                    the_real_syncname);
+-        }
+-        if (SYNCTEX_FILE) {
+-            if (SYNCTEX_NOT_VOID) {
+-                synctex_record_postamble();
+-                /* close the synctex file */
+-                if (SYNCTEX_NO_GZ) {
+-                    xfclose((FILE *) SYNCTEX_FILE, synctex_ctxt.busy_name);
+-                } else {
+-                    gzclose((gzFile) SYNCTEX_FILE);
+-                }
+-                SYNCTEX_FILE = NULL;
+-                /*  renaming the working synctex file */
+-                if (0 == rename(synctex_ctxt.busy_name, the_real_syncname)) {
+-                    if (log_opened) {
+-                        tmp = the_real_syncname;
+-#                       if SYNCTEX_DO_NOT_LOG_OUTPUT_DIRECTORY
+-                        if (synctex_ctxt.flags.output_p) {
+-                            tmp += strlen(output_directory) + strlen(DIR_SEP_STRING);
+-                        }
+-#                       endif
+-#ifndef SYNCTEX_interaction
+-#   define SYNCTEX_interaction 1
+-#endif
+-                        if (SYNCTEX_interaction>0) {
+-#ifdef W32UPTEXSYNCTEX
+-                        {
+-                        char *stmp = chgto_oem(tmp);
+-                        printf((synctex_ctxt.flags.quoted ? "SyncTeX written on \"%s\"\n" : "\nSyncTeX written on %s.\n"),
+-                               stmp);
+-                        free(stmp);
+-                        }
+-#else
+-#ifndef SYNCTEX_PRE_NL
+-#   define SYNCTEX_PRE_NL "\n"
+-#endif
+-#ifndef SYNCTEX_POST_NL
+-#   define SYNCTEX_POST_NL ""
+-#endif
+-                        printf((synctex_ctxt.flags.quoted ?
+-                                SYNCTEX_PRE_NL
+-                                "SyncTeX written on \"%s\""
+-                                SYNCTEX_POST_NL :
+-                                SYNCTEX_PRE_NL
+-                                "SyncTeX written on %s."
+-                                SYNCTEX_POST_NL
+-                                ),
+-                               tmp);
+-#endif
+-                        }
+-                        tmp = NULL;
+-                    }
+-                } else {
+-                    fprintf(stderr, "SyncTeX: Can't rename %s to %s\n",
+-                            synctex_ctxt.busy_name, the_real_syncname);
+-                    remove(synctex_ctxt.busy_name);
+-                }
+-            } else {
+-                /* close and remove the synctex file because there are no pages of output */
+-                if (SYNCTEX_NO_GZ) {
+-                    xfclose((FILE *) SYNCTEX_FILE, synctex_ctxt.busy_name);
+-                } else {
+-                    gzclose((gzFile) SYNCTEX_FILE);
+-                }
+-                SYNCTEX_FILE = NULL;
+-                remove(synctex_ctxt.busy_name);
+-            }
+-        }
+-        if (SYNCTEX_NO_GZ || SYNCTEX_NO_GZ_AUX_NAME) {
+-            /*  Remove any compressed synctex file, from a previous build. */
+-            strcat(the_real_syncname, synctex_suffix_gz);
+-            remove(the_real_syncname);
+-        }
+-    } else if ((tmp = SYNCTEX_GET_JOB_NAME())) {
+-        size_t len = strlen(tmp);
+-        /*  There was a problem with the output.
+-         We just try to remove existing synctex output files
+-         including the busy one. */
+-        the_real_syncname = xmalloc((size_t)
+-                                    (len
+-                                     + strlen(synctex_suffix)
+-                                     + strlen(synctex_suffix_gz)
+-                                     + 1));
+-        if (!the_real_syncname) {
+-            SYNCTEX_FREE(tmp);
+-            synctexabort(0);
+-            return;
+-        }
+-#   if defined(XeTeX)
+-        strcpy(the_real_syncname, tmp);
+-#   else
+-        if (len > 0 && tmp[0] == '"' && tmp[len - 1] == '"') {
+-            /*  See above a similar situation. */
+-            strcpy(the_real_syncname, tmp + 1); /* only copy what follows the leading " character */
+-            len = strlen(the_real_syncname);
+-            if ((len > 0) && (the_real_syncname[len - 1] == '"')) {
+-                the_real_syncname[len - 1] = '\0';
+-            }
+-        } else {
+-            strcpy(the_real_syncname, tmp);
+-        }
+-#   endif
+-        SYNCTEX_FREE(tmp);
+-        tmp = NULL;
+-        strcat(the_real_syncname, synctex_suffix);
+-        remove(the_real_syncname);
+-        strcat(the_real_syncname, synctex_suffix_gz);
+-        remove(the_real_syncname);
+-        if (SYNCTEX_FILE) {
+-            /* close the synctex file */
+-            if (SYNCTEX_NO_GZ) {
+-                xfclose((FILE *) SYNCTEX_FILE, synctex_ctxt.busy_name);
+-            } else {
+-                gzclose((gzFile) SYNCTEX_FILE);
+-            }
+-            SYNCTEX_FILE = NULL;
+-            /*  removing the working synctex file */
+-            remove(synctex_ctxt.busy_name);
+-        }
+-    }
+-    SYNCTEX_FREE(synctex_ctxt.busy_name);
+-    synctex_ctxt.busy_name = NULL;
+-    SYNCTEX_FREE(the_real_syncname);
+-    the_real_syncname = NULL;
+-    synctexabort(0);
++    /* Actual postamble return is only a stage. This is NOT compile/PDF success. */
++    if (!SYNCTEX_IS_OFF && log_opened && SYNCTEX_FILE && SYNCTEX_NOT_VOID) {
++        const int actual_postamble = synctex_record_postamble();
++        oc_mem_stage_checked(actual_postamble);
++    } else if (!SYNCTEX_IS_OFF) {
++        oc_mem_abort();
++    }
++    SYNCTEX_FILE = NULL;
++    SYNCTEX_FREE(synctex_ctxt.root_name);
++    synctex_ctxt.root_name = NULL;
++    SYNCTEX_IS_OFF = SYNCTEX_YES;
+ }
+ 
+ static inline int synctex_record_sheet(integer sheet);

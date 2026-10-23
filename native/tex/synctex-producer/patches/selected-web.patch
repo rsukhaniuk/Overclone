@@ -1,0 +1,319 @@
+--- a/pdftexdir/pdftex.web
++++ b/pdftexdir/pdftex.web
+@@ -3080,7 +3080,6 @@
+ 
+ @d link(#) == mem[#].hh.rh {the |link| field of a memory word}
+ @d info(#) == mem[#].hh.lh {the |info| field of a memory word}
+-@d meta(#) == mem[#].hh.me {the |meta| field of a memory word}
+ 
+ @<Glob...@>=
+ @!avail : pointer; {head of the list of available one-word nodes}
+@@ -3117,7 +3116,7 @@
+ @:TeX capacity exceeded main memory size}{\quad main memory size@>
+     end;
+   end;
+-link(p):=null; if cur_chrsig <> 0 then meta(p):=cur_chrsig; {provide an oft-desired initialization of the new node}
++link(p):=null; {provide an oft-desired initialization of the new node}
+ @!stat incr(dyn_used);@+tats@;{maintain statistics}
+ get_avail:=p;
+ end;
+@@ -3127,7 +3126,7 @@
+ @^inner loop@>
+ 
+ @d free_avail(#)== {single-word node liberation}
+-  begin link(#):=avail; avail:=#; meta(#):=0;
++  begin link(#):=avail; avail:=#;
+   @!stat decr(dyn_used);@+tats@/
+   end
+ 
+@@ -3139,7 +3138,7 @@
+ @d fast_get_avail(#)==@t@>@;@/
+   begin #:=avail; {avoid |get_avail| if possible, to save time}
+   if #=null then #:=get_avail
+-  else  begin avail:=link(#); link(#):=null; meta(#):=cur_chrsig;
++  else  begin avail:=link(#); link(#):=null;
+     @!stat incr(dyn_used);@+tats@/
+     end;
+   end
+@@ -3153,7 +3152,7 @@
+ var @!q,@!r:pointer; {list traversers}
+ begin if p<>null then
+   begin r:=p;
+-  repeat q:=r; meta(r):=0; r:=link(r); @!stat decr(dyn_used);@+tats@/
++  repeat q:=r; r:=link(r); @!stat decr(dyn_used);@+tats@/
+   until r=null; {now |q| is the last node on the list}
+   link(q):=avail; avail:=p;
+   end;
+@@ -6982,7 +6981,6 @@
+   {saved level for regions 5 and 6, or group code}
+ @d save_index(#)==save_stack[#].hh.rh
+   {|eqtb| location or token or |save_stack| location}
+-@d save_meta(#)==save_stack[#].hh.me  {|eqtb| meta}
+ @d restore_old_value=0 {|save_type| when a value should be restored later}
+ @d restore_zero=1 {|save_type| when an undefined entry should be restored}
+ @d insert_token=2 {|save_type| when a token is being saved for later use}
+@@ -7192,7 +7190,7 @@
+ begin if cur_level>level_one then
+   begin check_full_save_stack;
+   save_type(save_ptr):=insert_token; save_level(save_ptr):=level_zero;
+-  save_index(save_ptr):=t; save_meta(save_ptr):=cur_chrsig; incr(save_ptr);
++  save_index(save_ptr):=t; incr(save_ptr);
+   end;
+ end;
+ 
+@@ -7557,7 +7555,6 @@
+ @!cur_chr: halfword; {operand of current command}
+ @!cur_cs: pointer; {control sequence found here, zero if none found}
+ @!cur_tok: halfword; {packed representative of |cur_cmd| and |cur_chr|}
+-@!cur_chrsig: longword;
+ 
+ @ The |print_cmd_chr| routine prints a symbolic interpretation of a
+ command code and its modifier. This is used in certain `\.{You can\'t}'
+@@ -8467,7 +8464,7 @@
+ @!cat:0..max_char_code; {|cat_code(cur_chr)|, usually}
+ @!c,@!cc:ASCII_code; {constituents of a possible expanded code}
+ @!d:2..3; {number of excess characters in an expanded code}
+-begin restart: cur_cs:=0; cur_chrsig:=0;
++begin restart: cur_cs:=0;
+ if state<>token_list then
+ @<Input from external file, |goto restart| if no input found@>
+ else @<Input from token list, |goto restart| if end of list or
+@@ -8494,7 +8491,6 @@
+     current character should be ignored,
+     or |goto reswitch| if the current character
+     changes to another@>;
+-    cur_chrsig:=getcharsigslot(index, line, loc-start, cur_chr, cur_cs);
+   end
+ else  begin state:=new_line;@/
+   @<Move to next line of file,
+@@ -8700,7 +8696,7 @@
+   if a parameter needs to be expanded@>=
+ if loc<>null then {list not exhausted}
+ @^inner loop@>
+-  begin t:=info(loc); cur_chrsig:=meta(loc); loc:=link(loc); {move to next}
++  begin t:=info(loc); loc:=link(loc); {move to next}
+   if t>=cs_token_flag then {a control sequence token}
+     begin cur_cs:=t-cs_token_flag;
+     cur_cmd:=eq_type(cur_cs); cur_chr:=equiv(cur_cs);
+@@ -9299,7 +9295,6 @@
+ @!match_chr:ASCII_code; {character used in parameter}
+ begin save_scanner_status:=scanner_status; save_warning_index:=warning_index;
+ warning_index:=cur_cs; ref_count:=cur_chr; r:=link(ref_count); n:=0;
+-fillcsinfo(link(r));
+ if tracing_macros>0 then @<Show the text of the macro being expanded@>;
+ if info(r)=protected_token then r:=link(r);
+ if info(r)<>end_match_token then
+@@ -9451,7 +9446,7 @@
+ if s<>r then
+   if s=null then @<Report an improper use of the macro and abort@>
+   else  begin t:=s;
+-    repeat store_new_token(info(t)); meta(p):=meta(t); incr(m); u:=link(t); v:=s;
++    repeat store_new_token(info(t)); incr(m); u:=link(t); v:=s;
+     loop@+  begin if u=r then
+         if cur_tok<>info(v) then goto done
+         else  begin r:=link(v); goto continue;
+@@ -10738,7 +10733,7 @@
+ else if cur_val<>null then
+   begin r:=link(cur_val); {do not copy the reference count}
+   while r<>null do
+-    begin fast_store_new_token(info(r)); meta(p):=meta(r); r:=link(r);
++    begin fast_store_new_token(info(r)); r:=link(r);
+     end;
+   end;
+ the_toks:=p;
+@@ -15657,12 +15652,11 @@
+   end;
+ end;
+ 
+-procedure pdf_print_char(f: internal_font_number; c: integer; p: halfword);
++procedure pdf_print_char(f: internal_font_number; c: integer);
+ { print out a character to PDF buffer; the character will be printed in octal
+   form in the following cases: chars <= 32, backslash (92), left parenthesis
+   (40) and  right parenthesis (41) }
+ begin
+-    outputloc(p, 1);
+     pdf_mark_char(f, c);
+     if (c <= 32) or (c = 92) or (c = 40) or (c = 41) or (c > 127) then begin
+         pdf_out(92);           {output a backslash}
+@@ -18310,7 +18304,7 @@
+     packet_scaled := store_scaled_f(packet_read_signed(k), fs);
+ end;
+ 
+-procedure do_vf_packet(vf_f: internal_font_number; c: eight_bits; p: halfword); {typeset the
++procedure do_vf_packet(vf_f: internal_font_number; c: eight_bits); {typeset the
+ \.{DVI} commands in the character packet for character |c| in current font |f|}
+ label do_char, continue;
+ var f, k, n: internal_font_number;
+@@ -18346,10 +18340,10 @@
+     if pdf_font_type[f] = new_font_type then
+         do_vf(f);
+     if pdf_font_type[f] = virtual_font_type then
+-        do_vf_packet(f, #, p)
++        do_vf_packet(f, #)
+     else begin
+         pdf_begin_string(f);
+-        pdf_print_char(f, #, p);
++        pdf_print_char(f, #);
+         adv_char_width(f, #);
+     end;
+ end
+@@ -20197,7 +20191,6 @@
+     if pdf_suppress_ptex_info mod 2 = 0 then begin
+         pdf_str_entry_ln("PTEX.Fullbanner", pdftex_banner);
+     end;
+-    outputfileinfo;
+     pdf_end_dict;
+ end;
+ 
+@@ -20864,7 +20857,7 @@
+ 
+ 
+ @ @<Make node |p| look like a |char_node| and |goto reswitch|@>=
+-begin mem[lig_trick]:=mem[lig_char(p)]; link(lig_trick):=link(p); meta(lig_trick):=meta(p);
++begin mem[lig_trick]:=mem[lig_char(p)]; link(lig_trick):=link(p);
+ p:=lig_trick; goto reswitch;
+ end
+ 
+@@ -22122,7 +22115,7 @@
+ @!x:pointer; {box to be returned}
+ @!r:pointer; {temporary pointer}
+ begin case math_type(p) of
+-math_char: begin cur_mlist:=new_noad; mem[nucleus(cur_mlist)]:=mem[p];  meta(cur_mlist):=meta(p);
++math_char: begin cur_mlist:=new_noad; mem[nucleus(cur_mlist)]:=mem[p];
+   end;
+ sub_box: begin q:=info(p); goto found;
+   end;
+@@ -22515,7 +22508,6 @@
+ 
+ @ @<Swap the subscript and superscript into box |x|@>=
+ begin flush_node_list(x); x:=new_noad;
+-meta(x):=meta(q);
+ mem[nucleus(x)]:=mem[nucleus(q)];
+ mem[supscr(x)]:=mem[supscr(q)];
+ mem[subscr(x)]:=mem[subscr(q)];@/
+@@ -22811,7 +22803,7 @@
+ @ @<Create a character node |p| for |nucleus(q)|...@>=
+ begin fetch(nucleus(q));
+ if char_exists(cur_i) then
+-  begin delta:=char_italic(cur_f)(cur_i); p:=new_character(cur_f,qo(cur_c)); meta(p):=meta(q);
++  begin delta:=char_italic(cur_f)(cur_i); p:=new_character(cur_f,qo(cur_c));
+   if (math_type(nucleus(q))=math_text_char)and(space(cur_f)<>0) then
+     delta:=0; {no italic correction in mid-word of text font}
+   if (math_type(subscr(q))=empty)and(delta<>0) then
+@@ -25979,7 +25971,6 @@
+ @!ha,@!hb:pointer; {nodes |ha..hb| should be replaced by the hyphenated result}
+ @!hf:internal_font_number; {font number of the letters in |hc|}
+ @!hu:array[0..63] of 0..256; {like |hc|, before conversion to lowercase}
+-@!hm:array[0..63] of longword; {like |hm|, metainfo}
+ @!hyf_char:integer; {hyphen character of the relevant font}
+ @!cur_lang,@!init_cur_lang:ASCII_code; {current hyphenation table of interest}
+ @!l_hyf,@!r_hyf,@!init_l_hyf,@!init_r_hyf:integer; {limits on fragment sizes}
+@@ -26057,7 +26048,7 @@
+     set_lc_code(c);
+     if hc[0]=0 then goto done3;
+     if hn=63 then goto done3;
+-    hb:=s; incr(hn); hu[hn]:=c; hc[hn]:=hc[0]; hyf_bchar:=non_char; hm[hn]:=meta(s);
++    hb:=s; incr(hn); hu[hn]:=c; hc[hn]:=hc[0]; hyf_bchar:=non_char;
+     end
+   else if type(s)=ligature_node then
+     @<Move the characters of a ligature node to |hu| and |hc|;
+@@ -26084,7 +26075,7 @@
+   set_lc_code(c);
+   if hc[0]=0 then goto done3;
+   if j=63 then goto done3;
+-  incr(j); hu[j]:=c; hc[j]:=hc[0]; hm[j]:=meta(q);@/
++  incr(j); hu[j]:=c; hc[j]:=hc[0];@/
+   q:=link(q);
+   end;
+ hb:=s; hn:=j;
+@@ -26299,10 +26290,10 @@
+   begin ligature_present:=init_lig; p:=init_list;
+   if ligature_present then lft_hit:=init_lft;
+   while p>null do
+-    begin append_charnode_to_t(character(p)); meta(t):=meta(p); p:=link(p);
++    begin append_charnode_to_t(character(p)); p:=link(p);
+     end;
+   end
+-else if cur_l<non_char then append_charnode_to_t(cur_l); meta(t):= hm[j];
++else if cur_l<non_char then append_charnode_to_t(cur_l);
+ lig_stack:=null; set_cur_r
+ 
+ @ We may want to look at the lig/kern program twice, once for a hyphen
+@@ -26345,7 +26336,7 @@
+ done:
+ 
+ @ @d wrap_lig(#)==if ligature_present then
+-    begin p:=new_ligature(hf,cur_l,link(cur_q)); if link(cur_q)<> null then meta(p):=meta(link(cur_q));
++    begin p:=new_ligature(hf,cur_l,link(cur_q));
+     if lft_hit then
+       begin subtype(p):=2; lft_hit:=false;
+       end;
+@@ -28699,7 +28690,7 @@
+ @^inner loop@>
+ 
+ @d pack_lig(#)== {the parameter is either |rt_hit| or |false|}
+-  begin main_p:=new_ligature(main_f,cur_l,link(cur_q)); if link(cur_q)<>null then meta(main_p):=meta(link(cur_q));
++  begin main_p:=new_ligature(main_f,cur_l,link(cur_q));
+   if lft_hit then
+     begin subtype(main_p):=2; lft_hit:=false;
+     end;
+@@ -28892,7 +28883,7 @@
+ else temp_ptr:=new_param_glue(space_skip_code);
+ if pdf_adjust_interword_glue > 0 then
+     adjust_interword_glue(tail, temp_ptr);
+-link(tail):=temp_ptr; tail:=temp_ptr; meta(temp_ptr):=cur_chrsig;
++link(tail):=temp_ptr; tail:=temp_ptr;
+ goto big_switch
+ 
+ @ Having |font_glue| allocated for each text font saves both time and memory.
+@@ -28920,7 +28911,7 @@
+   else @<Find the glue specification...@>;
+   main_p:=new_spec(main_p);
+   @<Modify the glue specification in |main_p| according to the space factor@>;
+-  q:=new_glue(main_p); meta(q):= cur_chrsig; glue_ref_count(main_p):=null;
++  q:=new_glue(main_p); glue_ref_count(main_p):=null;
+   end;
+ link(tail):=q; tail:=q;
+ end;
+@@ -30547,7 +30538,7 @@
+   end;
+ othercases @<Scan a subformula enclosed in braces and |return|@>
+ endcases;@/
+-math_type(p):=math_char; character(p):=qi(c mod 256); meta(p):=cur_chrsig;
++math_type(p):=math_char; character(p):=qi(c mod 256);
+ if (c>=var_code)and fam_in_range then fam(p):=cur_fam
+ else fam(p):=(c div 256) mod 16;
+ exit:end;
+@@ -30600,7 +30591,7 @@
+   @<Treat |cur_chr|...@>
+ else  begin p:=new_noad; math_type(nucleus(p)):=math_char;
+   character(nucleus(p)):=qi(c mod 256);
+-  fam(nucleus(p)):=(c div 256) mod 16; meta(p):=cur_chrsig;
++  fam(nucleus(p)):=(c div 256) mod 16;
+   if c>=var_code then
+     begin if fam_in_range then fam(nucleus(p)):=cur_fam;
+     type(p):=ord_noad;
+@@ -30973,13 +30964,12 @@
+ 
+ @<Cases of |handle...@>=
+ math_group: begin unsave; decr(save_ptr);@/
+-  math_type(saved(0)):=sub_mlist; p:=fin_mlist(null); info(saved(0)):=p; if p<>null then meta(saved(0)):=meta(p);
++  math_type(saved(0)):=sub_mlist; p:=fin_mlist(null); info(saved(0)):=p;
+   if p<>null then if link(p)=null then
+    if type(p)=ord_noad then
+     begin if math_type(subscr(p))=empty then
+      if math_type(supscr(p))=empty then
+       begin mem[saved(0)].hh:=mem[nucleus(p)].hh;
+-      meta(saved(0)):=meta(p);
+       free_node(p,noad_size);
+       end;
+     end
+@@ -37874,7 +37864,7 @@
+   rule_node: begin r:=get_node(rule_node_size); words:=rule_node_size;
+     end;
+   ligature_node: begin r:=get_avail; {only |font| and |character| are needed}
+-    mem[r]:=mem[lig_char(p)]; meta(r):= meta(lig_char(p)); goto found;
++    mem[r]:=mem[lig_char(p)]; goto found;
+     end;
+   kern_node,math_node: begin r:=get_node(small_node_size);
+     words:=small_node_size;
