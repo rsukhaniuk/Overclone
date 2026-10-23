@@ -1,0 +1,338 @@
+{
+  "schemaVersion": 1,
+  "scope": "Scoped notices for the identified existing compiler; not complete runtime distribution clearance",
+  "compiler": {
+    "engine.js": "39384532be2e32fd09dba99226db9da7572032c70da2bb2428fc9123c7fd163f",
+    "engine.wasm": "7d239273b63b42d0c8f31d5e198a221c200c222f365760c20b9178408077048e"
+  },
+  "libraries": [
+    {
+      "name": "libpng",
+      "version": "1.6.59",
+      "selectedArchive": "libpng.a",
+      "selectedMembers": 10
+    },
+    {
+      "name": "zlib",
+      "version": "1.3.2",
+      "selectedArchive": "libz.a",
+      "selectedMembers": 8
+    }
+  ],
+  "inputIdentities": {
+    "build/build.json": {
+      "bytes": 2248609,
+      "sha256": "b1662454a0c3463cf92b33a167bdc2f5294114882123404121a922cd326c3020"
+    },
+    "ports/libpng/libpng-1.6.59/LICENSE": {
+      "bytes": 5345,
+      "sha256": "bdb0a645ea18c60507d0368379b1ac5474b92255fcc2d115e07486a7672ba526"
+    },
+    "ports/zlib/zlib-1.3.2/LICENSE": {
+      "bytes": 1002,
+      "sha256": "e32ff4e00d9d94930537635291da39e7e612703334bf6fde8c7f1686fe8a45a2"
+    },
+    "build/link.map": {
+      "bytes": 598671,
+      "sha256": "bde8d01540f0c26f53cd3326719e275ce717846ed1f6c6f797f8017e3eeaab5a"
+    },
+    "build/link.log": {
+      "bytes": 16594,
+      "sha256": "58a14ed838e59782664a980f83fb16dde56efeadc6629c93d14df9b601cc9536"
+    },
+    "sdk-cache/sysroot/lib/wasm32-emscripten/libpng.a": {
+      "bytes": 915572,
+      "sha256": "364361d4c3f47b728670557ef32c39044f5ce2130cdccda51f9ba0d0ce0cd378"
+    },
+    "ports/libpng/libpng-1.6.59/png.c": {
+      "bytes": 135428,
+      "sha256": "741727b68e19a187bea802c64aea509fa64c78b09fecf4f19822a6a31c324159"
+    },
+    "ports/libpng/libpng-1.6.59/pngerror.c": {
+      "bytes": 26366,
+      "sha256": "6e8f475172d8c1e34982f4fa4130042110d5591dccdf95723345c2a7e5c7f761"
+    },
+    "ports/libpng/libpng-1.6.59/pngget.c": {
+      "bytes": 37561,
+      "sha256": "3098a692f096c58b9c0f039fbfd38c29b0a86c464a498a9c775c22698a2bec95"
+    },
+    "ports/libpng/libpng-1.6.59/pngmem.c": {
+      "bytes": 8574,
+      "sha256": "2dcf91e5f7d4aaa11c53cdac246223f405e5cc3e1c7ccccb7a40650c41465b56"
+    },
+    "ports/libpng/libpng-1.6.59/pngread.c": {
+      "bytes": 143487,
+      "sha256": "8ff4bfc0218fb9f712ab5940baeb546b3bbf64abce4038572944716d5520fec8"
+    },
+    "ports/libpng/libpng-1.6.59/pngrio.c": {
+      "bytes": 3898,
+      "sha256": "3c710643f274fd2b4aa2bc154c9dc53a512edae773dda1434f205fb005f2e93e"
+    },
+    "ports/libpng/libpng-1.6.59/pngrtran.c": {
+      "bytes": 172621,
+      "sha256": "0e3737046eb1523480e74ac1235ac8f2df541ca9e7f43c92431b1f0c8c8379d9"
+    },
+    "ports/libpng/libpng-1.6.59/pngrutil.c": {
+      "bytes": 152477,
+      "sha256": "a1d62bc61c118b225c60549ea8de3065ae84642af56dd3776bf4692fb0f6aa5e"
+    },
+    "ports/libpng/libpng-1.6.59/pngset.c": {
+      "bytes": 60449,
+      "sha256": "36153f08f34be63ca572d51dda7e0dcc534d4eca264f45041ceae6e83138fc9b"
+    },
+    "ports/libpng/libpng-1.6.59/pngtrans.c": {
+      "bytes": 26220,
+      "sha256": "38aa34b51567a06428b15be16c5819e6f2ae0d3bfce4e1f777ae6242f74eb6d4"
+    },
+    "ports/libpng/libpng-1.6.59/png.h": {
+      "bytes": 148529,
+      "sha256": "5758258cb691e429bafbf16057210e2d9bfa2c33b6c4636a6db562480f39b273"
+    },
+    "sdk-cache/sysroot/lib/wasm32-emscripten/libz.a": {
+      "bytes": 296096,
+      "sha256": "28eac6eac5ad60f9cffc88b0557e4e3592a2436c7067c940735109db004944d2"
+    },
+    "ports/zlib/zlib-1.3.2/adler32.c": {
+      "bytes": 4964,
+      "sha256": "9cd1443a24ff2a3053961695bd432035c58347386a420d3388232376ebabe211"
+    },
+    "ports/zlib/zlib-1.3.2/crc32.c": {
+      "bytes": 29735,
+      "sha256": "da37f3483e77c20f64c28cf55d62d7bed9d62af33eb401be906835d84539b9c9"
+    },
+    "ports/zlib/zlib-1.3.2/deflate.c": {
+      "bytes": 83286,
+      "sha256": "ea9ca4eb51b1a71aaf214b99f4a9fab177253d6268cae8e4c26d44d1812e52c2"
+    },
+    "ports/zlib/zlib-1.3.2/inffast.c": {
+      "bytes": 12982,
+      "sha256": "f96787a11bb7131ffd2221fb40db27f6a5a1dfb12f59c0bc388807010749c34a"
+    },
+    "ports/zlib/zlib-1.3.2/inflate.c": {
+      "bytes": 52247,
+      "sha256": "90221ea7d762e7044057f6ad5013e969086c6ba3d3051716b7aa786d7a6362ec"
+    },
+    "ports/zlib/zlib-1.3.2/inftrees.c": {
+      "bytes": 16672,
+      "sha256": "f7ee9ce5925fc9d1579c76e574feed85f5ca4ccddc446a7795578854bbc65743"
+    },
+    "ports/zlib/zlib-1.3.2/trees.c": {
+      "bytes": 41030,
+      "sha256": "a16217d5ea6d8342ff08afe5207b1dab620f05610e121dda55b4f9aae9de4f68"
+    },
+    "ports/zlib/zlib-1.3.2/zutil.c": {
+      "bytes": 7454,
+      "sha256": "1279908a15580224a2c1f377555ffdd150327fed71801aa77fc35978dcb741c8"
+    },
+    "ports/zlib/zlib-1.3.2/zlib.h": {
+      "bytes": 103848,
+      "sha256": "818667d6ab6a37fe7469cb06a7f0cb2c2cb2f2c948a03e5accf1a4a74bf3020a"
+    }
+  },
+  "texts": [
+    {
+      "path": "libpng/LICENSE.txt",
+      "bytes": 5345,
+      "sha256": "bdb0a645ea18c60507d0368379b1ac5474b92255fcc2d115e07486a7672ba526",
+      "scope": "complete principal license",
+      "sourcePath": "ports/libpng/libpng-1.6.59/LICENSE",
+      "sourceSha256": "bdb0a645ea18c60507d0368379b1ac5474b92255fcc2d115e07486a7672ba526"
+    },
+    {
+      "path": "libpng/png.c-NOTICE.txt",
+      "bytes": 411,
+      "sha256": "3d0c80e7868b642e798a073addb74fedfc3f001f4a7e816ea0fabc4c88f39e48",
+      "scope": "verbatim leading comment excerpt",
+      "sourcePath": "ports/libpng/libpng-1.6.59/png.c",
+      "sourceSha256": "741727b68e19a187bea802c64aea509fa64c78b09fecf4f19822a6a31c324159",
+      "selectedMember": "png.c.o"
+    },
+    {
+      "path": "libpng/png.h-NOTICE.txt",
+      "bytes": 791,
+      "sha256": "4cfcb3f190c5a97798e311da554ff61a08f9a9eda5f795e9858be89deeebc92a",
+      "scope": "verbatim leading comment excerpt",
+      "sourcePath": "ports/libpng/libpng-1.6.59/png.h",
+      "sourceSha256": "5758258cb691e429bafbf16057210e2d9bfa2c33b6c4636a6db562480f39b273",
+      "selectedMember": null
+    },
+    {
+      "path": "libpng/pngerror.c-NOTICE.txt",
+      "bytes": 658,
+      "sha256": "ceb09a619463641287a7317e4d12cc273137b1dc8aae6cf2d72cff0ca37c3009",
+      "scope": "verbatim leading comment excerpt",
+      "sourcePath": "ports/libpng/libpng-1.6.59/pngerror.c",
+      "sourceSha256": "6e8f475172d8c1e34982f4fa4130042110d5591dccdf95723345c2a7e5c7f761",
+      "selectedMember": "pngerror.c.o"
+    },
+    {
+      "path": "libpng/pngget.c-NOTICE.txt",
+      "bytes": 408,
+      "sha256": "1c0c811846e7cba2ffa25ba4ff3428199311bbbded2f862bcc53b78ae3793101",
+      "scope": "verbatim leading comment excerpt",
+      "sourcePath": "ports/libpng/libpng-1.6.59/pngget.c",
+      "sourceSha256": "3098a692f096c58b9c0f039fbfd38c29b0a86c464a498a9c775c22698a2bec95",
+      "selectedMember": "pngget.c.o"
+    },
+    {
+      "path": "libpng/pngmem.c-NOTICE.txt",
+      "bytes": 712,
+      "sha256": "735f8658263808c2bff0e613b931e8efbe76a88e7f762178246397be8072d725",
+      "scope": "verbatim leading comment excerpt",
+      "sourcePath": "ports/libpng/libpng-1.6.59/pngmem.c",
+      "sourceSha256": "2dcf91e5f7d4aaa11c53cdac246223f405e5cc3e1c7ccccb7a40650c41465b56",
+      "selectedMember": "pngmem.c.o"
+    },
+    {
+      "path": "libpng/pngread.c-NOTICE.txt",
+      "bytes": 487,
+      "sha256": "d6b55fc7dafd8bb135f4d085f78a2456f9421464b8dac1fb8a359cc1aa562529",
+      "scope": "verbatim leading comment excerpt",
+      "sourcePath": "ports/libpng/libpng-1.6.59/pngread.c",
+      "sourceSha256": "8ff4bfc0218fb9f712ab5940baeb546b3bbf64abce4038572944716d5520fec8",
+      "selectedMember": "pngread.c.o"
+    },
+    {
+      "path": "libpng/pngrio.c-NOTICE.txt",
+      "bytes": 801,
+      "sha256": "25522361ff1b0e5fef8d2a0f03fdde41af15c1ce570c27b65c4e778209261489",
+      "scope": "verbatim leading comment excerpt",
+      "sourcePath": "ports/libpng/libpng-1.6.59/pngrio.c",
+      "sourceSha256": "3c710643f274fd2b4aa2bc154c9dc53a512edae773dda1434f205fb005f2e93e",
+      "selectedMember": "pngrio.c.o"
+    },
+    {
+      "path": "libpng/pngrtran.c-NOTICE.txt",
+      "bytes": 635,
+      "sha256": "434f4a832916ea486b9d1ea48c4e0263b3cf014202499b43dfdd8c8bb9367eb8",
+      "scope": "verbatim leading comment excerpt",
+      "sourcePath": "ports/libpng/libpng-1.6.59/pngrtran.c",
+      "sourceSha256": "0e3737046eb1523480e74ac1235ac8f2df541ca9e7f43c92431b1f0c8c8379d9",
+      "selectedMember": "pngrtran.c.o"
+    },
+    {
+      "path": "libpng/pngrutil.c-NOTICE.txt",
+      "bytes": 522,
+      "sha256": "e07fa846efa1c7926c0047d4adbacee478b3b1eab096d0f6c92497c04b172835",
+      "scope": "verbatim leading comment excerpt",
+      "sourcePath": "ports/libpng/libpng-1.6.59/pngrutil.c",
+      "sourceSha256": "a1d62bc61c118b225c60549ea8de3065ae84642af56dd3776bf4692fb0f6aa5e",
+      "selectedMember": "pngrutil.c.o"
+    },
+    {
+      "path": "libpng/pngset.c-NOTICE.txt",
+      "bytes": 682,
+      "sha256": "c29b953539bf4775cf91979eaf3f5e16c8de5eeb5732f6da8ecdc72718c795eb",
+      "scope": "verbatim leading comment excerpt",
+      "sourcePath": "ports/libpng/libpng-1.6.59/pngset.c",
+      "sourceSha256": "36153f08f34be63ca572d51dda7e0dcc534d4eca264f45041ceae6e83138fc9b",
+      "selectedMember": "pngset.c.o"
+    },
+    {
+      "path": "libpng/pngtrans.c-NOTICE.txt",
+      "bytes": 434,
+      "sha256": "e350a51603f818cb426d6f9e4ad0b593e67d0dfa86c8a4e4c50cb1d5c4d6c764",
+      "scope": "verbatim leading comment excerpt",
+      "sourcePath": "ports/libpng/libpng-1.6.59/pngtrans.c",
+      "sourceSha256": "38aa34b51567a06428b15be16c5819e6f2ae0d3bfce4e1f777ae6242f74eb6d4",
+      "selectedMember": "pngtrans.c.o"
+    },
+    {
+      "path": "zlib/LICENSE.txt",
+      "bytes": 1002,
+      "sha256": "e32ff4e00d9d94930537635291da39e7e612703334bf6fde8c7f1686fe8a45a2",
+      "scope": "complete principal license",
+      "sourcePath": "ports/zlib/zlib-1.3.2/LICENSE",
+      "sourceSha256": "e32ff4e00d9d94930537635291da39e7e612703334bf6fde8c7f1686fe8a45a2"
+    },
+    {
+      "path": "zlib/adler32.c-NOTICE.txt",
+      "bytes": 185,
+      "sha256": "beaf29f1c5709139acdf4619f78d3a375851c1b5578a7c66d989e72a67fc6aeb",
+      "scope": "verbatim leading comment excerpt",
+      "sourcePath": "ports/zlib/zlib-1.3.2/adler32.c",
+      "sourceSha256": "9cd1443a24ff2a3053961695bd432035c58347386a420d3388232376ebabe211",
+      "selectedMember": "adler32.c.o"
+    },
+    {
+      "path": "zlib/crc32.c-NOTICE.txt",
+      "bytes": 398,
+      "sha256": "48d2d42d2d7b9b3a416722d3e84c6cb19fdc52fd3dfa9dfe70366bd1da42c8ee",
+      "scope": "verbatim leading comment excerpt",
+      "sourcePath": "ports/zlib/zlib-1.3.2/crc32.c",
+      "sourceSha256": "da37f3483e77c20f64c28cf55d62d7bed9d62af33eb401be906835d84539b9c9",
+      "selectedMember": "crc32.c.o"
+    },
+    {
+      "path": "zlib/deflate.c-NOTICE.txt",
+      "bytes": 197,
+      "sha256": "0798088355f9a90692c103a62a2a421e44ad92775c7978ec424ce0ef21a033d2",
+      "scope": "verbatim leading comment excerpt",
+      "sourcePath": "ports/zlib/zlib-1.3.2/deflate.c",
+      "sourceSha256": "ea9ca4eb51b1a71aaf214b99f4a9fab177253d6268cae8e4c26d44d1812e52c2",
+      "selectedMember": "deflate.c.o"
+    },
+    {
+      "path": "zlib/inffast.c-NOTICE.txt",
+      "bytes": 146,
+      "sha256": "ce2de7fe1f1c2825f548caeec54b475e676e04591fa8f60be0ab1e42a6911acf",
+      "scope": "verbatim leading comment excerpt",
+      "sourcePath": "ports/zlib/zlib-1.3.2/inffast.c",
+      "sourceSha256": "f96787a11bb7131ffd2221fb40db27f6a5a1dfb12f59c0bc388807010749c34a",
+      "selectedMember": "inffast.c.o"
+    },
+    {
+      "path": "zlib/inflate.c-NOTICE.txt",
+      "bytes": 151,
+      "sha256": "e81807c9fbd701b73b77db5025bac5dc1966e056688fa50eb90f12543518b99a",
+      "scope": "verbatim leading comment excerpt",
+      "sourcePath": "ports/zlib/zlib-1.3.2/inflate.c",
+      "sourceSha256": "90221ea7d762e7044057f6ad5013e969086c6ba3d3051716b7aa786d7a6362ec",
+      "selectedMember": "inflate.c.o"
+    },
+    {
+      "path": "zlib/inftrees.c-NOTICE.txt",
+      "bytes": 179,
+      "sha256": "3d21e53f1a8353f95300dbf7a42db07891f668b581ae1e496a83f85f833970f3",
+      "scope": "verbatim leading comment excerpt",
+      "sourcePath": "ports/zlib/zlib-1.3.2/inftrees.c",
+      "sourceSha256": "f7ee9ce5925fc9d1579c76e574feed85f5ca4ccddc446a7795578854bbc65743",
+      "selectedMember": "inftrees.c.o"
+    },
+    {
+      "path": "zlib/trees.c-NOTICE.txt",
+      "bytes": 247,
+      "sha256": "4387ed71f2cdc66d5f605503de48cb1b2924723eeb6e22e592aa81cdfe5f53f6",
+      "scope": "verbatim leading comment excerpt",
+      "sourcePath": "ports/zlib/zlib-1.3.2/trees.c",
+      "sourceSha256": "a16217d5ea6d8342ff08afe5207b1dab620f05610e121dda55b4f9aae9de4f68",
+      "selectedMember": "trees.c.o"
+    },
+    {
+      "path": "zlib/zlib.h-NOTICE.txt",
+      "bytes": 1330,
+      "sha256": "f293edbac5cb1cc2f7801ce3f59cb79ba30b370f663ba8376b317bece2834aa6",
+      "scope": "verbatim leading comment excerpt",
+      "sourcePath": "ports/zlib/zlib-1.3.2/zlib.h",
+      "sourceSha256": "818667d6ab6a37fe7469cb06a7f0cb2c2cb2f2c948a03e5accf1a4a74bf3020a",
+      "selectedMember": null
+    },
+    {
+      "path": "zlib/zutil.c-NOTICE.txt",
+      "bytes": 199,
+      "sha256": "2dc2530f3e6d4a2d6a60229255cc89467cc8040f2ced1c0c1ddebeaa4ba64da1",
+      "scope": "verbatim leading comment excerpt",
+      "sourcePath": "ports/zlib/zlib-1.3.2/zutil.c",
+      "sourceSha256": "1279908a15580224a2c1f377555ffdd150327fed71801aa77fc35978dcb741c8",
+      "selectedMember": "zutil.c.o"
+    }
+  ],
+  "evidence": "Existing selected archive-member/object/source association reused after all consumed input hashes were reverified; not a new compiler execution.",
+  "remaining": [
+    "Other compiler and renderer components and source/build association",
+    "Full TeX/font asset license/source routes",
+    "SDK header/template/generated-JS exhaustiveness and referenced CC0 text",
+    "Final project license, recipient source access and runtime release materials",
+    "Recheck actual selected archives/notices for every new compiler build"
+  ]
+}
