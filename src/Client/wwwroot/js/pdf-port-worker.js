@@ -1,6 +1,6 @@
-// Static worker implementation exported for CSP-compatible Blob provisioning.
-// JS only loads caller-provisioned bytes and invokes/copies the actual C++ E1 ABI.
-export function pdfWorkerMain() {
+// Standalone CLASSIC release-bound worker entry, never an imported ES module.
+// JS only loads parent-provisioned bytes and invokes/copies the actual C++ E1 ABI.
+function pdfWorkerMain() {
     let used = false;
     self.onmessage = async ({ data: d }) => {
         if (used) return;
@@ -41,21 +41,18 @@ export function pdfWorkerMain() {
             nativeCalls: calls,
         });
         try {
-            const loaderUrl = URL.createObjectURL(
-                new Blob([d.loader], { type: "text/javascript" }),
-            );
-            try {
-                importScripts(loaderUrl);
-                if (typeof self.E1 !== "function")
-                    throw new Error("Runtime factory unavailable");
-                m = await self.E1({
-                    wasmBinary: d.wasm,
-                    print: () => {},
-                    printErr: () => {},
-                });
-            } finally {
-                URL.revokeObjectURL(loaderUrl);
-            }
+            // Parent owns this validated-loader Blob URL and revokes it AFTER
+            // terminating us, including cancellation that skips this worker's finally.
+            if (typeof d.loaderUrl !== "string" || !d.loaderUrl.startsWith("blob:"))
+                throw new Error("Parent loader URL unavailable");
+            importScripts(d.loaderUrl);
+            if (typeof self.E1 !== "function")
+                throw new Error("Runtime factory unavailable");
+            m = await self.E1({
+                wasmBinary: d.wasm,
+                print: () => {},
+                printErr: () => {},
+            });
             const call = (name, ...args) => {
                 calls.push(name);
                 return m["_" + name](...args);
@@ -221,3 +218,4 @@ export function pdfWorkerMain() {
             );
     };
 }
+pdfWorkerMain();

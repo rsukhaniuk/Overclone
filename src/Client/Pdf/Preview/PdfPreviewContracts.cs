@@ -6,18 +6,26 @@ public enum PdfPreviewStatus { Empty, Loading, Available, Unavailable, Busy, Can
 public enum PdfPreviewSearchStatus { Empty, Scanning, Complete, Partial, Error, Cancelled }
 public enum PdfDisplayProvenance { ProvidedPdf, CallerSaysHistorical, CallerSaysCurrent }
 public sealed record PdfPreviewPolicy(int InputBytes = 8388608, int MaxPixels = 1000000, int MaxRgbaBytes = 4000000,
-    int MaxSearchPages = 32, int MaxHits = 128, int MaxHighlightBoxes = 1024, int DeadlineMs = 25000)
+    int MaxSearchPages = 32, int MaxHits = 128, int MaxHighlightBoxes = 1024, int DeadlineMs = 25000,
+    int MaxDocumentPages = 512)  // PdfInspectionBudget.MaxDocumentPages; default uses literal for C# parameter const requirement
 {
+    // On-demand page navigation up to512 document pages; search/raster/per-page bounds unchanged.
     public bool IsValid => InputBytes is > 0 and <= 8388608 && MaxPixels is > 0 and <= 4000000
         && MaxRgbaBytes is > 0 and <= 16000000 && MaxSearchPages is > 0 and <= 32 && MaxHits is > 0 and <= 256
-        && MaxHighlightBoxes is > 0 and <= 4096 && DeadlineMs is >= 1 and <= 30000;
+        && MaxHighlightBoxes is > 0 and <= 4096 && DeadlineMs is >= 1 and <= 30000
+        && MaxDocumentPages is > 0 and <= PdfInspectionBudget.MaxDocumentPages;
 }
 public readonly record struct PdfPreviewRect(double Left, double Top, double Width, double Height);
+public sealed record PdfPreviewGeometry(PdfBox Media, PdfBox Effective, int Rotation, PdfPoint Display);
+public sealed record PdfPreviewPointer(long Generation, string DocumentSha256, int PageIndex,
+    double X, double Y, bool Activate);
 public sealed record PdfPreviewHit(int PageIndex, int StartCharacterIndex, int CharacterCount,
     string GlyphText, string GeometryStatus, ReadOnlyCollection<PdfPreviewRect> NormalizedBoxes);
 public sealed record PdfPreviewSearch(PdfPreviewSearchStatus Status, string Query, int ScannedPages, int TotalPages,
     ReadOnlyCollection<PdfPreviewHit> Hits, string Detail)
 {
+    // Cursor counts only fully committed pages. False on terminal hit/geometry/native limits.
+    public bool CanContinue { get; init; }
     public static PdfPreviewSearch Empty => new(PdfPreviewSearchStatus.Empty, "", 0, 0, Array.AsReadOnly(Array.Empty<PdfPreviewHit>()), "No search requested.");
 }
 public sealed class PdfPreviewFrame
@@ -38,11 +46,12 @@ public sealed record PdfPreviewState(long Generation, PdfPreviewStatus Status, s
     PdfPreviewSearch Search, int SelectedHit, PdfPreviewFrame? Frame, string? NativeRequestId, long? NativeEpoch,
     PdfRuntimeIdentity? Runtime)
 {
+    public PdfPreviewGeometry? PageGeometry { get; init; }
     public static PdfPreviewState Empty => new(0, PdfPreviewStatus.Empty, "Provide an owned PDF and explicitly selected inspector.", null, "", PdfDisplayProvenance.ProvidedPdf,
         0, 0, 100, 360, "", Array.AsReadOnly(Array.Empty<int>()), Array.AsReadOnly(Array.Empty<PdfGlyph>()), PdfPreviewSearch.Empty, -1, null, null, null, null);
     public string SourceNavigationStatus => "Unavailable: no source mapping supplied.";
     public string PhysicalSizeStatus => "Indeterminate: native/raw units; UserUnit not independently established.";
-    public string Compatibility => "Native inspection: at most32 pages,100000 text units/page; configured search/raster limits may be narrower. Caller provenance is display metadata, not compilation acceptance.";
+    public string Compatibility => "Native inspection: up to" + PdfInspectionBudget.MaxDocumentPages + " pages with a supported renderer,100000 text units/page; configured search/raster limits may be narrower. Caller provenance is display metadata, not compilation acceptance.";
 }
 
 public static class PdfPreviewPixels

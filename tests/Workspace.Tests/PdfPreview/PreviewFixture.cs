@@ -10,12 +10,12 @@ internal sealed class PreviewInspector : IPdfInspector
 {
     internal readonly List<PdfInspectRequest> Calls = [];
     internal Func<PdfInspectRequest, long, Task<PdfInspectionOutcome>>? Handler;
-    internal int Active, PeakActive, Disposes;
+    internal int Active, PeakActive, Disposes, PageCountOverride = 3;
     private long _epoch;
     public async Task<PdfInspectionOutcome> InspectAsync(PdfInspectRequest request, CancellationToken cancellationToken = default)
     {
         Calls.Add(request); Active++; PeakActive = Math.Max(PeakActive, Active); long epoch = ++_epoch;
-        try { return Handler is null ? Page(request, epoch) : await Handler(request, epoch); }
+        try { return Handler is null ? Page(request, epoch, PageCountOverride) : await Handler(request, epoch); }
         finally { Active--; }
     }
     public ValueTask DisposeAsync() { Disposes++; return ValueTask.CompletedTask; }

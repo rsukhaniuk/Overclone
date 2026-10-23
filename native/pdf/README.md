@@ -8,6 +8,11 @@ unchanged. The header corrects the documentation: native coordinates are **raw
 PDF default-user-space units**, not universally physical 1/72-inch points.
 Physical measurements are indeterminate; UserUnit gaps remain. No KNU claim.
 
+The page-budget maximum in `valid_budget` is512 (raised from32); same ABI1,
+36-byte budget struct, per-page/total bytes/raster/handles/text/search caps.
+Explicit32-budget calls still reject33-page documents; a new512-budget call can
+open up to512 pages. On-demand page rendering; no eager512-page scan.
+
 Standalone build, inside pinned Emscripten6.0.13 only:
 
 ```sh

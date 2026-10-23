@@ -18,11 +18,13 @@
   "changes": [
     "e1.cpp only appends actions.inc include",
     "e1.h qualifies raw coordinate units and adds two optional declarations",
-    "actions.inc implements passive action metadata/capability JSON"
+    "actions.inc implements passive action metadata/capability JSON",
+    "e1.cpp valid_budget page maximum raised from32 to512 (same ABI1/36-byte budget; explicit32 budgets still reject33-page docs)"
   ],
   "abiVersion": 1,
   "budgetBytes": 36,
   "legacyGeometry": "numeric fields, algorithms, statuses and precision tolerances unchanged; physical measurement indeterminate",
+  "pageBudgetChange": "valid_budget accepts b.pages<=512; per-page/total bytes/raster/handles/text/search caps unchanged. New adapter binary identity differs from runtimeBaseline; build privately from cached headers/library. Old32-only E1 pair must not be activated with512 UI default.",
   "integration": "optional standalone build only, no root build enablement or bundled PDFium",
   "provenanceGate": "explicit cached headers/library for private testing; renderer producer, full dependency source and notice/license closure unresolved"
 }

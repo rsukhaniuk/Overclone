@@ -49,7 +49,7 @@ void dispose(Slot& s){
 }
 bool valid_budget(const E1Budget& b){
  return b.version==1&&b.struct_bytes==sizeof(E1Budget)&&b.input_bytes>0&&b.input_bytes<=MAX_BYTES&&
- b.pages>0&&b.pages<=32&&b.text_units>0&&b.text_units<=100000&&b.search_hits>0&&b.search_hits<=256&&
+ b.pages>0&&b.pages<=512&&b.text_units>0&&b.text_units<=100000&&b.search_hits>0&&b.search_hits<=256&&
  b.raster_pixels>0&&b.raster_pixels<=4000000&&b.output_bytes>0&&b.output_bytes<=MAX_OUTPUT&&
  b.live_handles>0&&b.live_handles<=SLOTS;
 }

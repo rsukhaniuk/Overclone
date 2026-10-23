@@ -3,6 +3,7 @@
 @using Microsoft.AspNetCore.Components
 @using Microsoft.AspNetCore.Components.Web
 @using Microsoft.JSInterop
+@using Client.Compilation.SyncTeX
 @implements IAsyncDisposable
 @inject IJSRuntime JS
 <section class="pdf-preview @(View.DocumentSha256 is null ? "pdf-empty" : "pdf-loaded")" aria-label="PDF preview" data-testid="pdf-pane" data-generation="@View.Generation" data-document="@View.DocumentSha256">
@@ -25,9 +26,10 @@
     <div role="search" aria-label="PDF full document search" hidden="@(View.DocumentSha256 is null)">
         <label>Search <input aria-label="Search PDF" maxlength="255" value="@_query" @oninput="QueryChanged" @onkeydown="SearchKey" /></label>
         <button aria-label="Search document" @onclick="Search" disabled="@(View.DocumentSha256 is null)">Search document</button>
+        <button aria-label="Continue search" data-testid="continue-pdf-search" @onclick="ContinueSearch" disabled="@(!_current.CanContinueSearch || _query != View.Search.Query)">Continue search</button>
         <button aria-label="Previous result" disabled="@(View.Search.Hits.Count == 0)" @onclick="PreviousHit">Previous result</button>
         <button aria-label="Next result" disabled="@(View.Search.Hits.Count == 0)" @onclick="NextHit">Next result</button>
-        <output aria-live="polite" data-testid="search-status" data-search-status="@View.Search.Status">@SearchMessage</output>
+        <output aria-live="polite" data-testid="search-status" data-search-status="@View.Search.Status" data-scanned-pages="@View.Search.ScannedPages" data-total-pages="@View.Search.TotalPages" data-match-count="@View.Search.Hits.Count">@SearchMessage</output>
         <output data-testid="selected-result">@(View.SelectedHit < 0 ? "No result selected" : $"Result {View.SelectedHit + 1} / {View.Search.Hits.Count}")</output>
     </div>
     <p role="status" data-testid="preview-status" data-preview-status="@View.Status">@PreviewMessage</p>
@@ -46,6 +48,8 @@
             @if (View.Frame is not null)
             {
                 <div class="pdf-highlights" aria-label="Native glyph highlights">
+                    @if (SourceBox is { } sourceBox)
+                    { <span class="pdf-highlight pdf-source-highlight" data-testid="source-pdf-highlight" style="@BoxStyle(sourceBox)"></span> }
                     @foreach (var hit in VisibleHits())
                     {
                         @foreach (var box in hit.NormalizedBoxes)
@@ -56,8 +60,8 @@
         </div>
     </div>
     <div class="pdf-limit-note" hidden="@(View.DocumentSha256 is null)">
-        <button aria-label="Go to source" disabled>Go to source</button>
-        <small>Source navigation unavailable. Up to 32 pages; search and image limits may stop results early.</small>
+        <button aria-label="Go to source" disabled="@(!SourceMappingAvailable || _point is null || !PointCurrent(_point))" @onclick="GoToSource">Go to source</button>
+        <small>@(SourceMappingAvailable ? "Click a PDF location, then Go to source, or double-click it." : "Source navigation requires a current compiled PDF and its source map.") Up to 512 preview pages; search checks up to 32 more pages per action.</small>
     </div>
     <details data-testid="pdf-details">
         <summary>PDF details</summary>
@@ -68,7 +72,7 @@
         <p>@View.Detail</p>
         <p data-testid="canvas-status">@(_canvas?.Status ?? "Not drawn")</p>
         <p data-testid="geometry-status">@SelectedGeometry</p>
-        <p data-testid="source-navigation">@View.SourceNavigationStatus</p>
+        <p data-testid="source-navigation">@(SourceNavigationNotice ?? View.SourceNavigationStatus)</p>
         <p data-testid="physical-size">@View.PhysicalSizeStatus</p>
         <small>@View.Compatibility</small>
         <details><summary>Extracted page text</summary><pre data-testid="page-text">@View.Text</pre></details>
@@ -77,10 +81,19 @@
 @code {
     [Parameter] public PdfPreviewController? Controller { get; set; }
     [Parameter] public bool OwnsController { get; set; }
+    [Parameter] public bool SourceMappingAvailable { get; set; }
+    [Parameter] public EventCallback<PdfPreviewPointer> SourcePointRequested { get; set; }
+    [Parameter] public string? SourceNavigationNotice { get; set; }
+    [Parameter] public SyncTeXMatch? SourceMatch { get; set; }
+    [Parameter] public string? SourceMatchPdfHash { get; set; }
     private PdfPreviewController _current = new();
     private bool _ownsCurrent = true, _disposed;
     private ElementReference _element;
     private PdfPreviewCanvas? _canvas;
+    private PdfPreviewPointer? _point;
+    private PdfPreviewRect? SourceBox => SourceMatch is { } match && match.Page == View.PageIndex + 1
+        && SourceMatchPdfHash == View.DocumentSha256 && View.Status == PdfPreviewStatus.Available && View.PageGeometry is { } geometry
+        ? SyncTeXDisplayGeometry.Highlight(geometry, match.Box) : null;
     private string _query = "", _lastSearchQuery = "";
     private string? _lastDocument;
     private long _submittedGeneration = -1;
@@ -102,13 +115,14 @@
     private string SearchMessage => View.Search.Status switch
     {
         PdfPreviewSearchStatus.Empty => "Enter a search term.",
-        PdfPreviewSearchStatus.Scanning => $"Searching PDF… {View.Search.ScannedPages} of {View.Search.TotalPages} pages checked.",
-        PdfPreviewSearchStatus.Complete when View.Search.Hits.Count == 0 => "No matches.",
+        PdfPreviewSearchStatus.Scanning => $"Searching PDF… {SearchCoverage}",
+        PdfPreviewSearchStatus.Complete when View.Search.Hits.Count == 0 => $"No matches. All {View.Search.TotalPages} pages checked.",
         PdfPreviewSearchStatus.Complete => $"{View.Search.Hits.Count} {(View.Search.Hits.Count == 1 ? "match" : "matches")} across {View.Search.TotalPages} {(View.Search.TotalPages == 1 ? "page" : "pages")}.",
-        PdfPreviewSearchStatus.Partial => $"Search incomplete: {View.Search.Hits.Count} {(View.Search.Hits.Count == 1 ? "match" : "matches")} on {View.Search.ScannedPages} of {View.Search.TotalPages} pages checked. A search limit or deadline was reached.",
-        PdfPreviewSearchStatus.Cancelled => "Search cancelled. Results are incomplete.",
-        _ => "Search could not finish. Results may be incomplete. Try again."
+        PdfPreviewSearchStatus.Partial => $"Search incomplete: {View.Search.Hits.Count} {(View.Search.Hits.Count == 1 ? "match" : "matches")}; {View.Search.ScannedPages} of {View.Search.TotalPages} pages fully checked. {View.Search.Detail}",
+        PdfPreviewSearchStatus.Cancelled => $"Search cancelled. Results are incomplete. {SearchCoverage} Continue when ready, or Retry.",
+        _ => $"Search could not finish. Results may be incomplete. {SearchCoverage} Continue when ready, or Retry."
     };
+    private string SearchCoverage => $"{View.Search.ScannedPages} of {View.Search.TotalPages} pages fully checked; {View.Search.Hits.Count} matches.";
     private string SelectedGeometry => View.SelectedHit >= 0 && View.SelectedHit < View.Search.Hits.Count ? View.Search.Hits[View.SelectedHit].GeometryStatus : "No native result selected; no guessed source/geometry mapping.";
     protected override void OnInitialized() => _current.Changed += Changed;
     protected override async Task OnParametersSetAsync()
@@ -116,7 +130,7 @@
         if (Controller is null || ReferenceEquals(Controller, _current)) return;
         _current.Changed -= Changed;
         if (_ownsCurrent) await _current.DisposeAsync();
-        if (_canvas is not null) { _canvas.Changed -= CanvasChanged; await _canvas.DisposeAsync(); _canvas = null; }
+        if (_canvas is not null) { _canvas.Changed -= CanvasChanged; _canvas.PointRequested -= CanvasPoint; await _canvas.DisposeAsync(); _canvas = null; }
         _current = Controller; _ownsCurrent = OwnsController; _current.Changed += Changed;
         _submittedGeneration = -1; _submittedFrame = null; _query = View.Search.Query; _lastSearchQuery = _query; _lastDocument = View.DocumentSha256;
     }
@@ -124,7 +138,7 @@
     {
         if (!_disposed)
         {
-            if (_canvas is null) { _canvas = new(JS, _element); _canvas.Changed += CanvasChanged; }
+            if (_canvas is null) { _canvas = new(JS, _element); _canvas.Changed += CanvasChanged; _canvas.PointRequested += CanvasPoint; }
             DrawLatest();
         }
         return Task.CompletedTask;
@@ -146,6 +160,22 @@
         _ = Refresh();
     }
     private void CanvasChanged() { if (!_disposed) _ = Refresh(); }
+    private bool PointCurrent(PdfPreviewPointer point) => !_disposed && View.Status == PdfPreviewStatus.Available
+        && point.Generation == View.Generation && point.DocumentSha256 == View.DocumentSha256 && point.PageIndex == View.PageIndex
+        && View.Frame is { } frame && frame.Generation == point.Generation && frame.DocumentSha256 == point.DocumentSha256;
+    private void CanvasPoint(PdfPreviewPointer point)
+    {
+        if (_disposed) return;
+        _ = InvokeAsync(async () =>
+        {
+            if (!PointCurrent(point)) return;
+            _point = point;
+            if (point.Activate && SourceMappingAvailable) await SourcePointRequested.InvokeAsync(point);
+            if (!_disposed) StateHasChanged();
+        });
+    }
+    private Task GoToSource() => _point is { } point && PointCurrent(point) && SourceMappingAvailable
+        ? SourcePointRequested.InvokeAsync(point) : Task.CompletedTask;
     private async Task Refresh()
     {
         try { await InvokeAsync(() => { if (!_disposed) StateHasChanged(); }).ConfigureAwait(false); }
@@ -161,6 +191,7 @@
     private void Retry() => _current.Retry();
     private void QueryChanged(ChangeEventArgs e) { _query = e.Value?.ToString() ?? ""; if (_query.Length == 0) _current.Search(""); }
     private void Search() => _current.Search(_query);
+    private void ContinueSearch() { if (_query == View.Search.Query) _current.ContinueSearch(); }
     private void SearchKey(KeyboardEventArgs e) { if (e.Key == "Enter") Search(); }
     private void PreviousHit() { int n = View.Search.Hits.Count; if (n > 0) _current.SelectHit((View.SelectedHit <= 0 ? n : View.SelectedHit) - 1); }
     private void NextHit() { int n = View.Search.Hits.Count; if (n > 0) _current.SelectHit((View.SelectedHit + 1) % n); }
@@ -183,7 +214,7 @@
     public async ValueTask DisposeAsync()
     {
         if (_disposed) return; _disposed = true; _current.Changed -= Changed;
-        if (_canvas is not null) { _canvas.Changed -= CanvasChanged; await _canvas.DisposeAsync(); }
+        if (_canvas is not null) { _canvas.Changed -= CanvasChanged; _canvas.PointRequested -= CanvasPoint; await _canvas.DisposeAsync(); }
         if (_ownsCurrent) await _current.DisposeAsync();
     }
 }

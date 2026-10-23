@@ -30,7 +30,7 @@ public sealed class PdfInspectorTests
         var b = new PdfInspectionBudget(); b = field switch
         {
             0 => b with { InputBytes = 0 },
-            1 => b with { Pages = 33 },
+            1 => b with { Pages = 513 },
             2 => b with { TextUnits = 0 },
             3 => b with { SearchHits = 257 },
             4 => b with { RasterPixels = 0 },

@@ -15,11 +15,12 @@ public sealed class PreviewControllerTests
         Assert.Equal(PdfPreviewStatus.Unavailable, c.State.Status); Assert.False(c.ActualWorkPending); Assert.Null(c.State.Frame);
         Assert.Equal(PdfDisplayProvenance.ProvidedPdf, c.State.Provenance); Assert.Contains("Unavailable", c.State.SourceNavigationStatus);
     }
-    [Theory] [InlineData(0)] [InlineData(1)] [InlineData(2)] [InlineData(3)] [InlineData(4)] [InlineData(5)] [InlineData(6)]
+    [Theory] [InlineData(0)] [InlineData(1)] [InlineData(2)] [InlineData(3)] [InlineData(4)] [InlineData(5)] [InlineData(6)] [InlineData(7)] [InlineData(8)]
     public void Invalid_policy_is_rejected_before_any_work(int field)
     {
         var p = new PdfPreviewPolicy(); p = field switch { 0 => p with { InputBytes = 0 }, 1 => p with { MaxPixels = 0 }, 2 => p with { MaxRgbaBytes = 0 },
-            3 => p with { MaxSearchPages = 33 }, 4 => p with { MaxHits = 257 }, 5 => p with { MaxHighlightBoxes = 0 }, _ => p with { DeadlineMs = 30001 } };
+            3 => p with { MaxSearchPages = 33 }, 4 => p with { MaxHits = 257 }, 5 => p with { MaxHighlightBoxes = 0 }, 6 => p with { DeadlineMs = 30001 },
+            7 => p with { MaxDocumentPages = 0 }, _ => p with { MaxDocumentPages = 513 } };
         Assert.Throws<ArgumentException>(() => new PdfPreviewController(new PreviewInspector(), p));
     }
     [Fact] public async Task Overbudget_input_rejects_before_inspector_or_raster()

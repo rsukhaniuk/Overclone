@@ -82,7 +82,7 @@ public sealed class PreviewPresentationTests
     {
         await using var c = new PdfPreviewController(new PreviewInspector(), new(MaxSearchPages: 1)); c.Provide(PreviewInspector.Document()); await Idle(c);
         c.Search("absent"); await Idle(c); string html = await Render(c);
-        Assert.Contains("Search incomplete: 0 matches on 1 of 3 pages checked.", html);
+        Assert.Contains("Search incomplete: 0 matches; 1 of 3 pages fully checked.", html);
         Assert.DoesNotContain("No matches", html); Assert.Equal(PdfPreviewSearchStatus.Partial, c.State.Search.Status);
     }
     [Fact]

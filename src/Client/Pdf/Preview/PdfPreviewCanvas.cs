@@ -10,17 +10,31 @@ public sealed class PdfPreviewCanvas : IAsyncDisposable
 {
     private readonly IJSRuntime _js;
     private readonly ElementReference _element;
+    private readonly DotNetObjectReference<PdfPreviewCanvas> _pointer;
     private readonly object _gate = new();
     private IJSInProcessObjectReference? _module, _channel;
     private PdfPreviewFrame? _pending;
     private long _generation, _pumpId;
     private bool _disposed, _running;
     private Task _settled = Task.CompletedTask;
-    public PdfPreviewCanvas(IJSRuntime js, ElementReference element) { _js = js; _element = element; }
+    public PdfPreviewCanvas(IJSRuntime js, ElementReference element)
+    { _js = js; _element = element; _pointer = DotNetObjectReference.Create(this); }
     public Task WhenSettled { get { lock (_gate) return _settled; } }
     public bool ActualWorkPending { get { lock (_gate) return _running; } }
     public string Status { get; private set; } = "Not drawn";
     public event Action? Changed;
+    public event Action<PdfPreviewPointer>? PointRequested;
+    [JSInvokable]
+    public Task OnPointer(long generation, string hash, int page, double x, double y, bool activate)
+    {
+        lock (_gate)
+        {
+            if (!_disposed && generation == _generation && PdfHashes.IsSha(hash) && page is >= 0 and < 512
+                && double.IsFinite(x + y) && x is >= 0 and <= 1 && y is >= 0 and <= 1)
+                PointRequested?.Invoke(new(generation, hash, page, x, y, activate));
+        }
+        return Task.CompletedTask;
+    }
     public void Select(long generation, PdfPreviewFrame? frame)
     {
         lock (_gate)
@@ -56,7 +70,7 @@ public sealed class PdfPreviewCanvas : IAsyncDisposable
                     _module = imported;
                     if (!_disposed)
                     {
-                        _channel = imported.Invoke<IJSInProcessObjectReference>("create", _element);
+                        _channel = imported.Invoke<IJSInProcessObjectReference>("create", _element, _pointer);
                         _channel.InvokeVoid("invalidate", _generation);
                     }
                 }
@@ -93,7 +107,7 @@ public sealed class PdfPreviewCanvas : IAsyncDisposable
         {
             if (_disposed) return ValueTask.CompletedTask;
             _disposed = true; _pending = null; _generation++;
-            Changed = null;
+            Changed = null; PointRequested = null;
             try { _channel?.InvokeVoid("dispose"); } // prevents any late draw before async release
             catch (JSException) { }
             release = !_running; Status = "Disposed";
@@ -111,5 +125,6 @@ public sealed class PdfPreviewCanvas : IAsyncDisposable
             try { await reference.DisposeAsync().ConfigureAwait(false); }
             catch (Exception error) when (error is not OutOfMemoryException) { }
         }
+        _pointer.Dispose();
     }
 }

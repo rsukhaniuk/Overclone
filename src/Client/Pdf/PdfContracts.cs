@@ -22,7 +22,10 @@ public sealed class PdfDocument
 public sealed record PdfInspectionBudget(int InputBytes = 8388608, int Pages = 32, int TextUnits = 100000,
     int SearchHits = 256, int RasterPixels = 4000000, int OutputBytes = 16777216, int LiveHandles = 64, int DeadlineMs = 30000)
 {
-    public bool IsValid => InputBytes is > 0 and <= 8388608 && Pages is > 0 and <= 32 && TextUnits is > 0 and <= 100000
+    // Finite page-budget maximum; not full Overleaf parity or a global memory theorem.
+    // Default32 preserves existing explicit callers; positive selected budgets <=512 are admitted.
+    public const int MaxDocumentPages = 512;
+    public bool IsValid => InputBytes is > 0 and <= 8388608 && Pages is > 0 and <= MaxDocumentPages && TextUnits is > 0 and <= 100000
         && SearchHits is > 0 and <= 256 && RasterPixels is > 0 and <= 4000000 && OutputBytes is > 0 and <= 16777216
         && LiveHandles is > 0 and <= 64 && DeadlineMs is >= 1 and <= 30000;
 }
@@ -41,7 +44,7 @@ public sealed class PdfInspectRequest
     public int RasterWidth { get; }
     public int RasterHeight { get; }
     public bool IsValid => Document is not null && Budget is not null && Budget.IsValid && Document.Length <= Budget.InputBytes
-        && PageIndex is >= 0 and < 32 && RasterWidth is > 0 and <= 16384 && RasterHeight is > 0 and <= 16384
+        && PageIndex >= 0 && PageIndex < Budget.Pages && RasterWidth is > 0 and <= 16384 && RasterHeight is > 0 and <= 16384
         && (long)RasterWidth * RasterHeight <= Budget.RasterPixels
         && (!Raster || (long)RasterWidth * RasterHeight * 4 + 16 <= Budget.OutputBytes)
         && (Search is null || Search.Length is > 0 and <= 255 && !Search.Contains('\0') && PdfHashes.ValidUtf16(Search));
