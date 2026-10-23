@@ -62,6 +62,20 @@ public static class CompilerLogParser
         private long _work, _retained;
         private int _consumed, _lines, _sourceLines;
         private bool _uncertain;
+        // A stopped-fatal stack is NOT balanced. This separate, sticky state
+        // machine may retain ONE primary undefined-command line only; report
+        // uncertainty/completeness flags and all ordinary context guards remain.
+        private enum FatalTail { Prefix, Line, Tail, Footer, Complete, Rejected }
+        private FatalTail _fatalTail;
+        private long _contextVersion, _fatalVersion;
+        private CompilationInputFile? _fatalFile;
+        private Candidate? _fatalPending, _fatalCandidate;
+        private string? _fatalEcho;
+        private bool _fatalComment, _sawFatalStop;
+        private const string FatalStop = "!  ==> Fatal error occurred, no output PDF file produced!";
+        private const CompilerLogFlags FatalLimits = CompilerLogFlags.LogByteLimit | CompilerLogFlags.LineByteLimit
+            | CompilerLogFlags.LineCountLimit | CompilerLogFlags.ResourceLimit | CompilerLogFlags.IncompleteDiagnostic
+            | CompilerLogFlags.UnsupportedBanner;
 
         private void Work(long amount)
         {
@@ -127,6 +141,10 @@ public static class CompilerLogParser
             catch (Limit) { _flags |= CompilerLogFlags.ResourceLimit; }
             if (_pending is not null) _flags |= CompilerLogFlags.IncompleteDiagnostic;
             if (_context.Count != 0 || _uncertain) _flags |= CompilerLogFlags.UncertainContext;
+            // A pop/reopen or other invalid fatal tail cannot fall back to a
+            // superficially balanced final stack and re-authorize the primary.
+            if (_sawFatalStop && _fatalCandidate is not null && !HasFatalEvidence(_fatalCandidate))
+                _flags |= CompilerLogFlags.UncertainContext;
             var diagnostics = ImmutableArray.CreateBuilder<CompilerLogDiagnostic>(_records.Count);
             var entries = ImmutableArray.CreateBuilder<CompileDiagnosticEntry>();
             var codes = new HashSet<CompilerDiagnosticCode>();
@@ -138,12 +156,18 @@ public static class CompilerLogParser
                 CompilerLineLocation? location = null;
                 if (candidate.Line is not null && issue == CompilerLocationIssue.None)
                 {
-                    if (!candidate.Direct && (_flags & CompilerLogFlags.UncertainContext) != 0)
+                    bool narrowFatal = HasFatalEvidence(candidate);
+                    if (!candidate.Direct && (_flags & CompilerLogFlags.UncertainContext) != 0 && !narrowFatal)
                         issue = CompilerLocationIssue.UncertainContext;
                     else
                     {
-                        try { location = Locate(candidate, out issue); }
-                        catch (Limit) { _flags |= CompilerLogFlags.ResourceLimit; issue = CompilerLocationIssue.ResourceLimit; }
+                        try
+                        {
+                            location = Locate(candidate, out issue, narrowFatal);
+                            if (narrowFatal && location is not null && !FatalEchoMatches(candidate.File!, location))
+                            { location = null; issue = CompilerLocationIssue.UncertainContext; }
+                        }
+                        catch (Limit) { location = null; _flags |= CompilerLogFlags.ResourceLimit; issue = CompilerLocationIssue.ResourceLimit; }
                     }
                 }
                 diagnostics.Add(new(candidate.Code, candidate.Severity, candidate.Start, candidate.End, location, issue));
@@ -175,7 +199,7 @@ public static class CompilerLogParser
                 if (rune.Value is 10 or 13)
                 {
                     if (_lines >= budget.MaxLogLines) { _flags |= CompilerLogFlags.LineCountLimit; stopped = true; break; }
-                    Process(log[start..pos], start, pos); _lines++;
+                    Process(log[start..pos], start, pos, terminated: true); _lines++;
                     pos += used;
                     if (rune.Value == 13 && pos < limit && log[pos] == 10) { Work(1); pos++; }
                     start = pos; _consumed = pos;
@@ -187,9 +211,19 @@ public static class CompilerLogParser
             if (!stopped && !prefixCut && start < pos)
             {
                 if (_lines >= budget.MaxLogLines) _flags |= CompilerLogFlags.LineCountLimit;
-                else { Process(log[start..pos], start, pos); _lines++; }
+                else { Process(log[start..pos], start, pos, terminated: false); _lines++; }
             }
-            else if (start < pos || stopped) _flags |= CompilerLogFlags.IncompleteDiagnostic;
+            else if (start < pos || stopped)
+            {
+                _flags |= CompilerLogFlags.IncompleteDiagnostic;
+                var partial = log[start..pos];
+                Work(partial.Length * 4L + 24); // BOM/prefix tests and possible unknown-record handling
+                if (start == 0 && partial.StartsWith("\uFEFF"u8)) partial = partial[3..];
+                if (partial.StartsWith("Overfull "u8) || partial.StartsWith("Underfull "u8))
+                {
+                    FlushPending(); _uncertain = true; Unknown(start, pos);
+                }
+            }
         }
         private void Add(Candidate candidate)
         {
@@ -220,13 +254,33 @@ public static class CompilerLogParser
                 file is null ? (_uncertain ? CompilerLocationIssue.UncertainContext : CompilerLocationIssue.UnknownFile) : CompilerLocationIssue.None);
         private CompilationInputFile? Current => !_uncertain && _context.Count > 0 ? _context[^1] : null;
 
-        private void Process(ReadOnlySpan<byte> bytes, int start, int end)
+        private void Process(ReadOnlySpan<byte> bytes, int start, int end, bool terminated)
         {
             Work(bytes.Length * 32L + 1); // bounded constant-number string scans below
             string text = Encoding.UTF8.GetString(bytes); // validation already completed
             var line = text.AsSpan();
             if (start == 0 && line.StartsWith("\ufeff", StringComparison.Ordinal)) line = line[1..];
+            ObserveFatalTail(line, terminated);
             if (line.IsWhiteSpace()) return;
+            Work(line.Length * 2L + 1); // Additional anchored box-prefix comparisons
+            if (BoxRecordStart(line))
+            {
+                // Complete physical headers only. A later box record cannot be
+                // an earlier bang error's echo or supply its missing source line.
+                Work(line.Length * 8L + 1); FlushPending();
+                if (terminated && TryBoxWarning(line, out var boxCode))
+                {
+                    var box = Record(boxCode, CompilerDiagnosticSeverity.Warning, start, end, Current);
+                    Add(box with { Issue = box.Issue == CompilerLocationIssue.None ? CompilerLocationIssue.MissingLine : box.Issue });
+                }
+                else
+                {
+                    if (!terminated) _flags |= CompilerLogFlags.IncompleteDiagnostic;
+                    if (line.Contains('(') || line.Contains(')')) _uncertain = true;
+                    Unknown(start, end);
+                }
+                return; // Metric parentheses never enter the filename grammar.
+            }
             if (TryFileLine(line, start, end, out var direct)) { FlushPending(); Add(direct!); return; }
             if (line.StartsWith("!", StringComparison.Ordinal))
             {
@@ -234,6 +288,7 @@ public static class CompilerLogParser
                 var record = Record(code, CompilerDiagnosticSeverity.Error, start, end, Current);
                 if (code == CompilerDiagnosticCode.Fatal) Add(record with { Issue = CompilerLocationIssue.MissingLine });
                 else _pending = record;
+                if (_fatalPending is null && line.SequenceEqual("! Undefined control sequence.")) _fatalPending = record;
                 return;
             }
             if (line.StartsWith("l.", StringComparison.Ordinal))
@@ -241,7 +296,9 @@ public static class CompilerLogParser
                 if (_pending is { } pending)
                 {
                     int number = LineNumber(line[2..]);
-                    Add(pending with { Line = number > 0 ? number : null, Issue = number > 0 ? pending.Issue : CompilerLocationIssue.InvalidLineNumber });
+                    var located = pending with { Line = number > 0 ? number : null, Issue = number > 0 ? pending.Issue : CompilerLocationIssue.InvalidLineNumber };
+                    Add(located);
+                    if (ReferenceEquals(pending, _fatalPending)) _fatalCandidate = located;
                     _pending = null;
                 }
                 else Unknown(start, end);
@@ -270,8 +327,190 @@ public static class CompilerLogParser
             if (line.Contains('(') || line.Contains(')')) _uncertain = true;
             Unknown(start, end);
         }
+        private string ExpectedJobLogFooter
+        {
+            get
+            {
+                var path = snapshot.Files.FirstOrDefault(file => file.FileId == snapshot.MainFileId)?.RelativePath;
+                if (path is null || !path.EndsWith(".tex", StringComparison.OrdinalIgnoreCase)) return "";
+                var leaf = path[(path.LastIndexOf('/') + 1)..];
+                return "Transcript written on " + leaf[..^4] + ".log.";
+            }
+        }
+
+        private bool KnownFatalContext
+        {
+            get
+            {
+                Work(_context.Count + 1L);
+                return !_uncertain && _context.Count > 0
+                    && _context[0] is { } main && main.FileId == snapshot.MainFileId
+                    && _context.All(file => file is { MediaKind: "text" });
+            }
+        }
+
+        private void ObserveFatalTail(ReadOnlySpan<char> line, bool terminated)
+        {
+            if (line.SequenceEqual(FatalStop)) _sawFatalStop = true;
+            if (_fatalTail == FatalTail.Rejected) return;
+            // Deliberately limited full physical-record shape, even when the
+            // caller honestly marks the overall log incomplete. No suffix-only
+            // recovery, footer without LF, restarted banner, or trailing record.
+            if (!terminated) { _fatalTail = FatalTail.Rejected; return; }
+            if (_lines == 0)
+            {
+                if (!line.StartsWith("This is pdfTeX,", StringComparison.Ordinal)) _fatalTail = FatalTail.Rejected;
+                return;
+            }
+            if (_lines == 1)
+            {
+                if (!line.SequenceEqual("entering extended mode")) _fatalTail = FatalTail.Rejected;
+                return;
+            }
+            if (_fatalTail == FatalTail.Prefix)
+            {
+                if (line.StartsWith("This is ", StringComparison.Ordinal) || line.StartsWith("Transcript written on ", StringComparison.Ordinal))
+                { _fatalTail = FatalTail.Rejected; return; }
+                if (line.StartsWith("!", StringComparison.Ordinal))
+                {
+                    if (!line.SequenceEqual("! Undefined control sequence.") || !KnownFatalContext || _pending is not null)
+                    { _fatalTail = FatalTail.Rejected; return; }
+                    _fatalFile = Current; _fatalVersion = _contextVersion; _fatalTail = FatalTail.Line;
+                }
+                // Context lines still pass through the ORIGINAL sticky grammar.
+                // Parentheses hidden in info/source-like text are not context.
+                else if ((line.Contains('(') || line.Contains(')')) && (line.IsEmpty || line[0] is not ('(' or ')')))
+                    _fatalTail = FatalTail.Rejected;
+                return;
+            }
+            if (!KnownFatalContext || _contextVersion != _fatalVersion || !ReferenceEquals(Current, _fatalFile))
+            { _fatalTail = FatalTail.Rejected; return; }
+            if (_fatalTail == FatalTail.Line)
+            {
+                if (!line.StartsWith("l.", StringComparison.Ordinal) || line.Contains('(') || line.Contains(')')
+                    || _pending is null || !ReferenceEquals(_pending, _fatalPending))
+                { _fatalTail = FatalTail.Rejected; return; }
+                int number = Number(line[2..], out int digits);
+                int echo = 2 + digits;
+                if (number <= 0 || echo + 1 >= line.Length || line[echo] != ' ')
+                { _fatalTail = FatalTail.Rejected; return; }
+                // Keep the literal echo, never normalize or use it to infer a
+                // file/column. A later exact captured-source comparison can only
+                // REFUSE this parser-provided file+line, never retarget it.
+                Retain(2L * (line.Length - echo - 1));
+                _fatalEcho = line[(echo + 1)..].ToString(); _fatalTail = FatalTail.Tail;
+                return;
+            }
+            if (_fatalTail == FatalTail.Tail)
+            {
+                if (line.SequenceEqual(FatalStop)) { _fatalTail = FatalTail.Footer; return; }
+                // One optional indented comment echo (e.g. TeX ^^ escaped UTF-8)
+                // is not scanned as context, nor emitted as a source message.
+                if (!_fatalComment && !line.IsEmpty && (line[0] is ' ' or '\t')
+                    && line.TrimStart().StartsWith("% ", StringComparison.Ordinal) && !line.Contains('(') && !line.Contains(')'))
+                { _fatalComment = true; return; }
+            }
+            else if (_fatalTail == FatalTail.Footer && line.SequenceEqual(ExpectedJobLogFooter))
+            { _fatalTail = FatalTail.Complete; return; }
+            _fatalTail = FatalTail.Rejected; // Sticky, including any record after the footer.
+        }
+
+        private bool HasFatalEvidence(Candidate candidate) => ReferenceEquals(candidate, _fatalCandidate)
+            && _fatalTail == FatalTail.Complete && !_uncertain && _contextVersion == _fatalVersion
+            && _context.Count > 0 && ReferenceEquals(Current, _fatalFile) && (_flags & FatalLimits) == 0;
+
+        private bool FatalEchoMatches(CompilationInputFile file, CompilerLineLocation location)
+        {
+            if (string.IsNullOrEmpty(_fatalEcho)) return false;
+            Work(_fatalEcho.Length * 4L + location.EndByte - location.StartByte);
+            Retain(Encoding.UTF8.GetByteCount(_fatalEcho));
+            var echo = Encoding.UTF8.GetBytes(_fatalEcho);
+            var source = file.ByteSpan[(int)location.StartByte..(int)location.EndByte];
+            if (!source.StartsWith(echo)) return false;
+            var remaining = source[echo.Length..];
+            // Accept a full exact line echo, or its literal command prefix
+            // followed only by whitespace/comment. No partial command matching.
+            while (!remaining.IsEmpty && remaining[0] is (byte)' ' or (byte)'\t') remaining = remaining[1..];
+            return remaining.IsEmpty || remaining[0] == (byte)'%';
+        }
+
         private void Unknown(int start, int end)
         { _flags |= CompilerLogFlags.UnknownContent; Add(Record(CompilerDiagnosticCode.Unknown, CompilerDiagnosticSeverity.Unknown, start, end, null)); }
+        private static bool BoxRecordStart(ReadOnlySpan<char> line)
+            => line.StartsWith("Overfull ", StringComparison.Ordinal) || line.StartsWith("Underfull ", StringComparison.Ordinal);
+
+        // SYNTACTIC TeX layout subset, never a physical-PDF measurement or a
+        // source range. Process charges an additional8N work before these scans.
+        private static bool TryBoxWarning(ReadOnlySpan<char> text, out CompilerDiagnosticCode code)
+        {
+            code = CompilerDiagnosticCode.Unknown;
+            bool overfull = TakeBox(ref text, "Overfull ");
+            if (!overfull && !TakeBox(ref text, "Underfull ")) return false;
+            bool horizontal = TakeBox(ref text, @"\hbox (");
+            if (!horizontal && !TakeBox(ref text, @"\vbox (")) return false;
+            if (overfull)
+            {
+                // print_scaled emits unsigned point magnitude with a decimal
+                // fraction (at most5 digits); no sign/exponent/other unit accepted.
+                if (!BoxUnsigned(ref text, 32767, 5, positive: false) || !TakeBox(ref text, ".")) return false;
+                int fraction = 0;
+                while (fraction < text.Length && char.IsAsciiDigit(text[fraction]))
+                { if (++fraction > 5) return false; }
+                if (fraction == 0) return false;
+                text = text[fraction..];
+                if (!TakeBox(ref text, horizontal ? "pt too wide)" : "pt too high)")) return false;
+            }
+            else if (!TakeBox(ref text, "badness ") || !BoxUnsigned(ref text, 10000, 5, positive: false)
+                || !TakeBox(ref text, ")")) return false;
+            if (!text.IsEmpty)
+            {
+                if (TakeBox(ref text, " in paragraph at lines "))
+                {
+                    if (!horizontal || !BoxRange(ref text)) return false;
+                }
+                else if (TakeBox(ref text, " in alignment at lines "))
+                { if (!BoxRange(ref text)) return false; }
+                else if (TakeBox(ref text, " detected at line "))
+                { if (!BoxUnsigned(ref text, int.MaxValue, 10, positive: true)) return false; }
+                else if (TakeBox(ref text, @" has occurred while \output is active"))
+                {
+                    // vpack does not print_ln before suppressed show_box output;
+                    // ONLY its output-active branch may share this exact tail.
+                    if (!horizontal && text.SequenceEqual(" []")) text = text[3..];
+                }
+                else return false;
+            }
+            if (!text.IsEmpty) return false; // No detail/source echo/suffix recovery.
+            code = (overfull, horizontal) switch
+            {
+                (true, true) => CompilerDiagnosticCode.OverfullHBox,
+                (false, true) => CompilerDiagnosticCode.UnderfullHBox,
+                (true, false) => CompilerDiagnosticCode.OverfullVBox,
+                _ => CompilerDiagnosticCode.UnderfullVBox
+            };
+            return true;
+        }
+        private static bool TakeBox(ref ReadOnlySpan<char> text, ReadOnlySpan<char> literal)
+        {
+            if (!text.StartsWith(literal, StringComparison.Ordinal)) return false;
+            text = text[literal.Length..]; return true;
+        }
+        private static bool BoxRange(ref ReadOnlySpan<char> text)
+            => BoxUnsigned(ref text, int.MaxValue, 10, positive: true) && TakeBox(ref text, "--")
+                && BoxUnsigned(ref text, int.MaxValue, 10, positive: true);
+        private static bool BoxUnsigned(ref ReadOnlySpan<char> text, int maximum, int maxDigits, bool positive)
+        {
+            int digits = 0, value = 0;
+            while (digits < text.Length && char.IsAsciiDigit(text[digits]))
+            {
+                int d = text[digits] - '0';
+                if (digits >= maxDigits || value > (maximum - d) / 10) return false;
+                value = value * 10 + d; digits++;
+            }
+            if (digits == 0 || value > maximum || (positive && value == 0) || (digits > 1 && text[0] == '0')) return false;
+            text = text[digits..]; return true;
+        }
+
         private static bool IsWarning(ReadOnlySpan<char> line)
             => line.StartsWith("LaTeX Warning:", StringComparison.Ordinal)
                 || (line.StartsWith("Package ", StringComparison.Ordinal) && line.Contains(" Warning:", StringComparison.Ordinal));
@@ -303,6 +542,10 @@ public static class CompilerLogParser
                 int after = i + 1 + digits;
                 if (after >= line.Length || line[after] != ':') continue;
                 var message = line[(after + 1)..].TrimStart();
+                // This layout subset is physical-header-only, not file:line
+                // errors or paragraph-derived source-navigation authority.
+                Work(message.Length * 2L + 1);
+                if (BoxRecordStart(message)) return false;
                 bool warning = IsWarning(message);
                 bool error = message.StartsWith("LaTeX Error:", StringComparison.Ordinal) || message.StartsWith("!", StringComparison.Ordinal)
                     || message.StartsWith("Undefined control sequence", StringComparison.Ordinal)
@@ -336,6 +579,7 @@ public static class CompilerLogParser
         }
         private void Context(ReadOnlySpan<char> line)
         {
+            _contextVersion++; // Includes pop/reopen A-B-A, not just final top file.
             // Deliberately narrow grammar: whole line consists only of '(' +
             // unquoted non-whitespace filename tokens, ')' and whitespace. Anything
             // else poisons ALL inferred context locations; explicit file:line survives.
@@ -362,7 +606,7 @@ public static class CompilerLogParser
                 Retain(16); _context.Add(file);
             }
         }
-        private CompilerLineLocation? Locate(Candidate candidate, out CompilerLocationIssue issue)
+        private CompilerLineLocation? Locate(Candidate candidate, out CompilerLocationIssue issue, bool narrowFatal = false)
         {
             issue = CompilerLocationIssue.None;
             if (candidate.File is not { } file) { issue = CompilerLocationIssue.UnknownFile; return null; }
@@ -380,7 +624,9 @@ public static class CompilerLogParser
             int line = candidate.Line!.Value;
             if (line > map.Lines!.Count) { issue = CompilerLocationIssue.OutOfRange; return null; }
             var span = map.Lines[line - 1];
-            return new(file, line, span.Start, span.End, span.Utf16Start, span.Utf16End, candidate.Direct);
+            return new(file, line, span.Start, span.End, span.Utf16Start, span.Utf16End,
+                candidate.Direct ? CompilerLocationBasis.ExplicitFileLine : narrowFatal
+                    ? CompilerLocationBasis.NarrowFatalContext : CompilerLocationBasis.BalancedNarrowContext);
         }
         private SourceMap Index(CompilationInputFile file)
         {

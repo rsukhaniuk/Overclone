@@ -27,17 +27,18 @@ public enum CompilerLogFlags
 }
 public enum CompilerDiagnosticSeverity { Error, Warning, Unknown }
 public enum CompilerLocationIssue { None, MissingLine, InvalidLineNumber, UnknownFile, UncertainContext, OutOfRange, InvalidSourceUtf8, BinarySource, ResourceLimit }
-public enum CompilerDiagnosticCode { MissingFile, Encoding, Metric, Unicode, Error, Fatal, Reference, Citation, Rerun, Warning, Unknown }
+public enum CompilerDiagnosticCode { MissingFile, Encoding, Metric, Unicode, Error, Fatal, Reference, Citation, Rerun, Warning, Unknown,
+    OverfullHBox, UnderfullHBox, OverfullVBox, UnderfullVBox }
 public enum CompilerLocationPrecision { Line }
-public enum CompilerLocationBasis { ExplicitFileLine, BalancedNarrowContext }
+public enum CompilerLocationBasis { ExplicitFileLine, BalancedNarrowContext, NarrowFatalContext }
 
 /// <summary>Half-open exact UTF-8 bytes, BOM inclusive; excludes newline/BOM from
 /// selected content. UTF-16 indices are derived, BOM-stripped source indices,
 /// NOT DOM-normalized columns. No token column, edit or navigation is inferred.</summary>
 public sealed class CompilerLineLocation
 {
-    internal CompilerLineLocation(CompilationInputFile file, int line, int start, int end, int utf16Start, int utf16End, bool direct)
-    { FileId = file.FileId; RelativePath = file.RelativePath; FileHash = file.Hash; Line = line; StartByte = start; EndByte = end; SourceUtf16Start = utf16Start; SourceUtf16End = utf16End; Basis = direct ? CompilerLocationBasis.ExplicitFileLine : CompilerLocationBasis.BalancedNarrowContext; }
+    internal CompilerLineLocation(CompilationInputFile file, int line, int start, int end, int utf16Start, int utf16End, CompilerLocationBasis basis)
+    { FileId = file.FileId; RelativePath = file.RelativePath; FileHash = file.Hash; Line = line; StartByte = start; EndByte = end; SourceUtf16Start = utf16Start; SourceUtf16End = utf16End; Basis = basis; }
     public CompilerLocationPrecision Precision => CompilerLocationPrecision.Line;
     public CompilerLocationBasis Basis { get; }
     public FileId FileId { get; }
@@ -113,6 +114,10 @@ internal static class CompilerLogMessages
         CompilerDiagnosticCode.Citation => "TEX102",
         CompilerDiagnosticCode.Rerun => "TEX103",
         CompilerDiagnosticCode.Warning => "TEX104",
+        CompilerDiagnosticCode.OverfullHBox => "TEX105",
+        CompilerDiagnosticCode.UnderfullHBox => "TEX106",
+        CompilerDiagnosticCode.OverfullVBox => "TEX107",
+        CompilerDiagnosticCode.UnderfullVBox => "TEX108",
         _ => "TEX900"
     };
     internal static string Message(CompilerDiagnosticCode code) => code switch
@@ -127,6 +132,10 @@ internal static class CompilerLogMessages
         CompilerDiagnosticCode.Citation => "LaTeX reported an unresolved citation.",
         CompilerDiagnosticCode.Rerun => "LaTeX requested another pass; convergence is not established.",
         CompilerDiagnosticCode.Warning => "LaTeX or a package reported a warning.",
+        CompilerDiagnosticCode.OverfullHBox => "The compiler reported an overfull horizontal box.",
+        CompilerDiagnosticCode.UnderfullHBox => "The compiler reported an underfull horizontal box.",
+        CompilerDiagnosticCode.OverfullVBox => "The compiler reported an overfull vertical box.",
+        CompilerDiagnosticCode.UnderfullVBox => "The compiler reported an underfull vertical box.",
         _ => "An unrecognized compiler-log record requires local review."
     };
 }
