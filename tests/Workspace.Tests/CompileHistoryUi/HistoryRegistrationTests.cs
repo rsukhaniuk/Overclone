@@ -19,10 +19,11 @@ namespace Workspace.Tests.CompileHistoryUi;
 public sealed class HistoryRegistrationTests
 {
     [Fact]
-    public void Default_unavailable_compiler_can_resolve_render_and_save_source_with_history_mounted() => Run(async () =>
+    public void Explicit_unavailable_compiler_can_resolve_render_and_save_source_with_history_mounted() => Run(async () =>
     {
         await using var fixture = await CompilationTestWorkspace.Open();
         var js = new NoJs(); var registrations = new ServiceCollection().AddLogging().AddSingleton<IJSRuntime>(js);
+        registrations.AddSingleton<ICompileWorkspaceConfiguration, UnavailableCompileWorkspaceConfiguration>();
         registrations.AddAuthoringWorkspace();
         registrations.AddSingleton<IProjectRepository>(fixture.Repo);
         registrations.AddSingleton<IWorkspaceLocks>(fixture.Lock);

@@ -17,30 +17,40 @@ public sealed class CompileArtifactHistoryStore : IAsyncDisposable
     private readonly RuntimeAssetStore _content;
     private readonly IProjectRepository _repository;
     private readonly CompileOutputDescriptor _format, _adapter;
+    private readonly ImmutableArray<CompileOutputDescriptor> _additionalAdapters;
     private readonly object _gate = new();
     private readonly CancellationTokenSource _shutdown = new();
     private Task<ArtifactHistoryResult>? _active; private Task? _closing; private bool _disposed;
     private static readonly AssetId MetadataId = new(new Guid("33333333-3333-3333-3333-333333333333")), PdfId = new(new Guid("44444444-4444-4444-4444-444444444444"));
-    public CompileArtifactHistoryStore(IRuntimeAssetBackend backend, IProjectRepository repository, CompileOutputDescriptor expectedPdfFormat, CompileOutputDescriptor expectedAdapter)
+    public CompileArtifactHistoryStore(IRuntimeAssetBackend backend, IProjectRepository repository, CompileOutputDescriptor expectedPdfFormat, CompileOutputDescriptor expectedAdapter,
+        IReadOnlyList<CompileOutputDescriptor>? additionalAdapters = null)
     {
         ArgumentNullException.ThrowIfNull(backend); ArgumentNullException.ThrowIfNull(repository);
         if (expectedPdfFormat is null || expectedPdfFormat.Id != "pdf" || expectedAdapter is null) throw new ArgumentException("Explicit PDF format/adapter required.");
         using var measure = new CompileArtifactCanonical(CompileArtifactCanonical.MetadataDomain, Array.MaxLength);
         measure.Descriptor(expectedPdfFormat); measure.Descriptor(expectedAdapter);
+        if (additionalAdapters is { Count: > 4 }) throw new ArgumentException("Explicit adapter count limit.");
+        _additionalAdapters = additionalAdapters?.ToImmutableArray() ?? [];
+        foreach (var descriptor in _additionalAdapters)
+        {
+            if (descriptor is null) throw new ArgumentException("Explicit adapter required.");
+            measure.Descriptor(descriptor);
+        }
         _backend = backend; _repository = repository; _format = expectedPdfFormat; _adapter = expectedAdapter; _content = new(new BorrowedBackend(backend));
     }
 
     public Task<ArtifactHistoryResult> PersistAsync(AcceptedCompileOutput output, RevisionId? explicitRevision, ArtifactHistoryBudget budget, CancellationToken caller = default)
     {
         if (output is null || budget is null || !budget.IsValid || output.Status != CompileOutputStatus.Succeeded || output.ContentIdentity is null || output.OutputHash is null
-            || output.OutputFormat != _format || output.OutputAdapter != _adapter || output.OutputLength < 0 || output.OutputLength > budget.MaxPdfBytes
+            || output.OutputFormat != _format || output.OutputAdapter != _adapter && !_additionalAdapters.Contains(output.OutputAdapter!)
+            || output.OutputLength < 0 || output.OutputLength > budget.MaxPdfBytes
             || output.PayloadBytes.Length != output.OutputLength || output.Snapshot.Files.Length > budget.Input.MaxFiles || output.Snapshot.MetadataByteLength > budget.Input.MaxMetadataBytes
             || explicitRevision?.Value == Guid.Empty)
             return Task.FromResult(new ArtifactHistoryResult(RuntimeAssetStatus.InvalidInput));
         return RunAsync(budget, caller, async op =>
         {
             var metadata = HistoricalArtifactCodec.FromAccepted(output, explicitRevision);
-            var validated = HistoricalArtifactCodec.Validate(metadata, output.SnapshotIdentity.ProjectId, _format, _adapter, budget);
+            var validated = HistoricalArtifactCodec.Validate(metadata, output.SnapshotIdentity.ProjectId, _format, _adapter, budget, _additionalAdapters);
             if (validated.Identity != output.ContentIdentity) throw new RuntimeAssetIoException(RuntimeAssetStatus.InvalidInput);
             var encoded = HistoricalArtifactCodec.Encode(metadata, budget.MaxMetadataBytes);
             op.Check(); var association = await AssociateAsync(validated.Files, metadata.ProjectId, explicitRevision, budget, op).ConfigureAwait(false); op.Check();
@@ -77,7 +87,7 @@ public sealed class CompileArtifactHistoryStore : IAsyncDisposable
             // Parse/validate historical manifest and selection BEFORE reading,
             // cloning or hashing the potentially large PDF. No live context made.
             byte[] metadata = await ReadObjectAsync(key.RecordId, meta, m, budget.MaxMetadataBytes, op).ConfigureAwait(false);
-            var validated = HistoricalArtifactCodec.Decode(metadata, expectedProject, _format, _adapter, budget);
+            var validated = HistoricalArtifactCodec.Decode(metadata, expectedProject, _format, _adapter, budget, _additionalAdapters);
             if (validated.Identity.Digest != key.ContentDigest || validated.Metadata.PdfLength != p.DeclaredLength || validated.Metadata.PdfHash != p.DeclaredHash)
                 throw new RuntimeAssetIoException(RuntimeAssetStatus.Corrupt);
             op.Check(); byte[] pdf = await ReadObjectAsync(key.RecordId, payload, p, budget.MaxPdfBytes, op).ConfigureAwait(false);
@@ -99,7 +109,7 @@ public sealed class CompileArtifactHistoryStore : IAsyncDisposable
     private HistoricalCompileArtifact Restore(byte[] metadata, byte[] pdf, HistoricalArtifactKey key, ArtifactHistoryBudget budget)
     {
         if (metadata.Length > budget.MaxMetadataBytes || pdf.LongLength > budget.MaxPdfBytes) throw new RuntimeAssetIoException(RuntimeAssetStatus.Corrupt);
-        var value = HistoricalArtifactCodec.Decode(metadata, key.ProjectId, _format, _adapter, budget);
+        var value = HistoricalArtifactCodec.Decode(metadata, key.ProjectId, _format, _adapter, budget, _additionalAdapters);
         if (value.Identity.Digest != key.ContentDigest || value.Metadata.PdfLength != pdf.LongLength || value.Metadata.PdfHash != HashBytes(pdf)) throw new RuntimeAssetIoException(RuntimeAssetStatus.Corrupt);
         return new(key, value.Identity, value.Selection, value.Files, value.Metadata.OriginalRequest, value.Metadata.OriginalSnapshot,
             value.Metadata.OriginalWorkerEpoch, value.Metadata.OriginalRequestedRevision, pdf);

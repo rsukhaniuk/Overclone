@@ -25,7 +25,8 @@ internal static class HistoricalArtifactCodec
             accepted.Snapshot.Selection.Tools, accepted.Snapshot.Selection.Options),
         accepted.Snapshot.Files.Select(f => new ProjectFile(f.FileId, f.RelativePath, f.MediaKind, f.Hash, f.ByteLength, f.HasBom)).ToArray(),
         accepted.OutputLength, accepted.OutputHash!.Value, accepted.OutputFormat!, accepted.OutputAdapter!, accepted.SourceMapping, accepted.ContentIdentity!.Digest, target);
-    internal static Validated Validate(Metadata value, ProjectId expectedProject, CompileOutputDescriptor format, CompileOutputDescriptor adapter, ArtifactHistoryBudget budget)
+    internal static Validated Validate(Metadata value, ProjectId expectedProject, CompileOutputDescriptor format, CompileOutputDescriptor adapter, ArtifactHistoryBudget budget,
+        IReadOnlyCollection<CompileOutputDescriptor>? additionalAdapters = null)
     {
         void Check([DoesNotReturnIf(false)] bool ok) { if (!ok) throw new RuntimeAssetIoException(RuntimeAssetStatus.Corrupt); }
         Check(value is not null && value.Version == 1 && value.Classification == "HistoricalOnly" && value.ProjectId == expectedProject && expectedProject.Value != Guid.Empty);
@@ -34,7 +35,8 @@ internal static class HistoricalArtifactCodec
             && s.WorkingGeneration >= 0 && s.LocalWorkspaceEpoch >= 0 && s.SelectionVersion >= 0 && (s.BaseHeadRevisionId is null || s.BaseHeadRevisionId.Value.Value != Guid.Empty));
         Check(value.OriginalRequest.Value != Guid.Empty && value.OriginalWorkerEpoch > 0 && value.PdfLength >= 0 && value.PdfLength <= budget.MaxPdfBytes
             && CompilationCanonical.ValidHash(value.InputDigest) && CompilationCanonical.ValidHash(value.PdfHash) && CompilationCanonical.ValidHash(value.ContentDigest)
-            && value.Format == format && value.Adapter == adapter && (value.OriginalRequestedRevision is null || value.OriginalRequestedRevision.Value.Value != Guid.Empty));
+            && value.Format == format && (value.Adapter == adapter || additionalAdapters?.Contains(value.Adapter) == true)
+            && (value.OriginalRequestedRevision is null || value.OriginalRequestedRevision.Value.Value != Guid.Empty));
         using (var descriptors = new CompileArtifactCanonical(CompileArtifactCanonical.MetadataDomain, budget.MaxMetadataBytes))
         { descriptors.Text(descriptors.Domain); descriptors.Descriptor(value.Format); descriptors.Descriptor(value.Adapter); descriptors.Mapping(value.Mapping); }
         var selection = CompilationSelection.Create(value.Selection, budget.Input.MaxMetadataBytes).Selection; Check(selection is not null);
@@ -73,7 +75,8 @@ internal static class HistoricalArtifactCodec
         using var stream = new LimitedStream(maximum); using (var writer = new Utf8JsonWriter(stream)) JsonSerializer.Serialize(writer, value, Options);
         return stream.ToArray();
     }
-    internal static Validated Decode(byte[] bytes, ProjectId project, CompileOutputDescriptor format, CompileOutputDescriptor adapter, ArtifactHistoryBudget budget)
+    internal static Validated Decode(byte[] bytes, ProjectId project, CompileOutputDescriptor format, CompileOutputDescriptor adapter, ArtifactHistoryBudget budget,
+        IReadOnlyCollection<CompileOutputDescriptor>? additionalAdapters = null)
     {
         if (bytes.Length > budget.MaxMetadataBytes) throw new RuntimeAssetIoException(RuntimeAssetStatus.Corrupt);
         using var doc = JsonDocument.Parse(bytes); Unique(doc.RootElement);
@@ -81,7 +84,7 @@ internal static class HistoricalArtifactCodec
         if (files.ValueKind != JsonValueKind.Array || files.GetArrayLength() is < 1 || files.GetArrayLength() > budget.Input.MaxFiles) throw new JsonException("Historical manifest count.");
         var value = JsonSerializer.Deserialize<Metadata>(bytes, Options) ?? throw new JsonException("Historical metadata.");
         using var shape = JsonDocument.Parse(JsonSerializer.SerializeToUtf8Bytes(value, Options)); SameShape(doc.RootElement, shape.RootElement);
-        return Validate(value, project, format, adapter, budget);
+        return Validate(value, project, format, adapter, budget, additionalAdapters);
     }
     private static void SameShape(JsonElement actual, JsonElement expected)
     {
