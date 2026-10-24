@@ -1,0 +1,276 @@
+{
+  "description": "SYNTHETIC source-intent analysis, not compiler execution",
+  "request": {
+    "operation": "analyzeSource",
+    "payload": {
+      "baseHeadRevisionId": "head-ref",
+      "files": [
+        {
+          "byteLength": 81,
+          "byteOffset": 0,
+          "fileId": "file-0",
+          "hasBom": false,
+          "mediaKind": "text",
+          "relativePath": "main.tex",
+          "sha256": ""
+        }
+      ],
+      "limits": {},
+      "profile": {
+        "id": "engine-source-references",
+        "version": "1.0.0"
+      },
+      "projectId": "project-ref",
+      "referenceConfiguration": {
+        "rootFileId": "file-0"
+      },
+      "sessionId": "session-ref",
+      "snapshotId": "snapshot-ref",
+      "workingGeneration": 7
+    },
+    "protocolVersion": 1,
+    "requestId": "source-reference-fixture"
+  },
+  "response": {
+    "payload": {
+      "aggregateOutcome": "indeterminate",
+      "coverage": {
+        "diagnosticsTruncated": false,
+        "factKinds": [
+          "command",
+          "braceOpen",
+          "text",
+          "braceClose",
+          "includePath",
+          "reference"
+        ],
+        "resultTruncated": false,
+        "truncatedFiles": [],
+        "unsupported": [
+          "macro-expansion",
+          "math-mode",
+          "bibliography",
+          "environment-bodies",
+          "pdf-facts",
+          "pdf-checks",
+          "dynamic-include-resolution",
+          "expanded-label-reference-consistency"
+        ]
+      },
+      "diagnostics": [],
+      "facts": {
+        "files": [
+          {
+            "braceDepthExceeded": false,
+            "byteLength": 81,
+            "engineOutcome": "pass",
+            "fileId": "file-0",
+            "hasBom": false,
+            "newlineKind": "lf",
+            "tokenCount": 26,
+            "tokens": [
+              {
+                "endByte": 14,
+                "kind": "command",
+                "startByte": 0
+              },
+              {
+                "endByte": 15,
+                "kind": "braceOpen",
+                "startByte": 14
+              },
+              {
+                "endByte": 22,
+                "kind": "text",
+                "startByte": 15
+              },
+              {
+                "endByte": 23,
+                "kind": "braceClose",
+                "startByte": 22
+              },
+              {
+                "endByte": 24,
+                "kind": "text",
+                "startByte": 23
+              },
+              {
+                "endByte": 30,
+                "kind": "command",
+                "startByte": 24
+              },
+              {
+                "endByte": 31,
+                "kind": "braceOpen",
+                "startByte": 30
+              },
+              {
+                "endByte": 39,
+                "kind": "text",
+                "startByte": 31
+              },
+              {
+                "endByte": 40,
+                "kind": "braceClose",
+                "startByte": 39
+              },
+              {
+                "endByte": 41,
+                "kind": "text",
+                "startByte": 40
+              },
+              {
+                "endByte": 47,
+                "kind": "command",
+                "startByte": 41
+              },
+              {
+                "endByte": 57,
+                "kind": "includePath",
+                "startByte": 48,
+                "text": "../escape"
+              },
+              {
+                "endByte": 48,
+                "kind": "braceOpen",
+                "startByte": 47
+              },
+              {
+                "endByte": 57,
+                "kind": "text",
+                "startByte": 48
+              },
+              {
+                "endByte": 58,
+                "kind": "braceClose",
+                "startByte": 57
+              },
+              {
+                "endByte": 62,
+                "kind": "command",
+                "startByte": 58
+              },
+              {
+                "endByte": 64,
+                "kind": "reference",
+                "startByte": 63,
+                "text": "x"
+              },
+              {
+                "endByte": 63,
+                "kind": "braceOpen",
+                "startByte": 62
+              },
+              {
+                "endByte": 64,
+                "kind": "text",
+                "startByte": 63
+              },
+              {
+                "endByte": 65,
+                "kind": "braceClose",
+                "startByte": 64
+              },
+              {
+                "endByte": 66,
+                "kind": "text",
+                "startByte": 65
+              },
+              {
+                "endByte": 70,
+                "kind": "command",
+                "startByte": 66
+              },
+              {
+                "endByte": 71,
+                "kind": "braceOpen",
+                "startByte": 70
+              },
+              {
+                "endByte": 79,
+                "kind": "text",
+                "startByte": 71
+              },
+              {
+                "endByte": 80,
+                "kind": "braceClose",
+                "startByte": 79
+              },
+              {
+                "endByte": 81,
+                "kind": "text",
+                "startByte": 80
+              }
+            ],
+            "truncated": false
+          }
+        ]
+      },
+      "profile": {
+        "id": "engine-source-references",
+        "version": "1.0.0"
+      },
+      "referenceConfiguration": {
+        "rootFileId": "file-0"
+      },
+      "ruleResults": [
+        {
+          "limitations": [],
+          "origin": "engine",
+          "outcome": "pass",
+          "perFile": [
+            {
+              "diagnosticIds": [],
+              "fileId": "file-0",
+              "outcome": "pass"
+            }
+          ],
+          "ruleId": "ENGINE-STRUCT-001"
+        },
+        {
+          "limitations": [
+            "sourceIntentOnly",
+            "macroExpansionUnsupported",
+            "unsupportedIncludeSyntax"
+          ],
+          "origin": "engine",
+          "outcome": "indeterminate",
+          "perFile": [
+            {
+              "diagnosticIds": [],
+              "fileId": "file-0",
+              "outcome": "indeterminate"
+            }
+          ],
+          "ruleId": "ENGINE-LABEL-001"
+        },
+        {
+          "limitations": [
+            "sourceIntentOnly",
+            "macroExpansionUnsupported",
+            "unsupportedIncludeSyntax"
+          ],
+          "origin": "engine",
+          "outcome": "indeterminate",
+          "perFile": [
+            {
+              "diagnosticIds": [],
+              "fileId": "file-0",
+              "outcome": "indeterminate"
+            }
+          ],
+          "ruleId": "ENGINE-REFERENCE-001"
+        }
+      ],
+      "snapshotId": "snapshot-ref",
+      "unavailableCapabilities": [
+        "pdfFacts",
+        "pdfChecks"
+      ]
+    },
+    "protocolVersion": 1,
+    "requestId": "source-reference-fixture",
+    "status": "completed"
+  },
+  "sourceHex": "5c646f63756d656e74636c6173737b61727469636c657d0a5c626567696e7b646f63756d656e747d0a5c696e7075747b2e2e2f6573636170657d5c7265667b787d0a5c656e647b646f63756d656e747d0a"
+}

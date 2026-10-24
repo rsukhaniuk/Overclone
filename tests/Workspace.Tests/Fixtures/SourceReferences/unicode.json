@@ -1,0 +1,355 @@
+{
+  "description": "SYNTHETIC source-intent analysis, not compiler execution",
+  "request": {
+    "operation": "analyzeSource",
+    "payload": {
+      "baseHeadRevisionId": "head-ref",
+      "files": [
+        {
+          "byteLength": 143,
+          "byteOffset": 0,
+          "fileId": "file-0",
+          "hasBom": true,
+          "mediaKind": "text",
+          "relativePath": "main.tex",
+          "sha256": ""
+        }
+      ],
+      "limits": {},
+      "profile": {
+        "id": "engine-source-references",
+        "version": "1.0.0"
+      },
+      "projectId": "project-ref",
+      "referenceConfiguration": {
+        "rootFileId": "file-0"
+      },
+      "sessionId": "session-ref",
+      "snapshotId": "snapshot-ref",
+      "workingGeneration": 7
+    },
+    "protocolVersion": 1,
+    "requestId": "source-reference-fixture"
+  },
+  "response": {
+    "payload": {
+      "aggregateOutcome": "fail",
+      "coverage": {
+        "diagnosticsTruncated": false,
+        "factKinds": [
+          "command",
+          "braceOpen",
+          "text",
+          "braceClose",
+          "comment",
+          "label",
+          "reference"
+        ],
+        "resultTruncated": false,
+        "truncatedFiles": [],
+        "unsupported": [
+          "macro-expansion",
+          "math-mode",
+          "bibliography",
+          "environment-bodies",
+          "pdf-facts",
+          "pdf-checks",
+          "dynamic-include-resolution",
+          "expanded-label-reference-consistency"
+        ]
+      },
+      "diagnostics": [
+        {
+          "fileId": "file-0",
+          "id": "ENGINE-REFERENCE-001:file-0:112",
+          "message": "No matching literal label was found in the selected source closure.",
+          "origin": "engine",
+          "primaryLocation": {
+            "column": 43,
+            "line": 4
+          },
+          "ruleId": "ENGINE-REFERENCE-001",
+          "severity": "warning",
+          "span": {
+            "endByte": 124,
+            "startByte": 112
+          }
+        }
+      ],
+      "facts": {
+        "files": [
+          {
+            "braceDepthExceeded": false,
+            "byteLength": 143,
+            "engineOutcome": "pass",
+            "fileId": "file-0",
+            "hasBom": true,
+            "newlineKind": "crlf",
+            "tokenCount": 38,
+            "tokens": [
+              {
+                "endByte": 17,
+                "kind": "command",
+                "startByte": 3
+              },
+              {
+                "endByte": 18,
+                "kind": "braceOpen",
+                "startByte": 17
+              },
+              {
+                "endByte": 25,
+                "kind": "text",
+                "startByte": 18
+              },
+              {
+                "endByte": 26,
+                "kind": "braceClose",
+                "startByte": 25
+              },
+              {
+                "endByte": 27,
+                "kind": "text",
+                "startByte": 26
+              },
+              {
+                "endByte": 28,
+                "kind": "text",
+                "startByte": 27
+              },
+              {
+                "endByte": 34,
+                "kind": "command",
+                "startByte": 28
+              },
+              {
+                "endByte": 35,
+                "kind": "braceOpen",
+                "startByte": 34
+              },
+              {
+                "endByte": 43,
+                "kind": "text",
+                "startByte": 35
+              },
+              {
+                "endByte": 44,
+                "kind": "braceClose",
+                "startByte": 43
+              },
+              {
+                "endByte": 45,
+                "kind": "text",
+                "startByte": 44
+              },
+              {
+                "endByte": 46,
+                "kind": "text",
+                "startByte": 45
+              },
+              {
+                "endByte": 67,
+                "kind": "comment",
+                "startByte": 46
+              },
+              {
+                "endByte": 68,
+                "kind": "text",
+                "startByte": 67
+              },
+              {
+                "endByte": 69,
+                "kind": "text",
+                "startByte": 68
+              },
+              {
+                "endByte": 75,
+                "kind": "command",
+                "startByte": 69
+              },
+              {
+                "endByte": 88,
+                "kind": "label",
+                "startByte": 76,
+                "text": "Київ🙂"
+              },
+              {
+                "endByte": 76,
+                "kind": "braceOpen",
+                "startByte": 75
+              },
+              {
+                "endByte": 88,
+                "kind": "text",
+                "startByte": 76
+              },
+              {
+                "endByte": 89,
+                "kind": "braceClose",
+                "startByte": 88
+              },
+              {
+                "endByte": 93,
+                "kind": "command",
+                "startByte": 89
+              },
+              {
+                "endByte": 106,
+                "kind": "reference",
+                "startByte": 94,
+                "text": "Київ🙂"
+              },
+              {
+                "endByte": 94,
+                "kind": "braceOpen",
+                "startByte": 93
+              },
+              {
+                "endByte": 106,
+                "kind": "text",
+                "startByte": 94
+              },
+              {
+                "endByte": 107,
+                "kind": "braceClose",
+                "startByte": 106
+              },
+              {
+                "endByte": 111,
+                "kind": "command",
+                "startByte": 107
+              },
+              {
+                "endByte": 124,
+                "kind": "reference",
+                "startByte": 112,
+                "text": "київ🙂"
+              },
+              {
+                "endByte": 112,
+                "kind": "braceOpen",
+                "startByte": 111
+              },
+              {
+                "endByte": 124,
+                "kind": "text",
+                "startByte": 112
+              },
+              {
+                "endByte": 125,
+                "kind": "braceClose",
+                "startByte": 124
+              },
+              {
+                "endByte": 126,
+                "kind": "text",
+                "startByte": 125
+              },
+              {
+                "endByte": 127,
+                "kind": "text",
+                "startByte": 126
+              },
+              {
+                "endByte": 131,
+                "kind": "command",
+                "startByte": 127
+              },
+              {
+                "endByte": 132,
+                "kind": "braceOpen",
+                "startByte": 131
+              },
+              {
+                "endByte": 140,
+                "kind": "text",
+                "startByte": 132
+              },
+              {
+                "endByte": 141,
+                "kind": "braceClose",
+                "startByte": 140
+              },
+              {
+                "endByte": 142,
+                "kind": "text",
+                "startByte": 141
+              },
+              {
+                "endByte": 143,
+                "kind": "text",
+                "startByte": 142
+              }
+            ],
+            "truncated": false
+          }
+        ]
+      },
+      "profile": {
+        "id": "engine-source-references",
+        "version": "1.0.0"
+      },
+      "referenceConfiguration": {
+        "rootFileId": "file-0"
+      },
+      "ruleResults": [
+        {
+          "limitations": [],
+          "origin": "engine",
+          "outcome": "pass",
+          "perFile": [
+            {
+              "diagnosticIds": [],
+              "fileId": "file-0",
+              "outcome": "pass"
+            }
+          ],
+          "ruleId": "ENGINE-STRUCT-001"
+        },
+        {
+          "limitations": [
+            "sourceIntentOnly",
+            "macroExpansionUnsupported"
+          ],
+          "origin": "engine",
+          "outcome": "pass",
+          "perFile": [
+            {
+              "diagnosticIds": [],
+              "fileId": "file-0",
+              "outcome": "pass"
+            }
+          ],
+          "ruleId": "ENGINE-LABEL-001"
+        },
+        {
+          "limitations": [
+            "sourceIntentOnly",
+            "macroExpansionUnsupported"
+          ],
+          "origin": "engine",
+          "outcome": "fail",
+          "perFile": [
+            {
+              "diagnosticIds": [
+                "ENGINE-REFERENCE-001:file-0:112"
+              ],
+              "fileId": "file-0",
+              "outcome": "fail"
+            }
+          ],
+          "ruleId": "ENGINE-REFERENCE-001"
+        }
+      ],
+      "snapshotId": "snapshot-ref",
+      "unavailableCapabilities": [
+        "pdfFacts",
+        "pdfChecks"
+      ]
+    },
+    "protocolVersion": 1,
+    "requestId": "source-reference-fixture",
+    "status": "completed"
+  },
+  "sourceHex": "efbbbf5c646f63756d656e74636c6173737b61727469636c657d0d0a5c626567696e7b646f63756d656e747d0d0a2520d0a3d0bad180d0b0d197d0bdd0b020f09f98800d0a5c6c6162656c7bd09ad0b8d197d0b2f09f99827d5c7265667bd09ad0b8d197d0b2f09f99827d5c7265667bd0bad0b8d197d0b2f09f99827d0d0a5c656e647b646f63756d656e747d0d0a"
+}

@@ -1,0 +1,316 @@
+{
+  "description": "SYNTHETIC source-intent analysis, not compiler execution",
+  "request": {
+    "operation": "analyzeSource",
+    "payload": {
+      "baseHeadRevisionId": "head-ref",
+      "files": [
+        {
+          "byteLength": 99,
+          "byteOffset": 0,
+          "fileId": "file-0",
+          "hasBom": false,
+          "mediaKind": "text",
+          "relativePath": "main.tex",
+          "sha256": ""
+        }
+      ],
+      "limits": {},
+      "profile": {
+        "id": "engine-source-references",
+        "version": "1.0.0"
+      },
+      "projectId": "project-ref",
+      "referenceConfiguration": {
+        "rootFileId": "file-0"
+      },
+      "sessionId": "session-ref",
+      "snapshotId": "snapshot-ref",
+      "workingGeneration": 7
+    },
+    "protocolVersion": 1,
+    "requestId": "source-reference-fixture"
+  },
+  "response": {
+    "payload": {
+      "aggregateOutcome": "indeterminate",
+      "coverage": {
+        "diagnosticsTruncated": false,
+        "factKinds": [
+          "command",
+          "braceOpen",
+          "text",
+          "braceClose",
+          "label",
+          "reference"
+        ],
+        "resultTruncated": false,
+        "truncatedFiles": [],
+        "unsupported": [
+          "macro-expansion",
+          "math-mode",
+          "bibliography",
+          "environment-bodies",
+          "pdf-facts",
+          "pdf-checks",
+          "dynamic-include-resolution",
+          "expanded-label-reference-consistency"
+        ]
+      },
+      "diagnostics": [],
+      "facts": {
+        "files": [
+          {
+            "braceDepthExceeded": false,
+            "byteLength": 99,
+            "engineOutcome": "pass",
+            "fileId": "file-0",
+            "hasBom": false,
+            "newlineKind": "lf",
+            "tokenCount": 34,
+            "tokens": [
+              {
+                "endByte": 14,
+                "kind": "command",
+                "startByte": 0
+              },
+              {
+                "endByte": 15,
+                "kind": "braceOpen",
+                "startByte": 14
+              },
+              {
+                "endByte": 22,
+                "kind": "text",
+                "startByte": 15
+              },
+              {
+                "endByte": 23,
+                "kind": "braceClose",
+                "startByte": 22
+              },
+              {
+                "endByte": 24,
+                "kind": "text",
+                "startByte": 23
+              },
+              {
+                "endByte": 30,
+                "kind": "command",
+                "startByte": 24
+              },
+              {
+                "endByte": 31,
+                "kind": "braceOpen",
+                "startByte": 30
+              },
+              {
+                "endByte": 39,
+                "kind": "text",
+                "startByte": 31
+              },
+              {
+                "endByte": 40,
+                "kind": "braceClose",
+                "startByte": 39
+              },
+              {
+                "endByte": 41,
+                "kind": "text",
+                "startByte": 40
+              },
+              {
+                "endByte": 47,
+                "kind": "command",
+                "startByte": 41
+              },
+              {
+                "endByte": 48,
+                "kind": "braceOpen",
+                "startByte": 47
+              },
+              {
+                "endByte": 54,
+                "kind": "text",
+                "startByte": 48
+              },
+              {
+                "endByte": 55,
+                "kind": "braceClose",
+                "startByte": 54
+              },
+              {
+                "endByte": 61,
+                "kind": "command",
+                "startByte": 55
+              },
+              {
+                "endByte": 63,
+                "kind": "label",
+                "startByte": 62,
+                "text": "x"
+              },
+              {
+                "endByte": 62,
+                "kind": "braceOpen",
+                "startByte": 61
+              },
+              {
+                "endByte": 63,
+                "kind": "text",
+                "startByte": 62
+              },
+              {
+                "endByte": 64,
+                "kind": "braceClose",
+                "startByte": 63
+              },
+              {
+                "endByte": 68,
+                "kind": "command",
+                "startByte": 64
+              },
+              {
+                "endByte": 69,
+                "kind": "braceOpen",
+                "startByte": 68
+              },
+              {
+                "endByte": 75,
+                "kind": "text",
+                "startByte": 69
+              },
+              {
+                "endByte": 76,
+                "kind": "braceClose",
+                "startByte": 75
+              },
+              {
+                "endByte": 80,
+                "kind": "command",
+                "startByte": 76
+              },
+              {
+                "endByte": 82,
+                "kind": "reference",
+                "startByte": 81,
+                "text": "x"
+              },
+              {
+                "endByte": 81,
+                "kind": "braceOpen",
+                "startByte": 80
+              },
+              {
+                "endByte": 82,
+                "kind": "text",
+                "startByte": 81
+              },
+              {
+                "endByte": 83,
+                "kind": "braceClose",
+                "startByte": 82
+              },
+              {
+                "endByte": 84,
+                "kind": "text",
+                "startByte": 83
+              },
+              {
+                "endByte": 88,
+                "kind": "command",
+                "startByte": 84
+              },
+              {
+                "endByte": 89,
+                "kind": "braceOpen",
+                "startByte": 88
+              },
+              {
+                "endByte": 97,
+                "kind": "text",
+                "startByte": 89
+              },
+              {
+                "endByte": 98,
+                "kind": "braceClose",
+                "startByte": 97
+              },
+              {
+                "endByte": 99,
+                "kind": "text",
+                "startByte": 98
+              }
+            ],
+            "truncated": false
+          }
+        ]
+      },
+      "profile": {
+        "id": "engine-source-references",
+        "version": "1.0.0"
+      },
+      "referenceConfiguration": {
+        "rootFileId": "file-0"
+      },
+      "ruleResults": [
+        {
+          "limitations": [],
+          "origin": "engine",
+          "outcome": "pass",
+          "perFile": [
+            {
+              "diagnosticIds": [],
+              "fileId": "file-0",
+              "outcome": "pass"
+            }
+          ],
+          "ruleId": "ENGINE-STRUCT-001"
+        },
+        {
+          "limitations": [
+            "sourceIntentOnly",
+            "macroExpansionUnsupported",
+            "unsupportedContext"
+          ],
+          "origin": "engine",
+          "outcome": "indeterminate",
+          "perFile": [
+            {
+              "diagnosticIds": [],
+              "fileId": "file-0",
+              "outcome": "indeterminate"
+            }
+          ],
+          "ruleId": "ENGINE-LABEL-001"
+        },
+        {
+          "limitations": [
+            "sourceIntentOnly",
+            "macroExpansionUnsupported",
+            "unsupportedContext"
+          ],
+          "origin": "engine",
+          "outcome": "indeterminate",
+          "perFile": [
+            {
+              "diagnosticIds": [],
+              "fileId": "file-0",
+              "outcome": "indeterminate"
+            }
+          ],
+          "ruleId": "ENGINE-REFERENCE-001"
+        }
+      ],
+      "snapshotId": "snapshot-ref",
+      "unavailableCapabilities": [
+        "pdfFacts",
+        "pdfChecks"
+      ]
+    },
+    "protocolVersion": 1,
+    "requestId": "source-reference-fixture",
+    "status": "completed"
+  },
+  "sourceHex": "5c646f63756d656e74636c6173737b61727469636c657d0a5c626567696e7b646f63756d656e747d0a5c626567696e7b637573746f6d7d5c6c6162656c7b787d5c656e647b637573746f6d7d5c7265667b787d0a5c656e647b646f63756d656e747d0a"
+}
