@@ -49,6 +49,7 @@ public sealed class NativeBrowserModuleLease : IAsyncDisposable
     internal NativeBrowserModuleLease(IJSInProcessObjectReference module, Action release) { _module = module; _release = release; Transport = new(module); }
     public NativeBrowserTransport Transport { get; }
     public Task<bool> ProvisionAsync() => _module.InvokeAsync<bool>("provision", CancellationToken.None).AsTask();
+    public Task<bool> ProvisionDviAsync() => _module.InvokeAsync<bool>("provisionDvi", CancellationToken.None).AsTask();
     public object Observations() => _module.Invoke<System.Text.Json.JsonElement>("observations");
     public ValueTask DisposeAsync() { lock (_disposeGate) return new(_disposing ??= DisposeCore()); }
     private async Task DisposeCore()

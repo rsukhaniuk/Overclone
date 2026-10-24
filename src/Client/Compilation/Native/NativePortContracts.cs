@@ -5,12 +5,13 @@ namespace Client.Compilation.Native;
 public sealed record NativeFileTransfer(string Name, byte[] Bytes);
 public sealed record NativeInputFact(string Name, int Length, string Sha256);
 public sealed record NativePhaseTag(string Job, string Request, long Epoch, Guid Capture, string Digest, int Ordinal, string Tool, string Nonce,
-    CompilationSnapshotIdentity? Snapshot = null, int Version = 1);
+    CompilationSnapshotIdentity? Snapshot = null, int Version = 1,
+    NativeRuntimeProfile Profile = NativeRuntimeProfile.Legacy, string? RuntimeIdentity = null, string? EngineId = null);
 public sealed record NativePhaseRequest(NativePhaseTag Tag, string MainEntry, NativeFileTransfer[] Files,
-    string[] Outputs, byte[] Loader, byte[] Wasm, int MaxLogBytes, int MaxOutputBytes);
+    string[] Outputs, byte[] Loader, byte[] Wasm, int MaxLogBytes, int MaxOutputBytes, string? SelectedRoot = null, string[]? RuntimeResourceNames = null);
 public sealed record NativePhaseReply(NativePhaseTag Tag, string Outcome, int? NativeReturn, bool Entered,
     string Log, NativeFileTransfer[] Files, NativeInputFact[] Inputs, double? ElapsedMs = null, int? HeapBytes = null,
-    string? WasmSha256 = null, string? LoaderSha256 = null);
+    string? WasmSha256 = null, string? LoaderSha256 = null, byte[]? SourceMapPayload = null);
 
 /// <summary>Prompt asynchronous byte/FFI port. Not a second lifecycle. A completed
 /// wait is not proof the foreign task completed. Terminate is prompt, idempotent,
@@ -22,10 +23,20 @@ public interface INativePhaseTransport
 }
 public sealed record NativeCompilePlan(bool BibtexRequired, int MaxLatexPasses, TimeSpan JobDeadline,
     int MaxPhaseFiles = 512, int MaxInputBytes = 16 * 1024 * 1024, int MaxFileBytes = 8 * 1024 * 1024,
-    bool UseSelectionTools = false)
+    bool UseSelectionTools = false, NativeRuntimeProfile Profile = NativeRuntimeProfile.Legacy, int? PhaseProtocolVersion = null, bool DviOutput = false)
 {
     public bool IsValid => MaxLatexPasses is >= 1 and <= 6 && JobDeadline > TimeSpan.Zero && JobDeadline <= TimeSpan.FromMinutes(2)
-        && MaxPhaseFiles is >= 1 and <= 512 && MaxInputBytes is > 0 and <= 32 * 1024 * 1024 && MaxFileBytes is > 0 and <= 16 * 1024 * 1024;
+        && NativeRuntimeProfiles.Known(Profile)
+        && (PhaseProtocolVersion is null || PhaseProtocolVersion == NativeRuntimeProfiles.ProtocolVersion(Profile)
+            || PhaseProtocolVersion is 4 or 5 && Profile == NativeRuntimeProfile.LocalLatex2023Authoring
+            || PhaseProtocolVersion == 7 && Profile == NativeRuntimeProfile.LocalLatex2023Dvi && DviOutput)
+        && (DviOutput == (EffectivePhaseVersion == 7))
+        && MaxPhaseFiles >= 1 && MaxPhaseFiles <= (EffectivePhaseVersion is 4 or 5 or 6 or 7 ? NativeAuthoringV4Contract.PhaseFiles : 512)
+        && MaxInputBytes > 0 && MaxInputBytes <= NativeRuntimeProfiles.MaxTotalBytes(Profile)
+        && MaxFileBytes > 0 && MaxFileBytes <= NativeRuntimeProfiles.MaxFileBytes(Profile);
+    public int EffectivePhaseVersion => PhaseProtocolVersion ?? NativeRuntimeProfiles.ProtocolVersion(Profile);
+    // Increasing runtime capacity cannot increase the modern project/aux limit.
+    public int ProjectFileBytes => NativeRuntimeProfiles.Modern(Profile) ? 8 * 1024 * 1024 : MaxFileBytes;
 }
 public sealed record NativePhaseObservation(NativePhaseTag Tag, NativeInputFact[] Sent, NativePhaseReply Reply);
 
