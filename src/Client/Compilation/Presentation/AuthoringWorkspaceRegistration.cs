@@ -1,8 +1,11 @@
 using Client.Analysis;
 using Client.AI;
+using Client.Compilation.Download;
 using Client.Compilation.History;
 using Client.Compilation.History.Index;
 using Client.Compilation.Native;
+using Client.Compilation.Provisioning;
+using Client.Compilation.SyncTeX;
 using Microsoft.JSInterop;
 using Client.Review;
 using Client.Workspace;
@@ -16,7 +19,7 @@ namespace Client.Compilation.Presentation;
 
 public static class AuthoringWorkspaceRegistration
 {
-    /// <summary>Shared actual app services. No executable runtime/binary is selected.
+    /// <summary>Shared app services with fixed local authoring trust and no bundled runtime bytes.
     /// A trusted TEST/application builder may explicitly replace the configuration.</summary>
     public static IServiceCollection AddAuthoringWorkspace(this IServiceCollection services)
     {
@@ -32,8 +35,14 @@ public static class AuthoringWorkspaceRegistration
         services.AddScoped<IChangeReviewService, ChangeReviewService>();
         services.AddAiAssistance();
         services.AddDriveTransfers();
-        services.TryAddScoped<ICompileWorkspaceConfiguration, UnavailableCompileWorkspaceConfiguration>();
+        services.AddScoped<LocalInstalledRuntimeProviders>();
+        services.AddScoped<ISyncTeXQuery>(provider => new JsSyncTeXQuery(provider.GetRequiredService<IJSRuntime>(),
+            provider.GetRequiredService<LocalInstalledRuntimeProviders>()));
+        services.TryAddScoped<ICompileWorkspaceConfiguration, LocalCompileWorkspaceConfiguration>();
+        services.AddScoped<Client.Compilation.Provisioning.NativeRuntimeSetupFactory>();
+        services.AddScoped<Client.Compilation.Provisioning.PdfRuntimeSetupFactory>();
         services.AddScoped<CompileWorkspaceSession>();
+        services.AddScoped<IPdfDownloadBrowser, PdfDownloadBrowser>();
         services.AddScoped<CompileHistoryUiSession>(provider =>
         {
             var workspace = provider.GetRequiredService<WorkspaceCoordinator>();
@@ -43,7 +52,8 @@ public static class AuthoringWorkspaceRegistration
             // request options. Metadata contracts only: no runtime is selected,
             // provisioned or approved here, including the unavailable default.
             var store = new CompileArtifactHistoryStore(new ArtifactStorageBackend(js),
-                provider.GetRequiredService<IProjectRepository>(), NativeRuntimePackage.Pdf, NativeRuntimePackage.Adapter);
+                provider.GetRequiredService<IProjectRepository>(), NativeRuntimePackage.Pdf, NativeRuntimePackage.Adapter,
+                [NativeSyncTeXContract.OutputAdapter, NativeLatexDviContract.OutputAdapter]);
             var index = new CompileHistoryIndex(new JsHistoryIndexBackend(js));
             return new(workspace, compile, store, index,
                 new(new(64, 1048576, 8388608, 131072), 8388608, 262144,

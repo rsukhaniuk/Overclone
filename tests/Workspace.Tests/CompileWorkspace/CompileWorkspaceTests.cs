@@ -25,7 +25,7 @@ public sealed class CompileWorkspaceTests
     }
     private static async Task Drain(CompileWorkspaceSession session)
     { await session.DisposeAsync(); if (session.Owner is { } owner) await owner.WhenSettled.WaitAsync(Bound); }
-    private static CompileWorkspaceSession Attach(CompilationTestWorkspace f, Configuration configuration)
+    private static CompileWorkspaceSession Attach(CompilationTestWorkspace f, ICompileWorkspaceConfiguration configuration)
     {
         var session = new CompileWorkspaceSession(f.Workspace, configuration); session.AttachRenderer(Dispatcher()); return session;
     }
@@ -56,6 +56,57 @@ public sealed class CompileWorkspaceTests
         {
             await Select(f, session); long first = session.SelectionVersion; session.SelectEngine("xelatex"); session.SelectEngine("contract"); Assert.Equal(first + 2, session.SelectionVersion);
             session.SelectMain(f.Workspace.Files.First(x => x.RelativePath == "chapter.tex").Id); await session.CompileAsync(); Assert.Null(session.LastTicket); Assert.Contains("supported", session.Notice);
+        }
+        finally { await Drain(session); }
+    });
+    [Fact] public void Changing_configured_engine_dispatches_its_descriptor_and_rejects_previous_reply() => Run(async () =>
+    {
+        await using var f = await CompilationTestWorkspace.Open(); var c = new MultipleConfiguration(); var session = Attach(f, c);
+        try
+        {
+            await Select(f, session);
+            // The app retains its choices even if the composition's source list changes.
+            c.Additional.Clear(); Assert.Equal(2, session.AvailableEngines.Count);
+            await session.CompileAsync(); var old = await c.First.Next(); var oldTicket = session.LastTicket!;
+            session.SelectEngine("xelatex");
+            Assert.Equal("xetex", session.ConfiguredPorts!.Engine.Id);
+            await session.CompileAsync(); var current = await c.Second.Next(); var currentTicket = session.LastTicket!;
+            Assert.Equal("xetex", current.Context.Snapshot.Selection.Engine.Id);
+            Assert.Contains(current.Context.Snapshot.Selection.Options, option => option.Key == "output-mode" && option.Value == "xdv");
+            old.Reply.SetResult(old.Output());
+            Assert.NotEqual(CompileLifecycleReason.Succeeded, (await oldTicket.Completion.WaitAsync(Bound)).Reason);
+            Assert.Null(session.DisplayedOutput);
+            current.Reply.SetResult(current.Output());
+            Assert.Equal(CompileLifecycleReason.Succeeded, (await currentTicket.Completion.WaitAsync(Bound)).Reason);
+            Assert.True(session.State!.IsCurrent);
+            session.SelectEngine("contract"); Assert.False(session.State.IsCurrent);
+            Assert.Equal("contract", session.ConfiguredPorts.CapabilityId);
+        }
+        finally
+        {
+            foreach (var worker in c.First.Created.Concat(c.Second.Created)) worker.Reply.TrySetResult(worker.Output());
+            await Drain(session);
+        }
+    });
+    [Fact] public void An_unconfigured_engine_never_uses_an_available_factory() => Run(async () =>
+    {
+        await using var f = await CompilationTestWorkspace.Open(); var c = new MultipleConfiguration(); var session = Attach(f, c);
+        try
+        {
+            await Select(f, session); session.SelectEngine("lualatex"); await session.CompileAsync();
+            Assert.Null(session.LastTicket); Assert.Empty(c.First.Created); Assert.Empty(c.Second.Created);
+            Assert.True(f.Workspace.EditText(f.Main, "local Україна 😀"));
+        }
+        finally { await Drain(session); }
+    });
+    [Theory] [InlineData("duplicate")] [InlineData("lifetime")] [InlineData("count")]
+    public void Invalid_configured_engine_sets_remain_unavailable(string invalid) => Run(async () =>
+    {
+        await using var f = await CompilationTestWorkspace.Open(); var c = new MultipleConfiguration(invalid); var session = Attach(f, c);
+        try
+        {
+            await session.RefreshToolsAsync(); Assert.False(session.Readiness.Ready); Assert.Null(session.ConfiguredPorts);
+            Assert.Empty(session.AvailableEngines); await session.CompileAsync(); Assert.Empty(c.First.Created); Assert.Empty(c.Second.Created);
         }
         finally { await Drain(session); }
     });
@@ -289,6 +340,25 @@ public sealed class CompileWorkspaceTests
     });
     private sealed class Lifetime : IAsyncDisposable
     { internal int Disposals; public ValueTask DisposeAsync() { Disposals++; return ValueTask.CompletedTask; } }
+    private sealed class MultipleConfiguration : ICompileWorkspaceConfiguration
+    {
+        internal readonly Workers First = new(), Second = new();
+        internal readonly List<CompileWorkspacePorts> Additional = [];
+        private readonly CompileWorkspacePorts _first;
+        public MultipleConfiguration(string? invalid = null)
+        {
+            var lifetime = new Lifetime();
+            Task<CompileReadiness> Ready() => Task.FromResult(new CompileReadiness(true, "Ready", "Modeled engines"));
+            _first = new("contract", "First engine", CompilationTestWorkspace.Descriptor(), [], [], First, null, Ready, lifetime);
+            Additional.Add(new(invalid == "duplicate" ? "contract" : "xelatex", "Second engine", CompilationTestWorkspace.Descriptor("xetex"),
+                [], [], Second, null, Ready, invalid == "lifetime" ? new Lifetime() : lifetime,
+                SelectionOptions: [new("output-mode", "xdv")]));
+            if (invalid == "count")
+                for (int i = 0; i < 3; i++) Additional.Add(_first with { CapabilityId = "extra-" + i });
+        }
+        public Task<CompileWorkspaceConfigurationResult> OpenAsync() => Task.FromResult(new CompileWorkspaceConfigurationResult(
+            new(true, "Ready", "Modeled engines"), _first, Additional));
+    }
     private sealed class Configuration(bool available = true, bool selectableBibliography = false, CompilationDescriptor[]? tools = null) : ICompileWorkspaceConfiguration
     {
         internal readonly Workers Workers = new(); internal readonly Lifetime Lifetime = new(); internal CompileReadiness Readiness = new(true, "Ready", "CONTRACT");

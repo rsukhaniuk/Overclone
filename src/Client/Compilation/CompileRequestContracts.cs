@@ -31,7 +31,8 @@ public enum CompileOutputIssue
     MissingPayload, PayloadOnNonSuccess, LengthMismatch, HashMismatch,
     OverPayloadBudget, OverMetadataBudget, OverDiagnosticCount,
     RequestMismatch, SnapshotMismatch, DigestMismatch, EpochMismatch,
-    FormatMismatch, AdapterMismatch, MappingMismatch
+    FormatMismatch, AdapterMismatch, MappingMismatch,
+    OverSourceMapPayloadBudget, SourceMapLengthMismatch, SourceMapHashMismatch
 }
 
 /// <summary>Untrusted diagnostic/log metadata: plain data only. Never executable
@@ -54,11 +55,19 @@ public sealed record CompileArtifactContentIdentity(
     CompileSourceMappingIdentity? SourceMapping);
 
 /// <summary>Explicit caller limits for accepting an untrusted output envelope.
-/// Zero is never unlimited. All fields must be positive and within Array.MaxLength.</summary>
+/// Zero is never unlimited. All fields must be positive and within Array.MaxLength;
+/// source-map bytes additionally cannot exceed the fixed producer limit.</summary>
 public sealed record CompileOutputBudget(int MaxPayloadBytes, int MaxMetadataBytes,
     int MaxDiagnostics, int MaxDiagnosticCodeBytes, int MaxDiagnosticMessageBytes, int MaxLogBytes)
 {
-    public bool IsValid => MaxPayloadBytes > 0 && MaxPayloadBytes <= Array.MaxLength
+    public const int SourceMapPayloadByteLimit = 1_048_575;
+    /// <summary>Independent byte cap for optional opaque uncompressed SyncTeX v1
+    /// output. Does not enlarge the PDF or metadata budgets. May only be reduced
+    /// from the fixed producer limit; zero is not an unlimited/disabled sentinel.</summary>
+    public int MaxSourceMapPayloadBytes { get; init; } = SourceMapPayloadByteLimit;
+
+    public bool IsValid => MaxSourceMapPayloadBytes > 0 && MaxSourceMapPayloadBytes <= SourceMapPayloadByteLimit
+        && MaxPayloadBytes > 0 && MaxPayloadBytes <= Array.MaxLength
         && MaxMetadataBytes > 0 && MaxMetadataBytes <= Array.MaxLength
         && MaxDiagnostics > 0 && MaxDiagnostics <= Array.MaxLength
         && MaxDiagnosticCodeBytes > 0 && MaxDiagnosticCodeBytes <= Array.MaxLength
@@ -82,6 +91,11 @@ public sealed record CompileOutputEnvelopeInput
     public CompileOutputDescriptor? OutputFormat { get; init; }
     public CompileOutputDescriptor? OutputAdapter { get; init; }
     public CompileSourceMappingIdentity? SourceMapping { get; init; }
+    /// <summary>Optional opaque uncompressed SyncTeX v1 bytes from the final
+    /// successful native pass alongside its PDF. Never parsed here. Nonempty
+    /// bytes must match SourceMapping exactly; null/empty on success means no
+    /// owned map. Any non-null value on non-success is refused.</summary>
+    public byte[]? SourceMapPayload { get; init; }
     public IReadOnlyList<CompileDiagnosticEntry>? Diagnostics { get; init; }
     public string? LogText { get; init; }
 }

@@ -9,8 +9,12 @@ public sealed record CompileReadiness(bool Ready, string Status, string Message)
 public sealed record CompileWorkspacePorts(string CapabilityId, string Label, CompilationDescriptor Engine,
     CompilationDescriptor[] Bundles, CompilationDescriptor[] Tools, ICompilationWorkerFactory Factory,
     IPdfInspector? Inspector, Func<Task<CompileReadiness>> Readiness, IAsyncDisposable? Lifetime = null,
-    bool SelectableBibliography = false);
-public sealed record CompileWorkspaceConfigurationResult(CompileReadiness Compiler, CompileWorkspacePorts? Ports);
+    bool SelectableBibliography = false, IReadOnlyList<CompilationOption>? SelectionOptions = null,
+    CompileOutputDescriptor? OutputAdapter = null);
+// Additional engines share the configuration's inspector and lifetime. Each
+// engine still owns its descriptor, selection options and worker factory.
+public sealed record CompileWorkspaceConfigurationResult(CompileReadiness Compiler, CompileWorkspacePorts? Ports,
+    IReadOnlyList<CompileWorkspacePorts>? AdditionalEngines = null);
 public interface ICompileWorkspaceConfiguration
 {
     Task<CompileWorkspaceConfigurationResult> OpenAsync();

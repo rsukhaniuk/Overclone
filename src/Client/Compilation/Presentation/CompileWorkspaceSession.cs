@@ -17,6 +17,7 @@ public sealed class CompileWorkspaceSession(WorkspaceCoordinator workspace, ICom
     private CompilationLifecycleService? _lifecycle;
     private readonly CompilationSelectionState _selection = new();
     private CompileWorkspacePorts? _ports;
+    private IReadOnlyList<CompileWorkspacePorts> _engines = Array.Empty<CompileWorkspacePorts>();
     private Task? _configurationTask;
     private Guid _session;
     private bool _disposed, _refreshing, _previousCurrent;
@@ -41,6 +42,7 @@ public sealed class CompileWorkspaceSession(WorkspaceCoordinator workspace, ICom
     public CompileAttemptPresentation? Attempt { get; private set; }
     public CompileLifecycleTicket? LastTicket { get; private set; }
     public CompileWorkspacePorts? ConfiguredPorts => _ports;
+    public IReadOnlyList<CompileWorkspacePorts> AvailableEngines => _engines;
     public AcceptedCompileOutput? DisplayedOutput => _shown;
     public bool ReadingTools => _configurationTask is { IsCompleted: false };
     public bool Disposed => _disposed;
@@ -50,8 +52,9 @@ public sealed class CompileWorkspaceSession(WorkspaceCoordinator workspace, ICom
     public CompileOwnerContext? Owner => _owner;
     public string PdfLabel => State is { LastSuccessful: not null } s && s.LastSuccessful.SnapshotIdentity.ProjectId == workspace.Project?.Id
         ? s.IsCurrent ? "PDF up to date" : "Last successful PDF — out of date" : "No compiled PDF";
-    private static CompileLifecycleOptions Options => new(new(64, 1048576, 8388608, 131072),
-        new(8388608, 2097152, 64, 128, 4096, 1048576), 65536, TimeSpan.FromSeconds(30), NativeRuntimePackage.Pdf, NativeRuntimePackage.Adapter);
+    private CompileLifecycleOptions Options => new(new(64, 1048576, 8388608, 131072),
+        new(8388608, 2097152, 64, 128, 4096, 1048576), 65536, TimeSpan.FromSeconds(30), NativeRuntimePackage.Pdf,
+        _ports?.OutputAdapter ?? NativeRuntimePackage.Adapter);
     private static CompileAttemptPresentationBudget LogBudget => new(1048576, 2097152,
         new(64, 8388608, 131072, 1048576, 8192, 10000, 128, 4096, 32, 200000, 8000000, 2097152));
     public void AttachRenderer(Func<Action, Task> renderer)
@@ -84,6 +87,12 @@ public sealed class CompileWorkspaceSession(WorkspaceCoordinator workspace, ICom
                 Readiness = result.Compiler;
                 if (result.Ports is { } ports)
                 {
+                    var engines = new[] { ports }.Concat(result.AdditionalEngines ?? []).Take(5).ToArray();
+                    if (engines.Length > 4 || engines.Any(p => p is null || string.IsNullOrEmpty(p.CapabilityId)
+                            || !ReferenceEquals(p.Inspector, ports.Inspector) || !ReferenceEquals(p.Lifetime, ports.Lifetime))
+                        || engines.Select(p => p.CapabilityId).Distinct(StringComparer.Ordinal).Count() != engines.Length)
+                        throw new InvalidOperationException("Invalid configured compiler choices.");
+                    _engines = Array.AsReadOnly(engines);
                     _ports = ports; await Preview.DisposeAsync(); Preview = new(ports.Inspector); Preview.Changed += PreviewChanged;
                 }
             }
@@ -94,7 +103,16 @@ public sealed class CompileWorkspaceSession(WorkspaceCoordinator workspace, ICom
         if (!_disposed) { Notice = Readiness.Message; Refresh(); }
     }
     public void SelectMain(FileId? id) => Run(() => { MainFile = id; ApplySelection(); });
-    public void SelectEngine(string id) => Run(() => { EngineChoice = id; ApplySelection(); });
+    public void SelectEngine(string id) => Run(() =>
+    {
+        EngineChoice = id;
+        if (_engines.FirstOrDefault(p => p.CapabilityId == id) is { } selected)
+        {
+            _ports = selected;
+            if (!CanSelectBibtex) UseBibtex = false;
+        }
+        ApplySelection();
+    });
     public void SelectBibliography(bool enabled) => Run(() =>
     {
         if (_ports is not { SelectableBibliography: true }) return; // legacy declared tools remain unchanged
@@ -106,16 +124,25 @@ public sealed class CompileWorkspaceSession(WorkspaceCoordinator workspace, ICom
     {
         CompilationSelection? selection = null;
         var main = workspace.Files.FirstOrDefault(f => !f.Deleted && f.MediaKind == "text" && f.Id == MainFile);
-        if (_ports is { } ports && Readiness.Ready && EngineChoice == ports.CapabilityId && main?.RelativePath == "main.tex"
+        bool selectedEntry = _ports?.SelectionOptions is { } options
+            && (NativeSelectedEntryContract.MatchesOptions(options) || NativeSyncTeXContract.MatchesOptions(options)
+                || NativeLatexDviContract.MatchesOptions(options));
+        var entryError = main is null ? null : selectedEntry ? NativeSelectedEntryContract.ValidateEntry(main.RelativePath)
+            : main.RelativePath == "main.tex" ? null : "legacy-main-entry";
+        if (_ports is { } ports && Readiness.Ready && EngineChoice == ports.CapabilityId && main is not null && entryError is null
             && (!ports.SelectableBibliography || !UseBibtex || AvailableBibtex is not null))
         {
             CompilationDescriptor[] tools = ports.SelectableBibliography
                 ? UseBibtex ? [AvailableBibtex!] : []
                 : ports.Tools;
-            selection = CompilationSelection.Create(new(main.Id, ports.Engine, ports.Bundles, tools, []), 65536).Selection;
+            selection = CompilationSelection.Create(new(main.Id, ports.Engine, ports.Bundles, tools, ports.SelectionOptions ?? []), 65536).Selection;
         }
         _selection.SetSelection(selection); _lifecycle!.Cancel();
-        Notice = main is not null && main.RelativePath != "main.tex" ? "This adapter requires main.tex; no files are renamed." : selection is null ? "Choose main.tex and an available engine. Unsupported engines are not substituted." : "Ready to compile unsaved files. Settings are session-only.";
+        Notice = entryError is not null ? selectedEntry
+            ? "Unsupported selected root: use a bounded .tex path with letters, numbers, marks, dot, hyphen or underscore; internal ASCII spaces are allowed in directory and base names, but leading/trailing basename spaces and TeX command syntax are unsupported. No files are renamed."
+            : "This legacy adapter requires main.tex; no files are renamed."
+            : selection is null ? "Choose a supported .tex root and an available engine. Unsupported engines are not substituted."
+            : "Ready to compile unsaved files from project CWD. Settings are session-only.";
         Refresh();
     }
     public Task CompileAsync()

@@ -21,17 +21,19 @@ namespace Client.Compilation;
 public sealed class CompileOutputEnvelope
 {
     private readonly byte[]? _payload; // Owned. Null for non-success. Never exposed as an array.
+    private readonly byte[]? _sourceMapPayload; // Optional opaque owned bytes; never public on an envelope.
 
     private CompileOutputEnvelope(CompileRequestId echoedRequestId, CompilationSnapshotIdentity echoedSnapshotIdentity,
         ContentHash echoedInputDigest, long echoedWorkerEpoch, CompileOutputStatus status,
         CompileOutputDescriptor? outputFormat, CompileOutputDescriptor? outputAdapter,
         CompileSourceMappingIdentity? sourceMapping, ImmutableArray<CompileDiagnosticEntry> diagnostics,
-        string logText, byte[]? payload, long outputLength, ContentHash? outputHash,
+        string logText, byte[]? payload, byte[]? sourceMapPayload, long outputLength, ContentHash? outputHash,
         CompileArtifactContentIdentity? contentIdentity, long metadataByteLength)
     {
         EchoedRequestId = echoedRequestId; EchoedSnapshotIdentity = echoedSnapshotIdentity; EchoedInputContentDigest = echoedInputDigest;
         EchoedWorkerEpoch = echoedWorkerEpoch; Status = status; OutputFormat = outputFormat; OutputAdapter = outputAdapter;
         SourceMapping = sourceMapping; Diagnostics = diagnostics; LogText = logText; _payload = payload;
+        _sourceMapPayload = sourceMapPayload;
         OutputLength = outputLength; OutputHash = outputHash; ContentIdentity = contentIdentity; MetadataByteLength = metadataByteLength;
     }
 
@@ -64,6 +66,8 @@ public sealed class CompileOutputEnvelope
         // work; a typed failure is returned for every invariant violated.
         var status = input.Status;
         var payload = input.Payload;
+        var sourceMapPayload = input.SourceMapPayload;
+        var mapping = input.SourceMapping;
         if (input.RequestId.Value == Guid.Empty) return new(null, CompileOutputIssue.RequestMismatch);
         if (input.WorkerEpoch <= 0) return new(null, CompileOutputIssue.EpochMismatch);
         if (!CompilationCanonical.ValidHash(input.InputContentDigest)) return new(null, CompileOutputIssue.DigestMismatch);
@@ -88,16 +92,31 @@ public sealed class CompileOutputEnvelope
                 return new(null, CompileOutputIssue.PayloadOnNonSuccess);
         }
 
+        // Independent source-map preflight BEFORE any payload copy/hash or metadata
+        // scan. Empty success input means absence, not evidence of a usable map.
+        // Identity-only legacy mappings remain unrestricted by the map-byte cap.
+        if (status != CompileOutputStatus.Succeeded && sourceMapPayload is not null)
+            return new(null, CompileOutputIssue.PayloadOnNonSuccess);
+        if (sourceMapPayload is { Length: > 0 })
+        {
+            if (sourceMapPayload.LongLength > budget.MaxSourceMapPayloadBytes)
+                return new(null, CompileOutputIssue.OverSourceMapPayloadBudget);
+            if (mapping is null) return new(null, CompileOutputIssue.MappingMismatch);
+            if (mapping.ByteLength != sourceMapPayload.LongLength)
+                return new(null, CompileOutputIssue.SourceMapLengthMismatch);
+            if (!CompilationCanonical.ValidHash(mapping.Hash)) return new(null, CompileOutputIssue.InvalidHash);
+        }
+
         // Phase B: expensive validation/ownership. Descriptors, mapping, diagnostics
         // and log are validated+owned under the aggregate metadata budget; per-field
         // byte budgets are enforced before the byte scan. Payload is copied before
         // hashing (after the count/size preflight above).
         var format = input.OutputFormat;
         var adapter = input.OutputAdapter;
-        var mapping = input.SourceMapping;
         long outputLength = 0;
         ContentHash? outputHash = null;
         byte[]? owned = null;
+        byte[]? ownedSourceMap = null;
         CompileArtifactContentIdentity? identity = null;
         ImmutableArray<CompileDiagnosticEntry> diagnostics;
         string logText;
@@ -118,6 +137,14 @@ public sealed class CompileOutputEnvelope
                 outputLength = owned.LongLength;
                 outputHash = ContentHash.FromBytes(System.Security.Cryptography.SHA256.HashData(owned));
                 if (outputHash != input.ClaimedHash) return new(null, CompileOutputIssue.HashMismatch);
+                if (sourceMapPayload is { Length: > 0 })
+                {
+                    ownedSourceMap = sourceMapPayload.ToArray(); // hash only the private copy
+                    var mapHash = ContentHash.FromBytes(System.Security.Cryptography.SHA256.HashData(ownedSourceMap));
+                    if (mapHash != mapping!.Hash) return new(null, CompileOutputIssue.SourceMapHashMismatch);
+                }
+                // Existing mapping identity already binds these bytes into content
+                // identity. Do NOT encode presence again or change legacy goldens.
                 identity = ComputeIdentity(input.InputContentDigest, outputLength, outputHash.Value, format, adapter, mapping);
             }
             else
@@ -129,7 +156,7 @@ public sealed class CompileOutputEnvelope
         catch (OutOfMemoryException) { throw; }
 
         return new(new(input.RequestId, input.SnapshotIdentity, input.InputContentDigest, input.WorkerEpoch, status,
-            format, adapter, mapping, diagnostics, logText, owned, outputLength, outputHash, identity, metadataLength), null);
+            format, adapter, mapping, diagnostics, logText, owned, ownedSourceMap, outputLength, outputHash, identity, metadataLength), null);
     }
 
     /// <summary>Read-only view of the privately owned payload. The backing array
@@ -138,6 +165,9 @@ public sealed class CompileOutputEnvelope
     /// <summary>Defensive copy of the owned payload, or null when there is
     /// no artifact (non-success). Never returns an empty alias.</summary>
     internal byte[]? PayloadArray => _payload?.ToArray();
+    internal bool HasSourceMapPayload => _sourceMapPayload is not null;
+    internal ReadOnlySpan<byte> SourceMapPayloadSpan => _sourceMapPayload;
+    internal byte[]? SourceMapPayloadArray => _sourceMapPayload?.ToArray();
 
     public CompileOutputAcceptance TryAccept(CompileRequestContext expected)
     {
@@ -216,4 +246,12 @@ public sealed class AcceptedCompileOutput
     /// Backing array never escapes; <see cref="ToPayloadArray"/> copies.</summary>
     public ReadOnlySpan<byte> PayloadBytes => _envelope.PayloadSpan;
     public byte[]? ToPayloadArray() => _envelope.PayloadArray;
+    /// <summary>True only for owned nonempty map bytes, not identity-only metadata.
+    /// This is byte ownership/correlation, NOT semantic validity or navigation.</summary>
+    public bool HasSourceMapPayload => _envelope.HasSourceMapPayload;
+    /// <summary>Opaque accepted map bytes; empty when absent. The private backing
+    /// array never escapes. No parsing or map-production proof is implied.</summary>
+    public ReadOnlySpan<byte> SourceMapPayloadBytes => _envelope.SourceMapPayloadSpan;
+    /// <summary>Defensive copy of accepted map bytes, or null when absent.</summary>
+    public byte[]? ToSourceMapPayloadArray() => _envelope.SourceMapPayloadArray;
 }
