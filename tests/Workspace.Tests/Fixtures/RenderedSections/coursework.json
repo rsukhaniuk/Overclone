@@ -1,0 +1,89 @@
+{
+  "request": {
+    "pageCount": 80,
+    "pdfSha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "requestId": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "schemaVersion": 2,
+    "sections": {
+      "appendixStartPage": 61,
+      "conclusions": {
+        "end": 45,
+        "start": 41
+      },
+      "introduction": {
+        "end": 5,
+        "start": 3
+      },
+      "mainBody": {
+        "end": 40,
+        "start": 6
+      },
+      "noAppendices": false
+    },
+    "workType": "coursework"
+  },
+  "response": {
+    "compliance": "notAssessed",
+    "evaluationDomain": "renderedObservation",
+    "guidelineSha256": "8be4d724ac108488e6b1766322e7fd6b3646412aa2b6de12b6945f48fb380714",
+    "kind": "observation",
+    "mainBodyPages": 35,
+    "nonAppendixPages": 60,
+    "pageCount": 80,
+    "pdfSha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "printedPage": 11,
+    "profileId": "knu-csc-2025-rendered-extent",
+    "profileVersion": "2.0.0",
+    "reason": "classifiedNonAppendixAboveUsualMaximum",
+    "requestId": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "ruleId": "KNU-CSC-2025-PDF-EXTENT-001",
+    "schemaVersion": 2,
+    "sections": {
+      "conclusions": {
+        "maximum": 5,
+        "minimum": null,
+        "pages": 5,
+        "ruleId": "KNU-CSC-2025-PDF-CONCLUSIONS-001",
+        "status": "withinLimit"
+      },
+      "introduction": {
+        "maximum": 3,
+        "minimum": null,
+        "pages": 3,
+        "ruleId": "KNU-CSC-2025-PDF-INTRODUCTION-001",
+        "status": "withinLimit"
+      },
+      "labelsSource": "userProvidedPageRanges",
+      "mainBody": {
+        "maximum": null,
+        "minimum": 15,
+        "pages": 35,
+        "ruleId": "KNU-CSC-2025-PDF-BODY-001",
+        "status": "withinLimit"
+      },
+      "ranges": {
+        "appendixStartPage": 61,
+        "conclusions": {
+          "end": 45,
+          "start": 41
+        },
+        "introduction": {
+          "end": 5,
+          "start": 3
+        },
+        "mainBody": {
+          "end": 40,
+          "start": 6
+        },
+        "noAppendices": false
+      }
+    },
+    "sourceSection": "2",
+    "sourceUrl": "https://csc.knu.ua/uk/filer/canonical/1740300611/2680/",
+    "status": "aboveUsualMaximum",
+    "usualMaximum": 40,
+    "usualMinimum": 20,
+    "workType": "coursework"
+  },
+  "scope": "synthetic counts/author labels through actual Rust export, not PDF inspection"
+}
