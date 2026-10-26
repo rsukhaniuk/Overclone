@@ -145,6 +145,7 @@ public sealed class AnalysisCoordinator : IAsyncDisposable
         get { lock (_lock) return _profile; }
     }
     public AnalysisConfigurationDto? CurrentConfiguration => CurrentSelection.Configuration;
+    public AnalysisReferenceConfigurationDto? CurrentReferenceConfiguration => CurrentSelection.ReferenceConfiguration;
     public long CurrentSelectionVersion { get { lock (_lock) return _selectionVersion; } }
 
     /// <summary>The owned factory's local workspace epoch (delegated). Bumped on
@@ -216,6 +217,9 @@ public sealed class AnalysisCoordinator : IAsyncDisposable
             if (_disposed) return;
             if (!profile.IsValid)
             {
+                // Keep the explicitly chosen reference profile visible even with
+                // no valid root; never silently fall back to another profile/root.
+                if (profile.Profile == new AnalysisProfile(AnalysisCatalog.ReferenceId, AnalysisCatalog.ReferenceVersion)) _profile = profile;
                 _selectionVersion++;
                 _intent++;
                 CancelDebounceLocked();
@@ -597,6 +601,7 @@ public sealed class AnalysisCoordinator : IAsyncDisposable
                 && _profile == snapshot.Selection
                 && _selectionVersion == snapshot.SelectionVersion
                 && completed.Result.Configuration == snapshot.Configuration
+                && completed.Result.ReferenceConfiguration == snapshot.ReferenceConfiguration
                 && string.Equals(completed.Result.SnapshotId, snapshot.Id.ToString(), StringComparison.Ordinal)
                 && string.Equals(completed.Result.Profile.Id, snapshot.Profile.Id, StringComparison.Ordinal)
                 && string.Equals(completed.Result.Profile.Version, snapshot.Profile.Version, StringComparison.Ordinal);

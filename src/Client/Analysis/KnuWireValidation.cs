@@ -61,6 +61,9 @@ internal static class KnuWireValidation
         var p = root.GetProperty("payload");
         Fields(p, "snapshotId profile facts diagnostics ruleResults aggregateOutcome coverage unavailableCapabilities configuration knu");
         ProfileShape(p.GetProperty("profile"));
+        var version = p.GetProperty("profile").GetProperty("version").GetString()!;
+        var sourceRules = AnalysisCatalog.SourceRulesFor(version);
+        var metadata = AnalysisCatalog.MetadataFor(version);
         Configuration(p.GetProperty("configuration"));
         var facts = p.GetProperty("facts"); Fields(facts, "files");
         Items(facts.GetProperty("files"), MaxFiles, f =>
@@ -74,7 +77,7 @@ internal static class KnuWireValidation
             if (d.GetProperty("span").ValueKind != JsonValueKind.Null) SpanShape(d.GetProperty("span"));
             if (d.GetProperty("primaryLocation").ValueKind != JsonValueKind.Null) Fields(d.GetProperty("primaryLocation"), "line column");
         });
-        Items(p.GetProperty("ruleResults"), 3, r =>
+        Items(p.GetProperty("ruleResults"), sourceRules.Length + 1, r =>
         {
             bool engine = r.GetProperty("ruleId").GetString() == AnalysisCatalog.Engine;
             Fields(r, engine ? "ruleId origin outcome perFile limitations" : "ruleId origin outcome perFile limitations source evidenceIds");
@@ -83,8 +86,8 @@ internal static class KnuWireValidation
             if (!engine)
             {
                 var id = r.GetProperty("ruleId").GetString();
-                Require(id is AnalysisCatalog.Indent or AnalysisCatalog.Heading, "Unknown source rule.");
-                var expected = AnalysisCatalog.ExpectedMetadata.GetProperty("rules").EnumerateArray().Single(e => e.GetProperty("ruleId").GetString() == id);
+                Require(id is not null && sourceRules.Contains(id), "Unknown source rule.");
+                var expected = metadata.GetProperty("rules").EnumerateArray().Single(e => e.GetProperty("ruleId").GetString() == id);
                 Require(JsonElement.DeepEquals(r.GetProperty("source"), expected), "Invalid source metadata.");
                 Items(r.GetProperty("evidenceIds"), MaxTokens, _ => { });
             }
@@ -97,11 +100,11 @@ internal static class KnuWireValidation
         Items(p.GetProperty("unavailableCapabilities"), 2, _ => { });
         var k = p.GetProperty("knu");
         Fields(k, "metadata engineAggregateOutcome files fixDescriptors");
-        Require(JsonElement.DeepEquals(k.GetProperty("metadata"), AnalysisCatalog.ExpectedMetadata), "Unknown or inconsistent guideline/profile metadata.");
+        Require(JsonElement.DeepEquals(k.GetProperty("metadata"), metadata), "Unknown or inconsistent guideline/profile metadata.");
         Items(k.GetProperty("files"), MaxFiles, f =>
         {
             Fields(f, "fileId eligible complete observationCount observations limitations");
-            Items(f.GetProperty("limitations"), 14, _ => { });
+            Items(f.GetProperty("limitations"), version == AnalysisCatalog.FormattingVersion ? 20 : version == AnalysisCatalog.Version ? 14 : 17, _ => { });
             Items(f.GetProperty("observations"), MaxFileTokens, o =>
             {
                 Fields(o, "id ruleId commandSpan declarationSpan valueSpan excerpt excerptTruncated method value agrees reason");
@@ -115,6 +118,20 @@ internal static class KnuWireValidation
                         if (v.GetProperty("length").ValueKind != JsonValueKind.Null) Fields(v.GetProperty("length"), "numeratorMm denominator unit");
                         break;
                     case "headingTitle": Fields(v, "kind titleKind finalScalar"); break;
+                    case "marginDeclaration":
+                        Require(version is AnalysisCatalog.LatestVersion or AnalysisCatalog.MarginFixVersion or AnalysisCatalog.GeometryPackageVersion or AnalysisCatalog.FormattingVersion, "Observation is not supported by this profile version.");
+                        Fields(v, "kind side length");
+                        if (v.GetProperty("length").ValueKind != JsonValueKind.Null) Fields(v.GetProperty("length"), "numeratorMm denominator unit");
+                        break;
+                    case "paperDeclaration":
+                        Require(version == AnalysisCatalog.FormattingVersion, "Observation is not supported by this profile version.");
+                        Fields(v, "kind paper"); break;
+                    case "lineSpacingDeclaration":
+                        Require(version == AnalysisCatalog.FormattingVersion, "Observation is not supported by this profile version.");
+                        Fields(v, "kind syntax numerator denominator"); break;
+                    case "captionTitle":
+                        Require(version == AnalysisCatalog.FormattingVersion, "Observation is not supported by this profile version.");
+                        Fields(v, "kind environment finalScalar"); break;
                     default: throw new JsonException("Unknown observation discriminator.");
                 }
             });
@@ -139,10 +156,10 @@ internal static class KnuWireValidation
     internal static void Span(AnalysisSpanDto s, long length)
         => Require(s.StartByte >= 0 && s.EndByte >= s.StartByte && s.EndByte <= length, "Invalid source span.");
     private static bool SameSpan(AnalysisSpanDto? a, AnalysisSpanDto b) => a == b;
-    private static void EqualMetadata(AnalysisSourceRuleDto? source, string rule)
+    private static void EqualMetadata(AnalysisSourceRuleDto? source, string rule, string version)
     {
         Require(source is not null, "Missing source rule metadata.");
-        var expected = AnalysisCatalog.ExpectedMetadata.GetProperty("rules").EnumerateArray().Single(e => e.GetProperty("ruleId").GetString() == rule);
+        var expected = AnalysisCatalog.MetadataFor(version).GetProperty("rules").EnumerateArray().Single(e => e.GetProperty("ruleId").GetString() == rule);
         Require(JsonElement.DeepEquals(JsonSerializer.SerializeToElement(source, AnalysisJson.Options), expected), "Unknown or inconsistent source rule metadata.");
     }
     private static RuleOutcome Aggregate(IEnumerable<RuleOutcome> outcomes)
@@ -151,11 +168,47 @@ internal static class KnuWireValidation
         return outcomes.DefaultIfEmpty(RuleOutcome.NotApplicable).MaxBy(Rank);
     }
 
+    private static bool MarginOnly(AnalysisLimitation limitation) => limitation is
+        AnalysisLimitation.UnsupportedGeometry or AnalysisLimitation.MissingMarginSides or AnalysisLimitation.MultipleGeometryDeclarations;
+    private static bool FormattingOnly(AnalysisLimitation limitation) => limitation is
+        AnalysisLimitation.PaperUncertain or AnalysisLimitation.LineSpacingUncertain or AnalysisLimitation.CaptionUncertain;
+    private static bool Relevant(AnalysisLimitation limitation, string rule) => limitation switch
+    {
+        AnalysisLimitation.PaperUncertain => rule == AnalysisCatalog.Paper,
+        AnalysisLimitation.LineSpacingUncertain => rule == AnalysisCatalog.LineSpacing,
+        AnalysisLimitation.CaptionUncertain => rule == AnalysisCatalog.Caption,
+        _ => LegacyRelevant(limitation, rule),
+    };
+    private static bool LegacyRelevant(AnalysisLimitation limitation, string rule) => MarginOnly(limitation)
+        ? rule == AnalysisCatalog.Margins
+        : limitation is AnalysisLimitation.UnsupportedLength or AnalysisLimitation.ConflictingDeclarations
+            ? rule == AnalysisCatalog.Indent : true;
+
+    // Evidence coverage consistency only: Rust still owns length agreement.
+    private static void MarginCoverage(AnalysisKnuDto knu)
+    {
+        int commandCount = 0;
+        foreach (var file in knu.Files.Where(f => f.Eligible))
+        {
+            var observations = file.Observations.Where(o => o.RuleId == AnalysisCatalog.Margins).ToArray();
+            static AnalysisMarginSide Side(AnalysisObservationDto observation) => ((AnalysisMarginValueDto)observation.Value).Side;
+            var commands = observations.GroupBy(o => o.CommandSpan).ToArray();
+            commandCount += commands.Length;
+            Require(observations.Select(Side).Distinct().Count() == 4 || file.Limitations.Contains(AnalysisLimitation.MissingMarginSides), "Missing margin side coverage limitation.");
+            if (file.Complete)
+                Require(commands.All(c => c.Select(Side).Distinct().Count() == 4) || file.Limitations.Contains(AnalysisLimitation.MissingMarginSides), "Missing per-declaration margin side limitation.");
+            Require(!commands.Any(c => c.Count() != c.Select(Side).Distinct().Count()) || file.Limitations.Contains(AnalysisLimitation.MultipleGeometryDeclarations), "Missing duplicate margin side limitation.");
+        }
+        if (commandCount > 1)
+            Require(knu.Files.Where(f => f.Eligible).All(f => f.Limitations.Contains(AnalysisLimitation.MultipleGeometryDeclarations)), "Missing project geometry declaration limitation.");
+    }
+
     internal static void Validate(AnalysisResultDto r)
     {
         Require(AnalysisCatalog.IsValid(r.Profile.Id, r.Profile.Version, r.Configuration), "Unknown profile/configuration.");
         var k = r.Knu ?? throw new JsonException("Missing KNU data.");
-        Require(k.Files.Length == r.Facts.Files.Count && r.RuleResults.Count == 3, "Missing or extra KNU files/rules.");
+        var sourceRules = AnalysisCatalog.SourceRulesFor(r.Profile.Version);
+        Require(k.Files.Length == r.Facts.Files.Count && r.RuleResults.Count == sourceRules.Length + 1, "Missing or extra KNU files/rules.");
         Require(r.Facts.Files.Count <= MaxFiles && r.Facts.Files.Sum(f => (long)f.TokenCount) <= MaxTokens, "Token/file quota exceeded.");
         Require(!r.Coverage.ResultTruncated, "Completed result cannot be byte-truncated.");
         Strings(r.Coverage.FactKinds, 32, 128); Strings(r.Coverage.Unsupported, 64, 256);
@@ -178,13 +231,20 @@ internal static class KnuWireValidation
             Require(f.ObservationCount + (long)facts[f.FileId].TokenCount <= MaxFileTokens, "Shared file emissions exceeded.");
             emissions += f.ObservationCount;
             Unique(f.Limitations);
+            Require(r.Profile.Version is AnalysisCatalog.LatestVersion or AnalysisCatalog.MarginFixVersion or AnalysisCatalog.GeometryPackageVersion or AnalysisCatalog.FormattingVersion || !f.Limitations.Any(MarginOnly), "Limitation is not supported by this profile version.");
+            Require(r.Profile.Version == AnalysisCatalog.FormattingVersion || !f.Limitations.Any(FormattingOnly), "Limitation is not supported by this profile version.");
             Require(f.Eligible || f.Observations.IsEmpty && f.Limitations.IsEmpty, "Noneligible file has source observations.");
             foreach (var o in f.Observations)
             {
                 Derived(o.Id); Require(evidence.TryAdd(o.Id, (f.FileId, o)), "Duplicate evidence ID.");
-                Require(o.RuleId is AnalysisCatalog.Indent or AnalysisCatalog.Heading, "Foreign observation rule.");
+                Require(sourceRules.Contains(o.RuleId), "Foreign observation rule.");
+                Require(o.Reason is not { } reasonCode || !MarginOnly(reasonCode) || o.RuleId == AnalysisCatalog.Margins, "Foreign observation limitation.");
+                Require(o.Reason is not { } formattingReason || !FormattingOnly(formattingReason) || Relevant(formattingReason, o.RuleId), "Foreign formatting limitation.");
                 foreach (var s in new[] { o.CommandSpan, o.DeclarationSpan, o.ValueSpan }) Span(s, facts[f.FileId].ByteLength);
-                Require(o.CommandSpan.EndByte > o.CommandSpan.StartByte && o.DeclarationSpan.StartByte == o.CommandSpan.StartByte && o.CommandSpan.EndByte <= o.ValueSpan.StartByte && o.ValueSpan.EndByte <= o.DeclarationSpan.EndByte, "Inconsistent observation spans.");
+                bool noArgumentSpacing = o.Value is AnalysisSpacingValueDto { Syntax: AnalysisSpacingSyntax.OneHalfSpacing };
+                Require(o.CommandSpan.EndByte > o.CommandSpan.StartByte && o.DeclarationSpan.StartByte == o.CommandSpan.StartByte
+                    && (noArgumentSpacing ? o.ValueSpan == o.CommandSpan && o.DeclarationSpan == o.CommandSpan : o.CommandSpan.EndByte <= o.ValueSpan.StartByte)
+                    && o.ValueSpan.EndByte <= o.DeclarationSpan.EndByte, "Inconsistent observation spans.");
                 if (o.Agrees is not null) Require(o.ValueSpan.EndByte > o.ValueSpan.StartByte, "Known evidence has an empty value span.");
                 Require(o.Id == f.FileId + ":" + o.RuleId + ":" + o.ValueSpan.StartByte.ToString(CultureInfo.InvariantCulture), "Inconsistent evidence identity.");
                 Text(o.Excerpt, 256, true);
@@ -203,6 +263,17 @@ internal static class KnuWireValidation
                         }
                         Require((v.Length is null) == (o.Agrees is null) && (v.Length is null) == (o.Reason is not null), "Inconsistent indent evidence.");
                         break;
+                    case AnalysisMarginValueDto v:
+                        Require(o.RuleId == AnalysisCatalog.Margins && o.Method == "literal-geometry-option" && Enum.IsDefined(v.Side), "Observation kind/rule/method mismatch.");
+                        if (v.Length is { } marginLength)
+                        {
+                            Require(o.ValueSpan.EndByte - o.ValueSpan.StartByte <= MaxKnownArgumentBytes,
+                                "Known margin value exceeds producer argument bound.");
+                            Require(marginLength.NumeratorMm <= 9999999990UL && marginLength.Denominator is 1 or 10 or 100 or 1000 && marginLength.Unit is "mm" or "cm", "Invalid exact length representation.");
+                        }
+                        Require((v.Length is null) == (o.Agrees is null) && (v.Length is null) == (o.Reason is not null), "Inconsistent margin evidence.");
+                        Require(o.Reason is null or AnalysisLimitation.UnsupportedGeometry, "Invalid margin observation limitation.");
+                        break;
                     case AnalysisHeadingValueDto v:
                         Require(o.RuleId == AnalysisCatalog.Heading && o.Method == "literal-heading-argument", "Observation kind/rule/method mismatch.");
                         if (v.FinalScalar is { } scalar)
@@ -213,15 +284,46 @@ internal static class KnuWireValidation
                         }
                         Require((v.FinalScalar is null) == (o.Agrees is null) && (v.FinalScalar is null) == (o.Reason is not null), "Inconsistent heading evidence.");
                         break;
+                    case AnalysisPaperValueDto v:
+                        Require(r.Profile.Version == AnalysisCatalog.FormattingVersion && o.RuleId == AnalysisCatalog.Paper && o.Method == "literal-paper-intent", "Observation kind/rule/method mismatch.");
+                        Require(v.Paper is null || Enum.IsDefined(v.Paper.Value), "Invalid paper variant.");
+                        Require(o.ValueSpan.EndByte - o.ValueSpan.StartByte <= MaxKnownArgumentBytes, "Paper evidence exceeds producer bound.");
+                        Require(o.Reason is null or AnalysisLimitation.PaperUncertain, "Foreign paper limitation.");
+                        Require((o.Agrees is null) == (o.Reason is not null) && (v.Paper is not null || o.Agrees is null), "Inconsistent paper evidence.");
+                        break;
+                    case AnalysisSpacingValueDto v:
+                        Require(r.Profile.Version == AnalysisCatalog.FormattingVersion && o.RuleId == AnalysisCatalog.LineSpacing && o.Method == "declared-line-spacing-intent" && Enum.IsDefined(v.Syntax), "Observation kind/rule/method mismatch.");
+                        if (v.Numerator is not null) Require(o.ValueSpan.EndByte - o.ValueSpan.StartByte <= MaxKnownArgumentBytes, "Spacing evidence exceeds producer bound.");
+                        Require(v.Numerator.HasValue == v.Denominator.HasValue && v.Numerator.HasValue == o.Agrees.HasValue && o.Agrees.HasValue == (o.Reason is null), "Inconsistent spacing evidence.");
+                        if (v.Numerator is { } numerator) Require(numerator <= 999999999 && v.Denominator is 1 or 2 or 10 or 100 or 1000, "Invalid exact scalar representation.");
+                        Require(o.Reason is null or AnalysisLimitation.LineSpacingUncertain, "Foreign spacing limitation.");
+                        break;
+                    case AnalysisCaptionValueDto v:
+                        Require(r.Profile.Version == AnalysisCatalog.FormattingVersion && o.RuleId == AnalysisCatalog.Caption && o.Method == "literal-caption-title" && Enum.IsDefined(v.Environment), "Observation kind/rule/method mismatch.");
+                        Require(o.Reason is null or AnalysisLimitation.CaptionUncertain, "Foreign caption limitation.");
+                        Require((v.FinalScalar is null) == (o.Agrees is null) && (o.Agrees is null) == (o.Reason is not null), "Inconsistent caption evidence.");
+                        if (v.FinalScalar is { } finalScalar)
+                        {
+                            Require(o.ValueSpan.EndByte - o.ValueSpan.StartByte <= MaxKnownArgumentBytes, "Caption evidence exceeds producer bound.");
+                            Text(finalScalar, 4); Require(Rune.TryGetRuneAt(finalScalar, 0, out var finalRune) && finalRune.Utf16SequenceLength == finalScalar.Length, "finalScalar must be one Unicode scalar.");
+                        }
+                        break;
                     default: throw new JsonException("Missing observation variant.");
                 }
                 if (o.Reason is { } reason) Require(f.Limitations.Contains(reason), "Missing observation limitation.");
             }
         }
         Require(emissions <= MaxTokens, "Shared project emissions exceeded.");
+        if (r.Profile.Version == AnalysisCatalog.FormattingVersion)
+        {
+            foreach (var (rule, limitation) in new[] { (AnalysisCatalog.Paper, AnalysisLimitation.PaperUncertain), (AnalysisCatalog.LineSpacing, AnalysisLimitation.LineSpacingUncertain) })
+                if (k.Files.Sum(f => f.Observations.Count(o => o.RuleId == rule)) > 1)
+                    Require(k.Files.Where(f => f.Eligible).All(f => f.Limitations.Contains(limitation)), "Missing repeated declaration uncertainty.");
+        }
+        if (r.Profile.Version is AnalysisCatalog.LatestVersion or AnalysisCatalog.MarginFixVersion or AnalysisCatalog.GeometryPackageVersion or AnalysisCatalog.FormattingVersion) MarginCoverage(k);
         Unique(r.RuleResults.Select(x => x.RuleId));
         var rules = r.RuleResults.ToDictionary(x => x.RuleId, StringComparer.Ordinal);
-        Require(rules.Count == 3 && rules.ContainsKey(AnalysisCatalog.Engine) && rules.ContainsKey(AnalysisCatalog.Indent) && rules.ContainsKey(AnalysisCatalog.Heading), "Missing/foreign/duplicate rule results.");
+        Require(rules.Count == sourceRules.Length + 1 && rules.ContainsKey(AnalysisCatalog.Engine) && sourceRules.All(rules.ContainsKey), "Missing/foreign/duplicate rule results.");
         var engine = rules[AnalysisCatalog.Engine];
         Require(engine.Origin == "engine" && engine.Source is null && engine.EvidenceIds is null && engine.Outcome == k.EngineAggregateOutcome, "Engine result mismatch.");
         Require(engine.PerFile.Select(f => f.FileId).ToHashSet().SetEquals(facts.Values.Where(f => f.EngineOutcome != RuleOutcome.NotApplicable).Select(f => f.FileId)), "Engine file coverage mismatch.");
@@ -230,9 +332,9 @@ internal static class KnuWireValidation
             : engine.PerFile.Any(f => f.Outcome == RuleOutcome.Fail) ? RuleOutcome.Fail
             : engine.PerFile.Count > 0 ? RuleOutcome.Pass : RuleOutcome.NotApplicable;
         Require(engine.Outcome == expectedEngine, "Preserved engine aggregate mismatch.");
-        foreach (var id in new[] { AnalysisCatalog.Indent, AnalysisCatalog.Heading })
+        foreach (var id in sourceRules)
         {
-            var rr = rules[id]; Require(rr.Origin == "knu", "Invalid rule origin."); EqualMetadata(rr.Source, id);
+            var rr = rules[id]; Require(rr.Origin == "knu", "Invalid rule origin."); EqualMetadata(rr.Source, id, r.Profile.Version);
             Require(rr.PerFile.Count == facts.Count && rr.PerFile.Select(f => f.FileId).ToHashSet().SetEquals(facts.Keys), "Rule file coverage mismatch.");
             Require(rr.EvidenceIds is not null, "Missing evidence references."); Unique(rr.EvidenceIds!);
             Require(rr.EvidenceIds!.ToHashSet().SetEquals(evidence.Values.Where(e => e.Observation.RuleId == id).Select(e => e.Observation.Id)), "Rule evidence references mismatch.");
@@ -246,7 +348,9 @@ internal static class KnuWireValidation
                 if (pf.Outcome == RuleOutcome.Pass) Require(observed.Length > 0 && observed.All(o => o.Agrees == true), "Pass contradicts evidence.");
                 if (pf.Outcome == RuleOutcome.Fail) Require(observed.Any(o => o.Agrees == false), "Fail has no counterexample.");
                 if (pf.Outcome == RuleOutcome.Unavailable) Require(observed.Length == 0, "Unavailable contradicts evidence.");
-                var relevant = f.Limitations.Any(l => id == AnalysisCatalog.Indent || l is not (AnalysisLimitation.UnsupportedLength or AnalysisLimitation.ConflictingDeclarations));
+                if (f.Eligible && (id is AnalysisCatalog.Paper or AnalysisCatalog.LineSpacing) && observed.Length == 0)
+                    Require(pf.Outcome == RuleOutcome.Indeterminate, "Missing declaration uncertainty lost.");
+                var relevant = f.Limitations.Any(l => Relevant(l, id));
                 if (f.Eligible && (!f.Complete || relevant)) Require(pf.Outcome == RuleOutcome.Indeterminate, "Coverage uncertainty lost.");
             }
         }
@@ -266,25 +370,50 @@ internal static class KnuWireValidation
             {
                 Require(evidence.TryGetValue(d.Id, out var e) && e.File == d.FileId && e.Observation.RuleId == d.RuleId && e.Observation.Agrees == false, "Diagnostic evidence mismatch.");
                 var s = e.Observation.ValueSpan;
-                var expected = d.RuleId == AnalysisCatalog.Heading ? new AnalysisSpanDto(s.EndByte - 1, s.EndByte) : s;
+                var expected = d.RuleId is AnalysisCatalog.Heading or AnalysisCatalog.Caption ? new AnalysisSpanDto(s.EndByte - 1, s.EndByte) : s;
                 Require(SameSpan(d.Span, expected) && d.PrimaryLocation is null, "Diagnostic evidence span mismatch.");
             }
         }
         foreach (var rr in r.RuleResults) { Strings(rr.Limitations, MaxFiles + 4, 512); foreach (var pf in rr.PerFile) { Unique(pf.DiagnosticIds); foreach (var id in pf.DiagnosticIds) Derived(id); } }
         foreach (var id in r.Coverage.TruncatedFiles) Require(facts.ContainsKey(id), "Unknown truncated file.");
         Require(k.FixDescriptors.Length <= 1, "Too many fix descriptors.");
+        Require(r.Profile.Version != AnalysisCatalog.FormattingVersion || k.FixDescriptors.IsEmpty, "Fix admission is unavailable for profile 1.4.");
         foreach (var f in k.FixDescriptors)
         {
-            Require(f.Id == AnalysisCatalog.Fix && f.Version == AnalysisCatalog.Version && f.RuleId == AnalysisCatalog.Indent && f.RuleVersion == AnalysisCatalog.Version, "Unknown fix descriptor.");
+            bool indentFix = f.Id == AnalysisCatalog.Fix;
+            var marginFix = AnalysisCatalog.MarginFix(f.Id);
+            Require(f.Version == AnalysisCatalog.Version && (indentFix
+                ? f.RuleId == AnalysisCatalog.Indent && f.RuleVersion == AnalysisCatalog.Version
+                : marginFix is not null && r.Profile.Version is AnalysisCatalog.MarginFixVersion or AnalysisCatalog.GeometryPackageVersion && f.RuleId == AnalysisCatalog.Margins && f.RuleVersion == AnalysisCatalog.MarginRuleVersionFor(r.Profile.Version)), "Unknown fix descriptor.");
             Id(f.ProjectId); Id(f.SessionId); Id(f.SnapshotId); Id(f.FileId); if (f.BaseHeadRevisionId is not null) Id(f.BaseHeadRevisionId);
             Require(f.WorkingGeneration >= 0 && f.SnapshotId == r.SnapshotId && f.Profile == r.Profile && f.Configuration == r.Configuration, "Descriptor identity mismatch.");
             Text(f.RelativePath, 1024);
             Require(ProjectPathValidator.Validate(f.RelativePath) is null && !f.RelativePath.Contains('\\'), "Unsafe descriptor path.");
             Require(IsHash(f.ExpectedFileSha256), "Malformed expected file hash."); Text(f.ExpectedOriginal, 4096); Text(f.Explanation, 4096);
-            Require(f.Replacement == "1.27cm", "Unknown replacement.");
-            Require(evidence.TryGetValue(f.EvidenceId, out var e) && e.File == f.FileId && e.Observation.RuleId == AnalysisCatalog.Indent && e.Observation.Agrees == false && e.Observation.Reason is null && SameSpan(f.Span, e.Observation.ValueSpan), "Descriptor evidence mismatch.");
-            Require(k.Files.Where(x => x.Eligible).All(x => x.Complete && x.Limitations.IsEmpty) && !r.Coverage.DiagnosticsTruncated, "Descriptor contradicts coverage.");
-            Require(evidence.Values.Count(x => x.Observation.RuleId == AnalysisCatalog.Indent) == 1, "Descriptor violates uniqueness.");
+            Require(f.Replacement == (indentFix ? "1.27cm" : marginFix!.Value.Replacement), "Unknown replacement.");
+            Require(evidence.TryGetValue(f.EvidenceId, out var e) && e.File == f.FileId && e.Observation.RuleId == f.RuleId && e.Observation.Agrees == false && e.Observation.Reason is null && SameSpan(f.Span, e.Observation.ValueSpan), "Descriptor evidence mismatch.");
+            Require(!r.Coverage.DiagnosticsTruncated, "Descriptor contradicts coverage.");
+            if (indentFix)
+            {
+                Require(k.Files.Where(x => x.Eligible).All(x => x.Complete && x.Limitations.All(MarginOnly)), "Descriptor contradicts coverage.");
+                Require(evidence.Values.Count(x => x.Observation.RuleId == AnalysisCatalog.Indent) == 1, "Descriptor violates uniqueness.");
+            }
+            else
+            {
+                Require(!r.Coverage.ResultTruncated && r.Coverage.TruncatedFiles.Count == 0
+                    && k.Files.Where(x => x.Eligible).All(x => x.Complete && x.Limitations.IsEmpty), "Margin descriptor contradicts coverage.");
+                var margins = evidence.Values.Where(x => x.Observation.RuleId == AnalysisCatalog.Margins).ToArray();
+                Require(margins.Length == 4 && margins.All(x => x.File == f.FileId && x.Observation.Reason is null && x.Observation.Agrees is not null && x.Observation.CommandSpan == e.Observation.CommandSpan
+                    && x.Observation.Value is AnalysisMarginValueDto { Length: not null })
+                    && margins.Select(x => ((AnalysisMarginValueDto)x.Observation.Value).Side).Distinct().Count() == 4, "Margin descriptor requires one complete unique geometry declaration.");
+                Require(e.Observation.Value is AnalysisMarginValueDto selected && selected.Side == marginFix!.Value.Side, "Margin side/fix mismatch.");
+                var firstSide = new[] { AnalysisMarginSide.Left, AnalysisMarginSide.Right, AnalysisMarginSide.Top, AnalysisMarginSide.Bottom }
+                    .First(side => margins.Any(x => x.Observation.Agrees == false && ((AnalysisMarginValueDto)x.Observation.Value).Side == side));
+                Require(firstSide == marginFix!.Value.Side, "Margin fix priority mismatch.");
+                var indents = evidence.Values.Where(x => x.Observation.RuleId == AnalysisCatalog.Indent).ToArray();
+                Require(!(indents.Length == 1 && indents[0].Observation.Agrees == false
+                    && k.Files.Where(x => x.Eligible).All(x => x.Complete && x.Limitations.All(MarginOnly))), "Eligible F1 has priority.");
+            }
             Span(f.Span, facts[f.FileId].ByteLength);
         }
     }
@@ -307,6 +436,7 @@ internal static class KnuWireValidation
             foreach (var t in f.Tokens) ScalarSpan(captured!, new(t.StartByte, t.EndByte));
         }
         foreach (var d in result.Diagnostics) { Require(files.TryGetValue(d.FileId, out var f), "Diagnostic reference mismatch."); if (d.Span is { } s) ScalarSpan(f!, s); }
+        ReferenceWireValidation.Snapshot(result, snapshot);
         if (result.Knu is not { } k) return;
         Require(result.Facts.Files.Select(f => f.FileId).ToHashSet().SetEquals(files.Keys), "Captured file coverage mismatch.");
         Require(result.Facts.Files.Sum(f => (long)f.TokenCount) + k.Files.Sum(f => (long)f.ObservationCount) <= snapshot.Limits.MaxTokensPerProject, "Response exceeds requested shared emissions.");
@@ -323,7 +453,8 @@ internal static class KnuWireValidation
                 int end = Math.Min(256, bytes.Length);
                 while (end < bytes.Length && (bytes[end] & 0xc0) == 0x80) end--;
                 Require(Encoding.UTF8.GetString(bytes[..end]) == o.Excerpt && o.ExcerptTruncated == (end < bytes.Length), "Excerpt does not match immutable source bytes.");
-                if (o.Value is AnalysisHeadingValueDto { FinalScalar: { } scalar })
+                var scalar = o.Value switch { AnalysisHeadingValueDto heading => heading.FinalScalar, AnalysisCaptionValueDto caption => caption.FinalScalar, _ => null };
+                if (scalar is not null)
                 {
                     // ParseResponse already requires exactly one Unicode scalar:
                     // encode at most four bytes, never decode the whole value.

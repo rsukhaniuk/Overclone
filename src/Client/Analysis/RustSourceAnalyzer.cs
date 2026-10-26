@@ -77,6 +77,10 @@ public sealed class RustSourceAnalyzer : ISourceAnalyzer
         {
             return FailedSafe(requestId, "InvalidInput", "The analysis request was malformed.");
         }
+        catch (JsonException)
+        {
+            return FailedSafe(requestId, "InvalidInput", "The analysis request was malformed.");
+        }
         catch (InvalidOperationException)
         {
             return FailedSafe(requestId, "QuotaExceeded", "The analysis request exceeded the input limits.");

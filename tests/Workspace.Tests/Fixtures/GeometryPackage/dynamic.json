@@ -1,0 +1,681 @@
+{
+  "request": {
+    "operation": "analyzeSource",
+    "payload": {
+      "baseHeadRevisionId": "44444444444444444444444444444444",
+      "configuration": {
+        "workType": "unspecified"
+      },
+      "files": [
+        {
+          "byteLength": 222,
+          "byteOffset": 0,
+          "fileId": "55555555555555555555555555555555",
+          "hasBom": true,
+          "mediaKind": "text",
+          "relativePath": "main.tex",
+          "sha256": "6ffb7bbf6893c0be9e18a86c6fba65fbffdcd46d85d74de2657bc56778a49cd6"
+        }
+      ],
+      "limits": {},
+      "profile": {
+        "id": "knu-csc-2025-source",
+        "version": "1.3.0"
+      },
+      "projectId": "22222222222222222222222222222222",
+      "sessionId": "33333333333333333333333333333333",
+      "snapshotId": "11111111111111111111111111111111",
+      "workingGeneration": 7
+    },
+    "protocolVersion": 1,
+    "requestId": "geometry-package-request"
+  },
+  "response": {
+    "payload": {
+      "aggregateOutcome": "indeterminate",
+      "configuration": {
+        "workType": "unspecified"
+      },
+      "coverage": {
+        "diagnosticsTruncated": false,
+        "factKinds": [
+          "comment",
+          "text",
+          "command",
+          "braceOpen",
+          "braceClose",
+          "optionalArg"
+        ],
+        "resultTruncated": false,
+        "truncatedFiles": [],
+        "unsupported": [
+          "macro-expansion",
+          "math-mode",
+          "bibliography",
+          "environment-bodies",
+          "include-resolution",
+          "label-reference-consistency",
+          "pdf-facts",
+          "pdf-checks"
+        ]
+      },
+      "diagnostics": [],
+      "facts": {
+        "files": [
+          {
+            "braceDepthExceeded": false,
+            "byteLength": 222,
+            "engineOutcome": "pass",
+            "fileId": "55555555555555555555555555555555",
+            "hasBom": true,
+            "newlineKind": "crlf",
+            "tokenCount": 49,
+            "tokens": [
+              {
+                "endByte": 23,
+                "kind": "comment",
+                "startByte": 3
+              },
+              {
+                "endByte": 24,
+                "kind": "text",
+                "startByte": 23
+              },
+              {
+                "endByte": 25,
+                "kind": "text",
+                "startByte": 24
+              },
+              {
+                "endByte": 39,
+                "kind": "command",
+                "startByte": 25
+              },
+              {
+                "endByte": 40,
+                "kind": "braceOpen",
+                "startByte": 39
+              },
+              {
+                "endByte": 47,
+                "kind": "text",
+                "startByte": 40
+              },
+              {
+                "endByte": 48,
+                "kind": "braceClose",
+                "startByte": 47
+              },
+              {
+                "endByte": 49,
+                "kind": "text",
+                "startByte": 48
+              },
+              {
+                "endByte": 50,
+                "kind": "text",
+                "startByte": 49
+              },
+              {
+                "endByte": 61,
+                "kind": "command",
+                "startByte": 50
+              },
+              {
+                "endByte": 102,
+                "kind": "optionalArg",
+                "startByte": 61
+              },
+              {
+                "endByte": 87,
+                "kind": "text",
+                "startByte": 61
+              },
+              {
+                "endByte": 89,
+                "kind": "command",
+                "startByte": 87
+              },
+              {
+                "endByte": 102,
+                "kind": "text",
+                "startByte": 89
+              },
+              {
+                "endByte": 103,
+                "kind": "braceOpen",
+                "startByte": 102
+              },
+              {
+                "endByte": 111,
+                "kind": "text",
+                "startByte": 103
+              },
+              {
+                "endByte": 112,
+                "kind": "braceClose",
+                "startByte": 111
+              },
+              {
+                "endByte": 113,
+                "kind": "text",
+                "startByte": 112
+              },
+              {
+                "endByte": 114,
+                "kind": "text",
+                "startByte": 113
+              },
+              {
+                "endByte": 124,
+                "kind": "command",
+                "startByte": 114
+              },
+              {
+                "endByte": 125,
+                "kind": "braceOpen",
+                "startByte": 124
+              },
+              {
+                "endByte": 135,
+                "kind": "command",
+                "startByte": 125
+              },
+              {
+                "endByte": 136,
+                "kind": "braceClose",
+                "startByte": 135
+              },
+              {
+                "endByte": 137,
+                "kind": "braceOpen",
+                "startByte": 136
+              },
+              {
+                "endByte": 143,
+                "kind": "text",
+                "startByte": 137
+              },
+              {
+                "endByte": 144,
+                "kind": "braceClose",
+                "startByte": 143
+              },
+              {
+                "endByte": 145,
+                "kind": "text",
+                "startByte": 144
+              },
+              {
+                "endByte": 146,
+                "kind": "text",
+                "startByte": 145
+              },
+              {
+                "endByte": 152,
+                "kind": "command",
+                "startByte": 146
+              },
+              {
+                "endByte": 153,
+                "kind": "braceOpen",
+                "startByte": 152
+              },
+              {
+                "endByte": 161,
+                "kind": "text",
+                "startByte": 153
+              },
+              {
+                "endByte": 162,
+                "kind": "braceClose",
+                "startByte": 161
+              },
+              {
+                "endByte": 163,
+                "kind": "text",
+                "startByte": 162
+              },
+              {
+                "endByte": 164,
+                "kind": "text",
+                "startByte": 163
+              },
+              {
+                "endByte": 172,
+                "kind": "command",
+                "startByte": 164
+              },
+              {
+                "endByte": 173,
+                "kind": "braceOpen",
+                "startByte": 172
+              },
+              {
+                "endByte": 185,
+                "kind": "text",
+                "startByte": 173
+              },
+              {
+                "endByte": 186,
+                "kind": "braceClose",
+                "startByte": 185
+              },
+              {
+                "endByte": 187,
+                "kind": "text",
+                "startByte": 186
+              },
+              {
+                "endByte": 188,
+                "kind": "text",
+                "startByte": 187
+              },
+              {
+                "endByte": 204,
+                "kind": "text",
+                "startByte": 188
+              },
+              {
+                "endByte": 205,
+                "kind": "text",
+                "startByte": 204
+              },
+              {
+                "endByte": 206,
+                "kind": "text",
+                "startByte": 205
+              },
+              {
+                "endByte": 210,
+                "kind": "command",
+                "startByte": 206
+              },
+              {
+                "endByte": 211,
+                "kind": "braceOpen",
+                "startByte": 210
+              },
+              {
+                "endByte": 219,
+                "kind": "text",
+                "startByte": 211
+              },
+              {
+                "endByte": 220,
+                "kind": "braceClose",
+                "startByte": 219
+              },
+              {
+                "endByte": 221,
+                "kind": "text",
+                "startByte": 220
+              },
+              {
+                "endByte": 222,
+                "kind": "text",
+                "startByte": 221
+              }
+            ],
+            "truncated": false
+          }
+        ]
+      },
+      "knu": {
+        "engineAggregateOutcome": "pass",
+        "files": [
+          {
+            "complete": true,
+            "eligible": true,
+            "fileId": "55555555555555555555555555555555",
+            "limitations": [
+              "unsupportedGeometry",
+              "unsupportedArgument",
+              "missingMarginSides"
+            ],
+            "observationCount": 2,
+            "observations": [
+              {
+                "agrees": true,
+                "commandSpan": {
+                  "endByte": 124,
+                  "startByte": 114
+                },
+                "declarationSpan": {
+                  "endByte": 144,
+                  "startByte": 114
+                },
+                "excerpt": "1.27cm",
+                "excerptTruncated": false,
+                "id": "55555555555555555555555555555555:KNU-SRC-PARINDENT-001:137",
+                "method": "literal-setlength",
+                "reason": null,
+                "ruleId": "KNU-SRC-PARINDENT-001",
+                "value": {
+                  "kind": "indentDeclaration",
+                  "length": {
+                    "denominator": 100,
+                    "numeratorMm": 1270,
+                    "unit": "cm"
+                  },
+                  "targetSpan": {
+                    "endByte": 135,
+                    "startByte": 125
+                  }
+                },
+                "valueSpan": {
+                  "endByte": 143,
+                  "startByte": 137
+                }
+              },
+              {
+                "agrees": true,
+                "commandSpan": {
+                  "endByte": 172,
+                  "startByte": 164
+                },
+                "declarationSpan": {
+                  "endByte": 186,
+                  "startByte": 164
+                },
+                "excerpt": "Introduction",
+                "excerptTruncated": false,
+                "id": "55555555555555555555555555555555:KNU-SRC-HEADING-DOT-001:173",
+                "method": "literal-heading-argument",
+                "reason": null,
+                "ruleId": "KNU-SRC-HEADING-DOT-001",
+                "value": {
+                  "finalScalar": "n",
+                  "kind": "headingTitle",
+                  "titleKind": "display"
+                },
+                "valueSpan": {
+                  "endByte": 185,
+                  "startByte": 173
+                }
+              }
+            ]
+          }
+        ],
+        "fixDescriptors": [],
+        "metadata": {
+          "approvedUrl": "https://csc.knu.ua/uk/filer/canonical/1740300611/2680/",
+          "guidelineSha256": "8be4d724ac108488e6b1766322e7fd6b3646412aa2b6de12b6945f48fb380714",
+          "guidelineTitle": "Методичні вказівки з підготовки та оформлення кваліфікаційних та курсових робіт для студентів факультету комп’ютерних наук та кібернетики. Т. О. Карнаух, Л. Л. Омельчук, А. Б. Ставровський. Київ, 2025. 58 с.",
+          "limitations": [
+            "Faculty-specific, not university-wide certification",
+            "PDF page 1 is the unnumbered title; PDF pages 2–58 match printed numbers",
+            "Pass covers observed literals only, never rendered compliance or real-thesis acceptance"
+          ],
+          "profile": {
+            "id": "knu-csc-2025-source",
+            "version": "1.3.0"
+          },
+          "rules": [
+            {
+              "applicableWorkTypes": [
+                "unspecified",
+                "coursework",
+                "bachelorQualification",
+                "masterQualification"
+              ],
+              "citation": {
+                "pdfPages": [
+                  18
+                ],
+                "printedPages": [
+                  18
+                ],
+                "section": "3.1"
+              },
+              "evaluationDomain": "sourceObservation",
+              "expected": "12.7 mm (1.27 cm); rendered uniformity unverified",
+              "limitations": [
+                "Finite syntax/context allowlist; no macro expansion or include resolution",
+                "Source observation only; rendered layout unverified"
+              ],
+              "origin": "knu",
+              "ruleId": "KNU-SRC-PARINDENT-001",
+              "severity": "warning",
+              "severityRationale": "Mandatory requirement, but literal source intent is not effective TeX state or rendered compliance",
+              "supportedSyntax": "Top-level unstarred setlength with parindent target and nonnegative decimal mm/cm; <=9 digits and <=3 fractional digits",
+              "version": "1.0.0"
+            },
+            {
+              "applicableWorkTypes": [
+                "unspecified",
+                "coursework",
+                "bachelorQualification",
+                "masterQualification"
+              ],
+              "citation": {
+                "pdfPages": [
+                  18,
+                  19
+                ],
+                "printedPages": [
+                  18,
+                  19
+                ],
+                "section": "3.2"
+              },
+              "evaluationDomain": "sourceObservation",
+              "expected": "No terminal U+002E in a literal heading title",
+              "limitations": [
+                "Finite syntax/context allowlist; no macro expansion or include resolution",
+                "Source observation only; rendered layout unverified"
+              ],
+              "origin": "knu",
+              "ruleId": "KNU-SRC-HEADING-DOT-001",
+              "severity": "warning",
+              "severityRationale": "Mandatory requirement, but literal source intent is not effective TeX state or rendered compliance",
+              "supportedSyntax": "Top-level chapter/section/subsection/subsubsection/paragraph/subparagraph, optional one star, immediate literal short title and literal display title",
+              "version": "1.0.0"
+            },
+            {
+              "applicableWorkTypes": [
+                "unspecified",
+                "coursework",
+                "bachelorQualification",
+                "masterQualification"
+              ],
+              "citation": {
+                "pdfPages": [
+                  18
+                ],
+                "printedPages": [
+                  18
+                ],
+                "section": "3.1"
+              },
+              "evaluationDomain": "sourceObservation",
+              "expected": "At least top/bottom 20 mm, left 25 mm, right 10 mm; no upper bound; rendered geometry unverified",
+              "limitations": [
+                "Finite syntax/context allowlist; no macro expansion or include resolution",
+                "All four explicit unique sides required; unknown packages/options, dynamic or nested syntax, duplicate imports/declarations and mixed option/command declarations are indeterminate; no precedence inference",
+                "Source observation only; rendered layout unverified; one eligible literal side may be proposed for explicit review"
+              ],
+              "origin": "knu",
+              "ruleId": "KNU-SRC-MARGINS-001",
+              "severity": "warning",
+              "severityRationale": "Mandatory minimum margins, but literal source intent is not effective TeX state or rendered compliance",
+              "supportedSyntax": "Top-level unstarred geometry with four explicit literal side options; or one preamble usepackage{geometry} followed by one geometry declaration; or one usepackage[left/right/top/bottom options]{geometry}. Same nonnegative decimal mm/cm grammar, <=9 digits, <=3 fractional digits and <=4096 argument bytes; immediate lexer-owned optional argument only",
+              "version": "1.2.0"
+            }
+          ]
+        }
+      },
+      "profile": {
+        "id": "knu-csc-2025-source",
+        "version": "1.3.0"
+      },
+      "ruleResults": [
+        {
+          "limitations": [],
+          "origin": "engine",
+          "outcome": "pass",
+          "perFile": [
+            {
+              "diagnosticIds": [],
+              "fileId": "55555555555555555555555555555555",
+              "outcome": "pass"
+            }
+          ],
+          "ruleId": "ENGINE-STRUCT-001"
+        },
+        {
+          "evidenceIds": [
+            "55555555555555555555555555555555:KNU-SRC-PARINDENT-001:137"
+          ],
+          "limitations": [
+            "Source observations only; effective TeX state and rendered compliance unverified"
+          ],
+          "origin": "knu",
+          "outcome": "indeterminate",
+          "perFile": [
+            {
+              "diagnosticIds": [],
+              "fileId": "55555555555555555555555555555555",
+              "outcome": "indeterminate"
+            }
+          ],
+          "ruleId": "KNU-SRC-PARINDENT-001",
+          "source": {
+            "applicableWorkTypes": [
+              "unspecified",
+              "coursework",
+              "bachelorQualification",
+              "masterQualification"
+            ],
+            "citation": {
+              "pdfPages": [
+                18
+              ],
+              "printedPages": [
+                18
+              ],
+              "section": "3.1"
+            },
+            "evaluationDomain": "sourceObservation",
+            "expected": "12.7 mm (1.27 cm); rendered uniformity unverified",
+            "limitations": [
+              "Finite syntax/context allowlist; no macro expansion or include resolution",
+              "Source observation only; rendered layout unverified"
+            ],
+            "origin": "knu",
+            "ruleId": "KNU-SRC-PARINDENT-001",
+            "severity": "warning",
+            "severityRationale": "Mandatory requirement, but literal source intent is not effective TeX state or rendered compliance",
+            "supportedSyntax": "Top-level unstarred setlength with parindent target and nonnegative decimal mm/cm; <=9 digits and <=3 fractional digits",
+            "version": "1.0.0"
+          }
+        },
+        {
+          "evidenceIds": [
+            "55555555555555555555555555555555:KNU-SRC-HEADING-DOT-001:173"
+          ],
+          "limitations": [
+            "Source observations only; effective TeX state and rendered compliance unverified"
+          ],
+          "origin": "knu",
+          "outcome": "indeterminate",
+          "perFile": [
+            {
+              "diagnosticIds": [],
+              "fileId": "55555555555555555555555555555555",
+              "outcome": "indeterminate"
+            }
+          ],
+          "ruleId": "KNU-SRC-HEADING-DOT-001",
+          "source": {
+            "applicableWorkTypes": [
+              "unspecified",
+              "coursework",
+              "bachelorQualification",
+              "masterQualification"
+            ],
+            "citation": {
+              "pdfPages": [
+                18,
+                19
+              ],
+              "printedPages": [
+                18,
+                19
+              ],
+              "section": "3.2"
+            },
+            "evaluationDomain": "sourceObservation",
+            "expected": "No terminal U+002E in a literal heading title",
+            "limitations": [
+              "Finite syntax/context allowlist; no macro expansion or include resolution",
+              "Source observation only; rendered layout unverified"
+            ],
+            "origin": "knu",
+            "ruleId": "KNU-SRC-HEADING-DOT-001",
+            "severity": "warning",
+            "severityRationale": "Mandatory requirement, but literal source intent is not effective TeX state or rendered compliance",
+            "supportedSyntax": "Top-level chapter/section/subsection/subsubsection/paragraph/subparagraph, optional one star, immediate literal short title and literal display title",
+            "version": "1.0.0"
+          }
+        },
+        {
+          "evidenceIds": [],
+          "limitations": [
+            "Source observations only; effective TeX state and rendered compliance unverified"
+          ],
+          "origin": "knu",
+          "outcome": "indeterminate",
+          "perFile": [
+            {
+              "diagnosticIds": [],
+              "fileId": "55555555555555555555555555555555",
+              "outcome": "indeterminate"
+            }
+          ],
+          "ruleId": "KNU-SRC-MARGINS-001",
+          "source": {
+            "applicableWorkTypes": [
+              "unspecified",
+              "coursework",
+              "bachelorQualification",
+              "masterQualification"
+            ],
+            "citation": {
+              "pdfPages": [
+                18
+              ],
+              "printedPages": [
+                18
+              ],
+              "section": "3.1"
+            },
+            "evaluationDomain": "sourceObservation",
+            "expected": "At least top/bottom 20 mm, left 25 mm, right 10 mm; no upper bound; rendered geometry unverified",
+            "limitations": [
+              "Finite syntax/context allowlist; no macro expansion or include resolution",
+              "All four explicit unique sides required; unknown packages/options, dynamic or nested syntax, duplicate imports/declarations and mixed option/command declarations are indeterminate; no precedence inference",
+              "Source observation only; rendered layout unverified; one eligible literal side may be proposed for explicit review"
+            ],
+            "origin": "knu",
+            "ruleId": "KNU-SRC-MARGINS-001",
+            "severity": "warning",
+            "severityRationale": "Mandatory minimum margins, but literal source intent is not effective TeX state or rendered compliance",
+            "supportedSyntax": "Top-level unstarred geometry with four explicit literal side options; or one preamble usepackage{geometry} followed by one geometry declaration; or one usepackage[left/right/top/bottom options]{geometry}. Same nonnegative decimal mm/cm grammar, <=9 digits, <=3 fractional digits and <=4096 argument bytes; immediate lexer-owned optional argument only",
+            "version": "1.2.0"
+          }
+        }
+      ],
+      "snapshotId": "11111111111111111111111111111111",
+      "unavailableCapabilities": [
+        "pdfFacts",
+        "pdfChecks"
+      ]
+    },
+    "protocolVersion": 1,
+    "requestId": "geometry-package-request",
+    "status": "completed"
+  },
+  "sourceHex": "efbbbf2520d0a3d0bad180d0b0d197d0bdd0b0f09f99820d0a5c646f63756d656e74636c6173737b61727469636c657d0d0a5c7573657061636b6167655b6c6566743d32306d6d2c72696768743d31306d6d2c746f703d5c782c626f74746f6d3d32306d6d5d7b67656f6d657472797d0d0a5c7365746c656e6774687b5c706172696e64656e747d7b312e3237636d7d0d0a5c626567696e7b646f63756d656e747d0d0a5c73656374696f6e7b496e74726f64756374696f6e7d0d0a506c61696e20626f647920746578742e0d0a5c656e647b646f63756d656e747d0d0a",
+  "sourceSha256": "6ffb7bbf6893c0be9e18a86c6fba65fbffdcd46d85d74de2657bc56778a49cd6"
+}

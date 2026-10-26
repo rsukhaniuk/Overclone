@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using System.Text.Json.Serialization;
 using Client.Workspace.Domain;
 
 namespace Client.Analysis;
@@ -116,9 +117,10 @@ public sealed record AnalysisSnapshot(
     ImmutableArray<CapturedFile> Files,
     ImmutableArray<ExcludedFile> Excluded,
     AnalysisConfigurationDto? Configuration = null,
-    long SelectionVersion = 0)
+    long SelectionVersion = 0,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] AnalysisReferenceConfigurationDto? ReferenceConfiguration = null)
 {
-    public AnalysisSelection Selection => new(Profile, Configuration);
+    public AnalysisSelection Selection => new(Profile, Configuration, ReferenceConfiguration);
 }
 
 /// <summary>Typed capture result. Never an untyped exception or an empty fake

@@ -53,9 +53,18 @@ public static class AnalysisJson
     /// <see cref="AnalysisRequestPacker.Pack"/>.</summary>
     public static string SerializeRequest(AnalysisRequestEnvelope envelope)
     {
-        if (!AnalysisCatalog.IsValid(envelope.Payload.Profile.Id, envelope.Payload.Profile.Version, envelope.Payload.Configuration))
+        if (!AnalysisCatalog.IsValid(envelope.Payload.Profile.Id, envelope.Payload.Profile.Version, envelope.Payload.Configuration, envelope.Payload.ReferenceConfiguration))
             throw new ArgumentException("Unknown profile/version or invalid configuration.", nameof(envelope));
+        if (envelope.Payload.Profile.Id == AnalysisCatalog.ReferenceId) ReferenceWireValidation.Request(envelope.Payload);
         return JsonSerializer.Serialize(envelope, Options);
+    }
+
+    public static AnalysisReferenceConfigurationDto ParseReferenceConfiguration(string json)
+    {
+        if (json is null || json.Length > 1024 || Encoding.UTF8.GetByteCount(json) > 1024) throw new JsonException("Invalid or oversized reference configuration.");
+        using var doc = JsonDocument.Parse(json);
+        KnuWireValidation.NoDuplicates(doc.RootElement);
+        return ReferenceWireValidation.Configuration(doc.RootElement);
     }
 
     public static AnalysisConfigurationDto ParseConfiguration(string json)
@@ -131,6 +140,9 @@ public static class AnalysisJson
         var profile = p.GetProperty("profile").Deserialize<AnalysisProfileDto>(Options)!;
         if (!AnalysisCatalog.IsKnown(profile.Id, profile.Version)) throw new JsonException("Unknown profile/version.");
         bool knu = profile.Id == AnalysisCatalog.KnuId;
+        bool references = profile.Id == AnalysisCatalog.ReferenceId;
+        if (!references && p.TryGetProperty("referenceConfiguration", out _)) throw new JsonException("Foreign reference configuration.");
+        if (references) ReferenceWireValidation.Shape(root);
         if (knu) KnuWireValidation.Shape(root);
         else if (p.TryGetProperty("configuration", out _) || p.TryGetProperty("knu", out _))
             throw new JsonException("Engine-only result cannot carry KNU data/configuration.");
@@ -196,6 +208,7 @@ public static class AnalysisJson
             }
         }
 
+        if (references) ReferenceWireValidation.Validate(payload);
         if (knu) KnuWireValidation.Validate(payload);
         else if (payload.RuleResults.Any(r => r.Source is not null || r.EvidenceIds is not null))
             throw new JsonException("Engine-only rules cannot carry normative metadata.");
@@ -481,6 +494,8 @@ public static class AnalysisRequestPacker
                 throw new InvalidOperationException($"duplicate fileId {f.FileId}");
         }
 
+        if (snapshot.Profile.Id == AnalysisCatalog.ReferenceId) ReferenceWireValidation.ValidateCapture(snapshot);
+
         // ---- all valid: allocate ONE exactly sized owned buffer and fill ----
         var packed = new byte[totalActual];
         var descriptors = new AnalysisFileDescriptorDto[files.Length];
@@ -519,7 +534,8 @@ public static class AnalysisRequestPacker
             Profile: new AnalysisProfileDto(snapshot.Profile.Id, snapshot.Profile.Version),
             Limits: limitsDto,
             Files: descriptors,
-            Configuration: snapshot.Configuration);
+            Configuration: snapshot.Configuration,
+            ReferenceConfiguration: snapshot.ReferenceConfiguration);
 
         var envelope = new AnalysisRequestEnvelope(
             ProtocolVersion: 1,

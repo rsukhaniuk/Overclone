@@ -95,10 +95,28 @@ public sealed class AnalysisSnapshotFactory : IAsyncDisposable
         long generationAtCapture = _coordinator.WorkingGeneration;
         var baseHead = _coordinator.CurrentRevision?.Id;
         long selectionVersion = _selectionVersion?.Invoke() ?? 0;
+        WorkingFile? rootAtCapture = null;
+        string? rootPath = null;
         bool Superseded() => IsSuperseded(sessionAtCapture, projectId, generationAtCapture, epochAtCapture)
             || _coordinator.CurrentRevision?.Id != baseHead
             || (_currentSelection is not null && _currentSelection() != selection)
-            || (_selectionVersion is not null && _selectionVersion() != selectionVersion);
+            || (_selectionVersion is not null && _selectionVersion() != selectionVersion)
+            || (profileVal.Id == AnalysisCatalog.ReferenceId && (rootAtCapture is null || rootAtCapture.Deleted
+                || rootAtCapture.MediaKind != "text" || rootAtCapture.RelativePath != rootPath));
+
+        if (profileVal.Id == AnalysisCatalog.ReferenceId)
+        {
+            if (_coordinator.Files.Count(f => !f.Deleted) > limits.MaxFiles)
+                return new CaptureResult.QuotaExceeded("file count exceeded the project file limit", Array.Empty<ExcludedFile>());
+            var live = _coordinator.Files.Where(f => !f.Deleted).ToArray();
+            var root = live.Where(f => f.Id.ToString() == selection.ReferenceConfiguration!.RootFileId).ToArray();
+            if (root.Length != 1 || !ReferenceChecks.CanBeRoot(root[0])
+                || live.Any(f => !ReferenceChecks.IsCanonicalPath(f.RelativePath))
+                || live.Select(f => f.RelativePath).Distinct(StringComparer.Ordinal).Count() != live.Length
+                || live.Select(f => f.Id).Distinct().Count() != live.Length)
+                return new CaptureResult.InvalidInput("Select a current project-local .tex text root; paths and IDs must be canonical and unique.", Array.Empty<ExcludedFile>());
+            rootAtCapture = root[0]; rootPath = rootAtCapture.RelativePath;
+        }
 
         // ---- pass1: preflight counts and byte lengths WITHOUT cloning/copying ----
         var excluded = new List<ExcludedFile>();
@@ -278,7 +296,8 @@ public sealed class AnalysisSnapshotFactory : IAsyncDisposable
             Files: ImmutableArray.CreateRange(captured.Where(c => c is not null).Cast<CapturedFile>()),
             Excluded: ImmutableArray.CreateRange(excluded),
             Configuration: selection.Configuration,
-            SelectionVersion: selectionVersion);
+            SelectionVersion: selectionVersion,
+            ReferenceConfiguration: selection.ReferenceConfiguration);
 
         return new CaptureResult.Captured(snapshot);
     }

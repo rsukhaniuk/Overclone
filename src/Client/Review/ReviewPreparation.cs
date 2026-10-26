@@ -13,8 +13,14 @@ internal static class ReviewPreparation
     internal static TextChangeSet? CanonicalF1(AnalysisReport report,string id,out AnalysisFixDescriptorDto? fix,out ReviewCitation? citation)
     {
         fix=null;citation=null;
-        if(id!=AnalysisCatalog.Fix||report.Snapshot.Selection.Profile!=new AnalysisProfile(AnalysisCatalog.KnuId,AnalysisCatalog.Version)
+        // Retain the historical entry name; admission now resolves any finite
+        // canonical rule-fix ID, never a caller-provided descriptor or parser.
+        if(!AnalysisCatalog.IsCanonicalFixId(id)||report.Snapshot.Selection.Profile is not
+            { Id: AnalysisCatalog.KnuId, Version: AnalysisCatalog.Version or AnalysisCatalog.LatestVersion or AnalysisCatalog.MarginFixVersion or AnalysisCatalog.GeometryPackageVersion }
             ||report.Snapshot.Configuration is null||report.Result.Knu is not{} knu)return null;
+        if(report.Result.SnapshotId!=report.Snapshot.Id.ToString()
+            ||report.Result.Profile.Id!=report.Snapshot.Profile.Id
+            ||report.Result.Profile.Version!=report.Snapshot.Profile.Version)return null;
         // Reuse adapter consistency/capture validation, not a second LaTeX or
         // length predicate. Never resolve caller-supplied descriptor objects.
         KnuWireValidation.Validate(report.Result);
@@ -23,7 +29,7 @@ internal static class ReviewPreparation
         if(fix is null)return null;
         var descriptor=fix;
         var source=report.Snapshot.Files.Single(f=>f.FileId.ToString()==descriptor.FileId);
-        var rule=knu.Metadata.Rules.Single(r=>r.RuleId==AnalysisCatalog.Indent);
+        var rule=knu.Metadata.Rules.Single(r=>r.RuleId==descriptor.RuleId);
         citation=new(rule.RuleId,rule.Version,rule.Citation.Section,
             rule.Citation.PrintedPages.ToImmutableArray(),rule.Citation.PdfPages.ToImmutableArray());
         return TextChangeSet.Own(TextPatchOrigin.Rule,fix.Explanation,

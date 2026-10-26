@@ -84,7 +84,8 @@ public sealed record AnalysisRequestPayload(
     AnalysisProfileDto Profile,
     AnalysisLimitsDto Limits,
     IReadOnlyList<AnalysisFileDescriptorDto> Files,
-    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] AnalysisConfigurationDto? Configuration = null);
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] AnalysisConfigurationDto? Configuration = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] AnalysisReferenceConfigurationDto? ReferenceConfiguration = null);
 
 public sealed record AnalysisProfileDto(string Id, string Version)
 {
@@ -137,7 +138,8 @@ public sealed record AnalysisResultDto(
     AnalysisCoverageDto Coverage,
     IReadOnlyList<string> UnavailableCapabilities,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] AnalysisConfigurationDto? Configuration = null,
-    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] AnalysisKnuDto? Knu = null);
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] AnalysisKnuDto? Knu = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] AnalysisReferenceConfigurationDto? ReferenceConfiguration = null);
 
 public sealed record AnalysisSourceFactsDto(IReadOnlyList<AnalysisSourceFileFactsDto> Files);
 
