@@ -1,0 +1,130 @@
+@using Client.Editing.Highlighting
+@using System.Globalization
+@using Microsoft.AspNetCore.Components.Rendering
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+
+<div class="source-highlighting" aria-hidden="true" @ref="_root"
+     data-testid="source-highlight-layer" data-file-id="@FileIdentity" data-revision="@Revision"
+     data-supported="@(_document.Ready ? "true" : "false")" data-highlight-fallback="@_document.Status">
+    <div class="source-highlight-gutter"><pre class="source-highlight-numbers" data-testid="source-line-numbers">@_numbers</pre></div>
+    <div class="source-highlight-viewport"><pre class="source-highlight-text" data-testid="source-highlight-text">@ColoredText</pre></div>
+    <span class="source-highlight-notice" data-testid="source-highlight-status">
+        @if (_document.Ready)
+        {
+            <span class="source-highlight-active-note">LaTeX lexical colors · line numbers</span>
+            <span class="source-highlight-plain-note">Plain text · lexical layer inactive</span>
+        }
+        else
+        {
+            <span>Plain text · @FallbackMessage</span>
+        }
+    </span>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public string Source { get; set; } = "";
+    [Parameter, EditorRequired] public string FileIdentity { get; set; } = "";
+    [Parameter, EditorRequired] public string Revision { get; set; } = "";
+    [Parameter] public bool ReadOnly { get; set; }
+    private readonly HighlightCache _cache = new();
+    private HighlightDocument _document = LatexHighlighter.Scan("");
+    private (string Text, string Class)[] _runs = Array.Empty<(string, string)>();
+    private string _numbers = "1";
+    private string? _lastFile, _lastRevision;
+    private bool _lastReadOnly, _needsRender = true, _disposed;
+    private long _intent;
+    private ElementReference _root;
+    private Task<IJSObjectReference>? _moduleTask;
+
+    private string FallbackMessage => _document.Status switch
+    {
+        HighlightStatus.TextLimit => "highlighting limit: 128 Ki UTF-16 units",
+        HighlightStatus.TokenLimit => "highlighting limit: 4,096 tokens",
+        HighlightStatus.LineLimit => "highlighting limit: 4,096 lines",
+        _ => "malformed Unicode; source is still editable"
+    };
+
+    protected override void OnParametersSet()
+    {
+        var next = _cache.Get(Source);
+        bool contentChanged = !ReferenceEquals(next, _document);
+        _needsRender = contentChanged || FileIdentity != _lastFile || Revision != _lastRevision || ReadOnly != _lastReadOnly;
+        if (!_needsRender) return;
+        _intent++;
+        _document = next;
+        _lastFile = FileIdentity; _lastRevision = Revision; _lastReadOnly = ReadOnly;
+        if (!contentChanged) return;
+        // Projection is display-only and only for bounded successful scans. No
+        // normalized content ever flows into Workspace/Coordinator persistence.
+        _runs = next.Ready ? next.Spans.Select(span => (
+            Normalize(next.Source.Substring(span.Start, span.Length)), CssClass(span.Kind))).ToArray()
+            : Array.Empty<(string, string)>();
+        _numbers = next.Ready ? string.Join("\n", Enumerable.Range(1, next.LineCount)
+            .Select(line => line.ToString(CultureInfo.InvariantCulture))) : "";
+    }
+
+    protected override bool ShouldRender() => _needsRender;
+    private static string Normalize(string text) => text.Replace("\r\n", "\n").Replace('\r', '\n');
+    private static string CssClass(LexicalKind kind) => kind switch
+    {
+        LexicalKind.Command => "source-token-command",
+        LexicalKind.Comment => "source-token-comment",
+        LexicalKind.Group => "source-token-group",
+        LexicalKind.Math => "source-token-math",
+        LexicalKind.Verbatim => "source-token-verbatim",
+        _ => "source-token-text"
+    };
+    private RenderFragment ColoredText => builder =>
+    {
+        // At most 4,096 spans, not a DOM node per character. AddContent escapes
+        // imported text, including literal HTML; no MarkupString/innerHTML.
+        foreach (var run in _runs)
+        {
+            builder.OpenElement(0, "span");
+            builder.AddAttribute(1, "class", run.Class);
+            builder.AddContent(2, run.Text);
+            builder.CloseElement();
+        }
+    };
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        long intent = _intent;
+        string file = FileIdentity, revision = Revision;
+        try
+        {
+            var task = _moduleTask ??= JS.InvokeAsync<IJSObjectReference>("import", "./js/editor-select.js").AsTask();
+            var module = await task;
+            if (_disposed || intent != _intent) return;
+            // DOM comparison and enabling are one synchronous browser call.
+            await module.InvokeVoidAsync("syncHighlight", _root, file, revision);
+        }
+        catch (JSException) { /* native textarea remains the safe fallback */ }
+        catch (OperationCanceledException) { /* page teardown */ }
+    }
+
+    public ValueTask DisposeAsync()
+    {
+        if (_disposed) return ValueTask.CompletedTask;
+        _disposed = true;
+        _intent++;
+        var task = _moduleTask;
+        _moduleTask = null;
+        // Do not block disposal on an in-flight import. Observe eventual cleanup
+        // and never attach a late module to a removed or recycled editor.
+        if (task is not null) _ = DetachLaterAsync(task, _root);
+        return ValueTask.CompletedTask;
+    }
+    private static async Task DetachLaterAsync(Task<IJSObjectReference> task, ElementReference root)
+    {
+        try
+        {
+            var module = await task;
+            try { await module.InvokeVoidAsync("detachHighlight", root); }
+            finally { await module.DisposeAsync(); }
+        }
+        catch (JSException) { /* best-effort */ }
+        catch (OperationCanceledException) { /* best-effort */ }
+    }
+}

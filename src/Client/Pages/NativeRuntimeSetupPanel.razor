@@ -1,0 +1,109 @@
+@using Client.Compilation.Provisioning
+@using Microsoft.AspNetCore.Components.Forms
+@implements IAsyncDisposable
+@inject NativeRuntimeSetupFactory Factory
+<details data-testid="local-runtime-resources">
+    <summary>Local compiler resources</summary>
+    <p>Install the supported local compiler resources from one ZIP. The multi-engine package requires ZIP installation to preserve its package paths. For earlier flat packages, select pins.json and its matching files (497, 499 with source/PDF navigation, or 507 with LaTeX/DVI). Nothing is downloaded or executed.</p>
+    <label>Resource pins (pins.json)
+        <InputFile OnChange="PinsSelected" disabled="@Busy" data-testid="runtime-pins" />
+    </label>
+    <label>Matching resource files
+        <InputFile OnChange="ResourcesSelected" multiple disabled="@Busy" data-testid="runtime-files" />
+    </label>
+    <label>Single compiler resource ZIP
+        <InputFile OnChange="ZipSelected" accept=".zip" disabled="@Busy" data-testid="runtime-zip-input" />
+    </label>
+    <button @onclick="InstallZip" disabled="@(Busy || _zip is null)" data-testid="runtime-zip-install">Verify and install ZIP</button>
+    <p>@_selection</p>
+    <button @onclick="Install" disabled="@(Busy || _pins is null || _files.Length is not (497 or 499 or 507))" data-testid="runtime-install">Verify and install resources</button>
+    <button @onclick="Recheck" disabled="@Busy" data-testid="runtime-recheck">Recheck stored resources</button>
+    <button @onclick="Cancel" disabled="@(!Busy || !_setup.CanCancel)" data-testid="runtime-cancel">Cancel preparation</button>
+    <p role="status" data-testid="runtime-status" data-state="@_setup.State" data-busy="@Busy.ToString().ToLowerInvariant()">@Status</p>
+    <p>Resources stay separate from projects and are not included in project exports or AI context. Browser storage can be evicted; keep your local package. After installation, use Check tools to verify the current supported compiler. PDF preview needs its separate supported renderer resources.</p>
+</details>
+@code {
+    private ZipRuntimeSetupSession _setup = default!;
+    private IBrowserFile? _pins;
+    private IBrowserFile[] _files = [];
+    private bool _disposed;
+    private IBrowserFile? _zip;
+    private string _selection = "No local files selected.";
+    private string? _inputError;
+    private bool Busy => _setup.Busy;
+    protected override void OnInitialized() { _setup = new(Factory.Create()); _setup.Changed += Changed; }
+    private string Status => _inputError ?? (_setup.State switch
+    {
+        RuntimeSetupState.Empty => "No resources verified in this session. Select local files to install, or recheck a previous installation.",
+        RuntimeSetupState.Preparing => $"Verifying local resource bytes… {_setup.Completed} files read.",
+        RuntimeSetupState.Finishing => "Finishing… waiting for reads or storage to settle. Publication cannot be cancelled once started.",
+        RuntimeSetupState.Installed => "Compiler resources installed. Use Check tools to verify local compilation availability.",
+        RuntimeSetupState.InvalidSelection => "Invalid resource selection. Choose the supported pins.json and exactly its 497, 499 or 507 matching files, with no duplicates or extras.",
+        RuntimeSetupState.Cancelled => "Preparation cancelled. Previous stored selection was not replaced.",
+        RuntimeSetupState.Busy => "Resource storage is busy. Close other installer tabs or wait, then recheck.",
+        RuntimeSetupState.Missing => "Stored resources are missing or incomplete. Select your local package to reinstall.",
+        RuntimeSetupState.Corrupt => "Resource bytes failed integrity verification. Select the matching local package to retry.",
+        RuntimeSetupState.Unavailable => "Runtime storage is unavailable in this browser. Use a browser with OPFS and Web Locks support.",
+        RuntimeSetupState.QuotaExceeded => "Not enough browser storage. Free storage, keep your package, then retry.",
+        RuntimeSetupState.PermissionDenied => "Browser storage permission denied. Check site permissions, then recheck.",
+        RuntimeSetupState.Uncertain => "Installation completion is uncertain. Recheck stored resources before retrying; no package or project data was deleted.",
+        _ => "Resource storage failed. Check browser storage permissions and space, then recheck."
+    });
+    private void PinsSelected(InputFileChangeEventArgs e)
+    {
+        if (Busy) return; _inputError = null;
+        if (e.FileCount != 1 || e.File.Size > LocalRuntimeSelection.MaxPinsBytes) { _pins = null; _inputError = "Choose one pins.json no larger than 256 KiB."; return; }
+        _pins = e.File; _selection = "Pins selected. Select all matching resource files from the same package.";
+    }
+    private void ResourcesSelected(InputFileChangeEventArgs e)
+    {
+        if (Busy) return; _inputError = null; _files = [];
+        if (e.FileCount is not (497 or 499 or 507)) { _inputError = "Select exactly 497, 499 or 507 matching resource files, with no extras."; return; }
+        _files = e.GetMultipleFiles(512).ToArray(); _selection = $"{_files.Length} resource files selected. Verify and install to check their bytes.";
+    }
+    private Task Install()
+    {
+        if (Busy || _pins is null) return Task.CompletedTask;
+        _inputError = null;
+        var pins = _pins;
+        var files = _files.Select(f => new LocalRuntimeFile(f.Name, f.Size, token => Read(f, LocalRuntimeSelection.Limits.MaxFileBytes, token))).ToArray();
+        return _setup.InstallManualAsync(token => Read(pins, LocalRuntimeSelection.MaxPinsBytes, token), files);
+    }
+    private void ZipSelected(InputFileChangeEventArgs e)
+    {
+        if (Busy) return;
+        _inputError = null; _zip = null;
+        if (e.FileCount != 1 || e.File.Size < 22 || e.File.Size > ZipRuntimeArchive.MaxZipBytes)
+        { _inputError = "Choose one supported compiler ZIP no larger than 256 MiB."; return; }
+        // Retain the browser descriptor only. No stream, pins read or installation.
+        _zip = e.File; _selection = "ZIP selected. Verify and install ZIP to check its pins and matching resource files.";
+    }
+    private Task InstallZip()
+    {
+        if (Busy || _zip is null) return Task.CompletedTask;
+        _inputError = null; var zip = _zip;
+        return _setup.InstallZipAsync(zip.Size, token => Task.FromResult<Stream>(zip.OpenReadStream(ZipRuntimeArchive.MaxZipBytes, token)));
+    }
+    private static async Task<byte[]> Read(IBrowserFile file, long max, CancellationToken token)
+    {
+        if (file.Size < 0 || file.Size > max) throw new IOException("Selected file exceeds resource limit.");
+        await using var stream = file.OpenReadStream(max, token);
+        var bytes = new byte[checked((int)file.Size)];
+        await stream.ReadExactlyAsync(bytes, token);
+        var extra = new byte[1]; if (await stream.ReadAsync(extra, token) != 0) throw new IOException("Selected file size changed.");
+        return bytes;
+    }
+    private Task Recheck() { _inputError = null; return _setup.RecheckAsync(); }
+    private void Cancel() => _setup.Cancel();
+    private void Changed() { if (!_disposed) _ = Render(); }
+    private async Task Render()
+    {
+        try { await InvokeAsync(() => { if (!_disposed) StateHasChanged(); }); }
+        catch (ObjectDisposedException) { }
+        catch (InvalidOperationException) when (_disposed) { }
+    }
+    public async ValueTask DisposeAsync()
+    {
+        _disposed = true; _setup.Changed -= Changed; await _setup.DisposeAsync();
+    }
+}

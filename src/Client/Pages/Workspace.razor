@@ -1,11 +1,23 @@
 @page "/"
 @inject WorkspaceCoordinator Coordinator
+@inject IWorkspaceLocks StarterLocks
+@using Client.Workspace.Starters
+@using Client.Workspace.Imports
+@using Client.Workspace.Renaming
 @inject IProjectTransfer Transfer
 @inject IArchiveExport ArchiveExport
 @inject FolderTransferService Folders
 @inject AnalysisCoordinator AnalysisCoord
 @inject SourceNavigator Navigator
 @using Client.Review
+@using Client.Editing
+@using Client.Editing.Search
+@using Client.Editing.Completion
+@using Client.Compilation.Navigation
+@using Client.Compilation.SyncTeX
+@using Client.Pdf.Preview
+@inject ISyncTeXQuery SourceMapQueries
+@inject Client.Compilation.Presentation.CompileWorkspaceSession CompileSession
 @inject IChangeReviewService ReviewService
 @inject IJSRuntime JS
 @implements IAsyncDisposable
@@ -59,11 +71,11 @@
             <div class="project-search">
                 <svg aria-hidden="true" viewBox="0 0 24 24" fill="none"><circle cx="10.5" cy="10.5" r="6.5" stroke="currentColor" stroke-width="1.8" /><path d="m16 16 4 4" stroke="currentColor" stroke-width="1.8" /></svg>
                 <label class="sr-only" for="project-search">Search projects</label>
-                <input id="project-search" type="search" @bind="_projectQuery" @bind:event="oninput"
+                <input id="project-search" type="search" @bind="_projectQuery" @bind:event="oninput" @bind:after="ProjectRenameFilterChanged" disabled="@ProjectRenameBusy"
                        placeholder="Search projects" autocomplete="off" data-testid="project-search" />
                 @if (_projectQuery.Length > 0)
                 {
-                    <button class="clear-search" @onclick='() => _projectQuery = ""' aria-label="Clear search">✕</button>
+                    <button class="clear-search" @onclick='() => { if (!ProjectRenameBusy) { _projectQuery = ""; ProjectRenameFilterChanged(); } }' disabled="@ProjectRenameBusy" aria-label="Clear search">✕</button>
                 }
             </div>
             <details class="new-project-menu" data-testid="new-project-disclosure">
@@ -72,7 +84,7 @@
                     <label for="new-project">Project name</label>
                     <input id="new-project" @bind="_newProjectName" @bind:event="oninput"
                            placeholder="Untitled project" autocomplete="off" />
-                    <button class="dashboard-primary" type="submit">Create project</button>
+                    <button class="dashboard-primary" type="submit" disabled="@ProjectRenameBusy">Create project</button>
                 </form>
             </details>
         </div>
@@ -83,11 +95,25 @@
                 <tbody>
                     @foreach (var p in displayedProjects)
                     {
-                        <tr data-testid="project-row" data-name="@p.Name">
-                            <td><button class="project-title" @onclick='() => OpenProjectAsync(p.Id)' data-testid="open-project">@p.Name</button></td>
+                        <tr @key="p.Id" data-testid="project-row" data-name="@p.Name"
+                            data-project-id="@p.Id">
+                            <td><button class="project-title" @onclick='() => OpenProjectAsync(p.Id)' data-testid="open-project" disabled="@ProjectRenameBusy">@p.Name</button></td>
                             <td class="project-storage">This device</td>
                             <td><span class="project-status">@(p.HeadRevisionId is null ? "Empty" : "Saved revision")</span></td>
-                            <td><button class="project-delete" @onclick='() => DeleteProjectAsync(p.Id)' aria-label='Delete project @p.Name'>Delete</button></td>
+                            <td>
+                                <button class="project-delete" @onclick='() => DeleteProjectAsync(p.Id)' aria-label='Delete project @p.Name' disabled="@ProjectRenameBusy">Delete</button>
+                                <button type="button" data-testid="project-rename-show" disabled="@ProjectRenameBusy" @onclick="() => ShowProjectRename(p)">Rename</button>
+                                @if (_projectRename?.CurrentProposal is { } rename && rename.Expected.Id == p.Id)
+                                {
+                                    var capturedRename = rename;
+                                    <form @onsubmit="() => ConfirmProjectRenameAsync(capturedRename)" @onsubmit:preventDefault>
+                                        <label>New project name <input data-testid="project-rename-input" @bind="_projectRenameName" @bind:event="oninput" disabled="@ProjectRenameBusy" autocomplete="off" /></label>
+                                        <p>Rename only: up to 256 Unicode scalar values, no controls or line breaks. Duplicate display names are allowed.</p>
+                                        <button type="submit" data-testid="project-rename-confirm" disabled="@ProjectRenameBusy">Confirm rename</button>
+                                        <button type="button" data-testid="project-rename-cancel" @onclick="() => CancelProjectRename(capturedRename)">Cancel</button>
+                                    </form>
+                                }
+                            </td>
                         </tr>
                     }
                     @if (displayedProjects.Length == 0)
@@ -108,6 +134,10 @@
                 </tbody>
             </table>
         </div>
+        @if (_projectRename is { } renameStatus)
+        {
+            <p role="status" data-testid="project-rename-status" data-state="@renameStatus.State.ToString().ToLowerInvariant()" data-busy="@renameStatus.Busy.ToString().ToLowerInvariant()">@renameStatus.Notice</p>
+        }
         <footer class="projects-footer">
             <span role="status" aria-live="polite" data-testid="project-count">Showing @displayedProjects.Length of @_projects.Count projects</span>
             <span>Local projects stay on this device. Export a copy for backup.</span>
@@ -117,10 +147,10 @@
             <summary>Import projects <span>ZIP or folder</span></summary>
             <div class="dashboard-import-body">
                 <label class="zip-import">Import ZIP
-                    <InputFile OnChange="OnImportZip" accept=".zip" data-testid="import-zip" />
+                    <InputFile OnChange="OnImportZip" accept=".zip" data-testid="import-zip" disabled="@ProjectRenameBusy" />
                 </label>
                 <button @onclick="OnImportFolder" data-testid="import-folder"
-                        disabled="@( !_folderCap.Picker)">Import folder</button>
+                        disabled="@(ProjectRenameBusy || !_folderCap.Picker)">Import folder</button>
             </div>
 
         @if (_staged is { } staged)
@@ -162,7 +192,7 @@
                 }
                 <div class="actions">
                     <button @onclick="PublishStagedAsync" data-testid="publish-import"
-                            disabled="@(staged.ValidationErrors.Count > 0)">Publish as new project</button>
+                            disabled="@(ProjectRenameBusy || staged.ValidationErrors.Count > 0)">Publish as new project</button>
                     <button class="muted" @onclick="CancelStaged" data-testid="cancel-import">Cancel</button>
                 </div>
             </section>
@@ -256,8 +286,22 @@ else
                 <div class="import">
                     <label for="import-file">Import file</label>
                     <InputFile id="import-file" OnChange="OnImportFile" accept=".tex,.txt,.bib,.cls,.sty,.bst,.md,.json,.yaml,.yml,.csv,image/*,application/pdf"
-                               data-testid="import-input" />
+                               data-testid="import-input" disabled="@(_singleFileImport?.Busy != false)" />
+                    @if (_singleFileImport is { } importer)
+                    {
+                        <p role="status" data-testid="single-file-import-status"
+                           data-state="@importer.State.ToString().ToLowerInvariant()"
+                           data-busy="@importer.Busy.ToString().ToLowerInvariant()">@importer.Notice</p>
+                        @if (importer.Busy)
+                        {
+                            <button type="button" data-testid="single-file-import-cancel" @onclick="importer.Cancel">Cancel import</button>
+                        }
+                    }
                 </div>
+                <details class="project-search-disclosure" data-testid="project-search-disclosure">
+                    <summary>Search project</summary>
+                    <ProjectSearchPanel OnNavigate="OnProjectSearchNavigateAsync" NavigationStatus="@_projectSearchNavigationStatus" />
+                </details>
                 <ul class="files">
                     @foreach (var f in Coordinator.Files.Where(f => !f.Deleted))
                     {
@@ -307,24 +351,96 @@ else
                                 <dt>Type</dt><dd>@(active.DurableHash is null ? "new asset" : "stored asset")</dd>
                             </dl>
                             <button @onclick="DownloadFileAsync" data-testid="download-binary">Download</button>
+                            <BinaryAssetReplacementPanel Target="@active" />
                         </div>
                     }
                     else
                     {
+                        <details class="source-tools" data-testid="source-tools" aria-busy='@(_sourceBusy ? "true" : "false")'>
+                            <summary>Source tools</summary>
+                            <div class="source-tools-controls" role="group" aria-label="Find and replace">
+                                <label for="source-query">Find</label>
+                                <input id="source-query" data-testid="source-query" @bind="_sourceQuery" @bind:event="oninput" @bind:after="SourceQueryChanged" autocomplete="off" />
+                                <label class="source-tools-case"><input type="checkbox" data-testid="source-case" @bind="_sourceCase" @bind:after="SourceQueryChanged" /> Match case</label>
+                                <button type="button" disabled="@_sourceBusy" @onclick='() => RunSourceToolAsync("previous")' data-testid="source-previous">Previous</button>
+                                <button type="button" disabled="@_sourceBusy" @onclick='() => RunSourceToolAsync("next")' data-testid="source-next">Next</button>
+                                <label for="source-replacement">Replace with</label>
+                                <input id="source-replacement" data-testid="source-replacement" @bind="_sourceReplacement" @bind:event="oninput" autocomplete="off" />
+                                <button type="button" disabled="@SourceEditsDisabled" @onclick='() => RunSourceToolAsync("replace")' data-testid="source-replace">Replace current</button>
+                                <button type="button" disabled="@SourceEditsDisabled" @onclick='() => RunSourceToolAsync("all")' data-testid="source-all">Replace all</button>
+                            </div>
+                            <div class="source-tools-controls" role="group" aria-label="Selected lines">
+                                <button type="button" disabled="@SourceEditsDisabled" @onclick='() => RunSourceToolAsync("indent")' data-testid="source-indent">Indent</button>
+                                <button type="button" disabled="@SourceEditsDisabled" @onclick='() => RunSourceToolAsync("unindent")' data-testid="source-unindent">Unindent</button>
+                                <button type="button" disabled="@SourceEditsDisabled" @onclick='() => RunSourceToolAsync("comment")' data-testid="source-comment">Toggle % comments</button>
+                                <span role="status" aria-live="polite" data-testid="source-status">@_sourceStatus</span>
+                            </div>
+                            <div class="source-tools-controls" role="group" aria-label="Explicit LaTeX command suggestions">
+                                <button type="button" disabled="@SourceEditsDisabled" data-testid="source-completion-show" @onclick="ShowCompletionsAsync">Suggest LaTeX commands</button>
+                                <span role="status" data-testid="source-completion-status" data-state="@_completionState">@CompletionNotice</span>
+                            </div>
+                            <div data-testid="source-completion-results">
+                                @if (_completions?.CurrentProposal is { } proposal && _completions.IsCurrent(proposal, _sourceIntent))
+                                {
+                                    @foreach (var command in proposal.Commands)
+                                    {
+                                        var captured = proposal;
+                                        var id = command.Id;
+                                        <button type="button" disabled="@SourceEditsDisabled" data-testid="source-completion-insert" data-command-id="@id"
+                                                title="@command.Label" @onclick="() => InsertCompletionAsync(captured, id)">Insert @("\\" + id)</button>
+                                    }
+                                    <button type="button" data-testid="source-completion-dismiss" @onclick="() => DismissCompletion(proposal)">Dismiss</button>
+                                }
+                            </div>
+                        </details>
+                        <div class="source-pdf-navigation" aria-label="Source and PDF navigation">
+                            <button type="button" data-testid="source-go-to-pdf" disabled="@(!CanMapNavigate || _syncBusy)" @onclick="GoToPdfAsync">Go to PDF</button>
+                            <span role="status" data-testid="source-map-status">@_syncStatus</span>
+                            @if (_syncResult is { } mapped && _syncNavigation.IsCurrent(mapped))
+                            {
+                                @for (int i = 0; i < mapped.Matches.Length; i++)
+                                {
+                                    int matchIndex = i;
+                                    var match = mapped.Matches[i];
+                                    <button type="button" data-testid="source-map-match" @onclick="() => ActivateSyncMatchAsync(mapped, matchIndex)">@match.File.RelativePath:@match.Line — PDF page @match.Page</button>
+                                }
+                                @if (mapped.Truncated) { <small>Additional native matches were omitted.</small> }
+                            }
+                        </div>
                         <label class="sr-only" for="editor">Source for @active.RelativePath</label>
-                        <textarea id="editor" @bind="ActiveContent" @bind:event="oninput"
-                              disabled="@Coordinator.IsReadOnly"
-                              data-file-id="@active.Id.ToString()"
-                              data-testid="editor" @ref="_editorRef" spellcheck="false"></textarea>
+                        <div class="source-editor-shell" data-testid="source-editor-shell">
+                            <SourceHighlightLayer Source="@active.Content" FileIdentity="@active.Id.ToString()"
+                                Revision="@Coordinator.WorkingGeneration.ToString(System.Globalization.CultureInfo.InvariantCulture)"
+                                ReadOnly="@Coordinator.IsReadOnly" />
+                            <textarea id="editor" @bind="ActiveContent" @bind:event="oninput"
+                                  disabled="@Coordinator.IsReadOnly"
+                                  data-file-id="@active.Id.ToString()"
+                                  data-highlight-revision="@Coordinator.WorkingGeneration.ToString(System.Globalization.CultureInfo.InvariantCulture)"
+                                  data-testid="editor" @ref="_editorRef" spellcheck="false" wrap="off"></textarea>
+                        </div>
                     }
                 }
                 else
                 {
-                    <div class="editor-empty"><span class="eyebrow">Source editor</span><h2>No file selected</h2><p>Select a project file, or use <strong>New file</strong> or <strong>Import file</strong> on the left to begin.</p></div>
+                    <div class="editor-empty">
+                        <span class="eyebrow">Source editor</span><h2>No file selected</h2>
+                        @if (_articleStarter?.Capture() is { } starter)
+                        {
+                            <p>Create an editable <code>main.tex</code> to begin. Compiling requires separately installed supported compiler resources.</p>
+                            <button type="button" data-testid="starter-article" @onclick="() => StartBlankArticle(starter)">Start a blank article</button>
+                        }
+                        <p>Select a project file, or use <strong>New file</strong> or <strong>Import file</strong> on the left to begin.</p>
+                        @if (_starterStatus is not null)
+                        {
+                            <p role="status" data-testid="starter-status">@_starterStatus</p>
+                        }
+                    </div>
                 }
             </div>
 
-            <CompilePanel />
+            <CompilePanel SourceLineRequested="OnCompilerSourceNavigateAsync" SourceNavigationStatus="@_compilerSourceStatus"
+                SourceMappingAvailable="@CanMapNavigate" SourcePointRequested="OnPdfPointAsync" MapNavigationStatus="@_syncStatus"
+                SourceMatch="@CurrentSyncMatch" SourceMatchPdfHash="@(_syncResult?.Output.OutputHash?.Hex)" />
 
         </div>
 
@@ -426,9 +542,14 @@ else
             <h2>@(AnalysisCoord.CurrentProfile.Id == AnalysisCatalog.KnuId ? "Source analysis" : "Engine analysis")</h2>
             <div class="analysis-controls">
                 <label for="analysis-profile">Analysis profile</label>
-                <select id="analysis-profile" data-testid="analysis-profile" value="@AnalysisCoord.CurrentProfile.Id" @onchange="ChangeAnalysisProfile">
+                <select id="analysis-profile" data-testid="analysis-profile" value="@AnalysisProfileValue" @onchange="ChangeAnalysisProfile">
                     <option value="engine-structural">Engine checks</option>
-                    <option value="knu-csc-2025-source">KNU CSC 2025 source observations</option>
+                    <option value="engine-source-references">Source references</option>
+                    <option value="knu-csc-2025-source">KNU CSC 2025 source observations v1.1</option>
+                    <option value="knu-csc-2025-source@1.3.0">KNU CSC 2025 source observations — geometry package v1.3</option>
+                    <option value="knu-csc-2025-source@1.4.0">KNU CSC 2025 source observations — formatting intent v1.4</option>
+                    <option value="knu-csc-2025-source@1.2.0">KNU CSC 2025 source observations — reviewable margin fixes v1.2</option>
+                    <option value="knu-csc-2025-source@1.0.0">KNU CSC 2025 source observations — legacy v1.0</option>
                 </select>
                 @if (AnalysisCoord.CurrentConfiguration is { } configuration)
                 {
@@ -438,7 +559,19 @@ else
                         { <option value="@AnalysisPresentation.WorkValue(work)">@AnalysisPresentation.WorkType(work)</option> }
                     </select>
                 }
-                <button @onclick="AnalyzeNowAsync" data-testid="analyze-now">Analyze now</button>
+                @if (AnalysisCoord.CurrentProfile.Id == AnalysisCatalog.ReferenceId)
+                {
+                    <label for="reference-root">Source-reference root (independent of compile main)</label>
+                    <select id="reference-root" data-testid="reference-root" value="@AnalysisCoord.CurrentReferenceConfiguration?.RootFileId" @onchange="ChangeReferenceRoot">
+                        @if (!HasReferenceRoot) { <option value="">Select a current .tex text root</option> }
+                        @foreach (var file in ReferenceRootFiles)
+                        { <option value="@file.Id.ToString()">@file.RelativePath</option> }
+                    </select>
+                    <p>Source scope starts at this explicit root and supported project-local literal inputs/includes. No TeX expansion, compiler or PDF measurement is performed.</p>
+                    @if (!HasReferenceRoot)
+                    { <p role="status" data-testid="reference-root-unavailable">No valid selected root. Choose a current .tex text file; analysis will not use an alternative root automatically.</p> }
+                }
+                <button @onclick="AnalyzeNowAsync" disabled="@(AnalysisCoord.CurrentProfile.Id == AnalysisCatalog.ReferenceId && !HasReferenceRoot)" data-testid="analyze-now">Analyze now</button>
                 <button @onclick="CancelAnalysis" data-testid="cancel-analysis">Cancel</button>
             </div>
             <p class="analysis-status-line @AnalysisStatusClass" role="status" aria-live="polite"
@@ -451,6 +584,8 @@ else
                         This analysis is incomplete: some files could not be fully scanned. Known findings are shown below; do not treat them as a complete check or as document correctness.
                     </p>
                 }
+                @if (report.Result.Profile.Id == AnalysisCatalog.ReferenceId)
+                { <ReferenceChecksView Report="report" /> }
                 <section class="analysis-findings" aria-label="Engine checks">
                     <h3>Engine checks</h3>
                     <p data-testid="engine-outcome">Independent lexical engine outcome: @EngineOutcome(report).</p>
@@ -466,7 +601,7 @@ else
                                 <li class="finding" data-testid="analysis-finding" data-origin="engine"
                                     data-diag-id="@d.Id" data-snapshot-id="@report.Snapshot.Id.ToString()"
                                     data-epoch="@report.WorkerEpoch">
-                                    <button class="finding-link" @onclick='() => OnFindingClickAsync(d)'
+                                    <button class="finding-link" @onclick='() => OnFindingClickAsync(report, d)'
                                             data-testid="finding-link"
                                             aria-label='Open diagnostic @d.RuleId'>
                                         <span class="finding-severity severity-@d.Severity">@d.Severity</span>
@@ -504,7 +639,7 @@ else
                     }
                 </section>
                 @if (report.Result.Knu is not null)
-                { <KnuReportView Report="report" FindingSelected="OnFindingClickAsync" FixRequested="PreviewFixAsync" ReviewWorking="@(_reviewPending || CurrentReview.Busy)" /> }
+                { <KnuReportView Report="report" FindingSelected="@(d => OnFindingClickAsync(report, d))" FixRequested="PreviewFixAsync" ReviewWorking="@(_reviewPending || CurrentReview.Busy)" /> }
             }
             @if (!string.IsNullOrEmpty(_navNotice))
             {
@@ -534,6 +669,9 @@ else
 
 @code {
     private System.Threading.CancellationTokenSource? _autosaveCts;
+    private BlankArticleStarter? _articleStarter;
+    private SingleFileImportController? _singleFileImport;
+    private string? _starterStatus;
 
     // ---- independent engine analysis (M2a-2b-2b) ----
     // The coordinator and analyzer are DI-owned scoped services (app-lifetime in
@@ -553,6 +691,29 @@ else
     // cancels the pending application before it can select.
     private NavigationResult.Selected? _pendingSelect;
     private System.Threading.CancellationToken _pendingSelectCt;
+    private ProjectSearchNavigationRequest? _pendingProjectSearch;
+    private System.Threading.CancellationToken _pendingProjectSearchCt;
+    private string? _projectSearchNavigationStatus;
+    private bool _projectSearchNavigating;
+    private CompilerSourceNavigationPolicy _compilerSource = default!;
+    private CompilerSourceNavigationPolicy.Selection? _pendingCompilerSource;
+    private System.Threading.CancellationToken _pendingCompilerSourceCt;
+    private bool _compilerSourceNavigating;
+    private CompilerSourceNavigationRequest? _compilerSourceRequest;
+    private string? _compilerSourceStatus;
+    private SyncTeXNavigationPolicy _syncNavigation = default!;
+    private SyncTeXNavigationResult? _syncResult;
+    private SyncTeXNavigationSelection? _pendingSyncSource;
+    private PdfPreviewPointer? _syncPointer;
+    private System.Threading.CancellationToken _pendingSyncSourceCt;
+    private int _syncIndex;
+    private bool _syncBusy;
+    private string _syncStatus = "Compile with source-map resources to navigate between source and PDF.";
+    private bool CanMapNavigate => !_pageDisposed && CompileSession.DisplayedOutput is { HasSourceMapPayload: true } output
+        && CompileSession.State is { IsCurrent: true, Active: null, Pending: null } state
+        && ReferenceEquals(output, state.LastSuccessful);
+    private SyncTeXMatch? CurrentSyncMatch => _syncResult is { } result && _syncNavigation.IsCurrent(result)
+        && _syncIndex >= 0 && _syncIndex < result.Matches.Length ? result.Matches[_syncIndex].Native : null;
     // One navigation intent at a time: a new click cancels the previous, and page
     // dispose cancels any in flight. Each navigation re-checks its own token after
     // every await, so a late callback cannot activate/select a stale file.
@@ -577,6 +738,294 @@ else
     /// current.</summary>
     private AnalysisReport? AnalysisCurrentReport
         => AnalysisCoord.State is AnalysisState.Completed c ? c.Report : null;
+
+    private string _sourceQuery = "", _sourceReplacement = "";
+    private bool _sourceCase;
+    private string _sourceStatus = "Literal search; selected full lines use two-space indentation.";
+    private long _sourceIntent;
+    private (SourceToolSnapshot Snapshot, SourceRange Range, System.Threading.CancellationToken Token, object Owner)? _sourceSelection;
+    // Ownership is separate from query/navigation intent: a query-only change
+    // invalidates work but its eventual finalizer must still release its busy state.
+    private object? _sourceOperation;
+    private bool _sourceBusy => _sourceOperation is not null || _completionOperation is not null;
+    private bool SourceEditsDisabled => _sourceBusy || Coordinator.IsReadOnly || Coordinator.Recovery is not null ||
+        Coordinator.ActiveFile is not { Deleted: false, MediaKind: "text" };
+
+    private void SourceQueryChanged()
+    {
+        _sourceIntent++;
+        InvalidateCompletion();
+        _sourceStatus = "Search changed; choose Next or Previous.";
+    }
+
+    private sealed class SourceDomRange
+    {
+        public SourceDomRange() { }
+        public int? Start { get; set; }
+        public int? End { get; set; }
+    }
+
+    // Completion proposals share ordinary source-edit/selection ownership, but
+    // this extra lease survives cancellation until actual interop settles.
+    private CommandCompletionSession? _completions;
+    private object? _completionOperation, _completionSelecting;
+    private CommandCompletionSession.Proposal? _completionApplied;
+    private string _completionState = "idle";
+    private string CompletionNotice => _completionState switch
+    {
+        "reading" => "Checking the current editor caret…",
+        "ready" => "Choose an explicit command insertion. Suggestions are lexical, not package or macro compatibility checks.",
+        "empty" => "No common command matches this collapsed caret at a command end.",
+        "unavailable" => "Command suggestions are unavailable for this source or editor selection.",
+        "stale" => "Suggestions or their selection are no longer current; suggest again.",
+        "applied" => "Command inserted; caret placed inside the empty braces. Ordinary autosave applies.",
+        _ => "Explicit offline suggestions only; nothing is inserted automatically."
+    };
+    private void InvalidateCompletion()
+    {
+        if (_completions?.PendingRequest is not null || _completionOperation is not null)
+            _completionState = "stale";
+        _completions?.Clear();
+    }
+    private void CompletionAuthorityChanged()
+    {
+        if (_pageDisposed || _completions?.PendingRequest is not { } request || _completions.IsCurrent(request, _sourceIntent)) return;
+        InvalidateCompletion();
+        _ = InvokeAsync(() => { if (!_pageDisposed) StateHasChanged(); }).ContinueWith(ObserveTaskFault, TaskScheduler.Default);
+    }
+    private bool CompletionOwns(object owner, System.Threading.CancellationToken ct) => !_pageDisposed
+        && !ct.IsCancellationRequested && ReferenceEquals(_completionOperation, owner) && ReferenceEquals(_sourceOperation, owner);
+    private bool CompletionCurrent(object owner, CommandCompletionSession.Request request, System.Threading.CancellationToken ct)
+    {
+        if (!CompletionOwns(owner, ct) || _completions is null || !ReferenceEquals(_completions.PendingRequest, request)) return false;
+        if (_completions.IsCurrent(request, _sourceIntent)) return true;
+        InvalidateCompletion(); return false;
+    }
+    private bool RetireCompletion(object owner)
+    {
+        if (!ReferenceEquals(_completionOperation, owner)) return false;
+        _completionOperation = null; _completionApplied = null;
+        return true;
+    }
+    private void DismissCompletion(CommandCompletionSession.Proposal proposal)
+    {
+        if (_pageDisposed || _completions?.Dismiss(proposal) != true) return;
+        _completionState = "idle";
+    }
+    private async Task ShowCompletionsAsync()
+    {
+        if (_sourceBusy || _pageDisposed || _completions is null) return;
+        var ct = NavCancelAndStart(); var owner = new object();
+        _sourceOperation = owner; _completionOperation = owner; _completionState = "reading";
+        var request = _completions.Begin(_sourceIntent);
+        try
+        {
+            if (request is null) { _completionState = "unavailable"; return; }
+            if (!CompletionCurrent(owner, request, ct)) return;
+            // None is deliberate: keep admission through the ACTUAL shared import,
+            // not the helper's per-caller cancellation WaitAsync proxy.
+            var module = await GetEditorSelectAsync(System.Threading.CancellationToken.None);
+            if (!CompletionCurrent(owner, request, ct)) return;
+            if (module is null) { _completionState = "unavailable"; _completions.Clear(); return; }
+            var snapshot = request.Snapshot;
+            var dom = await module.InvokeAsync<SourceDomRange?>("readSelection", _editorRef,
+                snapshot.File.ToString(), SourceTools.TextareaText(snapshot.Text));
+            if (!CompletionCurrent(owner, request, ct)) return;
+            if (dom is not { Start: { } start, End: { } end }) { _completionState = "unavailable"; _completions.Clear(); return; }
+            _completions.Propose(request, new(start, end), _sourceIntent, out var result);
+            _completionState = result switch { CompletionMatchState.Ready => "ready", CompletionMatchState.Empty => "empty", _ => "unavailable" };
+            if (result != CompletionMatchState.Ready) _completions.Clear();
+        }
+        catch (Exception error) when (error is JSException or System.Text.Json.JsonException or System.OperationCanceledException or ObjectDisposedException)
+        {
+            if (request is not null && CompletionCurrent(owner, request, ct)) { _completionState = "unavailable"; _completions.Clear(); }
+        }
+        finally { FinishSourceOperation(owner); RetireCompletion(owner); }
+    }
+    private async Task InsertCompletionAsync(CommandCompletionSession.Proposal proposal, string commandId)
+    {
+        if (_sourceBusy || _pageDisposed || _completions?.IsCurrent(proposal, _sourceIntent) != true || _navCts is null) return;
+        // Reuse the proposal's still-current intent/token, never recapture a new
+        // navigation/project/caret for a captured old Insert button.
+        var ct = _navCts.Token; var owner = new object(); var request = proposal.Request;
+        _sourceOperation = owner; _completionOperation = owner; _completionState = "reading";
+        try
+        {
+            if (!CompletionCurrent(owner, request, ct)) return;
+            var module = await GetEditorSelectAsync(System.Threading.CancellationToken.None);
+            if (!CompletionCurrent(owner, request, ct)) return;
+            if (module is null) { _completionState = "unavailable"; _completions.Clear(); return; }
+            var snapshot = request.Snapshot;
+            var dom = await module.InvokeAsync<SourceDomRange?>("readSelection", _editorRef,
+                snapshot.File.ToString(), SourceTools.TextareaText(snapshot.Text));
+            if (!CompletionCurrent(owner, request, ct)) return;
+            if (dom is not { Start: { } start, End: { } end } || new SourceRange(start, end) != proposal.DomCaret)
+            { InvalidateCompletion(); return; }
+            var edit = _completions.Consume(proposal, commandId, new(start, end), _sourceIntent, SourceByteBudget(snapshot));
+            if (edit is null) { _completions.Clear(); _completionState = "unavailable"; return; }
+            if (!ApplyOrdinarySourceEdit(owner, snapshot, edit, ct)) { if (CompletionOwns(owner, ct)) _completionState = "stale"; return; }
+            _completionApplied = proposal; // Consumed proposal is now post-edit selection authority only.
+        }
+        catch (Exception error) when (error is JSException or System.Text.Json.JsonException or System.OperationCanceledException or ObjectDisposedException)
+        {
+            if (CompletionCurrent(owner, request, ct)) { _completionState = "unavailable"; _completions.Clear(); }
+        }
+        finally
+        {
+            if ((_sourceSelection is not { } pending || !ReferenceEquals(pending.Owner, owner)) && !ReferenceEquals(_completionSelecting, owner))
+            { FinishSourceOperation(owner); RetireCompletion(owner); }
+            // Otherwise the actual after-render selection owns retirement.
+        }
+    }
+
+    // Conservative exact UTF-8 preflight (including BOM), shared document limits.
+    // Existing coordinator remains authoritative for writer/recovery/dirty state.
+    private long SourceByteBudget(SourceToolSnapshot snapshot)
+    {
+        if (Coordinator.Files.Count(f => !f.Deleted) > Client.Workspace.Patching.WorkspaceTextLimits.FileCount) return -1;
+        long otherBytes = 0;
+        foreach (var file in Coordinator.Files.Where(f => !f.Deleted && f.Id != snapshot.File))
+        {
+            if (file.MediaKind == "text")
+            {
+                if (!SourceTools.ValidText(file.Content, out int bytes)) return -1;
+                otherBytes += bytes + (file.HasBom ? 3 : 0);
+            }
+            else
+            {
+                long length = file.BinaryContent?.LongLength ?? file.DurableLength;
+                if (length < 0) return -1;
+                otherBytes += length;
+            }
+            if (otherBytes > Client.Workspace.Patching.WorkspaceTextLimits.ProjectBytes) return -1;
+        }
+        long bom = Coordinator.ActiveFile?.HasBom == true ? 3 : 0;
+        return Math.Min(Client.Workspace.Patching.WorkspaceTextLimits.FileBytes - bom,
+            Client.Workspace.Patching.WorkspaceTextLimits.ProjectBytes - otherBytes - bom);
+    }
+
+    private async Task RunSourceToolAsync(string action)
+    {
+        if (_sourceBusy || _pageDisposed) return;
+        var ct = NavCancelAndStart();
+        var owner = new object();
+        _sourceOperation = owner;
+        _sourceStatus = "Source action in progress…";
+        try { await ExecuteSourceToolAsync(action, ct, owner); }
+        finally
+        {
+            // A successful edit keeps ownership until post-render selection
+            // settles. An old finalizer cannot release a newer action's busy state.
+            if (_sourceSelection is not { } pending || !ReferenceEquals(pending.Owner, owner))
+                FinishSourceOperation(owner);
+        }
+    }
+
+    private async Task ExecuteSourceToolAsync(string action, System.Threading.CancellationToken ct, object owner)
+    {
+        bool editing = action is not ("next" or "previous");
+        var snapshot = SourceToolSnapshot.Capture(Coordinator, _sourceIntent);
+        string query = _sourceQuery, replacement = _sourceReplacement;
+        bool matchCase = _sourceCase;
+        if (snapshot is null || !snapshot.IsCurrent(Coordinator, _sourceIntent, editing) || _pageDisposed)
+        { _sourceStatus = "A current writable text file is required for edits."; return; }
+        if (!SourceTools.ValidText(snapshot.Text, out _))
+        { _sourceStatus = "Source is invalid or exceeds the document budget; no changes made."; return; }
+        try
+        {
+            if (!SourceOperationCurrent(owner, snapshot, ct, editing)) return;
+            var module = await GetEditorSelectAsync(ct);
+            // Cancellation/staleness takes precedence over null, which the
+            // shared-import helper also returns for per-caller cancellation.
+            if (!SourceOperationCurrent(owner, snapshot, ct, editing)) return;
+            if (module is null) { _sourceStatus = "Source selection module unavailable; reload when provisioned."; return; }
+            var dom = await module.InvokeAsync<SourceDomRange?>("readSelection", _editorRef,
+                snapshot.File.ToString(), SourceTools.TextareaText(snapshot.Text));
+            if (!SourceOperationCurrent(owner, snapshot, ct, editing)) return;
+            if (dom is not { Start: { } start, End: { } end } ||
+                !SourceTools.TryFromTextarea(snapshot.Text, new(start, end), out var selection))
+            { _sourceStatus = "Selection or source is invalid; no changes made."; return; }
+            if (!editing)
+            {
+                var matches = SourceTools.Find(snapshot.Text, selection, query, matchCase, action == "previous");
+                _sourceStatus = matches is null ? "Invalid source or search text." : $"{matches.Ordinal} of {matches.Count} matches (wrap enabled).";
+                if (matches?.Selection is { } found) await SelectSourceToolAsync(snapshot, found, true, ct, owner);
+                return;
+            }
+            long budget = SourceByteBudget(snapshot);
+            SourceEdit? edit = action switch
+            {
+                "indent" => SourceTools.Lines(snapshot.Text, selection, LineTool.Indent, budget),
+                "unindent" => SourceTools.Lines(snapshot.Text, selection, LineTool.Unindent, budget),
+                "comment" => SourceTools.Lines(snapshot.Text, selection, LineTool.ToggleComment, budget),
+                "replace" or "all" => SourceTools.Replace(snapshot.Text, selection, query, replacement, matchCase, action == "all", budget),
+                _ => null
+            };
+            if (edit is null)
+            { _sourceStatus = "No edit: select an exact match for Replace current; check text, range and size limits."; return; }
+            if (edit.Text == snapshot.Text) { _sourceStatus = "No text changes."; return; }
+            ApplyOrdinarySourceEdit(owner, snapshot, edit, ct);
+        }
+        catch (JSException)
+        {
+            if (SourceOperationCurrent(owner, snapshot, ct, editing))
+                _sourceStatus = "Source selection unavailable; no further action applied.";
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            if (SourceOperationCurrent(owner, snapshot, ct, editing))
+                _sourceStatus = "Invalid source selection response; no changes made.";
+        }
+    }
+
+    private bool ApplyOrdinarySourceEdit(object owner, SourceToolSnapshot snapshot, SourceEdit edit, System.Threading.CancellationToken ct)
+    {
+        if (!SourceOperationCurrent(owner, snapshot, ct, true)) return false;
+        // Existing ordinary edit path, shared without another autosave/commit.
+        ActiveContent = edit.Text;
+        if (Coordinator.WorkingGeneration != snapshot.Generation + 1 || Coordinator.ActiveFile is not { } active || active.Content != edit.Text)
+        { _sourceStatus = "Edit was not accepted by the workspace."; return false; }
+        var body = System.Text.Encoding.UTF8.GetBytes(edit.Text);
+        var bytes = active.HasBom ? Client.Workspace.Transfer.TextContent.Bom.Concat(body).ToArray() : body;
+        active.PendingTextBytes = Client.Workspace.Patching.ExactTextBytes.OwnPrepared(bytes);
+        _sourceSelection = (SourceToolSnapshot.Capture(Coordinator, _sourceIntent)!, edit.Selection, ct, owner);
+        _sourceStatus = "Source edited; ordinary autosave applies.";
+        return true;
+    }
+
+    private bool FinishSourceOperation(object owner)
+    {
+        if (!ReferenceEquals(_sourceOperation, owner)) return false;
+        _sourceOperation = null;
+        return true;
+    }
+
+    private bool SourceOperationCurrent(object owner, SourceToolSnapshot snapshot, System.Threading.CancellationToken ct, bool editing)
+    {
+        // Superseding navigation/query handlers own their newer notices. Only
+        // this operation may report same-intent source/revision staleness.
+        if (_pageDisposed || !ReferenceEquals(_sourceOperation, owner)
+            || ct.IsCancellationRequested || snapshot.Intent != _sourceIntent) return false;
+        if (snapshot.IsCurrent(Coordinator, _sourceIntent, editing)
+            && (!ReferenceEquals(_completionOperation, owner) || _completionApplied is null
+                || _completions?.IsPostEditCurrent(_completionApplied, snapshot, _sourceIntent) == true)) return true;
+        _sourceStatus = "Source or file changed; action discarded. Try again.";
+        return false;
+    }
+
+    private async Task<bool> SelectSourceToolAsync(SourceToolSnapshot snapshot, SourceRange range, bool finding, System.Threading.CancellationToken ct, object owner)
+    {
+        if (!SourceOperationCurrent(owner, snapshot, ct, !finding)) return false;
+        var module = await GetEditorSelectAsync(ReferenceEquals(_completionOperation, owner) ? System.Threading.CancellationToken.None : ct);
+        if (!SourceOperationCurrent(owner, snapshot, ct, !finding)) return false;
+        if (module is null) { _sourceStatus = "Source selection module unavailable; reload when provisioned."; return false; }
+        if (SourceTools.ToTextarea(snapshot.Text, range) is not { } dom) return false;
+        bool selected = await module.InvokeAsync<bool>(finding ? "trySelectForFind" : "trySelect", _editorRef,
+            snapshot.File.ToString(), SourceTools.TextareaText(snapshot.Text), dom.Start, dom.End);
+        if (!SourceOperationCurrent(owner, snapshot, ct, !finding)) return false;
+        if (!selected) _sourceStatus = "Source selection changed; action discarded. Try again.";
+        return selected;
+    }
 
     private string ActiveContent
     {
@@ -666,20 +1115,51 @@ else
         var cov = report.Result.Coverage;
         return EngineOutcome(report) == RuleOutcome.Indeterminate
             || EngineOutcome(report) == RuleOutcome.Unavailable
+            || (report.Result.Profile.Id == AnalysisCatalog.ReferenceId && report.Result.AggregateOutcome is RuleOutcome.Indeterminate or RuleOutcome.Unavailable)
             || (report.Result.Knu is null && cov.DiagnosticsTruncated) || cov.ResultTruncated
             || cov.TruncatedFiles.Count > 0
             || report.Result.Facts.Files.Any(f => f.Truncated || f.BraceDepthExceeded);
     }
 
     private static RuleOutcome EngineOutcome(AnalysisReport report)
-        => report.Result.Knu?.EngineAggregateOutcome ?? report.Result.AggregateOutcome;
+        => report.Result.Profile.Id == AnalysisCatalog.ReferenceId
+            ? report.Result.RuleResults.Single(r => r.RuleId == AnalysisCatalog.Engine).Outcome
+            : report.Result.Knu?.EngineAggregateOutcome ?? report.Result.AggregateOutcome;
+
+    private string AnalysisProfileValue => AnalysisCoord.CurrentProfile switch
+    {
+        { Id: "engine-structural", Version: "0" } => "engine-structural",
+        { Id: AnalysisCatalog.ReferenceId, Version: AnalysisCatalog.ReferenceVersion } => AnalysisCatalog.ReferenceId,
+        { Id: AnalysisCatalog.KnuId, Version: AnalysisCatalog.LatestVersion } => AnalysisCatalog.KnuId,
+        { Id: AnalysisCatalog.KnuId, Version: AnalysisCatalog.Version } => AnalysisCatalog.KnuId + "@" + AnalysisCatalog.Version,
+        { Id: AnalysisCatalog.KnuId, Version: AnalysisCatalog.MarginFixVersion } => AnalysisCatalog.KnuId + "@" + AnalysisCatalog.MarginFixVersion,
+        { Id: AnalysisCatalog.KnuId, Version: AnalysisCatalog.GeometryPackageVersion } => AnalysisCatalog.KnuId + "@" + AnalysisCatalog.GeometryPackageVersion,
+        { Id: AnalysisCatalog.KnuId, Version: AnalysisCatalog.FormattingVersion } => AnalysisCatalog.KnuId + "@" + AnalysisCatalog.FormattingVersion,
+        _ => "",
+    };
 
     private void ChangeAnalysisProfile(ChangeEventArgs e)
     {
         ClearSelectionIntent();
         if (e.Value?.ToString() == "engine-structural") AnalysisCoord.SetSelection(AnalysisSelection.EngineStructural());
-        else if (e.Value?.ToString() == AnalysisCatalog.KnuId) AnalysisCoord.SetSelection(AnalysisSelection.Knu(AnalysisWorkType.Unspecified));
+        else if (e.Value?.ToString() == AnalysisCatalog.ReferenceId)
+        {
+            var root = ReferenceChecks.DefaultRoot(Coordinator.Files, Coordinator.ActiveFile?.Id);
+            AnalysisCoord.SetSelection(AnalysisSelection.SourceReferences(root?.Id.ToString()));
+        }
+        else if (e.Value?.ToString() == AnalysisCatalog.KnuId) AnalysisCoord.SetSelection(AnalysisSelection.KnuLatest(AnalysisWorkType.Unspecified));
+        else if (e.Value?.ToString() == AnalysisCatalog.KnuId + "@" + AnalysisCatalog.Version) AnalysisCoord.SetSelection(AnalysisSelection.Knu(AnalysisWorkType.Unspecified));
+        else if (e.Value?.ToString() == AnalysisCatalog.KnuId + "@" + AnalysisCatalog.MarginFixVersion) AnalysisCoord.SetSelection(AnalysisSelection.KnuWithMarginFixes(AnalysisWorkType.Unspecified));
+        else if (e.Value?.ToString() == AnalysisCatalog.KnuId + "@" + AnalysisCatalog.GeometryPackageVersion) AnalysisCoord.SetSelection(AnalysisSelection.KnuWithGeometryPackage(AnalysisWorkType.Unspecified));
+        else if (e.Value?.ToString() == AnalysisCatalog.KnuId + "@" + AnalysisCatalog.FormattingVersion) AnalysisCoord.SetSelection(AnalysisSelection.KnuWithFormatting(AnalysisWorkType.Unspecified));
         else AnalysisCoord.SetSelection(default);
+    }
+    private IEnumerable<WorkingFile> ReferenceRootFiles => Coordinator.Files.Where(ReferenceChecks.CanBeRoot);
+    private bool HasReferenceRoot => ReferenceRootFiles.Any(f => f.Id.ToString() == AnalysisCoord.CurrentReferenceConfiguration?.RootFileId);
+    private void ChangeReferenceRoot(ChangeEventArgs e)
+    {
+        ClearSelectionIntent();
+        AnalysisCoord.SetSelection(AnalysisSelection.SourceReferences(e.Value?.ToString()));
     }
     private void ChangeWorkType(ChangeEventArgs e)
     {
@@ -689,11 +1169,12 @@ else
             "bachelorQualification" => AnalysisWorkType.BachelorQualification,
             "masterQualification" => AnalysisWorkType.MasterQualification, _ => (AnalysisWorkType)(-1),
         };
-        AnalysisCoord.SetSelection(AnalysisSelection.Knu(work));
+        AnalysisCoord.SetSelection(new AnalysisSelection(AnalysisCoord.CurrentProfile, new(work)));
     }
     private void ClearSelectionIntent()
     {
-        _navCts?.Cancel(); _pendingSelect = null; _navNotice = null;
+        CancelSelectionIntents();
+        _navNotice = null;
     }
 
     private static string FileLabel(AnalysisReport report, string fileId)
@@ -729,9 +1210,20 @@ else
 
     protected override async Task OnInitializedAsync()
     {
+        _articleStarter = new(Coordinator, StarterLocks);
+        _projectRename = new(Coordinator, action => InvokeAsync(action));
+        _projectRename.Changed += ProjectRenameChanged;
+        _completions = new(Coordinator, StarterLocks);
+        Coordinator.WorkspaceChanged += CompletionAuthorityChanged;
+        _singleFileImport = new(Coordinator, StarterLocks, action => InvokeAsync(action), selected: SelectFile);
+        _singleFileImport.Changed += SingleFileImportChanged;
         // Subscribe BEFORE the first await so no coordinator Changed event is
         // missed. The handler marshals through InvokeAsync and reads the
         // CURRENT coordinator.State (never a stale event argument).
+        _compilerSource = new(Coordinator, CompileSession);
+        _syncNavigation = new(Coordinator, CompileSession, SourceMapQueries);
+        Coordinator.WorkspaceChanged += CompilerSourceAuthorityChanged;
+        CompileSession.Changed += CompilerSourceAuthorityChanged;
         AnalysisCoord.Changed += OnAnalysisChanged;
         ReviewService.Changed += OnReviewChanged;
         _reviewSession = Coordinator.SessionId;
@@ -827,6 +1319,50 @@ else
         // not bump generation, so this never invalidates the report. The pending
         // selection carries the navigation intent token; a newer click or page
         // dispose cancels it before the (possibly stale) application runs.
+        if (_sourceSelection is { } sourceSelection)
+        {
+            _sourceSelection = null;
+            bool completion = ReferenceEquals(_completionOperation, sourceSelection.Owner);
+            if (completion) _completionSelecting = sourceSelection.Owner;
+            try
+            {
+                bool selected = await SelectSourceToolAsync(sourceSelection.Snapshot, sourceSelection.Range, false, sourceSelection.Token, sourceSelection.Owner);
+                if (completion && CompletionOwns(sourceSelection.Owner, sourceSelection.Token) && sourceSelection.Snapshot.Intent == _sourceIntent)
+                    _completionState = selected ? "applied" : "stale";
+            }
+            catch (Exception error) when (error is JSException || completion && error is (System.Text.Json.JsonException or System.OperationCanceledException or ObjectDisposedException))
+            {
+                if (SourceOperationCurrent(sourceSelection.Owner, sourceSelection.Snapshot, sourceSelection.Token, true))
+                {
+                    _sourceStatus = "Text edited; selection could not be restored.";
+                    if (completion) _completionState = "stale";
+                }
+            }
+            finally
+            {
+                if (ReferenceEquals(_completionSelecting, sourceSelection.Owner)) _completionSelecting = null;
+                bool finished = FinishSourceOperation(sourceSelection.Owner);
+                bool retired = RetireCompletion(sourceSelection.Owner);
+                // A superseded operation may only release its own admission;
+                // current view still needs the now-enabled controls rendered.
+                if ((finished || retired) && !_pageDisposed) StateHasChanged();
+            }
+        }
+        if (_pendingCompilerSource is { } compilerSource)
+        {
+            _pendingCompilerSource = null;
+            await ApplyCompilerSourceSelectionAsync(compilerSource, _pendingCompilerSourceCt);
+        }
+        if (_pendingSyncSource is { } mappedSource)
+        {
+            _pendingSyncSource = null;
+            await ApplySyncSourceAsync(mappedSource, _pendingSyncSourceCt);
+        }
+        if (_pendingProjectSearch is { } search)
+        {
+            _pendingProjectSearch = null;
+            await ApplyProjectSearchSelectionAsync(search, _pendingProjectSearchCt);
+        }
         if (_pendingSelect is { } sel && Coordinator.ActiveFileId == sel.FileId)
         {
             _pendingSelect = null;
@@ -848,15 +1384,48 @@ else
             await InvokeAsync(StateHasChanged);
     }
 
+    private ProjectRenameSession? _projectRename;
+    private string _projectRenameName = "";
+    private long _projectCatalogIntent;
+    private bool ProjectRenameBusy => _projectRename?.Busy ?? Coordinator.ProjectRenameBusy;
+    private void ProjectRenameFilterChanged() => _projectRename?.TryOtherAction();
+    private void ShowProjectRename(Project project)
+    {
+        if (!_pageDisposed && _projectRename?.Show(project) == true)
+        { ++_projectCatalogIntent; _projectRenameName = project.Name; }
+    }
+    private void CancelProjectRename(ProjectRenameSession.Proposal proposal) => _projectRename?.Cancel(proposal);
+    private async Task ConfirmProjectRenameAsync(ProjectRenameSession.Proposal proposal)
+    {
+        if (_pageDisposed || _projectRename is null) return;
+        await _projectRename.ConfirmAsync(proposal, _projectRenameName);
+        if (!_pageDisposed && !ProjectRenameBusy && _projectRename.CurrentProposal is null && _projectRename.ScopeCurrent(proposal))
+        {
+            try { await RefreshProjectsAsync(); }
+            catch (Exception e) when (e is not OutOfMemoryException) { _projectRename.CatalogRefreshFailed(proposal); }
+        }
+    }
+    private void ProjectRenameChanged()
+    {
+        if (_pageDisposed) return;
+        _ = InvokeAsync(() => { if (!_pageDisposed) StateHasChanged(); }).ContinueWith(ObserveTaskFault, TaskScheduler.Default);
+    }
+
     private async Task RefreshProjectsAsync()
     {
-        _projects = (await Coordinator.ListProjectsAsync(System.Threading.CancellationToken.None)).ToList();
+        if (_projectRename?.TryOtherAction() == false) return;
+        var intent = ++_projectCatalogIntent; var session = Coordinator.SessionId;
+        var projects = await Coordinator.ListProjectsAsync(System.Threading.CancellationToken.None);
+        if (!_pageDisposed && intent == _projectCatalogIntent && session == Coordinator.SessionId && !ProjectRenameBusy)
+            _projects = projects.ToList();
     }
 
     private async Task CreateProjectAsync()
     {
+        if (_projectRename?.TryOtherAction() == false) return;
         var name = string.IsNullOrWhiteSpace(_newProjectName) ? "Untitled" : _newProjectName.Trim();
         var p = await Coordinator.CreateProjectAsync(name, System.Threading.CancellationToken.None);
+        if (_projectRename?.TryOtherAction() == false) return;
         await Coordinator.OpenAsync(p.Id, System.Threading.CancellationToken.None);
         _newProjectName = "";
         await LoadHistoryAsync(first: true);
@@ -865,6 +1434,7 @@ else
 
     private async Task OpenProjectAsync(ProjectId id)
     {
+        if (_projectRename?.TryOtherAction() == false) return;
         await Coordinator.OpenAsync(id, System.Threading.CancellationToken.None);
         _history.Clear();
         _historyNextCursor = null;
@@ -877,6 +1447,7 @@ else
 
     private async Task DeleteProjectAsync(ProjectId id)
     {
+        if (_projectRename?.TryOtherAction() == false) return;
         await Coordinator.DeleteProjectAsync(id, System.Threading.CancellationToken.None);
         await RefreshProjectsAsync();
         StateHasChanged();
@@ -924,6 +1495,26 @@ else
         StateHasChanged();
     }
 
+    private void StartBlankArticle(BlankArticleStarter.Request request)
+    {
+        if (_pageDisposed) return;
+        // Use the render-captured request, never recapture on this click. On a
+        // refusal, do not clear navigation or alter any source/tree/save state.
+        if (_articleStarter?.TryStart(request) != true)
+        {
+            _starterStatus = "Starter no longer available. Use New file or Import file to continue.";
+            return;
+        }
+        // CreateFile already selected main.tex. Reuse ordinary intent
+        // invalidation and the existing autosave notification, not another
+        // selection, direct save/commit, or a starter-specific timer.
+        ClearSelectionIntent();
+        SourceQueryChanged();
+        _starterStatus = null;
+        ScheduleAutosave();
+        StateHasChanged();
+    }
+
     private void CreateFile()
     {
         var name = string.IsNullOrWhiteSpace(_newFileName) ? "main.tex" : _newFileName.Trim();
@@ -951,6 +1542,11 @@ else
 
     private void SelectFile(FileId id)
     {
+        bool sourceWasBusy = _sourceBusy;
+        CancelSelectionIntents();
+        // Keep the explicit cancellation notice for the interrupted action.
+        // A later tree click with no active operation owns its normal file notice.
+        if (!sourceWasBusy) SourceQueryChanged();
         Coordinator.SelectFile(id);
         StateHasChanged();
     }
@@ -964,34 +1560,29 @@ else
         await module.DisposeAsync();
     }
 
-    private async Task OnImportFile(InputFileChangeEventArgs e)
+    private Task OnImportFile(InputFileChangeEventArgs e)
     {
-        // Byte-aware single-file import: route through the same model as ZIP, so
-        // adding an asset does not require building a ZIP first. Exact bytes are
-        // retained for an unedited import (BOM/CRLF preserved).
+        if (_pageDisposed || _singleFileImport is null) return Task.CompletedTask;
         var file = e.File;
-        await using var stream = file.OpenReadStream(maxAllowedSize: ArchiveLimits.SingleFile);
-        using var ms = new System.IO.MemoryStream();
-        await stream.CopyToAsync(ms);
-        var bytes = ms.ToArray();
-        var name = string.IsNullOrWhiteSpace(file.Name) ? "imported.tex" : file.Name.Trim();
-        if (Coordinator.CreateFileFromBytes(name, bytes))
-        {
-            SelectFile(Coordinator.Files.Last().Id);
-            StateHasChanged();
-        }
-        else
-        {
-            _transferStatus = "Import failed: " + (Coordinator.LastError ?? "invalid file");
-            _transferOk = false;
-            StateHasChanged();
-        }
+        // Controller captures project/session BEFORE invoking the opener. The
+        // coordinator's additive command already selects the exact created ID.
+        return _singleFileImport.ImportAsync(file.Name, file.Size,
+            ct => new ValueTask<System.IO.Stream>(file.OpenReadStream(maxAllowedSize: ArchiveLimits.SingleFile, cancellationToken: ct)));
+    }
+
+    private void SingleFileImportChanged()
+    {
+        if (_pageDisposed) return;
+        // View-only notification may originate in a borrowed compile context.
+        // No capturing async await; all view work remains on the renderer.
+        _ = InvokeAsync(() => { if (!_pageDisposed) StateHasChanged(); }).ContinueWith(ObserveTaskFault, TaskScheduler.Default);
     }
 
     // ---- ZIP import ----
 
     private async Task OnImportZip(InputFileChangeEventArgs e)
     {
+        if (_projectRename?.TryOtherAction() == false) return;
         var file = e.File;
         await using var stream = file.OpenReadStream(maxAllowedSize: ArchiveLimits.ZipInputSize);
         using var ms = new System.IO.MemoryStream();
@@ -1010,6 +1601,7 @@ else
 
     private async Task OnImportFolder()
     {
+        if (_projectRename?.TryOtherAction() == false) return;
         // Picker must be invoked from a user gesture before unrelated awaits;
         // FolderTransferService calls showDirectoryPicker as its first await.
         var result = await Folders.StageImportFromFolderAsync("Imported project", System.Threading.CancellationToken.None);
@@ -1032,6 +1624,7 @@ else
 
     private async Task PublishStagedAsync()
     {
+        if (_projectRename?.TryOtherAction() == false) return;
         if (_staged is null) return;
         var result = await Coordinator.PublishImportAsync(_staged, _stagedName, System.Threading.CancellationToken.None);
         if (result.Published && result.Project is { } p && result.Head is { } head)
@@ -1043,6 +1636,7 @@ else
             _transferOk = true;
             await RefreshProjectsAsync();
             // Opening the result follows successful persistence.
+            if (_projectRename?.TryOtherAction() == false) return;
             await Coordinator.OpenAsync(p.Id, System.Threading.CancellationToken.None);
             await LoadHistoryAsync(first: true);
         }
@@ -1196,27 +1790,380 @@ else
     private void CancelAnalysis()
     {
         _navNotice = null;
-        _pendingSelect = null;
-        _navCts?.Cancel();
+        CancelSelectionIntents();
         AnalysisCoord.Cancel();
+    }
+
+    // A single competing navigation seam for tree, analysis, source tools and
+    // project search. Clearing pending renders is as important as cancellation:
+    // an older deferred selection must never run under a newer click's render.
+    private void CancelSelectionIntents()
+    {
+        _sourceIntent++;
+        InvalidateCompletion();
+        // A deferred selection not yet started owns no foreign work. Once the
+        // after-render callback starts it clears this slot and owns retirement.
+        if (_sourceSelection is { } deferred && ReferenceEquals(deferred.Owner, _completionOperation))
+            RetireCompletion(deferred.Owner);
+        // Revoke ownership BEFORE cancellation can resume an old continuation.
+        // Its catch/finally may no longer repaint status or clear newer busy work.
+        if (_sourceOperation is not null)
+        {
+            _sourceOperation = null;
+            _sourceStatus = "Source action superseded; action discarded. Try again.";
+        }
+        _pendingSelect = null;
+        _pendingProjectSearch = null;
+        _pendingCompilerSource = null;
+        _pendingSyncSource = null;
+        if (_syncBusy) _syncStatus = "Source/PDF navigation superseded by another action.";
+        _syncBusy = false; _syncResult = null; _syncPointer = null;
+        if (_compilerSourceNavigating)
+            _compilerSourceStatus = "Compiler source navigation superseded by another action.";
+        _compilerSourceNavigating = false;
+        _compilerSourceRequest = null;
+        _sourceSelection = null;
+        if (_projectSearchNavigating)
+            _projectSearchNavigationStatus = "Search navigation superseded by another action.";
+        _projectSearchNavigating = false;
+        var navigation = _navCts;
+        _navCts = null;
+        navigation?.Cancel();
+        navigation?.Dispose();
     }
 
     private System.Threading.CancellationToken NavCancelAndStart()
     {
-        // Cancel any in-flight navigation intent (an older click still awaiting
-        // the worker epoch or DOM module) before starting a new one, so the
-        // older callback cannot later activate/select a stale file.
-        _navCts?.Cancel();
-        _navCts?.Dispose();
+        CancelSelectionIntents();
         _navCts = new System.Threading.CancellationTokenSource();
         return _navCts.Token;
     }
 
-    private async Task OnFindingClickAsync(AnalysisEngineDiagnosticDto diag)
+    private void CompilerSourceAuthorityChanged()
     {
-        if (AnalysisCurrentReport is not { } report)
+        if (!_pageDisposed && _syncBusy && (!CanMapNavigate || _syncPointer is { } point && !SyncPointerCurrent(point))) CancelSelectionIntents();
+        if (!_pageDisposed && _syncResult is { } mapped && !_syncNavigation.IsCurrent(mapped))
         {
-            _navNotice = "Run analysis to see this diagnostic.";
+            _syncResult = null; _pendingSyncSource = null;
+            _syncStatus = "Source or compilation changed. Compile again before navigating.";
+            _ = InvokeAsync(() => { if (!_pageDisposed) StateHasChanged(); }).ContinueWith(ObserveTaskFault, TaskScheduler.Default);
+        }
+        if (_pageDisposed || _compilerSourceRequest is not { } request || _compilerSource.IsCurrent(request)) return;
+        if (_compilerSourceNavigating) CancelSelectionIntents();
+        _compilerSourceRequest = null;
+        _compilerSourceStatus = "Compiler attempt, selection or source changed; line navigation is stale. Compile again.";
+        _ = InvokeAsync(() => { if (!_pageDisposed) StateHasChanged(); }).ContinueWith(ObserveTaskFault, TaskScheduler.Default);
+    }
+
+    private bool CompilerSourceIntentCurrent(System.Threading.CancellationToken ct) =>
+        !_pageDisposed && !ct.IsCancellationRequested && _navCts is not null && _navCts.Token == ct;
+
+    private bool SyncPointerCurrent(PdfPreviewPointer point)
+    {
+        var view = CompileSession.Preview.State;
+        return view.Status == PdfPreviewStatus.Available && view.Frame is not null
+            && point.Generation == view.Generation && point.DocumentSha256 == view.DocumentSha256 && point.PageIndex == view.PageIndex;
+    }
+    private bool SyncIntentCurrent(System.Threading.CancellationToken ct) => CompilerSourceIntentCurrent(ct)
+        && (_syncPointer is null || SyncPointerCurrent(_syncPointer));
+    private void SyncNotice(System.Threading.CancellationToken ct, string message)
+    {
+        if (!CompilerSourceIntentCurrent(ct)) return;
+        _syncBusy = false; _syncStatus = message; StateHasChanged();
+    }
+    private async Task GoToPdfAsync()
+    {
+        if (!CanMapNavigate || _syncBusy || Coordinator.ActiveFile is not { MediaKind: "text" } file) return;
+        var output = CompileSession.DisplayedOutput;
+        var content = file.Content;
+        var ct = NavCancelAndStart(); _syncBusy = true; _syncStatus = "Locating source in PDF…";
+        try
+        {
+            var module = await GetEditorSelectAsync(ct);
+            if (!SyncIntentCurrent(ct)) return;
+            if (module is null || !ReferenceEquals(Coordinator.ActiveFile, file) || file.Content != content
+                || !ReferenceEquals(output, CompileSession.DisplayedOutput) || !CanMapNavigate)
+            { SyncNotice(ct, "Source or PDF changed. Compile again before navigating."); return; }
+            var dom = await module.InvokeAsync<SourceDomRange?>("readSelection", _editorRef, file.Id.ToString(), SourceTools.TextareaText(content));
+            if (!SyncIntentCurrent(ct)) return;
+            if (dom?.Start is not { } caret || !ReferenceEquals(Coordinator.ActiveFile, file) || file.Content != content
+                || !ReferenceEquals(output, CompileSession.DisplayedOutput)
+                || !SourceTools.TryFromTextarea(content, new(caret, caret), out var source))
+            { SyncNotice(ct, "Editor text no longer matches the compiled source. Compile again."); return; }
+            var result = await _syncNavigation.ForwardAsync(file.Id, source.Start, ct);
+            if (!SyncIntentCurrent(ct)) return;
+            if (result is null || !_syncNavigation.IsCurrent(result, ct))
+            { SyncNotice(ct, "No current source location is available. Check source-map resources or compile again."); return; }
+            _syncResult = result; _syncBusy = false;
+            await ActivateSyncMatchAsync(result, 0);
+        }
+        catch (Exception error) when (error is JSException or System.OperationCanceledException or ObjectDisposedException)
+        { SyncNotice(ct, "Source/PDF navigation could not finish. Retry when ready."); }
+    }
+    private async Task OnPdfPointAsync(PdfPreviewPointer point)
+    {
+        if (!CanMapNavigate || !SyncPointerCurrent(point) || CompileSession.Preview.State.PageGeometry is not { } geometry
+            || CompileSession.Preview.State.DocumentSha256 != CompileSession.DisplayedOutput?.OutputHash?.Hex) return;
+        var location = SyncTeXDisplayGeometry.Inverse(geometry, point.X, point.Y);
+        if (location is null) { _syncStatus = "Source navigation is unavailable for this page geometry."; return; }
+        var ct = NavCancelAndStart(); _syncPointer = point; _syncBusy = true; _syncStatus = "Locating PDF position in source…";
+        var result = await _syncNavigation.InverseAsync(point.PageIndex + 1, location.H, location.V, ct);
+        if (!SyncIntentCurrent(ct)) return;
+        if (result is null || !_syncNavigation.IsCurrent(result, ct))
+        { SyncNotice(ct, "No captured source line is available at that PDF position."); return; }
+        _syncResult = result;
+        await ActivateSyncMatchAsync(result, 0);
+    }
+    private async Task ActivateSyncMatchAsync(SyncTeXNavigationResult result, int index)
+    {
+        if (_navCts is null || !ReferenceEquals(result, _syncResult) || !_syncNavigation.IsCurrent(result, _navCts.Token)
+            || index < 0 || index >= result.Matches.Length) return;
+        var ct = _navCts.Token; var match = result.Matches[index]; var view = CompileSession.Preview.State;
+        if (!SyncIntentCurrent(ct) || match.Page > view.PageCount || view.DocumentSha256 != result.Output.OutputHash?.Hex)
+        { SyncNotice(ct, "PDF preview changed or is still loading. Retry when ready."); return; }
+        _syncIndex = index;
+        if (result.Direction == SyncTeXDirection.Forward)
+        {
+            if (!_syncNavigation.IsCurrent(result, ct) || !CompileSession.Preview.GoToPage(match.Page))
+            { SyncNotice(ct, "PDF location is no longer available."); return; }
+            SyncNotice(ct, $"PDF page {match.Page}, native source line {match.File.RelativePath}:{match.Line}. Choose another match if needed.");
+            return;
+        }
+        var selection = await _syncNavigation.PrepareSourceAsync(result, index, ct);
+        if (!SyncIntentCurrent(ct)) return;
+        if (selection is null || !_syncNavigation.IsCurrent(selection, ct))
+        { SyncNotice(ct, "Captured source changed. Compile again before navigating."); return; }
+        if (Coordinator.ActiveFileId == selection.File.FileId) { await ApplySyncSourceAsync(selection, ct); return; }
+        if (!_syncNavigation.IsCurrent(selection, ct) || !Coordinator.SelectFile(selection.File.FileId))
+        { SyncNotice(ct, "Captured source file is unavailable."); return; }
+        if (!SyncIntentCurrent(ct) || !_syncNavigation.IsCurrent(selection, ct, requireActiveFile: true)) return;
+        _pendingSyncSource = selection; _pendingSyncSourceCt = ct; StateHasChanged();
+    }
+    private async Task ApplySyncSourceAsync(SyncTeXNavigationSelection selection, System.Threading.CancellationToken ct)
+    {
+        if (!SyncIntentCurrent(ct) || !_syncNavigation.IsCurrent(selection, ct, requireActiveFile: true)) return;
+        var module = await GetEditorSelectAsync(ct);
+        if (!SyncIntentCurrent(ct)) return;
+        if (module is null || !_syncNavigation.IsCurrent(selection, ct, requireActiveFile: true))
+        { SyncNotice(ct, "Source selection is unavailable or stale."); return; }
+        var verified = await _syncNavigation.PrepareSourceAsync(selection.Result, selection.Result.Matches.IndexOf(selection.Match), ct);
+        if (!SyncIntentCurrent(ct)) return;
+        if (verified is null || !_syncNavigation.IsCurrent(verified, ct, requireActiveFile: true))
+        { SyncNotice(ct, "Source preimage changed. Selection discarded."); return; }
+        try
+        {
+            bool selected = await module.InvokeAsync<bool>("trySelectForFind", _editorRef, verified.File.FileId.ToString(),
+                verified.ExpectedTextareaText, verified.TextareaRange.Start, verified.TextareaRange.End);
+            if (!SyncIntentCurrent(ct)) return;
+            if (!_syncNavigation.IsCurrent(verified, ct, requireActiveFile: true) || !selected)
+            { SyncNotice(ct, "Editor file or text changed. Selection discarded."); return; }
+            SyncNotice(ct, $"Selected {verified.File.RelativePath}:{verified.Match.Line} (native line-level precision).");
+        }
+        catch (JSException) { SyncNotice(ct, "Could not select the source line. Retry when ready."); }
+    }
+
+    private void RejectCompilerSource(System.Threading.CancellationToken ct, string status)
+    {
+        if (!CompilerSourceIntentCurrent(ct)) return; // A newer intent owns its notice.
+        _compilerSourceNavigating = false;
+        _compilerSourceStatus = status;
+        StateHasChanged();
+    }
+
+    private async Task OnCompilerSourceNavigateAsync(CompilerSourceNavigationRequest request)
+    {
+        if (_pageDisposed) return;
+        var ct = NavCancelAndStart();
+        _compilerSourceNavigating = true;
+        _compilerSourceRequest = request;
+        _compilerSourceStatus = "Selecting captured compiler source line…";
+        var selection = await _compilerSource.PrepareAsync(request, ct);
+        if (!CompilerSourceIntentCurrent(ct)) return;
+        if (selection is null || !_compilerSource.IsCurrent(selection, ct))
+        { RejectCompilerSource(ct, "Compiler attempt or source is stale/unavailable; compile again."); return; }
+        if (Coordinator.ActiveFileId == request.File.FileId)
+        {
+            // Already active: never rerender away a DOM-only value mismatch.
+            await ApplyCompilerSourceSelectionAsync(selection, ct);
+            return;
+        }
+        // Validated authority, never a path/file-ID alleged by UI or a PDF.
+        if (!_compilerSource.IsCurrent(selection, ct) || !Coordinator.SelectFile(request.File.FileId))
+        { RejectCompilerSource(ct, "Compiler source file is no longer available; compile again."); return; }
+        if (!CompilerSourceIntentCurrent(ct)) return;
+        if (!_compilerSource.IsCurrent(selection, ct, requireActiveFile: true))
+        { RejectCompilerSource(ct, "Compiler source changed before render; compile again."); return; }
+        _pendingCompilerSource = selection;
+        _pendingCompilerSourceCt = ct;
+        StateHasChanged(); // OnAfterRenderAsync applies to the actual target textarea.
+    }
+
+    private async Task ApplyCompilerSourceSelectionAsync(CompilerSourceNavigationPolicy.Selection selection,
+        System.Threading.CancellationToken ct)
+    {
+        if (!CompilerSourceIntentCurrent(ct)) return;
+        if (!_compilerSource.IsCurrent(selection, ct, requireActiveFile: true))
+        { RejectCompilerSource(ct, "Compiler attempt or source is stale; compile again."); return; }
+        var module = await GetEditorSelectAsync(ct);
+        if (!CompilerSourceIntentCurrent(ct)) return;
+        if (!_compilerSource.IsCurrent(selection, ct, requireActiveFile: true))
+        { RejectCompilerSource(ct, "Compiler attempt or source changed; selection discarded."); return; }
+        if (module is null)
+        { RejectCompilerSource(ct, "Source selection module unavailable; try again when provisioned."); return; }
+        // Re-materialize exact bytes after the render/import await, not merely
+        // a file hash allegation. The centralized policy checks after this IO.
+        var verified = await _compilerSource.PrepareAsync(selection.Request, ct);
+        if (!CompilerSourceIntentCurrent(ct)) return;
+        if (verified is null || !_compilerSource.IsCurrent(verified, ct, requireActiveFile: true))
+        { RejectCompilerSource(ct, "Compiler source preimage changed; selection discarded."); return; }
+        try
+        {
+            // Final synchronous authority/file/preimage check immediately above
+            // the existing atomic expected-file/full-value DOM comparison.
+            // Read-only find is allowed; this never unlocks or edits text.
+            bool selected = await module.InvokeAsync<bool>("trySelectForFind", _editorRef,
+                verified.Request.File.FileId.ToString(), verified.ExpectedTextareaText,
+                verified.TextareaRange.Start, verified.TextareaRange.End);
+            if (!CompilerSourceIntentCurrent(ct)) return;
+            if (!_compilerSource.IsCurrent(verified, ct, requireActiveFile: true))
+            { RejectCompilerSource(ct, "Compiler attempt or source changed; selection discarded."); return; }
+            if (!selected)
+            { RejectCompilerSource(ct, "Editor file or text does not match the compiler source; selection rejected."); return; }
+            _compilerSourceNavigating = false;
+            _compilerSourceStatus = $"Selected {verified.Request.File.RelativePath}:{verified.Request.Location.Line} (line-level precision).";
+            StateHasChanged();
+        }
+        catch (JSException)
+        { RejectCompilerSource(ct, "Could not select compiler source line; no source was changed."); }
+    }
+
+    private bool ProjectSearchCurrent(ProjectSearchNavigationRequest request, System.Threading.CancellationToken ct)
+        => !_pageDisposed && !ct.IsCancellationRequested && _navCts is not null && _navCts.Token == ct
+            && request.IsCurrent && request.ProjectId == Coordinator.Project?.Id
+            && request.SessionId == Coordinator.SessionId
+            && request.WorkingGeneration == Coordinator.WorkingGeneration;
+
+    private void RejectProjectSearchNavigation(System.Threading.CancellationToken ct, string notice)
+    {
+        // A superseded callback must not overwrite the newer intent's status.
+        if (_pageDisposed || ct.IsCancellationRequested || _navCts is null || _navCts.Token != ct) return;
+        _projectSearchNavigating = false;
+        _projectSearchNavigationStatus = notice;
+        StateHasChanged();
+    }
+
+    private async Task OnProjectSearchNavigateAsync(ProjectSearchNavigationRequest request)
+    {
+        if (_pageDisposed) return;
+        var ct = NavCancelAndStart();
+        _projectSearchNavigating = true;
+        _projectSearchNavigationStatus = "Selecting search result…";
+        if (!ProjectSearchCurrent(request, ct))
+        {
+            RejectProjectSearchNavigation(ct, "Search result is stale. Search again.");
+            return;
+        }
+        if (Coordinator.ActiveFileId == request.FileId)
+        {
+            // Do not force a render before the atomic DOM value comparison: it
+            // could conceal a DOM-only mismatch in the already-active file.
+            await ApplyProjectSearchSelectionAsync(request, ct);
+            if (!ProjectSearchCurrent(request, ct))
+                RejectProjectSearchNavigation(ct, "Search result is stale. Search again.");
+            return;
+        }
+        // Active-file changes are not source mutations and do not invalidate the
+        // listing. Only this validated request may supply the target identity.
+        if (!ProjectSearchCurrent(request, ct) || !Coordinator.SelectFile(request.FileId))
+        {
+            RejectProjectSearchNavigation(ct, "Search target is no longer available. Search again.");
+            return;
+        }
+        if (!ProjectSearchCurrent(request, ct))
+        {
+            RejectProjectSearchNavigation(ct, "Search result is stale. Search again.");
+            return;
+        }
+        _pendingProjectSearch = request;
+        _pendingProjectSearchCt = ct;
+        StateHasChanged();
+    }
+
+    private async Task ApplyProjectSearchSelectionAsync(ProjectSearchNavigationRequest request, System.Threading.CancellationToken ct)
+    {
+        if (!ProjectSearchCurrent(request, ct))
+        {
+            RejectProjectSearchNavigation(ct, "Search result is stale. Search again.");
+            return;
+        }
+        var module = await GetEditorSelectAsync(ct);
+        if (!ProjectSearchCurrent(request, ct))
+        {
+            RejectProjectSearchNavigation(ct, "Search result is stale. Search again.");
+            return;
+        }
+        if (module is null)
+        {
+            RejectProjectSearchNavigation(ct, "Search selection module unavailable. Try again when provisioned.");
+            return;
+        }
+        if (Coordinator.ActiveFile is not { MediaKind: "text", Deleted: false } file || file.Id != request.FileId)
+        {
+            RejectProjectSearchNavigation(ct, "Search target is not the active text file. Search again.");
+            return;
+        }
+        var source = file.Content;
+        var range = SourceTools.ToTextarea(source, new(request.Start, request.End));
+        if (range is not { } dom)
+        {
+            RejectProjectSearchNavigation(ct, "Search source range is no longer selectable. Search again.");
+            return;
+        }
+        var expected = SourceTools.TextareaText(source);
+        // Final synchronous identity/preimage/intent check, immediately before
+        // the existing DOM-only atomic file/value/range guard. Read-only find is
+        // allowed; analysis navigation continues to use the stricter trySelect.
+        if (!ProjectSearchCurrent(request, ct) || Coordinator.ActiveFileId != request.FileId)
+        {
+            RejectProjectSearchNavigation(ct, "Search target changed. Search again.");
+            return;
+        }
+        try
+        {
+            bool selected = await module.InvokeAsync<bool>("trySelectForFind", _editorRef,
+                request.FileId.ToString(), expected, dom.Start, dom.End);
+            if (!ProjectSearchCurrent(request, ct))
+            {
+                RejectProjectSearchNavigation(ct, "Search result is stale. Search again.");
+                return;
+            }
+            if (Coordinator.ActiveFileId != request.FileId || !selected)
+            {
+                RejectProjectSearchNavigation(ct, "Editor file or text no longer matches this search result; selection rejected. Search again.");
+                return;
+            }
+            _projectSearchNavigating = false;
+            _projectSearchNavigationStatus = $"Selected {request.RelativePath}, line {request.Line}, column {request.Column}.";
+            StateHasChanged();
+        }
+        catch (JSException)
+        {
+            if (!ProjectSearchCurrent(request, ct))
+            {
+                RejectProjectSearchNavigation(ct, "Search result is stale. Search again.");
+                return;
+            }
+            RejectProjectSearchNavigation(ct, "Could not select search result; no source was changed.");
+        }
+    }
+
+    private async Task OnFindingClickAsync(AnalysisReport report, AnalysisEngineDiagnosticDto diag)
+    {
+        // The rendered action owns THIS report; a stable diagnostic ID must not
+        // retarget an old click to a newer root/profile/snapshot after A->B->A.
+        if (!ReferenceEquals(AnalysisCurrentReport, report))
+        {
+            _navNotice = "This analysis is no longer current; run analysis again.";
             StateHasChanged();
             return;
         }
@@ -1246,6 +2193,7 @@ else
                 {
                     // Switch files: SelectFile + render, then OnAfterRenderAsync
                     // applies the selection once the target textarea has rendered.
+                    SourceQueryChanged();
                     if (!Coordinator.SelectFile(s.FileId))
                     {
                         if (!ct.IsCancellationRequested && !_pageDisposed)
@@ -1394,22 +2342,28 @@ else
     {
         if (_pageDisposed) return; // idempotent
         _pageDisposed = true;
+        _articleStarter?.Dispose();
+        if (_projectRename is { } rename) { rename.Changed -= ProjectRenameChanged; rename.Dispose(); }
+        Coordinator.WorkspaceChanged -= CompletionAuthorityChanged;
+        _completions?.Dispose();
+        if (_singleFileImport is { } importer) { importer.Changed -= SingleFileImportChanged; importer.Dispose(); }
         // 1. SYNCHRONOUS, bounded teardown FIRST: unsubscribe events and
         //    cancel analysis/nav/autosave, and release owned refs — BEFORE any
         //    await that could be unbounded (a blocked editor-module import).
         //    Never dispose the injected AnalysisCoordinator/ISourceAnalyzer:
         //    DI owns them (scoped = app lifetime in WASM); returning to this
         //    page must reuse the same coordinator.
+        Coordinator.WorkspaceChanged -= CompilerSourceAuthorityChanged;
+        CompileSession.Changed -= CompilerSourceAuthorityChanged;
+        _compilerSource.Dispose();
+        _syncNavigation.Dispose();
         AnalysisCoord.Changed -= OnAnalysisChanged;
         ReviewService.Changed -= OnReviewChanged;
         _reviewIntent++;
         _reviewCts?.Cancel();
         ReviewService.Cancel(); // cancel page work, never dispose the scoped service or erase accepted recovery
         AnalysisCoord.Cancel();
-        _pendingSelect = null;
-        _navCts?.Cancel();
-        _navCts?.Dispose();
-        _navCts = null;
+        CancelSelectionIntents();
         CancelAutosave();
         // Unsubscribe the readiness callback BEFORE disposing the DotNet ref
         // (so no .NET callback fires after the ref is gone). The JS glue

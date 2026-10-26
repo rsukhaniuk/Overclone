@@ -2,6 +2,10 @@
 <html lang="en">
     <head>
         <meta charset="utf-8" />
+        <meta
+            http-equiv="Content-Security-Policy"
+            content="default-src 'none'; base-uri 'self'; object-src 'none'; form-action 'none'; script-src 'self' 'wasm-unsafe-eval' 'sha256-aBOCgVIoIAnLbejteKFklEJCdvob+Q/PNaSFnQGRHTo=' https://accounts.google.com/gsi/client https://apis.google.com; script-src-attr 'none'; worker-src 'self' blob:; style-src 'self'; style-src-elem 'self' https://accounts.google.com/gsi/style; style-src-attr 'unsafe-inline'; img-src 'self'; font-src 'self'; media-src 'none'; manifest-src 'self'; connect-src 'self' http://localhost:11434 http://127.0.0.1:11434 https://generativelanguage.googleapis.com https://api.anthropic.com https://www.googleapis.com https://accounts.google.com/gsi/ https://apis.google.com; frame-src https://accounts.google.com https://apis.google.com https://docs.google.com"
+        />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <base href="/" />
         <title>Document workspace</title>
@@ -18,7 +22,10 @@
     </head>
     <body>
         <div id="app">Loading workspace…</div>
-        <script src="_framework/blazor.webassembly.js?v=v9" autostart="false"></script>
+        <script
+            src="_framework/blazor.webassembly.js?v=v10"
+            autostart="false"
+        ></script>
         <script>
             // Bound framework fetch admission through the supported runtime builder.
             let appStartupSucceeded = false;
@@ -27,7 +34,7 @@
                 // Version both entry points so an older active worker cannot
                 // combine its cached runtime config with the new application.
                 loadBootResource: (type, name, defaultUri) =>
-                    type === "dotnetjs" ? `${defaultUri}?v=v9` : undefined,
+                    type === "dotnetjs" ? `${defaultUri}?v=v10` : undefined,
                 configureRuntime: (builder) =>
                     builder.withConfig({ maxParallelDownloads: 8 }),
             }).then(() => {
@@ -98,20 +105,53 @@
                     if (!controller) return;
                     const urls = (
                         performance.getEntriesByType("resource") || []
-                    )
-                        .map((e) => e.name)
-                        .filter(
-                            (u) =>
-                                new URL(u, location.href).origin ===
-                                location.origin,
-                        )
-                        .map((u) => {
-                            const url = new URL(u, location.href);
-                            const versionedBoot =
-                                url.pathname === "/_framework/blazor.webassembly.js" ||
-                                url.pathname === "/_framework/dotnet.js";
-                            return url.pathname + (versionedBoot ? url.search : "");
-                        });
+                    ).flatMap((entry) => {
+                        try {
+                            const url = new URL(entry.name, location.href);
+                            if (
+                                url.origin !== location.origin ||
+                                url.username ||
+                                url.password
+                            )
+                                return [];
+                            // Only public build assets, never document/API/provider
+                            // responses. Query-bearing resources must additionally be
+                            // known framework JS with the exact current shell version.
+                            const publicAsset =
+                                /^\/_framework\/[A-Za-z0-9_.-]+\.(?:js|wasm|json|dat|blat|pdb)$/.test(
+                                    url.pathname,
+                                ) ||
+                                /^\/js\/[A-Za-z0-9_-]+\.js$/.test(
+                                    url.pathname,
+                                ) ||
+                                /^\/(?:rust|native)-generated\/[A-Za-z0-9_.-]+\.(?:js|mjs|wasm)$/.test(
+                                    url.pathname,
+                                ) ||
+                                /^\/icons\/icon-(?:192|512)\.png$/.test(
+                                    url.pathname,
+                                ) ||
+                                [
+                                    "/",
+                                    "/index.html",
+                                    "/app.css",
+                                    "/manifest.json",
+                                ].includes(url.pathname);
+                            if (!publicAsset) return [];
+                            if (url.search || url.href.includes("?")) {
+                                // Both stable and fingerprinted runtime/native module
+                                // names inherit the boot version at cold startup.
+                                const frameworkJs =
+                                    /^\/_framework\/(?:blazor\.webassembly|dotnet(?:\.(?:runtime|native))?)(?:\.[A-Za-z0-9_-]+)?\.js$/.test(
+                                        url.pathname,
+                                    );
+                                if (!frameworkJs || url.search !== "?v=v10")
+                                    return [];
+                            }
+                            return [url.pathname + url.search];
+                        } catch {
+                            return []; // Malformed performance entries cannot broaden warming.
+                        }
+                    });
                     // Include the document itself and core shell assets.
                     const set = new Set([
                         "/",
@@ -171,7 +211,10 @@
                     const data = event.data;
                     if (!data) return;
                     if (data.type === "activated") onActivated();
-                    else if (data.type === "warm-result" && appStartupSucceeded) {
+                    else if (
+                        data.type === "warm-result" &&
+                        appStartupSucceeded
+                    ) {
                         window.__oopOfflineReady = !!data.ready;
                         window.__oopOfflineReadiness = data.ready
                             ? "ready"
@@ -187,7 +230,9 @@
 
                 window.addEventListener("load", () => {
                     navigator.serviceWorker
-                        .register("/service-worker.js")
+                        .register("/service-worker.js", {
+                            updateViaCache: "none",
+                        })
                         .then((reg) => {
                             reg.addEventListener("updatefound", () => {
                                 const installing = reg.installing;
@@ -215,7 +260,10 @@
                                 onActivated();
                             // A previously installed update may already be waiting
                             // when this page opens; updatefound will not fire again.
-                            if (reg.waiting && navigator.serviceWorker.controller)
+                            if (
+                                reg.waiting &&
+                                navigator.serviceWorker.controller
+                            )
                                 showUpdateBanner(reg);
                         })
                         .catch((error) => {

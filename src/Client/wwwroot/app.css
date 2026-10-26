@@ -156,6 +156,7 @@ dd { margin: 0; overflow-wrap: anywhere; }
 .pdf-surface canvas { display: block; }
 .pdf-highlights { position: absolute; inset: 0; pointer-events: none; }
 .pdf-highlight { position: absolute; background: #ffbe0059; outline: 1px solid #bd7600; }
+.pdf-source-highlight { background: #2495e438; outline: 2px solid #1875b6; }
 .pdf-limit-note { display: flex; align-items: center; gap: 8px; padding: 8px 12px; }
 .pdf-preview > details { padding: 7px 12px; background: #f5f7f5; font-size: 11px; border-top: 1px solid var(--line); }
 .pdf-preview details code, .pdf-preview details p { overflow-wrap: anywhere; }
@@ -368,4 +369,160 @@ body:has(.project-dashboard) .update-banner { position: fixed; inset: auto 20px 
     .integration-panel fieldset input, .integration-panel fieldset select { width: 100%; }
     dl { grid-template-columns: minmax(0,1fr); }
     .pdf-scroll { padding: 10px; }
+}
+
+/* Source tools stay in the existing source pane; no editor DOM replacement. */
+.source-tools {
+    min-width: 0;
+    max-width: 100%;
+    padding: 7px 12px;
+    border-bottom: 1px solid var(--line);
+    font-size: 12px;
+}
+.source-tools > summary {
+    cursor: pointer;
+    font-weight: 600;
+}
+.source-tools-controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    margin-top: 8px;
+    min-width: 0;
+}
+.source-tools-controls > input {
+    flex: 1 1 100px;
+    width: 120px;
+    max-width: 100%;
+}
+.source-tools-controls button {
+    white-space: normal;
+}
+.source-tools-case {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+.source-tools [role="status"] {
+    flex: 1 1 160px;
+    overflow-wrap: anywhere;
+}
+@media (max-width: 600px) {
+    .source-tools {
+        padding-inline: 8px;
+    }
+    .source-tools-controls > input {
+        flex-basis: 100%;
+        width: 100%;
+    }
+}
+
+/* Project search is confined to its file-tree disclosure. */
+.project-search-disclosure {
+    min-width: 0;
+    max-width: 100%;
+    padding: 8px;
+    border-bottom: 1px solid var(--line);
+    font-size: 12px;
+    overflow-wrap: anywhere;
+}
+.project-search-disclosure > summary {
+    cursor: pointer;
+    font-weight: 600;
+}
+.project-search-disclosure section {
+    display: grid;
+    gap: 8px;
+    min-width: 0;
+    padding-top: 8px;
+}
+.project-search-disclosure label {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+}
+.project-search-disclosure label:has(input[type="checkbox"]) {
+    flex-direction: row;
+    align-items: center;
+}
+.project-search-disclosure input[type="text"] {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+.project-search-disclosure button {
+    min-width: 0;
+    max-width: 100%;
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
+.project-search-disclosure p {
+    margin: 0;
+}
+.project-search-disclosure [data-testid="project-search-results"] {
+    min-width: 0;
+    max-height: 18rem;
+    overflow-y: auto;
+    overflow-x: hidden;
+    overscroll-behavior: contain;
+    margin: 0;
+    padding: 0 0 0 22px;
+}
+.project-search-disclosure li {
+    min-width: 0;
+    margin: 4px 0;
+}
+.project-search-disclosure [data-testid="project-search-result"] {
+    display: block;
+    width: 100%;
+    text-align: left;
+}
+.project-search-disclosure span,
+.project-search-disclosure code {
+    display: block;
+    min-width: 0;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+@media (max-width: 600px) {
+    .project-search-disclosure [data-testid="project-search-results"] {
+        max-height: 12rem;
+    }
+}
+
+/* Source highlighting: scoped progressive decoration; textarea remains authority. */
+.source-editor-shell { --source-gutter: 4rem; --source-footer: 22px; --source-pad-y: 20px; --source-pad-x: 12px; flex: 1; position: relative; min-width: 0; min-height: 0; overflow: hidden; background: #fff; }
+.source-editor-shell #editor { position: absolute; left: var(--source-gutter); top: 0; width: calc(100% - var(--source-gutter)); height: calc(100% - var(--source-footer)); min-height: 0; box-sizing: border-box; overflow: auto; padding: var(--source-pad-y) var(--source-pad-x); font: 13px/1.75 var(--mono); letter-spacing: normal; font-variant-ligatures: none; font-kerning: none; tab-size: 4; white-space: pre; text-align: left; direction: ltr; unicode-bidi: plaintext; }
+.source-highlighting { position: absolute; inset: 0; pointer-events: none; user-select: none; overflow: hidden; }
+.source-editor-shell .source-highlight-text, .source-editor-shell .source-highlight-numbers { margin: 0; border: 0; box-sizing: border-box; font: 13px/1.75 var(--mono); letter-spacing: normal; font-variant-ligatures: none; font-kerning: none; tab-size: 4; white-space: pre; text-align: left; direction: ltr; unicode-bidi: plaintext; }
+.source-highlight-viewport { position: absolute; top: 0; left: var(--source-gutter); right: 0; bottom: var(--source-footer); overflow: hidden; visibility: hidden; }
+.source-editor-shell .source-highlight-text { position: absolute; top: 0; left: 0; min-width: 100%; width: max-content; padding: var(--source-pad-y) var(--source-pad-x); color: #293a35; }
+.source-editor-shell .source-highlight-text::after { content: "\200b"; }
+.source-highlight-gutter { position: absolute; left: 0; top: 0; width: var(--source-gutter); bottom: var(--source-footer); overflow: hidden; visibility: hidden; border-right: 1px solid var(--line); background: #f5f7f4; }
+.source-editor-shell .source-highlight-numbers { padding: var(--source-pad-y) 8px; text-align: right; color: #5d6b61; }
+.source-highlighting[data-aligned="true"] .source-highlight-gutter { visibility: visible; }
+.source-highlighting[data-ready="true"][data-supported="true"] .source-highlight-viewport { visibility: visible; }
+.source-editor-shell > .source-highlighting[data-ready="true"][data-supported="true"] ~ #editor:not(:disabled) { color: transparent; background: transparent; }
+.source-editor-shell #editor::selection { color: #16392a; -webkit-text-fill-color: #16392a; background: #cfe8d8; }
+.source-editor-shell .source-token-command { color: #2858a8; }
+.source-editor-shell .source-token-comment { color: #466c44; }
+.source-editor-shell .source-token-group { color: #964e1c; }
+.source-editor-shell .source-token-math { color: #873a87; }
+.source-editor-shell .source-token-verbatim { color: #61644c; }
+.source-highlight-notice { position: absolute; left: 0; right: 0; bottom: 0; height: var(--source-footer); padding: 2px 8px; border-top: 1px solid var(--line); background: #f5f7f4; color: #536459; font-size: 11px; line-height: 17px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.source-highlight-active-note { display: none; }
+.source-highlighting[data-ready="true"] .source-highlight-active-note { display: inline; }
+.source-highlighting[data-ready="true"] .source-highlight-plain-note { display: none; }
+@media (max-width: 1100px) { .source-editor-shell { min-height: 420px; } }
+@media (max-width: 600px) { .source-editor-shell { --source-gutter: 3.5rem; --source-pad-y: 16px; --source-pad-x: 14px; min-height: 400px; } }
+@media (forced-colors: active) {
+    .source-editor-shell #editor { color: CanvasText !important; -webkit-text-fill-color: CanvasText !important; background: Canvas !important; }
+    .source-editor-shell #editor::selection { color: HighlightText; -webkit-text-fill-color: HighlightText; background: Highlight; }
+    .source-editor-shell .source-highlight-viewport, .source-editor-shell .source-highlight-active-note { display: none !important; }
+    .source-editor-shell .source-highlight-plain-note { display: inline !important; }
+    .source-editor-shell .source-highlight-numbers { color: CanvasText; }
+    .source-editor-shell .source-highlight-gutter, .source-editor-shell .source-highlight-notice { color: CanvasText; background: Canvas; }
 }

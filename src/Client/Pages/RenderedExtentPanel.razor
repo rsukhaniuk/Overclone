@@ -1,0 +1,156 @@
+@using System.Globalization
+@using Client.Analysis.RenderedExtent
+@using Client.Compilation.Presentation
+@using Client.Workspace
+@implements IDisposable
+@inject WorkspaceCoordinator Workspace
+@inject CompileWorkspaceSession Compile
+@inject IJSRuntime JS
+<details class="tool-disclosure" data-testid="rendered-extent-panel">
+    <summary>Rendered diploma checks</summary>
+    <div class="tool-content">
+        <p>Explicit local observation of total pages in the current compiled PDF. KNU Faculty of Computer Science and Cybernetics, 2025; not a university-wide or overall compliance check.</p>
+        <label>Work type
+            <select data-testid="rendered-extent-work-type" value="@_controller.WorkType" @onchange="WorkTypeChanged">
+                <option value="unspecified">Unspecified</option>
+                <option value="coursework">Coursework</option>
+                <option value="bachelorQualification">Bachelor qualification</option>
+                <option value="masterQualification">Master qualification</option>
+            </select>
+        </label>
+        <label><input type="checkbox" data-testid="rendered-section-enable" checked="@(_controller.Sections is not null)" @onchange="SectionsChanged" /> Use page ranges I identify in this PDF</label>
+        @if (_controller.Sections is not null)
+        {
+            <fieldset data-testid="rendered-section-ranges">
+                <legend>User-labelled PDF pages (one-based, inclusive)</legend>
+                <p>Identify these ranges from the current PDF. Labels are your input; the app does not verify that they identify the correct structural parts. Leave an unknown range blank.</p>
+                <label>Introduction, first page <input type="number" min="1" max="512" data-testid="section-intro-start" @bind="_introStart" @bind:after="UpdateSections" /></label>
+                <label>Introduction, last page <input type="number" min="1" max="512" data-testid="section-intro-end" @bind="_introEnd" @bind:after="UpdateSections" /></label>
+                <label>Main body, first page <input type="number" min="1" max="512" data-testid="section-body-start" @bind="_bodyStart" @bind:after="UpdateSections" /></label>
+                <label>Main body, last page <input type="number" min="1" max="512" data-testid="section-body-end" @bind="_bodyEnd" @bind:after="UpdateSections" /></label>
+                <label>Conclusions, first page <input type="number" min="1" max="512" data-testid="section-conclusions-start" @bind="_conclusionsStart" @bind:after="UpdateSections" /></label>
+                <label>Conclusions, last page <input type="number" min="1" max="512" data-testid="section-conclusions-end" @bind="_conclusionsEnd" @bind:after="UpdateSections" /></label>
+                <label>Appendices begin on page <input type="number" min="1" max="512" data-testid="section-appendix-start" @bind="_appendixStart" @bind:after="UpdateSections" /></label>
+                <label><input type="checkbox" data-testid="section-no-appendices" @bind="_noAppendices" @bind:after="UpdateSections" /> I confirm this PDF has no appendices</label>
+                <p>If neither appendix option is supplied, non-appendix length remains unknown. Complete both ends of each supplied range, in order, without overlaps.</p>
+                @if (!_controller.SectionRangesCurrent)
+                { <p role="status" data-testid="section-ranges-stale">These labels are not confirmed for the current PDF. Review them after compiling.</p> }
+                <button type="button" data-testid="section-ranges-confirm" @onclick="UpdateSections">Confirm these ranges for the current PDF</button>
+            </fieldset>
+        }
+        <button type="button" data-testid="rendered-extent-check" @onclick="Check" disabled="@(!_controller.CanCheck)">Check current PDF</button>
+        <button type="button" data-testid="rendered-extent-cancel" @onclick="Cancel" disabled="@(!_controller.CanCancel)">Cancel</button>
+        <p role="status" data-testid="rendered-extent-status" data-state="@_controller.State" data-busy="@_controller.Busy.ToString().ToLowerInvariant()">@_controller.Notice</p>
+        @if (_controller.Busy && !_controller.CanCancel)
+        {
+            <p>Finishing actual inspection/evaluation. A new check cannot start until it settles.</p>
+        }
+        @if (_controller.Report is { } report)
+        {
+            var observation = report.Observation;
+            <section aria-label="Limited rendered length observation" data-testid="rendered-extent-result"
+                data-status="@observation.Status" data-current="@_controller.ReportCurrent.ToString().ToLowerInvariant()"
+                data-pdf-sha256="@observation.Request.PdfSha256" data-page-count="@observation.Request.PageCount.ToString(CultureInfo.InvariantCulture)"
+                data-work-type="@observation.Request.WorkType" data-profile-version="@observation.ProfileVersion"
+                data-reason="@observation.Reason" data-usual-minimum="@Number(observation.UsualMinimum)" data-usual-maximum="@Number(observation.UsualMaximum)">
+                <h3>Limited usual-length observation</h3>
+                @if (!_controller.ReportCurrent) { <p>Previous observation — stale. Check the current PDF again.</p> }
+                <p>Total PDF pages: @observation.Request.PageCount.ToString(CultureInfo.InvariantCulture). Work type: @WorkTypeLabel(observation.Request.WorkType).</p>
+                <p data-testid="rendered-extent-reason">@Reason(observation.Reason)</p>
+                <p data-testid="rendered-extent-range">@Range(observation)</p>
+                @if (observation.Sections is { } sections)
+                {
+                    <p>Pages before user-marked appendices: @Number(observation.NonAppendixPages). These observations depend on your page labels.</p>
+                    @foreach (var item in new[] { ("Introduction", sections.Introduction), ("Main body", sections.MainBody), ("Conclusions", sections.Conclusions) })
+                    {
+                        <p data-testid="rendered-section-result" data-rule-id="@item.Item2.RuleId" data-status="@item.Item2.Status"
+                           data-pages="@Number(item.Item2.Pages)" data-minimum="@Number(item.Item2.Minimum)" data-maximum="@Number(item.Item2.Maximum)">
+                            @item.Item1: @Number(item.Item2.Pages) pages; @SectionStatus(item.Item2.Status).
+                            @if (item.Item2.Minimum is { } minimum) { <span>Minimum: @minimum pages.</span> }
+                            @if (item.Item2.Maximum is { } maximum) { <span>Maximum: @maximum pages.</span> }
+                        </p>
+                    }
+                }
+                <p><a data-testid="rendered-extent-citation" href="@RenderedExtentContract.SourceUrl">KNU CSC 2025, §2, p. 11</a></p>
+                <p data-testid="rendered-extent-coverage">@(observation.Sections is null ? RenderedExtentContract.Coverage : "PDF total measured by the renderer; section and appendix labels supplied by you. Structural correctness, physical layout and overall compliance are not assessed.")</p>
+                <p>A below-usual-minimum observation needs review; it is not a hard standards failure. No automatic source edits or fixes are offered.</p>
+                <details><summary>Measurement evidence</summary>
+                    <p>PDF SHA256: @report.Evidence.PdfSha256; bytes: @report.Evidence.PdfBytes.</p>
+                    <p>Compile request: @report.Evidence.CompileRequestId; epoch: @report.Evidence.CompileEpoch; capture: @report.Evidence.CaptureId.</p>
+                    <p>Input digest: @report.Evidence.InputDigest.</p>
+                    <p>Native inspection request: @report.Evidence.InspectionRequestId; epoch: @report.Evidence.InspectionEpoch.</p>
+                    <p>Inspector loader SHA256: @report.Evidence.Runtime.LoaderSha256; WASM SHA256: @report.Evidence.Runtime.WasmSha256.</p>
+                    <p>Local extent evaluation epoch: @report.Evidence.EvaluationEpoch; profile: @RenderedExtentContract.ProfileId @observation.ProfileVersion.</p>
+                </details>
+            </section>
+        }
+    </div>
+</details>
+@code {
+    private RenderedExtentController _controller = default!;
+    private bool _disposed;
+    private int? _introStart, _introEnd, _bodyStart, _bodyEnd, _conclusionsStart, _conclusionsEnd, _appendixStart;
+    private bool _noAppendices;
+    protected override void OnInitialized()
+    {
+        _controller = new(Workspace, Compile, new RustRenderedExtentEvaluator(JS), action => InvokeAsync(action));
+        _controller.Changed += Changed;
+    }
+    private Task Check() => _controller.CheckAsync();
+    private void Cancel() => _controller.Cancel();
+    private void WorkTypeChanged(ChangeEventArgs args) => _controller.SelectWorkType(args.Value?.ToString() ?? "");
+    private void SectionsChanged(ChangeEventArgs args)
+    {
+        if (args.Value is true)
+        {
+            _introStart = _introEnd = _bodyStart = _bodyEnd = _conclusionsStart = _conclusionsEnd = _appendixStart = null;
+            _noAppendices = false; UpdateSections();
+        }
+        else _controller.SelectSections(null);
+    }
+    private void UpdateSections()
+    {
+        static RenderedPageRange? Range(int? start, int? end) => start is null && end is null ? null : new(start ?? 0, end ?? 0);
+        _controller.SelectSections(new(Range(_introStart, _introEnd), Range(_bodyStart, _bodyEnd),
+            Range(_conclusionsStart, _conclusionsEnd), _appendixStart, _noAppendices));
+    }
+    private void Changed() { if (!_disposed) _ = Render(); }
+    private async Task Render()
+    {
+        // Changed may arrive inside the borrowed compile owner. The UI action
+        // stays on the renderer; this view-only await has no UI/model work after
+        // it and must not capture an untracked, potentially closing owner.
+        try { await InvokeAsync(() => { if (!_disposed) StateHasChanged(); }).ConfigureAwait(false); }
+        catch (ObjectDisposedException) { }
+        catch (InvalidOperationException) when (_disposed) { }
+    }
+    private static string Number(int? value) => value?.ToString(CultureInfo.InvariantCulture) ?? "none";
+    private static string Range(RenderedExtentObservation value) => value.UsualMinimum is null
+        ? "Usual non-appendix length: select a work type."
+        : $"Usual non-appendix length: {Number(value.UsualMinimum)}–{Number(value.UsualMaximum)} pages.";
+    private static string Reason(string reason) => reason switch
+    {
+        "workTypeRequired" => "Choose a work type to compare the usual length.",
+        "totalBelowUsualNonAppendixMinimum" => "Total PDF pages are below the usual minimum.",
+        "nonAppendixBoundaryUnknown" => "Appendix boundaries are unknown; the usual length cannot be confirmed.",
+        "classifiedNonAppendixBelowUsualMinimum" => "The pages before your marked appendices are below the usual minimum.",
+        "classifiedNonAppendixAboveUsualMaximum" => "The pages before your marked appendices exceed the usual range; this is a contextual observation.",
+        "classifiedNonAppendixWithinUsualRange" => "The pages before your marked appendices fall within the usual range; overall compliance is not established.",
+        _ => "Observation unavailable."
+    };
+    private static string SectionStatus(string value) => value switch
+    {
+        "withinLimit" => "within the cited length limit for your labels", "belowMinimum" => "below the cited minimum for your labels",
+        "aboveMaximum" => "above the cited maximum for your labels", _ => "unknown: supply a range and applicable work type"
+    };
+    private static string WorkTypeLabel(string value) => value switch
+    {
+        "coursework" => "Coursework", "bachelorQualification" => "Bachelor qualification",
+        "masterQualification" => "Master qualification", _ => "Unspecified"
+    };
+    public void Dispose()
+    {
+        if (_disposed) return;
+        _disposed = true; _controller.Changed -= Changed; _controller.Dispose();
+    }
+}

@@ -17,7 +17,7 @@
             <h3>Proposed change — not applied</h3>
             <p data-testid="review-explanation">@preview.Proposal.Explanation</p>
             @if (preview.Citation is { } cite)
-            { <p data-testid="review-citation">@cite.RuleId v@cite.Version; guideline §@cite.Section; printed pages @string.Join(", ", cite.PrintedPages); PDF pages @string.Join(", ", cite.PdfPages).</p> }
+            { <p data-testid="review-citation">@cite.RuleId v@(cite.Version); guideline §@cite.Section; printed pages @string.Join(", ", cite.PrintedPages); PDF pages @string.Join(", ", cite.PdfPages).</p> }
             <p class="hint">Changes an explicit source declaration only. Rendered PDF layout is unverified.</p>
             <p class="hint">Snapshot generation @preview.Binding.Workspace.WorkingGeneration; source selection @preview.Binding.Selection.Profile.Id. Byte spans below are authoritative UTF-8 offsets including any BOM.</p>
             <p class="hint">Text display marks ⟦BOM⟧, ⟦CR⟧ and ⟦LF⟧. Displays are bounded; the full validated edit is retained.</p>

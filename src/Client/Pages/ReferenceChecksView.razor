@@ -1,0 +1,25 @@
+@using Client.Analysis
+@if (Report.Result.Profile.Id == AnalysisCatalog.ReferenceId && Report.Result.ReferenceConfiguration is { } configuration)
+{
+    <section data-testid="reference-checks" aria-label="Source reference checks"
+             data-root-file-id="@configuration.RootFileId" data-snapshot-id="@Report.Result.SnapshotId"
+             data-profile-version="@AnalysisCatalog.ReferenceVersion">
+        <h3>Source reference checks</h3>
+        <p>Selected source root ID: @configuration.RootFileId. Source intent only: supported literal project-local inputs/includes, labels and references. Macro expansion, citations, bibliography and compiled numbering are not checked; no PDF or physical layout measurements.</p>
+        @foreach (var rule in Report.Result.RuleResults.Where(r => r.RuleId is AnalysisCatalog.Labels or AnalysisCatalog.References))
+        {
+            <section data-testid="reference-rule" data-rule-id="@rule.RuleId" data-outcome="@rule.Outcome">
+                <h4>@rule.RuleId — @rule.Outcome</h4>
+                <ul>
+                    @foreach (var limitation in rule.Limitations)
+                    { <li>@ReferenceChecks.Limitation(limitation)</li> }
+                </ul>
+            </section>
+        }
+    </section>
+}
+@code {
+    // Parent supplies only its current usable report; correlation attributes are
+    // always this report's identities, never current dropdown values.
+    [Parameter, EditorRequired] public AnalysisReport Report { get; set; } = default!;
+}

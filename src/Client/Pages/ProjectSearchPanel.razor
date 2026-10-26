@@ -1,0 +1,111 @@
+@using Client.Editing.Search
+@using Client.Workspace
+@implements IDisposable
+@inject WorkspaceCoordinator Coordinator
+
+<section aria-label="Project search" data-testid="project-search-panel">
+    <label>
+        Find literal text
+        <input type="text" @bind="_query" @bind:event="oninput" maxlength="1024" data-testid="project-search-query" />
+    </label>
+    <label>
+        <input type="checkbox" @bind="_caseSensitive" data-testid="project-search-case" />
+        Case sensitive
+    </label>
+    <button type="button" @onclick="Search" data-testid="project-search-submit">Search</button>
+    <small>Literal text in current text files. Binary files are skipped.</small>
+    <p role="status" aria-live="polite" data-testid="project-search-status" data-search-status="@SearchSession.Report.Status">@SearchSession.Report.Notice</p>
+    @if ((_navigationNotice ?? NavigationStatus) is { } navigationStatus)
+    {
+        <p role="status" data-testid="project-search-navigation-status">@navigationStatus</p>
+    }
+    @if (SearchSession.Report.Status is ProjectSearchStatus.Complete or ProjectSearchStatus.Truncated)
+    {
+        <p data-testid="project-search-summary">@SearchSession.Report.Matches.Length listed matches; @SearchSession.Report.TextFiles text files; @SearchSession.Report.BinaryFiles binary files skipped.</p>
+        <p>Last search: <code>@_searchedQuery</code> (@(_searchedCase ? "case sensitive" : "ignore case")).</p>
+        <ol aria-label="Project search results" data-testid="project-search-results">
+            @foreach (var match in SearchSession.Report.Matches)
+            {
+                <li @key="match">
+                    <button type="button" @onclick="() => Navigate(match)" disabled="@(!OnNavigate.HasDelegate)" data-testid="project-search-result"
+                            data-source-path="@match.RelativePath" data-source-start="@match.Start" data-source-end="@match.End">
+                        <span>@match.RelativePath — line @match.Line, column @match.Column</span>
+                        <code>@match.Snippet</code>
+                    </button>
+                </li>
+            }
+        </ol>
+        @if (!OnNavigate.HasDelegate)
+        {
+            <p>Source navigation is unavailable in this host.</p>
+        }
+    }
+</section>
+
+@code {
+    // Fixed for this component's lifetime. A supplied session is borrowed; otherwise
+    // the panel owns only the search session, never the injected coordinator.
+    [Parameter] public ProjectSearchSession? Session { get; set; }
+    [Parameter] public EventCallback<ProjectSearchNavigationRequest> OnNavigate { get; set; }
+    [Parameter] public string? NavigationStatus { get; set; }
+    private ProjectSearchSession? _session;
+    private ProjectSearchSession? _initialParameter;
+    private bool _ownsSession;
+    private bool _disposed;
+    private string _query = "";
+    private bool _caseSensitive = true;
+    private string _searchedQuery = "";
+    private bool _searchedCase;
+    private string? _navigationNotice;
+    private ProjectSearchSession SearchSession => _session!;
+
+    protected override void OnParametersSet()
+    {
+        if (_session is not null)
+        {
+            if (!ReferenceEquals(_initialParameter, Session))
+                throw new InvalidOperationException("ProjectSearchPanel.Session is fixed for the component lifetime. Remount to change it.");
+            return;
+        }
+        _initialParameter = Session;
+        _ownsSession = Session is null;
+        _session = Session ?? new ProjectSearchSession(Coordinator);
+        _session.Changed += Changed;
+    }
+
+    private void Search()
+    {
+        _navigationNotice = null;
+        _searchedQuery = _query; _searchedCase = _caseSensitive;
+        SearchSession.Search(_query, _caseSensitive);
+    }
+
+    private async Task Navigate(ProjectSearchMatch match)
+    {
+        var request = SearchSession.TryNavigate(match);
+        if (request is null)
+        {
+            _navigationNotice = "This result is no longer current. Choose Search again.";
+            return;
+        }
+        _navigationNotice = null;
+        await OnNavigate.InvokeAsync(request);
+    }
+
+    private void Changed() { if (!_disposed) _ = Render(); }
+    private async Task Render()
+    {
+        try { await InvokeAsync(() => { if (!_disposed) StateHasChanged(); }).ConfigureAwait(false); }
+        catch (ObjectDisposedException) { }
+        catch (InvalidOperationException) when (_disposed) { }
+    }
+
+    public void Dispose()
+    {
+        if (_disposed) return;
+        _disposed = true;
+        if (_session is null) return;
+        _session.Changed -= Changed;
+        if (_ownsSession) _session.Dispose();
+    }
+}

@@ -1,0 +1,69 @@
+@using Client.Workspace
+@using Client.Workspace.Imports
+@using Client.Workspace.Transfer
+@implements IDisposable
+@inject WorkspaceCoordinator Workspace
+@inject IWorkspaceLocks Locks
+
+<details class="tool-disclosure" data-testid="binary-replacement-panel">
+    <summary>Replace binary asset</summary>
+    <p>Keep this asset's project path and identity. Local bytes are not decoded or executed. Nothing is saved or compiled by preview or confirmation.</p>
+    <p>A failed or cancelled preview keeps the previous valid Undo. Undo is hidden while a preview awaits confirmation; a successful confirmation replaces it with one Undo for that change. Saved revision history remains separate.</p>
+    <label>Choose replacement bytes
+        <InputFile data-testid="binary-replacement-input" disabled="@_controller.Busy" OnChange="Picked" />
+    </label>
+    <p role="status" data-testid="binary-replacement-status"
+       data-state="@_controller.State.ToString().ToLowerInvariant()"
+       data-busy="@_controller.Busy.ToString().ToLowerInvariant()">@_controller.Notice</p>
+    @if (_controller.Preview is { } preview)
+    {
+        <section data-testid="binary-replacement-preview" data-target-file-id="@preview.TargetFileId.ToString()"
+                 data-target-path="@preview.TargetPath" data-old-bytes="@preview.OldBytes" data-new-bytes="@preview.NewBytes"
+                 data-old-sha256="@preview.OldSha256" data-new-sha256="@preview.NewSha256">
+            <p>Target: @preview.TargetPath</p>
+            <p>Picked local filename (metadata only): @preview.PickedFilename</p>
+            <dl>
+                <dt>Old bytes / SHA256</dt><dd>@preview.OldBytes / @preview.OldSha256</dd>
+                <dt>New bytes / SHA256</dt><dd>@preview.NewBytes / @preview.NewSha256</dd>
+            </dl>
+        </section>
+    }
+    @if (_controller.CanConfirm)
+    { <button type="button" data-testid="binary-replacement-confirm" @onclick="Confirm">Confirm replacement</button> }
+    @if (_controller.CanCancel)
+    { <button type="button" data-testid="binary-replacement-cancel" @onclick="_controller.Cancel">Cancel replacement</button> }
+    @if (_controller.CanUndo)
+    { <button type="button" data-testid="binary-replacement-undo" @onclick="_controller.UndoAsync">Undo replacement</button> }
+</details>
+
+@code {
+    [Parameter, EditorRequired] public WorkingFile Target { get; set; } = default!;
+    private BinaryAssetReplacementController _controller = default!;
+    private bool _disposed;
+    protected override void OnInitialized()
+    {
+        _controller = new(Workspace, Locks, action => InvokeAsync(action));
+        _controller.Changed += Changed;
+    }
+    protected override void OnParametersSet() => _controller.SetTarget(Target);
+    private Task Picked(InputFileChangeEventArgs e)
+    {
+        if (_disposed) return Task.CompletedTask;
+        var file = e.File;
+        return _controller.StageAsync(file.Name, file.Size,
+            ct => new ValueTask<System.IO.Stream>(file.OpenReadStream(ArchiveLimits.SingleFile, ct)));
+    }
+    private void Confirm() => _controller.Confirm();
+    private void Changed() { if (!_disposed) _ = Render(); }
+    private async Task Render()
+    {
+        try { await InvokeAsync(() => { if (!_disposed) StateHasChanged(); }).ConfigureAwait(false); }
+        catch (ObjectDisposedException) { }
+        catch (InvalidOperationException) when (_disposed) { }
+    }
+    public void Dispose()
+    {
+        if (_disposed) return;
+        _disposed = true; _controller.Changed -= Changed; _controller.Dispose();
+    }
+}

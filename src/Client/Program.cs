@@ -13,8 +13,8 @@ builder.RootComponents.Add<App>("#app");
 builder.RootComponents.Add<HeadOutlet>("head::after");
 
 // Same app-owned M2 persistence/analysis/review services, shared with TEST builders.
-// Pages borrow them across remounts. Compile/PDF default is explicitly unavailable;
-// this registration selects no executable runtime and starts no native imports.
+// Pages borrow them across remounts. Compile/PDF require explicit installation
+// and verification of supported local resources; startup executes no native code.
 builder.Services.AddAuthoringWorkspace();
 
 await builder.Build().RunAsync();

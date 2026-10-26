@@ -5,7 +5,7 @@
         <h3>KNU source observations</h3>
         <p data-testid="knu-edition">KNU Faculty of Computer Science and Cybernetics 2025 — source profile @Report.Result.Profile.Version</p>
         <p data-testid="knu-work-type">Work type: @AnalysisPresentation.WorkType(Report.Result.Configuration!.WorkType)</p>
-        <p class="knu-scope" data-testid="knu-scope">Source observations only. Pass covers supported observed literals, not effective TeX state, rendered layout, the whole thesis or faculty certification. Eligible F1 fixes require a separate preview and explicit acceptance; nothing is applied automatically.</p>
+        <p class="knu-scope" data-testid="knu-scope">Source observations only. Pass covers supported observed literals, not effective TeX state, rendered layout, the whole thesis or faculty certification. Eligible rule fixes require a separate preview and explicit acceptance; nothing is applied automatically.</p>
         <p data-testid="knu-summary">Source-only summary: <strong>@Report.Result.AggregateOutcome</strong></p>
         @foreach (var rule in Report.Result.RuleResults.Where(r => r.Origin == "knu"))
         {
@@ -35,6 +35,14 @@
                             { <p data-testid="knu-actual">Observed literal length: @length.NumeratorMm/@length.Denominator mm (original unit @length.Unit).</p> }
                             else if (o.Value is AnalysisHeadingValueDto { FinalScalar: { } scalar })
                             { <p data-testid="knu-actual">Observed heading final scalar: “@scalar”.</p> }
+                            else if (o.Value is AnalysisMarginValueDto { Length: { } marginLength } margin)
+                            { <p data-testid="knu-actual">Observed @AnalysisPresentation.MarginSide(margin.Side) margin: @marginLength.NumeratorMm/@marginLength.Denominator mm (original unit @marginLength.Unit).</p> }
+                            else if (o.Value is AnalysisPaperValueDto { Paper: { } paper })
+                            { <p data-testid="knu-actual">Declared paper intent: @AnalysisPresentation.Paper(paper). Not measured PDF sheet size.</p> }
+                            else if (o.Value is AnalysisSpacingValueDto { Numerator: { } numerator, Denominator: { } denominator } spacing)
+                            { <p data-testid="knu-actual">Declared spacing intent: @AnalysisPresentation.Spacing(spacing.Syntax), @numerator/@denominator. Not measured baseline or glyph geometry.</p> }
+                            else if (o.Value is AnalysisCaptionValueDto { FinalScalar: { } captionScalar } caption)
+                            { <p data-testid="knu-actual">Observed @AnalysisPresentation.CaptionEnvironment(caption.Environment) caption final scalar: “@captionScalar”. Numbering, prefix and placement unassessed.</p> }
                             else { <p data-testid="knu-actual">Actual value is unknown; no macro expansion or guessed value.</p> }
                             @if (o.Reason is { } reason) { <p class="hint">@AnalysisPresentation.Limitation(reason)</p> }
                         </div>
@@ -54,7 +62,7 @@
                         </li>
                     }
                 </ul>
-                @foreach (var fix in knu.FixDescriptors.Where(f => f.Id == AnalysisCatalog.Fix && f.Version == AnalysisCatalog.Version && f.RuleId == rule.RuleId))
+                @foreach (var fix in knu.FixDescriptors.Where(f => AnalysisCatalog.IsCanonicalFixId(f.Id) && f.Version == AnalysisCatalog.Version && f.RuleId == rule.RuleId))
                 {
                     <button data-testid="preview-fix" data-fix-id="@fix.Id" disabled="@ReviewWorking" @onclick="()=>FixRequested.InvokeAsync(fix.Id)">Preview fix</button>
                 }
@@ -62,7 +70,9 @@
         }
         <section data-testid="knu-coverage" aria-label="Source syntax and coverage notes">
             <h4>Source syntax and coverage notes</h4>
-            <p class="hint">File-level notes are shown here; unsupported literal lengths and conflicting declarations concern the indent check. Per-rule outcomes above preserve that distinction.</p>
+            <p class="hint">File-level notes are shown here; rule-specific uncertainty stays separate in the per-rule outcomes. Unsupported literal lengths and conflicting indent declarations concern the indent check.</p>
+            @if (Report.Result.Profile.Version == AnalysisCatalog.FormattingVersion)
+            { <p class="hint">Profile 1.4 observations have no admitted fixes. Paper, spacing and caption source intent does not establish physical PDF compliance or full guideline coverage.</p> }
             @foreach (var file in knu.Files)
             {
                 <p>@FileName(file.FileId) — @(file.Eligible ? "eligible TeX source" : "not applicable to this source profile")</p>
