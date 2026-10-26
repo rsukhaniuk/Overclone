@@ -87,14 +87,29 @@ public sealed partial class WorkspaceCoordinator : IAsyncDisposable
         => await _repo.ListProjectsAsync(ct);
 
     public async Task<Project> CreateProjectAsync(string name, CancellationToken ct)
-        => await _repo.CreateProjectAsync(name, ct);
+    {
+        BeginDashboardAction();
+        try { return await _repo.CreateProjectAsync(name, ct); }
+        finally { EndDashboardAction(); }
+    }
 
     public async Task DeleteProjectAsync(ProjectId id, CancellationToken ct)
-        => await _repo.DeleteProjectAsync(id, ct);
+    {
+        BeginDashboardAction();
+        try { await _repo.DeleteProjectAsync(id, ct); }
+        finally { EndDashboardAction(); }
+    }
 
     // ---- open / lock ----
 
     public async Task OpenAsync(ProjectId id, CancellationToken ct)
+    {
+        BeginDashboardAction();
+        try { await OpenCoreAsync(id, ct); }
+        finally { EndDashboardAction(); }
+    }
+
+    private async Task OpenCoreAsync(ProjectId id, CancellationToken ct)
     {
         await ReleaseLockAsync(ct);
         ResetSession();

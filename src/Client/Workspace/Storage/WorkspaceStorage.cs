@@ -4,6 +4,7 @@ using Microsoft.JSInterop;
 using Client.Workspace.Domain;
 using Client.Workspace.Storage;
 using Client.Workspace.Transfer;
+using Client.Workspace.Renaming;
 
 namespace Client.Workspace;
 
@@ -62,6 +63,57 @@ public sealed class WorkspaceStorage : IProjectRepository
     {
         var m = await ModuleAsync(ct);
         await m.InvokeVoidAsync("deleteProject", id.ToString());
+    }
+
+    public async Task<ProjectRenameResult> RenameProjectAsync(ProjectRenameSnapshot expected, string normalizedName, string writerLockId, CancellationToken ct)
+    {
+        if (!ProjectRenameName.TryNormalize(normalizedName, out string validated) || validated != normalizedName)
+            return new(ProjectRenameCode.InvalidName);
+        if (ct.IsCancellationRequested) return new(ProjectRenameCode.Cancelled);
+        CancellationTokenRegistration registration = default;
+        Task? cancellation = null;
+        try
+        {
+            var module = await RenameTransport(() => ModuleAsync(CancellationToken.None)).ConfigureAwait(false);
+            if (ct.IsCancellationRequested) return new(ProjectRenameCode.Cancelled);
+            registration = ct.Register(() =>
+            {
+                try
+                {
+                    cancellation = RenameTransport(() => module.InvokeAsync<bool>("cancelProjectRename", CancellationToken.None,
+                        new object?[] { writerLockId, expected.Id.ToString() })).AsTask();
+                }
+                catch (Exception e) when (e is not OutOfMemoryException) { cancellation = Task.CompletedTask; }
+            });
+            if (ct.IsCancellationRequested) return new(ProjectRenameCode.Cancelled);
+            // Explicit None avoids an SDK cancellation/default-timeout proxy.
+            // The acquired lock remains held through the ACTUAL transaction reply.
+            var reply = await RenameTransport(() => module.InvokeAsync<RenameReply>("renameProjectName", CancellationToken.None,
+                new object?[] { expected.Id.ToString(), expected.Name, expected.Head?.ToString(), expected.SchemaVersion, normalizedName, writerLockId })).ConfigureAwait(false);
+            return new(reply?.Status switch
+            {
+                "applied" => ProjectRenameCode.Applied, "unchanged" => ProjectRenameCode.Unchanged,
+                "stale" => ProjectRenameCode.Stale, "missing" => ProjectRenameCode.Missing,
+                "writerUnavailable" => ProjectRenameCode.WriterUnavailable, "cancelled" => ProjectRenameCode.Cancelled,
+                "unsupported" => ProjectRenameCode.Unsupported, _ => ProjectRenameCode.Failed
+            }); // Never turn committed success into Cancelled after completion.
+        }
+        catch (Exception e) when (e is not OutOfMemoryException) { return new(ProjectRenameCode.Failed); }
+        finally
+        {
+            registration.Dispose(); // Settle callback assignment before observing its real task.
+            if (cancellation is not null)
+            {
+                try { await cancellation.ConfigureAwait(false); }
+                catch (Exception e) when (e is not OutOfMemoryException) { }
+            }
+        }
+    }
+    private sealed class RenameReply { public RenameReply() { } public string? Status { get; set; } }
+    private static T RenameTransport<T>(Func<T> begin)
+    {
+        var previous = SynchronizationContext.Current; SynchronizationContext.SetSynchronizationContext(null);
+        try { return begin(); } finally { SynchronizationContext.SetSynchronizationContext(previous); }
     }
 
     // ---- open + recovery ----

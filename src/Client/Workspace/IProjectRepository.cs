@@ -1,4 +1,5 @@
 using Client.Workspace.Domain;
+using Client.Workspace.Renaming;
 
 namespace Client.Workspace;
 
@@ -21,6 +22,10 @@ public interface IProjectRepository
     Task<Project> CreateProjectAsync(string name, CancellationToken ct);
     Task<IReadOnlyList<Project>> ListProjectsAsync(CancellationToken ct);
     Task DeleteProjectAsync(ProjectId id, CancellationToken ct);
+    /// <summary>Name-only CAS under this acquired writer lock. Return success
+    /// only after actual durable transaction completion. Old adapters fail closed.</summary>
+    Task<ProjectRenameResult> RenameProjectAsync(ProjectRenameSnapshot expected, string normalizedName, string writerLockId, CancellationToken ct)
+        => Task.FromResult(new ProjectRenameResult(ProjectRenameCode.Unsupported));
     Task<CommitResult> RepairHeadAsync(ProjectId id, RevisionId expectedCurrentHead, RevisionId newHead, CancellationToken ct);
 
     // ---- M1b: byte-aware reads, atomic import publish, restore ----
