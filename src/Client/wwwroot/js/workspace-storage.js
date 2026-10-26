@@ -217,6 +217,75 @@ export async function deleteProject(id) {
     await reqAsPromise(txStore(db, STORE_PROJECTS, "readwrite").delete(id));
 }
 
+// Name-only compare/exchange. Name policy is C#; this is only browser lock/
+// IndexedDB transport. Cancellation belongs to THIS acquired lock entry.
+export function cancelProjectRename(lockId, projectId) {
+    const entry = locks?.get(lockId);
+    if (!entry || entry.name !== "oop-project:" + projectId) return false;
+    entry.renameCancelled = true;
+    return true;
+}
+
+export async function renameProjectName(id, expectedName, expectedHead, expectedSchema, name, lockId) {
+    if (typeof id !== "string" || typeof expectedName !== "string" ||
+        !(expectedHead === null || typeof expectedHead === "string") ||
+        !Number.isSafeInteger(expectedSchema) || typeof name !== "string")
+        return { status: "stale" };
+    const entry = locks?.get(lockId);
+    const sameLock = () => entry && locks.get(lockId) === entry && entry.name === "oop-project:" + id;
+    if (!sameLock() || !(await ownsLock(lockId, "oop-project:" + id)))
+        return { status: "writerUnavailable" };
+    if (entry.renameCancelled) return { status: "cancelled" };
+    const db = await openDb(); // All foreign awaits are BEFORE active transaction.
+    if (!sameLock()) return { status: "writerUnavailable" };
+    if (entry.renameCancelled) return { status: "cancelled" };
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction([STORE_PROJECTS], "readwrite");
+        let status = "stale", failed = false;
+        transaction.oncomplete = () => {
+            // Completion is actual settlement, even if an error's default abort
+            // was prevented elsewhere. A successful put then commit is durable;
+            // never relabel it rollback. Otherwise surface a fixed failure.
+            if (failed && status !== "applied") reject(new Error("LocalProjectRenameTransactionCompletedWithError"));
+            else resolve({ status });
+        };
+        // Error bubbles BEFORE abort settlement. Latch only; do not prevent the
+        // default abort or release the C# writer through premature rejection.
+        transaction.onerror = () => { failed = true; };
+        transaction.onabort = () => reject(new Error("LocalProjectRenameTransactionAborted"));
+        try {
+            const store = transaction.objectStore(STORE_PROJECTS);
+            const read = store.get(id);
+            read.onsuccess = () => {
+                try {
+                    // Synchronous callback: no await/task can make this transaction idle.
+                    if (!sameLock()) { status = "writerUnavailable"; return; }
+                    if (entry.renameCancelled) { status = "cancelled"; return; }
+                    const current = read.result;
+                    if (!current) { status = "missing"; return; }
+                    if (current.id !== id || current.name !== expectedName ||
+                        (current.headRevisionId ?? null) !== expectedHead || current.schemaVersion !== expectedSchema)
+                        return;
+                    if (current.name === name) { status = "unchanged"; return; }
+                    // Preserve every LIVE metadata field, including future fields;
+                    // only name changes. No revision/checkpoint/OPFS/config writes.
+                    const write = store.put({ ...current, name });
+                    write.onsuccess = () => { status = "applied"; }; // NOT promise settlement.
+                } catch {
+                    failed = true;
+                    try { transaction.abort(); } catch { /* Already terminal/pending: await its actual terminal event. */ }
+                }
+                // Late cancellation cannot claim rollback of a completed transaction.
+            };
+        } catch {
+            failed = true;
+            // Includes synchronous objectStore/get creation failure. Handlers are
+            // already installed; only actual abort/complete settles this promise.
+            try { transaction.abort(); } catch { /* Await the actual terminal event. */ }
+        }
+    });
+}
+
 // ---- revisions ----
 
 export async function putRevision(manifest) {

@@ -20,6 +20,23 @@ export function downloadZip(filename, bytes /* Uint8Array | number[] */) {
     triggerDownload(filename, blob);
 }
 
+// Fixed PDF MIME type; eligibility and the portable filename belong to C#.
+// Synchronous commit: never queue a click after the C# identity guard.
+export function downloadPdf(filename, bytes /* Uint8Array | number[] */) {
+    const view = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
+    const blob = new Blob([view], { type: "application/pdf" });
+    const a = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    try {
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+    } finally {
+        try { a.remove(); } finally { URL.revokeObjectURL(url); }
+    }
+}
+
 function triggerDownload(filename, blob) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
