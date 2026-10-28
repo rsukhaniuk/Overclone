@@ -77,7 +77,7 @@ class PackagingChecks(unittest.TestCase):
         previous = prepare.read_json(ARGS.rejected_dvi / 'pins.json')
         self.assertEqual(assemble.closure(sorted(previous, key=lambda p: p['name'])),
                          '8c02664ab8222fef7f1590a8a1872ebdd7d9eb32aa159743079f7c0250b9fe90')
-        with self.assertRaisesRegex(ValueError, 'requires the exact accepted base02 507-entry base'):
+        with self.assertRaisesRegex(ValueError, 'requires the exact accepted suite-base04 507-entry base'):
             assemble.plan(ARGS.common, ARGS.rejected_dvi, [])
 
     def test_missing_final_components_refuses_assembly(self):

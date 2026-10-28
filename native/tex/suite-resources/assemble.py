@@ -12,7 +12,7 @@ import shutil
 import zipfile
 from prepare import MAX_BYTES, MAX_COUNT, digest, read_json, read_verified, safe_name
 
-BASE_CLOSURE = 'f48f93c5176be1337486c2b432b829637a0a231737dba7eb7d65c69b6d4d0481'
+BASE_CLOSURE = 'cf144348691396f53189299dcc50400fafab1db4128476923542032f8d471352'
 XE_DATA = {
     'icudt68l.dat': (19163040, '63a8210766507546a73b7bfdb796c37fad0ec0485b992c1a7e68fd24f893ae6d'),
     'xetexfontlist.txt': (12315, '380ef7057355bff9024f448cf132e6c563364071ee36251d557d95c4652d1e65'),
@@ -45,7 +45,7 @@ def plan(common, old_root, components):
     common_pins = common_manifest['files']
     old = read_json(old_root / 'pins.json')
     if len(old) != 507 or closure(sorted(old, key=lambda p: p['name'])) != BASE_CLOSURE:
-        raise ValueError('requires the exact accepted base02 507-entry base, not a replacement profile')
+        raise ValueError('requires the exact accepted suite-base04 507-entry base, not a replacement profile')
     if len({p['name'] for p in common_pins}) != len(common_pins) or len({p['name'] for p in old}) != len(old):
         raise ValueError('duplicate manifest name')
     for pin in common_pins:

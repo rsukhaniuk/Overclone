@@ -145,17 +145,18 @@ visual acceptance, browser/offline acceptance, a real thesis compatibility claim
 Lua graphdrawing acceptance or full TeX Live coverage. Root owns converter/PDF,
 C#/worker/service-worker integration and published browser acceptance.
 
-## Final assembly contract — run only after final Lua freeze
+## Final assembly contract
 
 `assemble.py` makes a new closed additive bundle, never modifies an old bundle.
-It requires the exact **base02** 507-entry closure
-`a58e68644dd954f79d12bf96a205a3071076cd5c4daa38fcd780f3e5ee0eee08`
-(60,298,660 bytes; runtime identity
-`fc21cc06a7d069d297f73da7e2aa59c9f0b9c815525c2993fe41451581720e71`),
-checks the common lock, preserves every base02 pin and refuses differing
-collisions. Base02 includes the accepted page-box-normalized DVI converter WASM:
-685,953 bytes, SHA-256
-`6dc117f6ca3b16cea8e675683486e1f641a933fbfdccc9de8f94f51224e18c61`.
+It requires the exact **suite-base04** 507-entry assembly closure
+`cf144348691396f53189299dcc50400fafab1db4128476923542032f8d471352`
+(60,298,824 bytes),
+checks the common lock, preserves every assembly-base pin and refuses differing
+collisions. The suite converter retains explicit native page boxes and corrects TrueType
+glyph-name array bounds: 685,925 bytes, SHA-256
+`52085c656ec2680150519d39ecd8588326e123652d72294e7e19eedd0ec0171c`.
+This is an assembly input, not a replacement installed profile: the historical
+profile4/base03 package and its converter remain unchanged.
 The previous base01 remains preserved separately but is now rejected as a suite
 assembly input. Converter bytes are excluded from common data, so the common
 lock, catalog and Xe filesystem view are unchanged. It does not change what the separate historical 497/499/507 profiles
@@ -183,14 +184,16 @@ python3 native/tex/suite-resources/assemble.py --common "$NEW_COMMON" \
 - **19,163,040-byte `icudt68l.dat`**, SHA-256
   `63a8210766507546a73b7bfdb796c37fad0ec0485b992c1a7e68fd24f893ae6d`,
   belongs only to Xe. Lua/pdfTeX views do not contain it or the Xe catalog.
-- Common + unchanged eight base02 components total **3,669 entries /
-  113,453,830 bytes**, before the final added Xe/Lua components and Xe data.
+- Common + eight suite-base04 components total **3,669 entries /
+  113,453,994 bytes**, before the final added Xe/Lua components and Xe data.
 - Xe filesystem view: **3,664 files / 118,986,834 bytes**, including its genuine
   format, ICU and catalog. This leaves **48,785,326 bytes / 4,528 entries** under
   the 160 MiB / 8,192-input ceiling for project/carry inputs.
-- Lua's common-data portion leaves **34,698,957 bytes / 947 entries** under
-  96 MiB / 4,608 inputs **before its final genuine format and project/carry**.
-  Its actual final view size/hash is pending that format; it is not asserted here.
+- Lua filesystem view: **3,662 files / 78,400,805 bytes**, including the genuine
+  12,436,466-byte format. This leaves **22,262,491 bytes / 946 entries** below
+  96 MiB / 4,608 inputs before project/carry admission.
+- Final assembly: **3,677 files / 187,630,023 bytes**. ZIP: **188,605,715 bytes**,
+  SHA-256 `b803b9c941304af40f8752fd9c2e062e74b77e6e45a3357acf0a86edcded5b49`.
 - `views.json` separates common FS plus phase format/data from separately loaded
   engines/converter/query artifacts. It gives exact final phase hashes, sizes
   and headroom when final components are present. Format aliases/actual mounting
@@ -201,10 +204,11 @@ Root's role-aware preflight must keep runtime `/tex` separate from project
 allow project-local package overrides, not force a collision with runtime
 `geometry.sty`. Filesystem directories are explicit virtual inputs, not host
 font search roots. Runtime assets must not be copied into the project namespace.
-The final Lua quota fix, component hashes, final suite ZIP, profile-5 closure pin,
-actual app registration and browser checks remain root/Lua-owner work.
-The assembler's missing-final-components refusal was tested; successful complete
-assembly is deliberately not claimed before those accepted inputs exist.
+The accepted Lua ABI2 quota fix and real component pins are now assembled and
+registered by the master-owned [compiler integration](../../../docs/compiler-suite-integration.md).
+Actual native, app and offline results are recorded in
+[verification](../../../docs/verification.md). This tooling does not grant
+redistribution clearance or establish full package compatibility.
 
 Focused checks:
 
@@ -214,13 +218,13 @@ python3 native/tex/suite-resources/test-packaging.py --common "$NEW_COMMON" \
   --rejected-dvi "$PREVIOUS_DVI_BASE01" -v
 ```
 
-`ACCEPTED_DVI` must refer to base02 for preparation, checks and assembly. A fresh
-preparation against base02 reproduced the original common lock and every selected
+`ACCEPTED_DVI` must refer to suite-base04 for preparation, checks and assembly. A fresh
+preparation against the suite assembly base reproduced the original common lock and every selected
 runtime byte without changing the original common freeze or catalog. Converter
 page-box/PDF/browser acceptance is master-owned evidence, not rerun by this tool.
 
 Five checks passed: tamper/duplicate/traversal/symlink refusal; per-file/aggregate/
-count and differing-collision refusal; all real six Lua collision groups and base02
+count and differing-collision refusal; all real six Lua collision groups and assembly-base
 non-component pins preserved; preserved base01 assembly rejection; and
 incomplete-final-component assembly refusal.
 Provisioning/distribution still requires the master-owned license/source/notice
