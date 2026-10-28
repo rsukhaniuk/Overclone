@@ -53,7 +53,7 @@ async function analyze(p) {
 }
 async function selectKnu(p) {
  await reveal(p, $(p, "analysis-profile"));
- await $(p, "analysis-profile").selectOption("knu-csc-2025-source");
+ await $(p, "analysis-profile").selectOption("knu-csc-2025-source@1.0.0");
  await $(p, "analysis-work-type").selectOption("bachelorQualification");
  await analyze(p);
 }

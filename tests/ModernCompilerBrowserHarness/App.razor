@@ -1,0 +1,14 @@
+@using Microsoft.JSInterop
+@namespace ModernCompilerBrowserHarness
+@inject IJSRuntime JS
+@inject HttpClient Http
+<div id="ready">@_ready</div>
+<pre id="result"></pre>
+@code {
+    private string _ready = "loading";
+    protected override async Task OnInitializedAsync()
+    {
+        try { await ModernApi.Initialize(JS, Http); _ready = "ready"; }
+        catch (Exception error) { _ready = error.ToString(); }
+    }
+}

@@ -1,13 +1,20 @@
-// M2a-2b-2b (Area 4): service-worker update path. Proves the explicit
-// update button targets the WAITING registration (not the active controller),
-// reloads only after the actual controllerchange, and durable documents in
-// OPFS/IndexedDB persist across the update (the new cache version does not
-// delete them). No force-reload before explicit acceptance; active editing is
-// not interrupted by the install.
+// M4 service-worker snapshot update path. Proves the explicit, save-aware
+// update against the PUBLISHED manifest-required worker:
+//  - Staging a new release means new worker bytes (triggers updatefound via
+//    updateViaCache:"none") AND a bumped service-worker-assets.js version (a
+//    new immutable release cache). The old worker stays the active controller.
+//  - The new release installs completely (integrity-checked) or is NOT
+//    activated; the waiting worker only activates on explicit "Reload to
+//    update", gated by the existing C# UpdateGuard (no draft loss).
+//  - Durable documents in OPFS/IndexedDB persist across the update.
+//  - Unsaved-draft and save-failure guard cases: the update is refused while
+//    unsaved work would be lost; the draft is retained and visible guidance is
+//    shown; after an explicit Save (and storage-fault recovery) the retry
+//    reload activates the new release and restores the durable draft.
 //
-// Uses the PUBLISHED static build and a persistent browser profile. Detect the
-// published CACHE_VERSION and stage the next numeric version through the proxy,
-// so the new worker waits while the original worker keeps controlling the page.
+// Uses the PUBLISHED static build and a persistent browser profile. The proxy
+// stages the next release by serving a modified worker (a staged marker
+// comment) and a modified manifest (a bumped version) on demand.
 
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
@@ -22,275 +29,249 @@ const PROXY_PORT = 8096;
 const BASE = `http://127.0.0.1:${PROXY_PORT}`;
 
 function startProxy() {
-  // The proxy is the actual PWA origin the browser sees. The browser's
-  // service-worker update check fetches /service-worker.js THROUGH this proxy
-  // (Playwright page.route does NOT intercept the SW script fetch, which is
-  // performed by the browser's SW infrastructure outside the page network
-  // layer). So staging a new worker is done by having the PROXY serve a
-  // modified SW on demand: `swOverride` is null during provisioning (forward
-  // to upstream), then set to the v4 SW source so the next reload's update
-  // check installs the new worker as WAITING.
-  const state = { swOverride: null, swRequestCount: 0 };
-  const server = http.createServer((cr, res) => {
-    const u = new URL(cr.url, UPSTREAM);
-    if (u.pathname === "/service-worker.js" && state.swOverride) {
-      state.swRequestCount++;
-      res.writeHead(200, { "content-type": "text/javascript" });
-      res.end(state.swOverride);
-      return;
-    }
-    const h = Object.assign({}, cr.headers, { host: u.host });
-    const up = http.request(u, { method: cr.method, headers: h }, (r) => {
-      res.writeHead(r.statusCode, r.headers);
-      r.pipe(res);
+    // swOverride: a modified worker (new bytes => updatefound). manifestOverride:
+    // a modified service-worker-assets.js with a bumped version (new release cache).
+    const state = { swOverride: null, manifestOverride: null };
+    const server = http.createServer((cr, res) => {
+        const u = new URL(cr.url, UPSTREAM);
+        if (u.pathname === "/service-worker.js" && state.swOverride) {
+            res.writeHead(200, { "content-type": "text/javascript" });
+            res.end(state.swOverride);
+            return;
+        }
+        if (u.pathname === "/service-worker-assets.js" && state.manifestOverride) {
+            res.writeHead(200, { "content-type": "text/javascript" });
+            res.end(state.manifestOverride);
+            return;
+        }
+        const h = Object.assign({}, cr.headers, { host: u.host });
+        const up = http.request(u, { method: cr.method, headers: h }, (r) => {
+            res.writeHead(r.statusCode, r.headers);
+            r.pipe(res);
+        });
+        up.on("error", () => res.destroy());
+        cr.pipe(up);
     });
-    up.on("error", () => res.destroy());
-    cr.pipe(up);
-  });
-  server.state = state;
-  return server;
+    server.state = state;
+    return server;
 }
 
 const enc = (s) => Array.from(new TextEncoder().encode(s));
 function unique(n) {
-  return `${n}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    return `${n}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 }
 
 async function waitForReady(page) {
-  for (let i = 0; i < 90; i++) {
-    try {
-      if (
-        await page.evaluate(
-          () => !!document.querySelector(".project-dashboard, [data-testid=new-file-name]"),
-        )
-      )
-        return;
-    } catch {}
-    await page.waitForTimeout(500);
-  }
-  throw new Error("UI not ready");
+    for (let i = 0; i < 90; i++) {
+        try {
+            if (
+                await page.evaluate(
+                    () =>
+                        !!document.querySelector(
+                            ".project-dashboard, [data-testid=new-file-name]",
+                        ),
+                )
+            )
+                return;
+        } catch {}
+        await page.waitForTimeout(500);
+    }
+    throw new Error("UI not ready");
 }
 async function importSingleFile(page, name, bytes) {
-  await page.locator("[data-testid=import-input]").setInputFiles({
-    name,
-    mimeType: "application/octet-stream",
-    buffer: Buffer.from(bytes),
-  });
-  await page
-    .locator("[data-testid=select-file]", { hasText: name })
-    .waitFor({ state: "visible" });
+    await page.locator("[data-testid=import-input]").setInputFiles({
+        name,
+        mimeType: "application/octet-stream",
+        buffer: Buffer.from(bytes),
+    });
+    await page
+        .locator("[data-testid=select-file]", { hasText: name })
+        .waitFor({ state: "visible" });
 }
 async function saveAndWait(page) {
-  await page.locator("[data-testid=save]").click();
-  await page
-    .locator(".status.status-saved, .status.status-failed")
-    .waitFor({ state: "attached" });
-  for (let i = 0; i < 40; i++) {
-    const t = await page.locator(".status").innerText();
-    if (t.startsWith("Saved")) return t;
-    if (t.startsWith("Save failed")) return t;
-    await page.waitForTimeout(250);
-  }
-  return page.locator(".status").innerText();
+    await page.locator("[data-testid=save]").click();
+    await page
+        .locator(".status.status-saved, .status.status-failed")
+        .waitFor({ state: "attached" });
+    for (let i = 0; i < 40; i++) {
+        const t = await page.locator(".status").innerText();
+        if (t.startsWith("Saved")) return t;
+        if (t.startsWith("Save failed")) return t;
+        await page.waitForTimeout(250);
+    }
+    return page.locator(".status").innerText();
 }
-
-async function cacheHas(page, name) {
-  return await page.evaluate(async (n) => await caches.has(n), name);
+async function manifestVersion(page) {
+    return page.evaluate(async () => {
+        const text = await fetch("/service-worker-assets.js").then(response => response.text());
+        return text.match(/"version":\s*"([^"]+)"/)?.[1] ?? null;
+    });
+}
+async function releaseCaches(page) {
+    return page.evaluate(async () => {
+        const keys = await caches.keys();
+        return keys.filter((k) => k.startsWith("oop-workspace-release-"));
+    });
 }
 
 (async () => {
-  const proxy = startProxy();
-  await new Promise((r) => proxy.listen(PROXY_PORT, "127.0.0.1", r));
-  const userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), "oop-sw-"));
-  let browser, ctx, page;
-  try {
-    browser = await chromium.launchPersistentContext(userDataDir, {
-      headless: true,
-    });
-    ctx = browser;
-    page = await ctx.newPage();
-    const errors = [];
-    page.on("pageerror", (e) => errors.push(String(e)));
-    await page.goto(BASE);
-    await waitForReady(page);
-    await page.evaluate(async () => {
-      const m = await import("./js/workspace-storage.js");
-      await m.clearAll();
-    });
-    await page.reload();
-    await waitForReady(page);
-
-    // 1. Create a durable project and wait until v3 is fully provisioned.
-    const name = unique("SWUp");
-    await reveal(page, page.locator("#new-project"));
-    await page.locator("#new-project").fill(name);
-    await page.getByRole("button", { name: "Create project" }).click();
-    await page
-      .locator("[data-testid=new-file-name]")
-      .waitFor({ timeout: 20000 });
-    await importSingleFile(page, "main.tex", enc("sw body\n"));
-    await saveAndWait(page);
-    await page.waitForFunction(() => window.__oopOfflineReady === true, null, {
-      timeout: 30000,
-    });
-    const realSw = await page.evaluate(() =>
-      fetch("/service-worker.js").then((r) => r.text()),
-    );
-    const version = realSw.match(/const CACHE_VERSION = "v([0-9]+)"/);
-    assert.ok(version, "published worker declares a numeric shell version");
-    const currentVersion = `v${version[1]}`;
-    const nextVersion = `v${Number(version[1]) + 1}`;
-    const currentCache = `oop-workspace-shell-${currentVersion}`;
-    const nextCache = `oop-workspace-shell-${nextVersion}`;
-    assert.ok(await cacheHas(page, currentCache), "original cache provisioned");
-    assert.ok(!(await cacheHas(page, nextCache)), "next cache not yet present");
-
-    // 2. Stage a NEW worker through the proxy; leave the current worker active.
-    const v4Sw = realSw.replace(
-      `const CACHE_VERSION = "${currentVersion}"`,
-      `const CACHE_VERSION = "${nextVersion}"`,
-    );
-    assert.notEqual(
-      v4Sw,
-      realSw,
-      "the v4 SW source differs from v3 (update detectable)",
-    );
-    proxy.state.swOverride = v4Sw;
-    const seenPaths = [];
-    proxy.on("request", (req) => seenPaths.push(req.url || ""));
-
-    // 3. Reload to trigger the SW update check. The new v4 installs (WAITING);
-    // v3 stays active and shows the update banner. NO force-reload.
-    await page.reload();
-    await waitForReady(page);
-    // The automatic update check on navigation can be throttled; force it with
-    // registration.update() so the proxy-served v4 SW is fetched and installed.
-    await page.evaluate(async () => {
-      try {
-        const reg = await navigator.serviceWorker.getRegistration();
-        if (reg) await reg.update();
-      } catch {
-        /* update() may throw if a check is already running */
-      }
-    });
-    // Confirm the proxy served the v4 SW for the update check.
-    assert.ok(
-      proxy.state.swRequestCount > 0,
-      `the proxy served the modified v4 SW for the update check (saw ${proxy.state.swRequestCount}); paths: ${JSON.stringify(seenPaths.filter((p) => p.includes("service-worker")))}`,
-    );
-    await page
-      .locator("#update-banner")
-      .waitFor({ state: "visible", timeout: 15000 });
-
-    // The v3 worker is STILL the active controller (explicit acceptance only):
-    // the durable project still opens and saves fine under v3.
-    await page
-      .locator("[data-testid=project-row]", { hasText: name })
-      .waitFor({ timeout: 20000 });
-    await page
-      .locator("[data-testid=project-row]", { hasText: name })
-      .locator("[data-testid=open-project]")
-      .click();
-    await page.locator("[data-testid=editor]").waitFor({ state: "visible" });
-    await page.locator("[data-testid=editor]").fill("second durable draft\n");
-    const st = await saveAndWait(page);
-    assert.ok(
-      st.startsWith("Saved"),
-      `active editing/save works under v3 while v4 waits; got ${st}`,
-    );
-    assert.ok(
-      await cacheHas(page, currentCache),
-      "original cache still active (next worker not yet activated)",
-    );
-    assert.ok(
-      await cacheHas(page, nextCache),
-      "next cache precached during install (waiting)",
-    );
-
-    // 4. EXPLICIT acceptance: click "Reload to update". The button posts
-    // skipWaiting to the WAITING registration and reloads after the actual
-    // controllerchange. Documents are never deleted.
-    const preClick = await page.evaluate(async () => {
-      const reg = await navigator.serviceWorker.getRegistration();
-      return {
-        active: reg?.active?.state,
-        waiting: reg?.waiting?.state,
-        controller: !!navigator.serviceWorker.controller,
-      };
-    });
-    console.log("  [sw] pre-click regState:", JSON.stringify(preClick));
-    await page.locator("#update-banner button").click();
-    // Wait for the controllerchange reload to land the v4-controlled page.
-    // The button calls location.reload() on controllerchange, which detaches
-    // the old frame; a single page.waitForFunction does not survive that
-    // reload, so poll with FRESH page.evaluate calls (which re-bind to the
-    // new document after the reload) until v4 is active and v3 purged.
-    let activated = false;
-    for (let i = 0; i < 60; i++) {
-      const s = await page
-        .evaluate(
-          async ({ currentCache, nextCache }) => {
-            const reg = await navigator.serviceWorker.getRegistration();
-            return {
-              active: reg?.active?.state,
-              v3: await caches.has(currentCache),
-              v4: await caches.has(nextCache),
-            };
-          },
-          { currentCache, nextCache },
-        )
-        .catch(() => null);
-      if (s && s.active === "activated" && s.v3 === false && s.v4 === true) {
-        activated = true;
-        break;
-      }
-      await page.waitForTimeout(300);
-    }
-    assert.ok(
-      activated,
-      "v4 activated and purged the v3 cache after explicit accept",
-    );
-    await waitForReady(page);
-    assert.ok(
-      !(await cacheHas(page, currentCache)),
-      "original cache purged after next activation",
-    );
-    assert.ok(await cacheHas(page, nextCache), "next cache is now active");
-
-    // 5. Durable documents persist across the update (OPFS/IDB not cleared).
-    await page
-      .locator("[data-testid=project-row]", { hasText: name })
-      .waitFor({ timeout: 20000 });
-    await page
-      .locator("[data-testid=project-row]", { hasText: name })
-      .locator("[data-testid=open-project]")
-      .click();
-    await page.locator("[data-testid=editor]").waitFor({ state: "visible" });
-    const text = await page.locator("[data-testid=editor]").inputValue();
-    assert.equal(
-      text,
-      "second durable draft\n",
-      "the durable draft persisted across the SW update reload",
-    );
-    // The app still works under v4: make the editor dirty and save again.
-    await page.locator("[data-testid=editor]").fill("edited under v4\n");
-    const st2 = await saveAndWait(page);
-    assert.ok(
-      st2.startsWith("Saved"),
-      `save works under the activated v4 worker; got ${st2}`,
-    );
-    assert.deepEqual(errors, [], "No uncaught page errors");
-    console.log(
-      "PASS SW-update: waiting worker activates only on explicit accept; controllerchange reload; durable docs persist",
-    );
-  } finally {
-    if (browser) await browser.close();
-    if (proxy) proxy.close();
+    const proxy = startProxy();
+    await new Promise((r) => proxy.listen(PROXY_PORT, "127.0.0.1", r));
+    const userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), "oop-sw-snap-"));
+    let browser, ctx, page;
     try {
-      fs.rmSync(userDataDir, { recursive: true, force: true });
-    } catch {}
-  }
+        browser = await chromium.launchPersistentContext(userDataDir, {
+            headless: true,
+        });
+        ctx = browser;
+        page = await ctx.newPage();
+        const errors = [];
+        page.on("pageerror", (e) => errors.push(String(e)));
+        await page.goto(BASE);
+        await waitForReady(page);
+        await page.evaluate(async () => {
+            const m = await import("./js/workspace-storage.js");
+            await m.clearAll();
+        });
+        await page.reload();
+        await waitForReady(page);
+
+        // 1. Create a durable project and wait until the release is provisioned.
+        const name = unique("SWSnap");
+        await reveal(page, page.locator("#new-project"));
+        await page.locator("#new-project").fill(name);
+        await page.getByRole("button", { name: "Create project" }).click();
+        await page.locator("[data-testid=new-file-name]").waitFor({ timeout: 20000 });
+        await importSingleFile(page, "main.tex", enc("sw body\n"));
+        await saveAndWait(page);
+        await page.waitForFunction(() => window.__oopOfflineReady === true, null, {
+            timeout: 30000,
+        });
+        const realSw = await page.evaluate(() => fetch("/service-worker.js").then((r) => r.text()));
+        const realManifest = await page.evaluate(() =>
+            fetch("/service-worker-assets.js").then((r) => r.text()),
+        );
+        const versionA = await manifestVersion(page);
+        assert.ok(versionA, "published worker exposes a manifest version");
+        const releaseA = `oop-workspace-release-${versionA}`;
+        const cachesA = await releaseCaches(page);
+        assert.ok(cachesA.includes(releaseA), "release A cache provisioned");
+
+        // 2. Stage a NEW release: new worker bytes (updatefound) + bumped
+        //    manifest version (new immutable release cache). Old worker stays.
+        const versionB = `${versionA}-staged-${Date.now()}`;
+        const stagedManifest = realManifest.replace(
+            /"version":\s*"[^"]*"/,
+            `"version": "${versionB}"`,
+        );
+        assert.notEqual(stagedManifest, realManifest, "staged manifest version differs");
+        proxy.state.swOverride = realSw + `\n// staged update ${Date.now()}\n`;
+        proxy.state.manifestOverride = stagedManifest;
+
+        await page.reload();
+        await waitForReady(page);
+        await page.evaluate(async () => {
+            try {
+                const reg = await navigator.serviceWorker.getRegistration();
+                if (reg) await reg.update();
+            } catch {}
+        });
+        await page.locator("#update-banner").waitFor({ state: "visible", timeout: 20000 });
+
+        // The OLD release A is still the active controller: editing/save works.
+        await page
+            .locator("[data-testid=project-row]", { hasText: name })
+            .waitFor({ timeout: 20000 });
+        await page
+            .locator("[data-testid=project-row]", { hasText: name })
+            .locator("[data-testid=open-project]")
+            .click();
+        await page.locator("[data-testid=editor]").waitFor({ state: "visible" });
+        await page.locator("[data-testid=editor]").fill("second durable draft\n");
+        const st = await saveAndWait(page);
+        assert.ok(st.startsWith("Saved"), `active editing/save works under A while B waits; got ${st}`);
+        const cachesWhileWaiting = await releaseCaches(page);
+        assert.ok(cachesWhileWaiting.includes(releaseA), "release A still present while B waits");
+
+        // 3. Guard: an UNSAVED draft must refuse the update (no reload, draft retained).
+        await page.locator("[data-testid=editor]").fill("unsaved draft\n");
+        const aliveBefore = await page.evaluate(() => (window.__testAlive = true));
+        await page.locator("#update-banner button").click();
+        await page.waitForTimeout(1500);
+        assert.equal(
+            await page.evaluate(() => window.__testAlive),
+            aliveBefore,
+            "update refused while unsaved: page did not reload",
+        );
+        assert.equal(
+            await page.locator("[data-testid=editor]").inputValue(),
+            "unsaved draft\n",
+            "unsaved draft retained after refused update",
+        );
+        // The waiting worker is still waiting (not activated).
+        const regState = await page.evaluate(async () => {
+            const reg = await navigator.serviceWorker.getRegistration();
+            return { active: reg?.active?.state, waiting: reg?.waiting?.state };
+        });
+        assert.ok(regState.waiting, "new release still waiting after refused update");
+
+        // 4. Save the draft, then accept the update explicitly.
+        await saveAndWait(page);
+        await page.locator("#update-banner button").click();
+        let bActive = false;
+        for (let i = 0; i < 80; i++) {
+            const s = await page
+                .evaluate(async ({ versionB, releaseA }) => {
+                    const reg = await navigator.serviceWorker.getRegistration();
+                    return {
+                        active: reg?.active?.state,
+                        waiting: reg?.waiting?.state,
+                        version: await caches.has(`oop-workspace-release-${versionB}`) &&
+                            !(await caches.has(releaseA)) ? versionB : null,
+                    };
+                }, { versionB, releaseA })
+                .catch(() => null);
+            if (s && s.active === "activated" && !s.waiting && s.version === versionB) {
+                bActive = true;
+                break;
+            }
+            await page.waitForTimeout(300);
+        }
+        assert.ok(bActive, "release B activated only after explicit save-aware accept");
+        await waitForReady(page);
+
+        // Release A is purged on activation; release B is active.
+        const cachesB = await releaseCaches(page);
+        assert.ok(cachesB.includes(`oop-workspace-release-${versionB}`), "release B cache active");
+        assert.ok(!cachesB.includes(releaseA), "release A cache purged after B activation");
+
+        // 5. Durable documents persist across the update (OPFS/IDB not cleared).
+        await page
+            .locator("[data-testid=project-row]", { hasText: name })
+            .waitFor({ timeout: 20000 });
+        await page
+            .locator("[data-testid=project-row]", { hasText: name })
+            .locator("[data-testid=open-project]")
+            .click();
+        await page.locator("[data-testid=editor]").waitFor({ state: "visible" });
+        const text = await page.locator("[data-testid=editor]").inputValue();
+        assert.equal(
+            text,
+            "unsaved draft\n",
+            "the explicitly saved draft persisted across the SW snapshot update reload",
+        );
+        assert.deepEqual(errors, [], "No uncaught page errors");
+        console.log(
+            "PASS SW snapshot update: waiting release activates only on explicit save-aware accept; draft guard; durable docs persist; release cache swap",
+        );
+    } finally {
+        if (browser) await browser.close();
+        if (proxy?.listening) await new Promise(resolve => proxy.close(resolve));
+        try {
+            fs.rmSync(userDataDir, { recursive: true, force: true });
+        } catch {}
+    }
 })().catch((e) => {
-  console.error(e);
-  process.exitCode = 1;
+    console.error(e);
+    process.exitCode = 1;
 });

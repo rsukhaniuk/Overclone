@@ -11,11 +11,13 @@
 //      pre-reload recheck refuses, no draft loss; also a dirty workspace on
 //      another route (/smoke) is refused (the guard is app-scoped, not page-local).
 // Clean explicit acceptance + cache purge + durable-doc persistence are already
-// covered by test-sw-update.cjs (re-run unchanged as regression #4).
+// covered by test-sw-update.cjs as the complementary clean-update regression.
 //
 // Uses the PUBLISHED static build served via a proxy (like test-sw-update.cjs)
 // and a persistent browser profile so the SW registration survives reloads. A
-// "new" worker is staged per scenario by bumping CACHE_VERSION through the proxy.
+// new snapshot is staged per scenario with an overridden SDK manifest version
+// and changed worker bytes through the proxy. Legacy v3..v7 assertion labels
+// below denote release indices, not manual CACHE_VERSION/boot query versions.
 
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
@@ -30,13 +32,18 @@ const PROXY_PORT = 8097;
 const BASE = `http://127.0.0.1:${PROXY_PORT}`;
 
 function startProxy() {
-  const state = { swOverride: null, swRequestCount: 0 };
+  const state = { swOverride: null, manifestOverride: null, swRequestCount: 0 };
   const server = http.createServer((cr, res) => {
     const u = new URL(cr.url, UPSTREAM);
     if (u.pathname === "/service-worker.js" && state.swOverride) {
       state.swRequestCount++;
       res.writeHead(200, { "content-type": "text/javascript" });
       res.end(state.swOverride);
+      return;
+    }
+    if (u.pathname === "/service-worker-assets.js" && state.manifestOverride) {
+      res.writeHead(200, { "content-type": "text/javascript", "cache-control": "no-store" });
+      res.end(state.manifestOverride);
       return;
     }
     const h = Object.assign({}, cr.headers, { host: u.host });
@@ -101,18 +108,19 @@ async function openProject(page, name) {
   await page.locator("[data-testid=editor]").waitFor({ state: "visible" });
 }
 
-// Stage a NEW waiting worker by bumping CACHE_VERSION (through the proxy) and
-// reloading + forcing registration.update() so the new worker installs as
-// WAITING while the current one keeps controlling. Returns the bumped source.
+// Stage a NEW waiting snapshot with a distinct SDK manifest version and worker
+// bytes. Asset URLs/hashes remain genuine published bytes, so installation
+// exercises the production snapshot/SRI path before the waiting banner appears.
 async function stageWaiting(page, toVer) {
   const realSw = await page.evaluate(() =>
     fetch("/service-worker.js").then((r) => r.text()),
   );
-  const nextSw = realSw.replace(
-    /const CACHE_VERSION = "v[0-9]+"/,
-    `const CACHE_VERSION = "${toVer}"`,
-  );
-  assert.notEqual(nextSw, realSw, `v${toVer} SW source must differ`);
+  const manifest = await page.evaluate(() => fetch("/service-worker-assets.js").then(r => r.text()));
+  const nextManifest = manifest.replace(/"version":\s*"[^"]*"/, `"version": ${JSON.stringify(toVer)}`);
+  assert.notEqual(nextManifest, manifest, "candidate SDK manifest version must differ");
+  const nextSw = realSw + `\n// draft-guard snapshot ${toVer}\n`;
+  assert.notEqual(nextSw, realSw, "candidate worker bytes must differ");
+  proxy.state.manifestOverride = nextManifest;
   proxy.state.swOverride = nextSw;
   proxy.state.swRequestCount = 0;
   await page.reload();
@@ -220,16 +228,14 @@ let proxy;
       timeout: 30000,
     });
 
-    const realSw = await page.evaluate(() =>
-      fetch("/service-worker.js").then((r) => r.text()),
-    );
-    const version = realSw.match(/const CACHE_VERSION = "v([0-9]+)"/);
-    assert.ok(version, "published worker declares a numeric shell version");
-    const shellVersions = Array.from(
-      { length: 5 },
-      (_, i) => `v${Number(version[1]) + i}`,
-    );
-    const shellCaches = shellVersions.map((v) => `oop-workspace-shell-${v}`);
+    const manifest = await page.evaluate(() => fetch("/service-worker-assets.js").then(r => r.text()));
+    const version = manifest.match(/"version":\s*"([^"]+)"/);
+    assert.ok(version, "published SDK manifest declares a release version");
+    const shellVersions = Array.from({ length: 5 }, (_, i) =>
+      i === 0 ? version[1] : `${version[1]}-draft-${i}`);
+    const shellCaches = shellVersions.map(v => `oop-workspace-release-${v}`);
+    assert.equal(await page.evaluate(name => caches.has(name), shellCaches[0]), true,
+      "complete initial snapshot exists before staging guard scenarios");
 
     // ============================================================ Scenario #1
     // Stage the next worker; type v2 and click update BEFORE the 2s autosave.
@@ -305,15 +311,25 @@ let proxy;
       "draft v2\n",
       "#2 baseline editor content",
     );
-    await page.locator("[data-testid=editor]").fill("draft v3\n");
-    // One-shot persistent storage failure: make the next digest reject.
+    const headBeforeFailure = await page.evaluate(async () => {
+      const m = await import("./js/workspace-storage.js");
+      const projects = await m.listProjects();
+      return projects[projects.length - 1].headRevisionId;
+    });
+    // Persistent browser OPFS quota fault, not a managed-workspace mock. Keep
+    // it active through the refusal check so autosave cannot hide the failure.
     await page.evaluate(() => {
-      const realDigest = SubtleCrypto.prototype.digest;
-      SubtleCrypto.prototype.digest = function () {
-        SubtleCrypto.prototype.digest = realDigest;
-        return Promise.reject(new Error("InjectedStorageFailure"));
+      const prototype = FileSystemFileHandle.prototype;
+      const original = prototype.createWritable;
+      window.__restoreQuotaFault = () => {
+        prototype.createWritable = original;
+        delete window.__restoreQuotaFault;
+      };
+      prototype.createWritable = function () {
+        return Promise.reject(new DOMException("Injected OPFS quota exhaustion", "QuotaExceededError"));
       };
     });
+    await page.locator("[data-testid=editor]").fill("draft v3\n");
     const failed = await saveAndWait(page);
     assert.ok(/Save failed/i.test(failed), `#2 save must fail: ${failed}`);
     // Now SavePhase=Failed, IsDirty=true → guard refuses update.
@@ -328,7 +344,9 @@ let proxy;
       const p = ps[ps.length - 1];
       return p.headRevisionId;
     });
-    // (Fault was one-shot and already restored.) Retry save succeeds.
+    assert.equal(head2, headBeforeFailure, "#2 failed quota save must not advance durable head");
+    await page.evaluate(() => window.__restoreQuotaFault());
+    // Restore the real browser API, then explicit retry save must succeed.
     const st2 = await saveAndWait(page);
     assert.ok(st2.startsWith("Saved"), `#2 retry save: ${st2}`);
     const head2b = await page.evaluate(async () => {
@@ -495,7 +513,7 @@ let proxy;
       "#3b visible guidance shown on /smoke (app-scoped guard)",
     );
     // Navigate back to the workspace; the dirty draft is still there.
-    await page.getByRole("link", { name: /^Workspace$/ }).click();
+    await page.getByRole("navigation", { name: "Workspace navigation" }).getByRole("link", { name: "Projects", exact: true }).click();
     await page.locator("[data-testid=editor]").waitFor({ state: "visible" });
     assert.equal(
       await page.locator("[data-testid=editor]").inputValue(),
@@ -549,7 +567,7 @@ let proxy;
     );
   } finally {
     if (browser) await browser.close();
-    if (proxy) proxy.close();
+    if (proxy?.listening) await new Promise(resolve => proxy.close(resolve));
     try {
       fs.rmSync(userDataDir, { recursive: true, force: true });
     } catch {}

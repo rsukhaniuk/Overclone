@@ -124,7 +124,7 @@ async function analyze(p) {
 }
 async function knu(p) {
  await reveal(p, $(p, "analysis-profile"));
- await $(p, "analysis-profile").selectOption("knu-csc-2025-source");
+ await $(p, "analysis-profile").selectOption("knu-csc-2025-source@1.0.0");
  await analyze(p);
 }
 async function head(p, name) {
@@ -162,8 +162,9 @@ async function replace(p, bytes) {
  await save(p);
  await analyze(p);
 }
-async function context(browser) {
+async function context(browser, beforePage) {
  const ctx = await browser.newContext({ serviceWorkers: "block" });
+ if (beforePage) await beforePage(ctx);
  await ctx.addInitScript(instrumentation);
  const p = await ctx.newPage();
  const errors = [];
@@ -351,7 +352,7 @@ async function races(browser) {
   }
   if (change === "profile") {
    await $(p, "analysis-profile").selectOption("engine-structural");
-   await $(p, "analysis-profile").selectOption("knu-csc-2025-source");
+   await $(p, "analysis-profile").selectOption("knu-csc-2025-source@1.0.0");
   }
   if (change === "edit") {
    await $(p, "editor").fill(fixtures.positive.toString());
@@ -394,61 +395,86 @@ async function navigationRaces(browser) {
   "project",
   "route",
  ]) {
-  const { ctx, p, errors } = await context(browser);
-  const name = await create(p);
-  await knu(p);
-  let reached, unblock;
+  let reached, unblock, timeout, hits = 0;
   const r = new Promise((resolve) => (reached = resolve)),
    gate = new Promise((resolve) => (unblock = resolve));
-  await p.route("**/js/editor-select.js", async (route) => {
+  const handler = async (route) => {
+   const response = await route.fetch({ timeout: 10000 });
+   assert.equal(response.status(), 200, "hold the actual published selection module");
+   hits++;
    reached();
    await gate;
-   await route.continue().catch(() => {});
-  });
-  await $(p, "knu-finding-link").last().click();
-  await Promise.race([
-   r,
-   new Promise((_, reject) =>
-    setTimeout(() => reject(new Error("held import not reached")), 10000),
-   ),
-  ]);
-  if (change === "cancel") await $(p, "cancel-analysis").click();
-  if (change === "work") {
-   await $(p, "analysis-work-type").selectOption("coursework");
-   await $(p, "analysis-work-type").selectOption("unspecified");
+   await route.fulfill({ response }); // unchanged real response, never fake success
+  };
+  // Highlighting also imports this shared module when the FIRST source renders.
+  // Arm the real response barrier before page/file creation, not after create().
+  const { ctx, p, errors } = await context(browser, ctx => ctx.route("**/js/editor-select.js", handler));
+  try {
+   const name = await create(p);
+   const originalHead = await head(p, name);
+   await knu(p);
+   await $(p, "knu-finding-link").last().click();
+   try {
+    await Promise.race([
+     r,
+     new Promise((_, reject) => {
+      timeout = setTimeout(() => reject(new Error("held import not reached")), 10000);
+     }),
+    ]);
+   } finally { clearTimeout(timeout); }
+   assert.equal(hits, 1, "highlighting and navigation share one pending real import");
+   if (change === "cancel") await $(p, "cancel-analysis").click();
+   if (change === "work") {
+    await $(p, "analysis-work-type").selectOption("coursework");
+    await $(p, "analysis-work-type").selectOption("unspecified");
+   }
+   if (change === "profile") {
+    await $(p, "analysis-profile").selectOption("engine-structural");
+    await $(p, "analysis-profile").selectOption("knu-csc-2025-source@1.0.0");
+   }
+   if (change === "edit")
+    await $(p, "editor").fill("edited while navigation held🙂");
+   if (change === "project") {
+    await p.getByRole("button", { name: "Close", exact: true }).click();
+    await p
+     .locator("[data-testid=project-row]", { hasText: name })
+     .locator("[data-testid=open-project]")
+     .click();
+   }
+   if (change === "route") {
+    const link = p.locator(".project-menu a.project-smoke-link");
+    await reveal(p, link);
+    await link.click();
+    await p.locator('a.nav-link[href="/"]').click();
+   }
+   await $(p, "editor").waitFor({ state: "attached" });
+   const beforeRelease = await $(p, "editor").evaluate(e => [e.value, e.selectionStart, e.selectionEnd]);
+   const delivered = p.waitForResponse(response => response.url().endsWith("/js/editor-select.js"));
+   unblock();
+   await delivered;
+   await p.evaluate(async () => {
+    await import("./js/editor-select.js");
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+   });
+   assert.deepEqual(await $(p, "editor").evaluate(e => [e.value, e.selectionStart, e.selectionEnd]), beforeRelease,
+    "late shared import cannot resurrect cancelled KNU navigation or change source/selection");
+   if (change !== "edit") assert.deepEqual(await head(p, name), originalHead);
+   assert.equal(hits, 1);
+   await ctx.unroute("**/js/editor-select.js", handler);
+   if (change === "edit") await save(p);
+   await analyze(p);
+   const selected = await $(p, "editor").evaluate((e) =>
+    e.value.substring(e.selectionStart, e.selectionEnd),
+   );
+   assert.notEqual(selected, ".");
+   if (change !== "edit")
+    await clickFinding(p, "KNU-SRC-HEADING-DOT-001", ".", fixtures.negative);
+   assert.deepEqual(errors, []);
+   console.log("PASS K3 held navigation:", change);
+  } finally {
+   unblock();
+   await ctx.close();
   }
-  if (change === "profile") {
-   await $(p, "analysis-profile").selectOption("engine-structural");
-   await $(p, "analysis-profile").selectOption("knu-csc-2025-source");
-  }
-  if (change === "edit")
-   await $(p, "editor").fill("edited while navigation held🙂");
-  if (change === "project") {
-   await p.getByRole("button", { name: "Close", exact: true }).click();
-   await p
-    .locator("[data-testid=project-row]", { hasText: name })
-    .locator("[data-testid=open-project]")
-    .click();
-  }
-  if (change === "route") {
-   const link = p.locator(".project-menu a.project-smoke-link");
-   await reveal(p, link);
-   await link.click();
-   await p.locator('a.nav-link[href="/"]').click();
-  }
-  unblock();
-  await p.unroute("**/js/editor-select.js");
-  if (change === "edit") await save(p);
-  await analyze(p);
-  const selected = await $(p, "editor").evaluate((e) =>
-   e.value.substring(e.selectionStart, e.selectionEnd),
-  );
-  assert.notEqual(selected, ".");
-  if (change !== "edit")
-   await clickFinding(p, "KNU-SRC-HEADING-DOT-001", ".", fixtures.negative);
-  assert.deepEqual(errors, []);
-  await ctx.close();
-  console.log("PASS K3 held navigation:", change);
  }
 }
 async function faultsAndReadonly(browser) {

@@ -28,6 +28,8 @@ const {
 const { chromium } = require("playwright");
 const { buildZip } = require("./zip-util.cjs");
 const review = require("./review-ui-helpers.cjs");
+const references = require("./source-reference-ui-checks.cjs");
+const formatting = require("./thesis-formatting-ui-checks.cjs");
 
 const UPSTREAM = process.env.APP_URL || "http://static-origin:8080";
 const PROXY_PORT = 8092;
@@ -151,6 +153,7 @@ async function awaitTerminalAnalysis(page, timeout = 30000) {
       headless: true,
     });
     ctx = browser;
+    await references.install(ctx);
     page = await ctx.newPage();
     const failedReqs = [];
     page.on("requestfailed", (r) => failedReqs.push(r.url()));
@@ -198,7 +201,7 @@ async function awaitTerminalAnalysis(page, timeout = 30000) {
     await review.reveal(page, page.locator("[data-testid=analysis-profile]"));
     await page
       .locator("[data-testid=analysis-profile]")
-      .selectOption("knu-csc-2025-source");
+      .selectOption("knu-csc-2025-source@1.0.0");
     await analyzeNow(page);
     await awaitTerminalAnalysis(page);
     await page.locator("[data-testid=knu-report]").waitFor();
@@ -233,6 +236,12 @@ async function awaitTerminalAnalysis(page, timeout = 30000) {
     // deliberately has uncertainty and must not be forged into fix eligibility.
     await page.getByRole("button", { name: "Close", exact: true }).click();
     const reviewName = await review.create(page, review.negative, "review.tex");
+    await page.getByRole("button", { name: "Close", exact: true }).click();
+    const referenceName = await references.create(page);
+    await references.exercise(page, referenceName, "online");
+    await page.getByRole("button", { name: "Close", exact: true }).click();
+    const formattingName = await formatting.create(page);
+    await formatting.exercise(page, formattingName, "online");
     await page.getByRole("button", { name: "Close", exact: true }).click();
     await review.open(page, name);
     await page.waitForFunction(() => window.__oopOfflineReady === true);
@@ -289,6 +298,7 @@ async function awaitTerminalAnalysis(page, timeout = 30000) {
       headless: true,
     });
     ctx = browser;
+    await references.install(ctx);
     page = await ctx.newPage();
     const offErrors = [];
     page.on("pageerror", (e) => offErrors.push(String(e)));
@@ -354,7 +364,7 @@ async function awaitTerminalAnalysis(page, timeout = 30000) {
     await review.reveal(page, page.locator("[data-testid=analysis-profile]"));
     await page
       .locator("[data-testid=analysis-profile]")
-      .selectOption("knu-csc-2025-source");
+      .selectOption("knu-csc-2025-source@1.0.0");
     await analyzeNow(page);
     await awaitTerminalAnalysis(page);
     await page.locator("[data-testid=knu-report]").waitFor();
@@ -394,6 +404,12 @@ async function awaitTerminalAnalysis(page, timeout = 30000) {
       /knu.tex/,
     );
     // Actual offline reviewed-fix workflow, not a service/test injection.
+    await page.getByRole("button", { name: "Close", exact: true }).click();
+    await review.open(page, referenceName);
+    await references.exercise(page, referenceName, "full cold offline");
+    await page.getByRole("button", { name: "Close", exact: true }).click();
+    await review.open(page, formattingName);
+    await formatting.exercise(page, formattingName, "full cold offline");
     await page.getByRole("button", { name: "Close", exact: true }).click();
     await review.open(page, reviewName);
     await review.selectKnu(page);
@@ -468,7 +484,7 @@ async function awaitTerminalAnalysis(page, timeout = 30000) {
     await review.reveal(page, page.locator("[data-testid=analysis-profile]"));
     await page
       .locator("[data-testid=analysis-profile]")
-      .selectOption("knu-csc-2025-source");
+      .selectOption("knu-csc-2025-source@1.0.0");
     await analyzeNow(page);
     await awaitTerminalAnalysis(page);
     await page.locator("[data-testid=knu-report]").waitFor();
@@ -642,7 +658,7 @@ async function awaitTerminalAnalysis(page, timeout = 30000) {
     const removed = await page.evaluate(async (asset) => {
       let deleted = false;
       for (const name of await caches.keys()) {
-        if (!name.startsWith("oop-workspace-shell-")) continue;
+        if (!/^oop-workspace-(?:shell|release|aux)-/.test(name)) continue;
         const cache = await caches.open(name);
         deleted = (await cache.delete(new Request(asset, { cache: "reload" }))) || deleted;
       }
@@ -688,7 +704,7 @@ async function awaitTerminalAnalysis(page, timeout = 30000) {
     await review.reveal(page, page.locator("[data-testid=analysis-profile]"));
     await page
       .locator("[data-testid=analysis-profile]")
-      .selectOption("knu-csc-2025-source");
+      .selectOption("knu-csc-2025-source@1.0.0");
     await analyzeNow(page);
     await awaitTerminalAnalysis(page);
     const failStatus = await analysisStatusText(page);
