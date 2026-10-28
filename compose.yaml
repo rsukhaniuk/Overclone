@@ -360,10 +360,11 @@ services:
       NUGET_PACKAGES: /cache/nuget
       DOTNET_CLI_TELEMETRY_OPTOUT: "1"
       DOTNET_SKIP_FIRST_TIME_EXPERIENCE: "1"
+    # Keep release/WebCIL outputs separate from development and test builds.
     volumes:
       - .:/workspace
       - dotnet-cache:/cache
-      - dotnet-build:/artifacts/dotnet
+      - publish-build:/artifacts/dotnet
       - wasm:/workspace/src/Client/wwwroot/native-generated:ro
       - rust-wasm:/workspace/src/Client/wwwroot/rust-generated:ro
       - publish-assets:/artifacts/publish
@@ -376,7 +377,7 @@ services:
       [
         "sh",
         "-c",
-        "rm -rf /artifacts/publish/wwwroot && dotnet publish src/Client/Client.csproj -c Release -o /artifacts/publish",
+        "rm -rf /artifacts/publish/wwwroot && dotnet publish src/Client/Client.csproj -c Release -p:PublishTrimmed=false -p:CompressionEnabled=false -o /artifacts/publish",
       ]
     restart: "no"
 
@@ -417,3 +418,4 @@ volumes:
   rust-build:
   rust-wasm:
   publish-assets:
+  publish-build:

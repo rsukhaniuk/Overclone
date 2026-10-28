@@ -12,8 +12,13 @@
     <EmbeddedResource Include="Analysis/knu-profile-v1_2-metadata.json" />
     <EmbeddedResource Include="Analysis/knu-profile-v1_3-metadata.json" />
     <EmbeddedResource Include="Analysis/knu-profile-v1_4-metadata.json" />
+    <EmbeddedResource Include="Compilation/Provisioning/bundled-runtime.json" />
     <Content Remove="wwwroot/**/.pi-lens.json" />
   </ItemGroup>
+  <Target Name="RequireBundledRuntimeForPublish" BeforeTargets="PrepareForPublish">
+    <Error Condition="!Exists('$(MSBuildProjectDirectory)/wwwroot/bundled-runtime/compiler-suite.zip') Or !Exists('$(MSBuildProjectDirectory)/wwwroot/bundled-runtime/e1.js') Or !Exists('$(MSBuildProjectDirectory)/wwwroot/bundled-runtime/e1.wasm')"
+           Text="The app requires bundled compiler and PDF assets. Run scripts/stage-bundled-runtime.py with the verified local inputs before publishing." />
+  </Target>
   <ItemGroup>
     <!-- Standard Blazor PWA SDK activation: the ServiceWorker item makes the SDK
          generate service-worker-assets.js at build/publish (content hashes + a

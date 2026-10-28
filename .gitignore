@@ -13,6 +13,7 @@ core.*
 **/obj/
 src/Client/wwwroot/native-generated/
 src/Client/wwwroot/rust-generated/
+src/Client/wwwroot/bundled-runtime/
 rust/target/
 .vs/
 .idea/
