@@ -22,7 +22,8 @@ const hex = bytes => createHash('sha256').update(bytes).digest('hex');
 const core = ['index.html', 'app.css', 'manifest.json', 'icons/icon-192.png', 'icons/icon-512.png',
     '_framework/blazor.webassembly.js', '_framework/dotnet.js', '_framework/dotnet.runtime.abc.js',
     '_framework/dotnet.native.abc.js', '_framework/dotnet.native.abc.wasm', '_framework/Client.abc.wasm',
-    'js/workspace-storage.js', 'js/editor-select.js', 'rust-generated/document_engine.js', 'rust-generated/document_engine_bg.wasm'];
+    'js/workspace-storage.js', 'js/editor-select.js', 'rust-generated/document_engine.js', 'rust-generated/document_engine_bg.wasm',
+    'bundled-runtime/compiler-suite.zip', 'bundled-runtime/e1.js', 'bundled-runtime/e1.wasm'];
 const tick = () => new Promise(resolve => setImmediate(resolve));
 function harness(options = {}) {
     const handlers = new Map(), stores = new Map(), fetches = [];

@@ -182,9 +182,11 @@ const deadline = setTimeout(() => { console.error('PDF/shared admission test dea
     const dual = harness(), portA = dual.createPdfPort(), portB = dual.createPdfPort();
     const resultA = inspect(portA, request('a')), resultB = inspect(portB, request('b'));
     await until(() => dual.stats.workers.length === 2, 'independent PDF ports'); assert.equal(dual.stats.messages, 1);
+    const workerB = dual.stats.workers.find(worker => worker.messages[0].request.requestId === 'b');
+    assert.ok(workerB, 'identify the second request independently of asynchronous hash completion order');
     assert.equal((await inspect(portB, request('busy'))).status, 'unavailable', 'active1 per port');
-    portA.dispose(); assert.equal((await resultA).status, 'disposed'); assert.equal(dual.stats.workers[1].terminated, 0);
-    terminal(dual.stats.workers[1]); assert.equal((await resultB).status, 'unavailable'); await clean(dual, [portA, portB]);
+    portA.dispose(); assert.equal((await resultA).status, 'disposed'); assert.equal(workerB.terminated, 0);
+    terminal(workerB); assert.equal((await resultB).status, 'unavailable'); await clean(dual, [portA, portB]);
 
     const hashCancel = harness(), hashPort = hashCancel.createPdfPort(); let releaseHash;
     hashCancel.control.hashGate = new Promise(resolve => { releaseHash = resolve; });

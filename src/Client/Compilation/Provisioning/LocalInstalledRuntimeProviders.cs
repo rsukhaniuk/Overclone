@@ -7,7 +7,8 @@ using Microsoft.JSInterop;
 namespace Client.Compilation.Provisioning;
 
 /// <summary>Application trust is fixed here, independently of user-declared installation integrity.
-/// No package cache: every admitted operation rereads selection and actual installed bytes.</summary>
+/// Manual installations are reverified on every read. Bundled application assets
+/// are verified once and retained as privately owned immutable packages.</summary>
 public sealed class LocalInstalledRuntimeProviders : INativeRuntimeProvider, IPdfRuntimeProvider, ISyncTeXRuntimeProvider, IAsyncDisposable
 {
     public const string PdfLoaderHash = "040bdfac50656b3993f622614b73feaaba31d8253d077ff50f925f316c2f5f6b";
@@ -20,15 +21,19 @@ public sealed class LocalInstalledRuntimeProviders : INativeRuntimeProvider, IPd
     private readonly object _gate = new();
     private bool _disposed;
     private Task? _closing;
+    private readonly BundledRuntimeAssets? _bundled;
+    public bool UsesBundledResources => _bundled is not null;
     public LocalInstalledRuntimeProviders(IJSRuntime js) : this(new(new JsRuntimeAssetBackend(js)), new JsLocalRuntimeSelectionStore(js),
         new(new JsRuntimeAssetBackend(js)), new JsPdfRuntimeSelectionStore(js)) { }
+    public LocalInstalledRuntimeProviders(IJSRuntime js, BundledRuntimeAssets bundled) : this(js) { _bundled = bundled; }
     public LocalInstalledRuntimeProviders(RuntimeAssetStore compilerStore, ILocalRuntimeSelectionStore compilerSelection,
         RuntimeAssetStore pdfStore, IPdfRuntimeSelectionStore pdfSelection)
     { _compilerStore = compilerStore; _compilerSelection = compilerSelection; _pdfStore = pdfStore; _pdfSelection = pdfSelection; }
-    public Task CompilerWhenSettled => Task.WhenAll(_compilerReads.WhenIdle, _compilerStore.WhenSettled);
+    public Task CompilerWhenSettled => Task.WhenAll(_compilerReads.WhenIdle, _compilerStore.WhenSettled, _bundled?.WhenSettled ?? Task.CompletedTask);
     public Task WhenSettled => Task.WhenAll(CompilerWhenSettled, _pdfReads.WhenIdle, _pdfStore.WhenSettled);
     public Task<RuntimeAssetStatus> ConfirmCompilerSelectionAsync(InstalledNativeRuntimeRead read, CancellationToken token = default)
-        => RunAsync(_compilerReads, async owned =>
+        => _bundled is not null ? Task.FromResult(token.IsCancellationRequested ? RuntimeAssetStatus.Cancelled
+            : _bundled.Owns(read.Package) ? RuntimeAssetStatus.Ready : RuntimeAssetStatus.Uncertain) : RunAsync(_compilerReads, async owned =>
         {
             var text = await _compilerSelection.ReadAsync().ConfigureAwait(false); owned.ThrowIfCancellationRequested();
             if (text is null) return RuntimeAssetStatus.Missing;
@@ -37,7 +42,7 @@ public sealed class LocalInstalledRuntimeProviders : INativeRuntimeProvider, IPd
                 && mapping.InstallationId == read.Store.InstallationId && mapping.InventoryDigest == read.Store.InventoryDigest
                 ? RuntimeAssetStatus.Ready : RuntimeAssetStatus.Uncertain;
         }, status => status, token);
-    public Task<InstalledNativeRuntimeRead> ReadCompilerAsync(CancellationToken token = default) => RunAsync(_compilerReads, async owned =>
+    public Task<InstalledNativeRuntimeRead> ReadCompilerAsync(CancellationToken token = default) => _bundled?.ReadCompilerAsync(token) ?? RunAsync(_compilerReads, async owned =>
     {
         try
         {
@@ -51,7 +56,7 @@ public sealed class LocalInstalledRuntimeProviders : INativeRuntimeProvider, IPd
         }
         finally { await _compilerStore.WhenSettled.ConfigureAwait(false); }
     }, CompilerFailure, token);
-    public Task<InstalledPdfRuntimeRead> ReadPdfAsync(CancellationToken token = default) => RunAsync(_pdfReads, async owned =>
+    public Task<InstalledPdfRuntimeRead> ReadPdfAsync(CancellationToken token = default) => _bundled?.ReadPdfAsync(token) ?? RunAsync(_pdfReads, async owned =>
     {
         try
         {
@@ -124,6 +129,7 @@ public sealed class LocalInstalledRuntimeProviders : INativeRuntimeProvider, IPd
     }
     private async Task CloseAsync()
     {
+        if (_bundled is not null) await _bundled.DisposeAsync().ConfigureAwait(false);
         await _compilerStore.DisposeAsync().ConfigureAwait(false); await _pdfStore.DisposeAsync().ConfigureAwait(false);
         await WhenSettled.ConfigureAwait(false); _shutdown.Dispose();
     }

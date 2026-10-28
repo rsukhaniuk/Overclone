@@ -42,9 +42,8 @@ const CACHE_PREFIX = "oop-workspace-";
 const releaseCacheName = `${RELEASE_PREFIX}${manifest.version}`;
 const auxCacheName = `${AUX_PREFIX}${manifest.version}`;
 
-// Core public static assets immutable within a release. Optional provisioned
-// native compiler payloads are deliberately excluded (production native
-// compilation is disabled; huge distributions are not default core).
+// Compiler and renderer payloads ship with the application and belong to the
+// same integrity-checked offline release as its UI and worker entry points.
 function isCorePath(path) {
     if (
         path === "/index.html" ||
@@ -58,6 +57,8 @@ function isCorePath(path) {
         return true;
     if (/^\/js\/[A-Za-z0-9_-]+\.js$/.test(path)) return true;
     if (/^\/rust-generated\/[A-Za-z0-9_.-]+\.(?:js|wasm)$/.test(path))
+        return true;
+    if (["/bundled-runtime/compiler-suite.zip", "/bundled-runtime/e1.js", "/bundled-runtime/e1.wasm"].includes(path))
         return true;
     return false;
 }
@@ -120,7 +121,7 @@ for (const asset of manifest.assets) {
     const key = "/" + asset.url;
     if (manifestKeys.has(key)) throw new Error("[sw] duplicate manifest asset URL");
     manifestKeys.add(key);
-    if (!isCorePath(key)) continue; // optional/native compiler payloads excluded
+    if (!isCorePath(key)) continue;
     requiredByKey.set(key, asset);
     manifestIndex.set(key, asset);
     requiredAssets.push({ key, url: asset.url, hash: asset.hash });
@@ -135,6 +136,7 @@ const requiredPaths = [
     "/_framework/blazor.webassembly.js", "/_framework/dotnet.js",
     "/js/workspace-storage.js", "/js/editor-select.js",
     "/rust-generated/document_engine.js", "/rust-generated/document_engine_bg.wasm",
+    "/bundled-runtime/compiler-suite.zip", "/bundled-runtime/e1.js", "/bundled-runtime/e1.wasm",
 ];
 const requiredRoles = [
     /^\/_framework\/dotnet\.runtime\.[A-Za-z0-9_-]+\.js$/,

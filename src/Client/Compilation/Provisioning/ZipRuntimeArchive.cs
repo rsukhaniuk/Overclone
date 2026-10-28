@@ -37,6 +37,17 @@ public sealed class ZipRuntimeArchive : IAsyncDisposable
         var bytes = new byte[checked((int)length)];
         await _source.ReadExactlyAsync(bytes, token);
         if (await _source.ReadAsync(new byte[1], token) != 0) throw Invalid();
+        await PrepareEntries(bytes, token);
+    }
+    // Application-owned HTTP bytes, transferred without a second archive-sized copy.
+    internal Task PrepareOwnedAsync(byte[] bytes, CancellationToken token)
+    {
+        if (_preparation is not null || _closing || bytes.Length < 22 || bytes.Length > MaxZipBytes) throw Invalid();
+        _preparation = PrepareEntries(bytes, token);
+        return _preparation;
+    }
+    private async Task PrepareEntries(byte[] bytes, CancellationToken token)
+    {
         token.ThrowIfCancellationRequested();
         if (_closing) throw Invalid();
         var directory = ZipDirectory.Read(bytes); // sole envelope parser; bounded metadata first

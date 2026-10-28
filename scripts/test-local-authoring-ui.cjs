@@ -61,6 +61,7 @@ const RESULT_DIR = process.env.RESULT_DIR || "";
 const CASE = process.env.CASE || "plain";
 const COMPILER_CHOICE = process.env.COMPILER_CHOICE || "local-authoring-v4";
 assert.ok(["local-authoring-v4", "latex-dvi", "xelatex", "lualatex"].includes(COMPILER_CHOICE), "explicit supported compiler choice");
+const BUNDLED_RUNTIME = process.env.BUNDLED_RUNTIME === "1";
 const SOURCE_PDF_CHECKS = process.env.SOURCE_PDF_CHECKS === "1";
 assert.ok(!SOURCE_PDF_CHECKS || COMPILER_CHOICE === "local-authoring-v4", "DVI has no source map");
 assert.ok(!SOURCE_PDF_CHECKS || ["plain", "golden"].includes(CASE), "source/PDF checks support plain/golden fixtures");
@@ -311,7 +312,7 @@ if (PREFLIGHT_ONLY) {
   assert.equal(goldenMain.length, 1505); assert.equal(goldenChapter.length, 246); assert.equal(goldenRefs.length, 365);
   const long = longFixture(), entries = [{ name: "main.tex", buffer: long.main }, ...long.chapters];
   assert.equal(entries.length, 64); assert.equal(new Set(entries.map(file => file.name)).size, 64);
-  process.stdout.write(JSON.stringify({ result: "PREFLIGHT_ONLY", browserNativeProof: false, sdkVerified: false, pdfDownloadChecksEnabled: CHECK_DOWNLOADS,
+  process.stdout.write(JSON.stringify({ result: "PREFLIGHT_ONLY", browserNativeProof: false, sdkVerified: false, pdfDownloadChecksEnabled: CHECK_DOWNLOADS, bundledRuntime: BUNDLED_RUNTIME,
     plain: { bytes: PLAIN_MAIN.length, sha256: sha256(PLAIN_MAIN) },
     golden: [["main.tex", goldenMain], ["chapter.tex", goldenChapter], ["references.bib", goldenRefs]]
       .map(([name, bytes]) => ({ name, bytes: bytes.length, sha256: sha256(bytes) })),
@@ -369,7 +370,7 @@ function chromiumCensus() {
 }
 
 const record = {
-  result: "FAIL", case: CASE, compilerChoice: COMPILER_CHOICE, scope: "local-authoring-compile-pdf-cold-offline", pdfDownloadChecksEnabled: CHECK_DOWNLOADS,
+  result: "FAIL", case: CASE, compilerChoice: COMPILER_CHOICE, scope: "local-authoring-compile-pdf-cold-offline", pdfDownloadChecksEnabled: CHECK_DOWNLOADS, bundledRuntime: BUNDLED_RUNTIME,
   sdk: { cspValid: true, manifestVersion: manifest.version, manifestAssets: manifest.assets.length, allAssetHashesVerified: true },
   resources: {
     compilerPins: pins.length, pinsSha256: sha256(fs.readFileSync(pinsPath)),
@@ -840,22 +841,34 @@ let profile, base;
     assert.equal(record.online.sourceSha256, sha256(expectedMainBytes), "saved main.tex bytes match imported");
     if (CASE === "font-assets") record.online.projectAssets = assertFontHead(savedHead, expectedMainBytes);
 
-    // --- Install compiler resources; prove no native worker during install.
-    phase = "install-compiler";
-    await H.reveal(page, H.$(page, "runtime-recheck"));
-    const beforeRecheck = Number(await H.$(page, 'runtime-status').getAttribute('data-operation'));
-    await H.$(page, "runtime-recheck").click();
-    await runtimeState(page, "Empty", 60000, beforeRecheck);
-    assert.equal(await H.$(page, "compile").isDisabled(), true);
-    assert.match(await H.$(page, "compiler-readiness").textContent(), /Compiler unavailable/);
-    const beforeInstallation = Number(await H.$(page, 'runtime-status').getAttribute('data-operation'));
-    if (suite) {
-      await H.$(page, 'runtime-zip-input').setInputFiles(path.join(RUNTIME_DIR, 'compiler-suite.zip'));
-      await H.$(page, 'runtime-zip-install').click();
+    if (BUNDLED_RUNTIME) {
+      phase = "automatic-compiler-preparation";
+      await waitReadiness(page, true, 300000);
+      await H.reveal(page, H.$(page, "bundled-runtime-info"));
+      assert.equal(await H.$(page, "runtime-zip-input").count(), 0, "no manual compiler installation UI");
+      assert.equal(await H.$(page, "pdf-runtime-manifest").count(), 0, "no manual renderer installation UI");
+      assert.deepEqual(await page.locator('select[aria-label="Compile engine"] option').evaluateAll(options => options.map(o => o.value).filter(Boolean)),
+        ["local-authoring-v4", "latex-dvi", "xelatex", "lualatex"]);
+      assert.equal(nativeWorkersInPhase("automatic-compiler-preparation").length, 0, "preparation does not execute a compiler");
+      record.online.automaticBundledTools = true;
+      record.online.readinessReady = true;
     } else {
-      await H.$(page, "runtime-pins").setInputFiles(pinsPath);
-      await H.$(page, "runtime-files").setInputFiles(compilerFiles);
-      await H.$(page, "runtime-install").click();
+      // --- Install compiler resources; prove no native worker during install.
+      phase = "install-compiler";
+      await H.reveal(page, H.$(page, "runtime-recheck"));
+      const beforeRecheck = Number(await H.$(page, 'runtime-status').getAttribute('data-operation'));
+      await H.$(page, "runtime-recheck").click();
+      await runtimeState(page, "Empty", 60000, beforeRecheck);
+      assert.equal(await H.$(page, "compile").isDisabled(), true);
+      assert.match(await H.$(page, "compiler-readiness").textContent(), /Compiler unavailable/);
+      const beforeInstallation = Number(await H.$(page, 'runtime-status').getAttribute('data-operation'));
+      if (suite) {
+        await H.$(page, 'runtime-zip-input').setInputFiles(path.join(RUNTIME_DIR, 'compiler-suite.zip'));
+        await H.$(page, 'runtime-zip-install').click();
+      } else {
+        await H.$(page, "runtime-pins").setInputFiles(pinsPath);
+        await H.$(page, "runtime-files").setInputFiles(compilerFiles);
+        await H.$(page, "runtime-install").click();
     }
     await runtimeState(page, "Installed", suite ? 300000 : 180000, beforeInstallation);
     assert.equal(
@@ -897,6 +910,8 @@ let profile, base;
     await H.$(page, "refresh-compile-tools").click();
     await waitReadiness(page, true, 60000);
     record.online.readinessReady = true;
+
+    }
 
     // --- Select main.tex (tree) and the supported local-authoring-v4 engine.
     await selectMainInTree(page);
@@ -1137,19 +1152,25 @@ let profile, base;
     // Then wait for the control to be visible and enabled (bounded 60s),
     // allowing the app's initial stored-tool check to settle before explicit
     // installer rechecks. No automatic retries or changed product timeouts.
-    await H.$(page, "refresh-compile-tools").waitFor({ state: "visible", timeout: 60000 });
-    await page.waitForFunction(
-      () => document.querySelector("[data-testid=refresh-compile-tools]")?.disabled === false,
-      null,
-      { timeout: 60000 },
-    );
-    // Recheck both resource stores from local bytes (no fetch).
-    await H.reveal(page, H.$(page, "runtime-recheck"));
-    await H.$(page, "runtime-recheck").click();
-    await runtimeState(page, "Installed", 60000);
-    await H.reveal(page, H.$(page, "pdf-runtime-recheck"));
-    await H.$(page, "pdf-runtime-recheck").click();
-    await pdfRuntimeState(page, "Installed", 60000);
+    if (BUNDLED_RUNTIME) {
+      await waitReadiness(page, true, 180000);
+      record.coldOffline.automaticBundledTools = true;
+    } else {
+      await H.$(page, "refresh-compile-tools").waitFor({ state: "visible", timeout: 60000 });
+      await page.waitForFunction(
+        () => document.querySelector("[data-testid=refresh-compile-tools]")?.disabled === false,
+        null,
+        { timeout: 60000 },
+      );
+      // Recheck both resource stores from local bytes (no fetch).
+      await H.reveal(page, H.$(page, "runtime-recheck"));
+      await H.$(page, "runtime-recheck").click();
+      await runtimeState(page, "Installed", 60000);
+      await H.reveal(page, H.$(page, "pdf-runtime-recheck"));
+      await H.$(page, "pdf-runtime-recheck").click();
+      await pdfRuntimeState(page, "Installed", 60000);
+
+    }
 
     // 5. Select main.tex via tree; edit (visible change BEFORE \end{document}),
     // save, analyze locally. The offline compile must produce a NEW PDF.
@@ -1190,12 +1211,18 @@ let profile, base;
     assert.deepEqual(await H.head(page, project), offlineSavedHead, "analyze did not mutate source");
     record.coldOffline.analyzed = true;
     if (CASE === "font-assets") record.coldOffline.editedProjectAssets = assertFontHead(offlineSavedHead, Buffer.from(changedSource, "utf8"));
-    // 6. Check tools from installed resources (no fetch), then compile fresh.
-    phase = "offline-check-tools";
-    await H.reveal(page, H.$(page, "refresh-compile-tools"));
-    await H.$(page, "refresh-compile-tools").click();
-    await waitReadiness(page, true, 60000);
-    record.coldOffline.readinessReadyOffline = true;
+    if (BUNDLED_RUNTIME) {
+      await waitReadiness(page, true, 180000);
+      record.coldOffline.readinessReadyOffline = true;
+    } else {
+      // 6. Check tools from installed resources (no fetch), then compile fresh.
+      phase = "offline-check-tools";
+      await H.reveal(page, H.$(page, "refresh-compile-tools"));
+      await H.$(page, "refresh-compile-tools").click();
+      await waitReadiness(page, true, 60000);
+      record.coldOffline.readinessReadyOffline = true;
+
+    }
 
     phase = "offline-compile";
     await selectMainInTree(page);

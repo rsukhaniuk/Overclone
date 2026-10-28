@@ -23,7 +23,7 @@
         </div>
     </header>
     <p role="status" data-testid="pdf-download-status">@_download?.Notice</p>
-    <p class="compiler-readiness" role="status" data-testid="compiler-readiness">@(Session.Readiness.Ready ? "Local compiler checked — compilation available." : "Compiler unavailable — " + Session.Readiness.Message)</p>
+    <p class="compiler-readiness" role="status" data-testid="compiler-readiness">@(Session.UsesBundledResources && Session.ReadingTools ? "Preparing included compilers automatically… First open downloads about 180 MiB of compiler resources. Editing and saving remain available." : Session.Readiness.Ready ? "Local compiler checked — compilation available." : "Compiler unavailable — " + Session.Readiness.Message)</p>
     <details class="compiler-settings" data-testid="compiler-settings">
     <summary>Compiler settings</summary>
     <div class="settings-content">
@@ -39,12 +39,14 @@
             <option value="">Choose an available engine</option>
             @foreach (var ports in Session.AvailableEngines)
             { <option value="@ports.CapabilityId" disabled="@(!Session.Readiness.Ready)">@ports.Label</option> }
+            @if (Session.UsesBundledResources && !Session.AvailableEngines.Any())
+            { <option value="local-authoring-v4" disabled>pdfLaTeX — preparing</option> }
             @if (!Session.AvailableEngines.Any(p => p.CapabilityId == "xelatex"))
-            { <option value="xelatex" disabled>XeLaTeX — unavailable</option> }
+            { <option value="xelatex" disabled>XeLaTeX — @(Session.UsesBundledResources ? "preparing" : "unavailable")</option> }
             @if (!Session.AvailableEngines.Any(p => p.CapabilityId == "lualatex"))
-            { <option value="lualatex" disabled>LuaLaTeX — unavailable</option> }
+            { <option value="lualatex" disabled>LuaLaTeX — @(Session.UsesBundledResources ? "preparing" : "unavailable")</option> }
             @if (!Session.AvailableEngines.Any(p => p.CapabilityId == "latex-dvi"))
-            { <option value="latex-dvi" disabled>LaTeX DVI mode — unavailable</option> }
+            { <option value="latex-dvi" disabled>LaTeX DVI mode — @(Session.UsesBundledResources ? "preparing" : "unavailable")</option> }
         </select>
     </label>
     @if (Session.ConfiguredPorts is { SelectableBibliography: true })
@@ -58,8 +60,15 @@
         <p>Select a .tex root, including a nested path, and a verified local engine with optional BibTeX. Includes resolve from project CWD. Internal ASCII spaces in directory and base names are supported; leading/trailing basename spaces and TeX command syntax are unsupported. Source/PDF navigation is available with supported pdfLaTeX source-map resources. LaTeX/DVI output has no source map.</p>
         <p data-testid="renderer-readiness">@(Session.ConfiguredPorts?.Inspector is null ? "Preview unavailable — no renderer configured." : "Preview checks its supported local renderer on each request; actual availability is reported in the preview.")</p>
     </details>
-    <NativeRuntimeSetupPanel />
-    <PdfRuntimeSetupPanel />
+    @if (Session.UsesBundledResources)
+    {
+        <p data-testid="bundled-runtime-info">All four compilers, their bundled packages/fonts and the PDF renderer are included. Resources cache automatically for offline use after the first download. No manual installation is required.</p>
+    }
+    else
+    {
+        <NativeRuntimeSetupPanel />
+        <PdfRuntimeSetupPanel />
+    }
     <button @onclick="Session.RefreshToolsAsync" disabled="@Session.ReadingTools" data-testid="refresh-compile-tools">Check tools</button>
     </div>
     </details>

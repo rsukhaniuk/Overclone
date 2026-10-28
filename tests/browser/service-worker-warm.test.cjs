@@ -467,6 +467,7 @@ const RELEASE_CORE = [
     "_framework/dotnet.native.3zpaws0drs.wasm",
     "js/workspace-storage.js", "js/editor-select.js",
     "rust-generated/document_engine.js", "rust-generated/document_engine_bg.wasm",
+    "bundled-runtime/compiler-suite.zip", "bundled-runtime/e1.js", "bundled-runtime/e1.wasm",
 ].map(url => ({ hash: digest(url), url }));
 const RELEASE_NON_CORE = ["optional/native-texlive.tar", "native-generated/compiler.wasm"]
     .map(url => ({ hash: digest(url), url }));
@@ -572,6 +573,17 @@ async function releaseCompleteInstallIntegrityChecked() {
     assert.ok(!backend.hasEntry(h.releaseName, h.absolute("/optional/native-texlive.tar")), "non-core native payload not cached");
     assert.ok(h.stats.fetches.length >= RELEASE_CORE.length);
     return { complete: true, precached: backend.entryCount(h.releaseName), nonCoreExcluded: true };
+}
+async function bundledRuntimeRequiredAndCached() {
+    const urls = ["bundled-runtime/compiler-suite.zip", "bundled-runtime/e1.js", "bundled-runtime/e1.wasm"];
+    for (const url of urls) {
+        assert.throws(() => manifestHarness({ version: RELEASE_VERSION_A, assets: RELEASE_CORE.filter(a => a.url !== url) }),
+            "an application release cannot omit a bundled compiler/renderer asset");
+        const h = manifestHarness({ version: RELEASE_VERSION_A, assets: RELEASE_CORE });
+        h.control.fetchFailure.add(h.absolute("/" + url));
+        await assert.rejects(manifestInstall(h), "failed bundled download must not install an incomplete release");
+    }
+    return { requiredBundledAssets: urls.length, missingOrFailedReleaseRefused: true };
 }
 async function releaseInterruptedInstallRejectsAndPriorRetained() {
     const shared = createReleaseBackend();
@@ -952,6 +964,7 @@ const deadline = setTimeout(() => {
         boot: await bootRevalidation(),
         frameworkVersionIsolation: await frameworkVersionIsolation(),
         releaseCompleteInstall: await releaseCompleteInstallIntegrityChecked(),
+        bundledRuntime: await bundledRuntimeRequiredAndCached(),
         releaseInterruptedInstall: await releaseInterruptedInstallRejectsAndPriorRetained(),
         releaseMissingAsset: await releaseMissingAssetRejectsInstall(),
         releaseFetchImmutable: await releaseFetchCoreCacheFirstImmutable(),

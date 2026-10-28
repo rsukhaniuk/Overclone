@@ -45,6 +45,7 @@ public sealed class CompileWorkspaceSession(WorkspaceCoordinator workspace, ICom
     public IReadOnlyList<CompileWorkspacePorts> AvailableEngines => _engines;
     public AcceptedCompileOutput? DisplayedOutput => _shown;
     public bool ReadingTools => _configurationTask is { IsCompleted: false };
+    public bool UsesBundledResources => configuration is LocalCompileWorkspaceConfiguration { UsesBundledResources: true };
     public bool Disposed => _disposed;
     public long SelectionVersion => _selection.Current.Version;
     public event Action? Changed;

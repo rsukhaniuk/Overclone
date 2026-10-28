@@ -11,6 +11,7 @@ namespace Client.Compilation.Presentation;
 public sealed class LocalCompileWorkspaceConfiguration : ICompileWorkspaceConfiguration, IAsyncDisposable
 {
     public static TimeSpan JobDeadline => TimeSpan.FromSeconds(25);
+    public bool UsesBundledResources => _resources.UsesBundledResources;
     private readonly LocalInstalledRuntimeProviders _resources;
     private readonly NativeBrowserModuleLoader _loader;
     private readonly IPdfInspector _inspector;
@@ -32,6 +33,13 @@ public sealed class LocalCompileWorkspaceConfiguration : ICompileWorkspaceConfig
     public async Task<CompileReadiness> CheckAsync(CancellationToken token = default) => (await OpenAsync(token).ConfigureAwait(false)).Compiler;
     public async Task<CompileWorkspaceConfigurationResult> OpenAsync(CancellationToken caller)
     {
+        // Initial static-asset download has its own bounded lifetime. It must not
+        // consume the short per-operation readiness budget or require user setup.
+        if (UsesBundledResources)
+        {
+            var preparation = await _resources.ReadCompilerAsync(caller).ConfigureAwait(false);
+            if (preparation.Package is null) return Result(Failure(preparation.Store.Status));
+        }
         CancellationTokenSource deadline, linked;
         lock (_gate)
         {
@@ -132,7 +140,14 @@ public sealed class LocalCompileWorkspaceConfiguration : ICompileWorkspaceConfig
         }
     }
     private CompileWorkspaceConfigurationResult Result(CompileReadiness readiness) => new(readiness, _ports, _additionalEngines);
-    private static CompileReadiness Failure(RuntimeAssetStatus status) => new(false, status.ToString(), status switch
+    private CompileReadiness Failure(RuntimeAssetStatus status) => new(false, status.ToString(), UsesBundledResources ? status switch
+    {
+        RuntimeAssetStatus.Cancelled => "Bundled compiler preparation was cancelled. Check tools to retry.",
+        RuntimeAssetStatus.Disposed => "Bundled tools have closed. Reopen the application to use them.",
+        RuntimeAssetStatus.TimedOut => "The bundled compiler download timed out. Check your connection and retry Check tools.",
+        RuntimeAssetStatus.Corrupt => "Bundled compiler files failed verification. Reconnect and reload the app to recover its complete release.",
+        _ => "Bundled compiler files could not be loaded. Reconnect and reload the app; editing and saving remain available."
+    } : status switch
     {
         RuntimeAssetStatus.Missing => "Local compiler resources are not installed. Install the supported local package, then Check tools. Editing, saving and source analysis remain available.",
         RuntimeAssetStatus.Incomplete => "Local compiler resources are incomplete. Recheck or reinstall your local package, then Check tools.",
