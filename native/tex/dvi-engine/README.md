@@ -4,7 +4,12 @@ Actual retained SwiftLaTeX/Tectonic `(x)dvipdfmx`, compiled as C
 libraries behind `oc_dvi.cpp` (C++17). The checked build overlay writes each
 page's resolved MediaBox explicitly, preserving the native inherited or per-page
 dimensions for the current renderer's box API. Its input/output hashes are in
-the build manifest. This is not a PDF generator substitute,
+the build manifest. A second checked overlay bounds TrueType glyph-name
+lookups by the glyph-pointer array length (`numberOfGlyphs`), rather than the
+custom-name count. This preserves high-index DejaVu ligature names and their
+real ToUnicode mappings. Earlier registered packages retain their own pins;
+the corrected converter is selected separately by the compiler suite.
+This is not a PDF generator substitute,
 CLI subprocess adapter, backend or package downloader. JavaScript files here
 are test tooling only; generated Emscripten loading glue stays in private build
 outputs. Master owns application worker/C# integration and provisioning.
@@ -115,6 +120,12 @@ exact commands, toolchain version and limits. Keep all generated C/object/WASM,
 SDK caches and vendor sources outside the repository. Retained engine headers
 state GPL-2.0-or-later; bridge headers carry Tectonic MIT notices. Private technical
 build evidence is not redistribution/license clearance; master owns release policy.
+
+The font-name regression used fresh XeTeX XDV with the provided DejaVu Serif
+fonts. Before correction, `fi` and `ffl` lacked mappings and extracted as glyph
+IDs. The unchanged renderer now extracts `office fixture fi ffi ff fl ffl` and
+Ukrainian text exactly. `test-renderer.cjs` accepts an optional fourth JSON
+argument containing text markers per page, in addition to native page-box checks.
 
 ## Reproduced evidence and test commands
 

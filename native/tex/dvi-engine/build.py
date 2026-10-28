@@ -46,12 +46,24 @@ patched = original.replace('  if (page->flags & USE_MY_MEDIABOX) {',
 patched = patched.replace('page->cropbox.', 'resolved_box->')
 doc_overlay = out / 'dpx-pdfdoc.c'
 doc_overlay.write_text(doc_text[:start] + patched + doc_text[end:])
+# Glyph-name pointers are indexed by glyph ID and have numberOfGlyphs entries.
+# count bounds only the separate custom-name storage. Confusing the two loses
+# names for high glyph IDs, including genuine DejaVu fi/ffl ligatures.
+post_source = source / 'dpx-tt_post.c'
+if sha(post_source) != 'fe1f8f77b8f208ece6e4da70a8fbe0eab480e9a84c5fc8d0b7a92141adccfbb7':
+    raise RuntimeError('Unexpected retained TrueType post-table preimage.')
+post_text = post_source.read_text()
+post_patched = post_text.replace('gid < post->count', 'gid < post->numberOfGlyphs')
+if post_text.count('gid < post->count') != 2:
+    raise RuntimeError('Unexpected retained glyph-name lookup shape.')
+post_overlay = out / 'dpx-tt_post.c'
+post_overlay.write_text(post_patched)
 # The remaining retained bridge and engine C stay unchanged. The network-enabled
 # dvipdfmx-wasm.c and its JS resolver are deliberately not compiled or linked.
 commands = []
 def compile_one(path):
     target = out / (path.stem + '.o')
-    actual = doc_overlay if path == doc_source else path
+    actual = doc_overlay if path == doc_source else post_overlay if path == post_source else path
     command = ['emcc', '-O2', '-DHAVE_ZLIB', '-DHAVE_ZLIB_COMPRESS2', '-Dprintf=oc_dvi_printf', '-sUSE_LIBPNG=1', '-I' + str(source), '-c', str(actual), '-o', str(target)]
     run(command, path.stem)
     return command
@@ -72,6 +84,8 @@ manifest = {
     'inputs': {str(path): sha(path) for path in sorted(source.glob('*.h')) + sources + [cpp, owned / 'oc_dvi.h', Path(__file__).resolve()]},
     'sourceOverlay': {'original': sha(doc_source), 'patched': sha(doc_overlay),
                       'change': 'Explicit resolved MediaBox on each page; native per-page/root values unchanged'},
+    'fontNameOverlay': {'original': sha(post_source), 'patched': sha(post_overlay),
+                        'change': 'Bound glyph-name pointer lookups by numberOfGlyphs, not custom-name count'},
     'objects': {path.name: sha(path) for path in sorted(out.glob('*.o'))},
     'linkMapSha256': sha(out / 'link.map'),
     'sdkLibraries': {str(path.relative_to(cache)): sha(path) for path in sorted((cache / 'sysroot/lib/wasm32-emscripten').glob('*.a'))},

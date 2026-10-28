@@ -3,9 +3,10 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const assert = require('node:assert/strict');
-const [renderer, document, expectedJson] = process.argv.slice(2);
+const [renderer, document, expectedJson, expectedTextJson] = process.argv.slice(2);
 (async () => {
   const expected = JSON.parse(expectedJson);
+  const expectedText = expectedTextJson ? JSON.parse(expectedTextJson) : [];
   const m = await require(path.resolve(renderer, 'e1.js'))({
     wasmBinary: fs.readFileSync(path.resolve(renderer, 'e1.wasm')),
     print() {}, printErr() {}
@@ -44,6 +45,10 @@ const [renderer, document, expectedJson] = process.argv.slice(2);
     assert.equal(m._e1_text(page), 0, 'native text extraction');
     const text = take();
     assert.ok(text.length > 0);
+    if (expectedText[index]) {
+      const actual = JSON.parse(text.toString('utf8')).text;
+      for (const marker of expectedText[index]) assert.ok(actual.includes(marker), `Missing native text: ${marker}`);
+    }
     pages.push({page: index + 1, dimensions: facts.displayPoints, textBytes: text.length});
     assert.equal(m._e1_close(page), 0);
   }
