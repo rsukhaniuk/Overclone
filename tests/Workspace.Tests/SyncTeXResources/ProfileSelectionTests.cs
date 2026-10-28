@@ -66,7 +66,7 @@ public sealed class ProfileSelectionTests
     }
 
     [Theory]
-    [InlineData(-1)] [InlineData(0)] [InlineData(1)] [InlineData(5)] [InlineData(99)]
+    [InlineData(-1)] [InlineData(0)] [InlineData(1)] [InlineData(6)] [InlineData(99)]
     public void Local_limits_reject_every_nonlocal_profile(int value)
         => Assert.Throws<FormatException>(() => LocalRuntimeSelection.LimitsFor((NativeRuntimeProfile)value));
 

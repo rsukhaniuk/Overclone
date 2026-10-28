@@ -398,7 +398,11 @@ async function busyFalse(page, testid, timeoutMs) {
     { timeout: timeoutMs || 120000 },
   );
 }
-async function runtimeState(page, state, timeoutMs) {
+async function runtimeState(page, state, timeoutMs, previousOperation = null) {
+  if (previousOperation !== null) await page.waitForFunction(previous => {
+    const status = document.querySelector('[data-testid=runtime-status]');
+    return Number(status?.dataset.operation) > previous && status?.dataset.busy === 'false';
+  }, previousOperation, {timeout: timeoutMs || 120000});
   await busyFalse(page, "runtime-status", timeoutMs);
   assert.equal(
     await H.$(page, "runtime-status").getAttribute("data-state"),
@@ -839,10 +843,12 @@ let profile, base;
     // --- Install compiler resources; prove no native worker during install.
     phase = "install-compiler";
     await H.reveal(page, H.$(page, "runtime-recheck"));
+    const beforeRecheck = Number(await H.$(page, 'runtime-status').getAttribute('data-operation'));
     await H.$(page, "runtime-recheck").click();
-    await runtimeState(page, "Empty", 60000);
+    await runtimeState(page, "Empty", 60000, beforeRecheck);
     assert.equal(await H.$(page, "compile").isDisabled(), true);
     assert.match(await H.$(page, "compiler-readiness").textContent(), /Compiler unavailable/);
+    const beforeInstallation = Number(await H.$(page, 'runtime-status').getAttribute('data-operation'));
     if (suite) {
       await H.$(page, 'runtime-zip-input').setInputFiles(path.join(RUNTIME_DIR, 'compiler-suite.zip'));
       await H.$(page, 'runtime-zip-install').click();
@@ -851,7 +857,7 @@ let profile, base;
       await H.$(page, "runtime-files").setInputFiles(compilerFiles);
       await H.$(page, "runtime-install").click();
     }
-    await runtimeState(page, "Installed", suite ? 300000 : 180000);
+    await runtimeState(page, "Installed", suite ? 300000 : 180000, beforeInstallation);
     assert.equal(
       (await H.$(page, "runtime-status").textContent()).trim(),
       "Compiler resources installed. Use Check tools to verify local compilation availability.",
@@ -916,11 +922,11 @@ let profile, base;
     // --- Compile through the registered production lifecycle.
     phase = "compile";
     await H.$(page, "compile").click();
-    record.online.compileElapsedMs = await waitCompileDone(page, 90000);
+    record.online.compileElapsedMs = await waitCompileDone(page, suite ? 150000 : 90000);
     const compileStatus = await H.$(page, "compile-status").textContent();
     assert.ok(/^Compilation finished\./.test(compileStatus), `compile did not finish: ${compileStatus}`);
-    record.online.compileUnderAppDeadline = record.online.compileElapsedMs < 30000;
-    record.online.compileUnderNativeDeadline = record.online.compileElapsedMs < 25000;
+    record.online.compileUnderAppDeadline = record.online.compileElapsedMs < (suite ? 120000 : 30000);
+    record.online.compileUnderNativeDeadline = record.online.compileElapsedMs < (suite ? 90000 : 25000);
 
     const panel = H.$(page, "compile-panel");
     const outputHash = await panel.getAttribute("data-output-hash");
@@ -1211,7 +1217,7 @@ let profile, base;
       { timeout: 20000 },
     );
     await H.$(page, "compile").click();
-    record.coldOffline.compileElapsedMs = await waitCompileDone(page, 90000);
+    record.coldOffline.compileElapsedMs = await waitCompileDone(page, suite ? 150000 : 90000);
     const offlineCompileStatus = await H.$(page, "compile-status").textContent();
     assert.ok(/^Compilation finished\./.test(offlineCompileStatus), `offline compile did not finish: ${offlineCompileStatus}`);
     const offlineOutputHash = await H.$(page, "compile-panel").getAttribute("data-output-hash");

@@ -18,7 +18,7 @@ public sealed class LocalCompileWorkspaceConfiguration : ICompileWorkspaceConfig
     private readonly CancellationTokenSource _shutdown = new();
     private readonly object _gate = new();
     private NativeBrowserModuleLease? _module;
-    private NativeCompilationWorkerFactory? _factory, _dviFactory;
+    private NativeCompilationWorkerFactory? _factory, _dviFactory, _xeFactory, _luaFactory;
     private CompileWorkspacePorts? _ports;
     private CompileWorkspacePorts[]? _additionalEngines;
     private NativeRuntimeProfile? _configuredProfile;
@@ -65,9 +65,17 @@ public sealed class LocalCompileWorkspaceConfiguration : ICompileWorkspaceConfig
                 token.ThrowIfCancellationRequested();
                 bool provisioned = await _module.ProvisionAsync().ConfigureAwait(false);
                 token.ThrowIfCancellationRequested();
-                if (provisioned && read.Package.Profile == NativeRuntimeProfile.LocalLatex2023Dvi)
+                bool suite = read.Package.Profile == NativeRuntimeProfile.LocalCompilerSuite;
+                if (provisioned && (suite || read.Package.Profile == NativeRuntimeProfile.LocalLatex2023Dvi))
                 {
                     provisioned = await _module.ProvisionDviAsync().ConfigureAwait(false);
+                    token.ThrowIfCancellationRequested();
+                }
+                if (provisioned && suite)
+                {
+                    provisioned = await _module.ProvisionXetexAsync().ConfigureAwait(false);
+                    token.ThrowIfCancellationRequested();
+                    if (provisioned) provisioned = await _module.ProvisionLuatexAsync().ConfigureAwait(false);
                     token.ThrowIfCancellationRequested();
                 }
                 if (!provisioned) return Result(new(false, "ControllerUpdate", "Local worker entry is not available under the current offline controller. Check the application update status, then Check tools to retry."));
@@ -78,9 +86,9 @@ public sealed class LocalCompileWorkspaceConfiguration : ICompileWorkspaceConfig
                     return Result(new(false, "RuntimeChanged", "Compiler resource profile changed. Reopen the application to activate it; local documents are preserved."));
                 if (_ports is null)
                 {
-                    bool mapped = read.Package.Profile is NativeRuntimeProfile.LocalLatex2023SyncTeX or NativeRuntimeProfile.LocalLatex2023Dvi;
+                    bool mapped = suite || read.Package.Profile is NativeRuntimeProfile.LocalLatex2023SyncTeX or NativeRuntimeProfile.LocalLatex2023Dvi;
                     _configuredProfile = read.Package.Profile;
-                    _factory = new(_resources, _module.Transport, mapped ? NativeSyncTeXContract.CreatePlan(deadline: JobDeadline) with { Profile = read.Package.Profile }
+                    _factory = new(_resources, _module.Transport, suite ? NativeCompilerSuiteContract.CreatePlan(NativeCompilerEngine.PdfLaTeX) : mapped ? NativeSyncTeXContract.CreatePlan(deadline: JobDeadline) with { Profile = read.Package.Profile }
                         : NativeSelectedEntryContract.CreatePlan(deadline: JobDeadline));
                     // Fixed technical closures only; package integrity is not adoption approval.
                     var package = read.Package;
@@ -88,12 +96,25 @@ public sealed class LocalCompileWorkspaceConfiguration : ICompileWorkspaceConfig
                         _factory, _inspector, () => CheckAsync(), this, SelectableBibliography: true,
                         SelectionOptions: mapped ? NativeSyncTeXContract.SelectionOptions : NativeSelectedEntryContract.SelectionOptions,
                         OutputAdapter: package.OutputAdapter);
-                    if (package.Profile == NativeRuntimeProfile.LocalLatex2023Dvi)
+                    if (suite || package.Profile == NativeRuntimeProfile.LocalLatex2023Dvi)
                     {
-                        _dviFactory = new(_resources, _module.Transport, NativeLatexDviContract.CreatePlan(deadline: JobDeadline));
+                        _dviFactory = new(_resources, _module.Transport, suite ? NativeCompilerSuiteContract.CreatePlan(NativeCompilerEngine.LaTeXDvi)
+                            : NativeLatexDviContract.CreatePlan(deadline: JobDeadline));
                         _additionalEngines = [new("latex-dvi", "LaTeX (DVI to PDF)", package.DviEngine, [package.Bundle], [package.Bibtex],
                             _dviFactory, _inspector, () => CheckAsync(), this, SelectableBibliography: true,
                             SelectionOptions: NativeLatexDviContract.SelectionOptions, OutputAdapter: package.DviOutputAdapter)];
+                        if (suite)
+                        {
+                            _xeFactory = new(_resources, _module.Transport, NativeCompilerSuiteContract.CreatePlan(NativeCompilerEngine.XeLaTeX));
+                            _luaFactory = new(_resources, _module.Transport, NativeCompilerSuiteContract.CreatePlan(NativeCompilerEngine.LuaLaTeX));
+                            _additionalEngines = [.. _additionalEngines,
+                                new("xelatex", "XeLaTeX (XDV to PDF)", package.EngineFor(NativeCompilerEngine.XeLaTeX), [package.Bundle], [package.Bibtex],
+                                    _xeFactory, _inspector, () => CheckAsync(), this, SelectableBibliography: true,
+                                    SelectionOptions: NativeCompilerSuiteContract.SelectionOptions(NativeCompilerEngine.XeLaTeX), OutputAdapter: package.AdapterFor(NativeCompilerEngine.XeLaTeX)),
+                                new("lualatex", "LuaLaTeX", package.EngineFor(NativeCompilerEngine.LuaLaTeX), [package.Bundle], [package.Bibtex],
+                                    _luaFactory, _inspector, () => CheckAsync(), this, SelectableBibliography: true,
+                                    SelectionOptions: NativeCompilerSuiteContract.SelectionOptions(NativeCompilerEngine.LuaLaTeX), OutputAdapter: package.AdapterFor(NativeCompilerEngine.LuaLaTeX))];
+                        }
                     }
                 }
                 return Result(new(true, "Ready", "Local pdfLaTeX resources verified. Choose a supported .tex root (including nested paths) and the local engine; BibTeX is optional. PDF preview separately verifies its supported local renderer when used."));
@@ -143,6 +164,8 @@ public sealed class LocalCompileWorkspaceConfiguration : ICompileWorkspaceConfig
             await _checks.WhenIdle.ConfigureAwait(false);
             if (_factory is not null) await _factory.Operations.WhenIdle.ConfigureAwait(false);
             if (_dviFactory is not null) await _dviFactory.Operations.WhenIdle.ConfigureAwait(false);
+            if (_xeFactory is not null) await _xeFactory.Operations.WhenIdle.ConfigureAwait(false);
+            if (_luaFactory is not null) await _luaFactory.Operations.WhenIdle.ConfigureAwait(false);
             await _resources.WhenSettled.ConfigureAwait(false);
         }
         finally

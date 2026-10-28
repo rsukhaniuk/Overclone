@@ -35,7 +35,8 @@ public sealed class NativeLatexDviTests
         Assert.False((plan with { DviOutput = false }).IsValid);
         Assert.False((plan with { PhaseProtocolVersion = 6 }).IsValid);
         Assert.False((plan with { Profile = NativeRuntimeProfile.LocalLatex2023SyncTeX }).IsValid);
-        Assert.False(NativeRuntimeProfiles.Known((NativeRuntimeProfile)5));
+        Assert.True(NativeRuntimeProfiles.Known(NativeRuntimeProfile.LocalCompilerSuite));
+        Assert.False(NativeRuntimeProfiles.Known((NativeRuntimeProfile)6));
         Assert.False((plan with { Profile = (NativeRuntimeProfile)5 }).IsValid);
         Assert.True((NativeSyncTeXContract.CreatePlan() with { Profile = Profile }).IsValid);
         Assert.False(NativeLatexDviContract.MatchesOptions(NativeSyncTeXContract.SelectionOptions));

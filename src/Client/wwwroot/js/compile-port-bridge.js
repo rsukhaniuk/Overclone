@@ -39,7 +39,8 @@ export function execute(frame){
  // Additive authoring phase admission; same runtime/profile and physical cancellation.
  const authoring4=[4,5].includes(frame.tag.version)&&frame.tag.profile===2&&typeof frame.tag.runtimeIdentity==='string'&&/^[0-9a-f]{64}$/.test(frame.tag.runtimeIdentity);
  const identity=typeof frame.tag.runtimeIdentity==='string'&&/^[0-9a-f]{64}$/.test(frame.tag.runtimeIdentity);
- const mapped=frame.tag.version===6&&[3,4,5].includes(frame.tag.profile)&&frame.tag.engineId==null&&identity;
+ const mapped=frame.tag.version===6&&([3,4].includes(frame.tag.profile)&&frame.tag.engineId==null
+  ||frame.tag.profile===5&&frame.tag.engineId==='pdftex')&&identity;
  const dviPhase=frame.tag.version===7&&[4,5].includes(frame.tag.profile)&&frame.tag.engineId==='latex-dvi'&&identity;
  const xe=frame.tag.version===8&&frame.tag.profile===5&&frame.tag.engineId==='xelatex'&&identity;
  const lua=frame.tag.version===9&&frame.tag.profile===5&&frame.tag.engineId==='lualatex'&&identity;

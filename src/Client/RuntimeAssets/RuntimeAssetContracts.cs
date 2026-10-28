@@ -17,7 +17,8 @@ public enum RuntimeAssetStatus
 public sealed record RuntimeAssetBudget(AssetInventoryBudget Inventory, int MaxCatalogBytes,
     int MaxCatalogEntries, int MaxStageRecords, int DeadlineMs)
 {
-    public bool IsValid => Inventory is { IsValid: true } && MaxCatalogBytes is > 0 and <= 1048576
+    public bool IsValid => Inventory is { IsValid: true } && MaxCatalogBytes is > 0 and <= 4194304
+        && (MaxCatalogBytes <= 1048576 || Inventory.MaxAssets > 512)
         && MaxCatalogEntries is > 0 and <= 1024 && MaxStageRecords is > 0 and <= 1024 && DeadlineMs is > 0 and <= 30000;
     public AssetVerificationBudget Verification => new(Inventory.MaxAssets, Inventory.MaxAssetBytes, Inventory.MaxTotalBytes);
 }

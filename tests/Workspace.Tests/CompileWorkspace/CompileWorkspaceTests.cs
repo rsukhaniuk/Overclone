@@ -1,5 +1,6 @@
 using Client.Compilation;
 using Client.Compilation.Lifecycle;
+using Client.Compilation.Native;
 using Client.Compilation.Presentation;
 using Client.Workspace;
 using Client.Workspace.Domain;
@@ -338,6 +339,33 @@ public sealed class CompileWorkspaceTests
         }
         finally { await Drain(session); }
     });
+    [Theory] [InlineData(false)] [InlineData(true)]
+    public void Suite_jobs_survive_the_old_deadline_but_still_time_out_without_accepting_late_output(bool suite) => Run(async () =>
+    {
+        await using var f = await CompilationTestWorkspace.Open();
+        var c = new Configuration(selectionOptions: suite ? NativeCompilerSuiteContract.SelectionOptions(NativeCompilerEngine.LuaLaTeX) : null);
+        var clock = new Clock(); var session = new CompileWorkspaceSession(f.Workspace, c, clock);
+        session.AttachRenderer(Dispatcher());
+        try
+        {
+            await Select(f, session); await session.CompileAsync();
+            var worker = await c.Workers.Next(); var ticket = session.LastTicket!;
+            clock.Advance(TimeSpan.FromSeconds(31)); await Task.Yield();
+            if (suite)
+            {
+                Assert.False(ticket.Completion.IsCompleted);
+                clock.Advance(TimeSpan.FromSeconds(90));
+            }
+            Assert.Equal(CompileLifecycleReason.TimedOut, (await ticket.Completion.WaitAsync(Bound)).Reason);
+            worker.Reply.SetResult(worker.Output()); await Task.Yield();
+            Assert.Null(session.DisplayedOutput);
+        }
+        finally
+        {
+            foreach (var worker in c.Workers.Created) worker.Reply.TrySetResult(worker.Output());
+            await Drain(session);
+        }
+    });
     private sealed class Lifetime : IAsyncDisposable
     { internal int Disposals; public ValueTask DisposeAsync() { Disposals++; return ValueTask.CompletedTask; } }
     private sealed class MultipleConfiguration : ICompileWorkspaceConfiguration
@@ -359,9 +387,10 @@ public sealed class CompileWorkspaceTests
         public Task<CompileWorkspaceConfigurationResult> OpenAsync() => Task.FromResult(new CompileWorkspaceConfigurationResult(
             new(true, "Ready", "Modeled engines"), _first, Additional));
     }
-    private sealed class Configuration(bool available = true, bool selectableBibliography = false, CompilationDescriptor[]? tools = null) : ICompileWorkspaceConfiguration
+    private sealed class Configuration(bool available = true, bool selectableBibliography = false, CompilationDescriptor[]? tools = null,
+        IReadOnlyList<CompilationOption>? selectionOptions = null) : ICompileWorkspaceConfiguration
     {
         internal readonly Workers Workers = new(); internal readonly Lifetime Lifetime = new(); internal CompileReadiness Readiness = new(true, "Ready", "CONTRACT");
-        public Task<CompileWorkspaceConfigurationResult> OpenAsync() => Task.FromResult(new CompileWorkspaceConfigurationResult(available ? Readiness : new(false, "Unavailable", "No runtime"), available ? new("contract", "Contract only", CompilationTestWorkspace.Descriptor(), [], tools ?? [], Workers, null, () => Task.FromResult(Readiness), Lifetime, SelectableBibliography: selectableBibliography) : null));
+        public Task<CompileWorkspaceConfigurationResult> OpenAsync() => Task.FromResult(new CompileWorkspaceConfigurationResult(available ? Readiness : new(false, "Unavailable", "No runtime"), available ? new("contract", "Contract only", CompilationTestWorkspace.Descriptor(), [], tools ?? [], Workers, null, () => Task.FromResult(Readiness), Lifetime, SelectableBibliography: selectableBibliography, SelectionOptions: selectionOptions) : null));
     }
 }

@@ -31,7 +31,7 @@ public sealed class QueryProviderTests
             if (bytes.Length > 0) { bytes[0] ^= 1; Assert.Equal(pin.Sha256, NativeRuntimePackage.Digest(package.Copy(pin.Name)).Hex); }
         }
         // Inspect the existing internal phase projection, not an invented test VFS.
-        var files = Assert.IsType<NativeFileTransfer[]>(typeof(NativeRuntimePackage).GetMethod("CopyFiles", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(package, null));
+        var files = Assert.IsType<NativeFileTransfer[]>(typeof(NativeRuntimePackage).GetMethod("CopyFiles", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(package, [false]));
         var lengths = Assert.IsAssignableFrom<IEnumerable<(string Name, int Length)>>(typeof(NativeRuntimePackage)
             .GetProperty("FileLengths", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(package)).ToArray();
         Assert.Equal(495, files.Length); Assert.Equal(495, lengths.Length);

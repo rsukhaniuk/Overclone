@@ -233,7 +233,7 @@ function validateAuthoringV4Frame(d){
  if(selected&&(!/^[\p{L}\p{Nd}\p{Mn}\p{Mc}._/ -]+$/u.test(root)||!/^.+\.tex$/i.test(leaf)||/^[.-]/.test(leaf)||leaf.startsWith(' ')||job.endsWith(' ')))bad();
  const latexEntry=selected&&root.includes(' ')?'"'+root+'"':root;
  const state=n=>n.endsWith('.aux')||['.bbl','.toc','.lof','.lot','.out'].some(ext=>n===job+ext);
- const fixed=['.pdf','.aux','.bbl','.blg','.log','.toc','.lof','.lot','.out',...(d.tag.version===7?['.dvi']:[])].map(ext=>job+ext);
+ const fixed=['.pdf','.aux','.bbl','.blg','.log','.toc','.lof','.lot','.out',...(d.tag.version===7?['.dvi']:[]),...(d.tag.version===8?['.xdv']:[])].map(ext=>job+ext);
  const valid=n=>typeof n==='string'&&n.length>0&&n===n.trim()&&new TextEncoder().encode(n).length<=249
   &&!/[\u0000-\u001f\u007f-\u009f<>:"|?*\\\\]/.test(n)&&!Array.from(n).some(c=>c.length===1&&c.charCodeAt(0)>=55296&&c.charCodeAt(0)<=57343)
   &&n.split('/').length<=32&&n.split('/').every(s=>s&&s!=='.'&&s!=='..'&&!/[. ]$/.test(s)
@@ -260,7 +260,8 @@ async function execute({data:d}){
   const modern=d.tag.version===2&&d.tag.profile===1&&typeof d.tag.runtimeIdentity==='string'&&/^[0-9a-f]{64}$/.test(d.tag.runtimeIdentity);
   const authoring=d.tag.version===3&&d.tag.profile===2&&typeof d.tag.runtimeIdentity==='string'&&/^[0-9a-f]{64}$/.test(d.tag.runtimeIdentity);
   const identity=typeof d.tag.runtimeIdentity==='string'&&/^[0-9a-f]{64}$/.test(d.tag.runtimeIdentity),suite=d.tag.profile===5;
-  const mapped=d.tag.version===6&&[3,4,5].includes(d.tag.profile)&&d.tag.engineId==null&&identity;
+  const mapped=d.tag.version===6&&([3,4].includes(d.tag.profile)&&d.tag.engineId==null
+    ||suite&&d.tag.engineId==='pdftex')&&identity;
   const dvi=d.tag.version===7&&[4,5].includes(d.tag.profile)&&d.tag.engineId==='latex-dvi'&&identity;
   const unicodeBibtex=suite&&d.operation==='bibtex'&&(d.tag.version===8&&d.tag.engineId==='xelatex'||d.tag.version===9&&d.tag.engineId==='lualatex')&&identity;
   const v4=mapped||dvi||unicodeBibtex||[4,5].includes(d.tag.version)&&d.tag.profile===2&&identity;

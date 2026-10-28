@@ -17,13 +17,15 @@ public sealed class ZipRuntimeSetupSession : IAsyncDisposable
     public bool CanCancel => _busy && (_preparing || _setup.CanCancel);
     public RuntimeSetupState State => _state ?? _setup.State;
     public int Completed => _preparing ? 0 : _setup.Completed;
+    public long OperationVersion { get; private set; }
     public event Action? Changed;
     private void Notify() { if (!_disposed) Changed?.Invoke(); }
     private bool Begin()
     {
         lock (_gate)
         {
-            if (_disposed || _busy) return false;
+            if (_disposed || _busy || OperationVersion == long.MaxValue) return false;
+            OperationVersion++;
             _busy = true; _preparing = true; _handed = false; _state = RuntimeSetupState.Preparing;
             _cancel = new(); _settled = new(TaskCreationOptions.RunContinuationsAsynchronously);
         }

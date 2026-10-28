@@ -71,11 +71,17 @@ public sealed class NativeCompilationWorkerFactory : ICompilationWorkerFactory
             try
             {
                 Check();
+                bool suite = factory._plan.Profile == NativeRuntimeProfile.LocalCompilerSuite;
+                var engine = factory._plan.Engine;
+                bool xe = suite && engine == NativeCompilerEngine.XeLaTeX;
+                bool lua = suite && engine == NativeCompilerEngine.LuaLaTeX;
                 bool dviOutput = factory._plan.DviOutput;
+                bool convertingOutput = dviOutput || xe;
                 bool sourceMapping = factory._plan.EffectivePhaseVersion == NativeSyncTeXContract.Version;
-                bool selectedEntry = dviOutput || sourceMapping || factory._plan.EffectivePhaseVersion == NativeSelectedEntryContract.Version;
+                bool selectedEntry = suite || dviOutput || sourceMapping || factory._plan.EffectivePhaseVersion == NativeSelectedEntryContract.Version;
                 bool v4 = selectedEntry || factory._plan.EffectivePhaseVersion == NativeAuthoringV4Contract.Version;
-                if (v4 && !(dviOutput ? NativeLatexDviContract.MatchesOptions(context.Snapshot.Selection.Options)
+                if (v4 && !(suite ? NativeCompilerSuiteContract.MatchesOptions(context.Snapshot.Selection.Options, engine)
+                    : dviOutput ? NativeLatexDviContract.MatchesOptions(context.Snapshot.Selection.Options)
                     : sourceMapping ? NativeSyncTeXContract.MatchesOptions(context.Snapshot.Selection.Options)
                     : selectedEntry ? NativeSelectedEntryContract.MatchesOptions(context.Snapshot.Selection.Options)
                     : NativeAuthoringV4Contract.MatchesOptions(context.Snapshot.Selection.Options)))
@@ -87,7 +93,7 @@ public sealed class NativeCompilationWorkerFactory : ICompilationWorkerFactory
                 Check();
                 if (runtime is null) return Finish(CompileOutputStatus.Unsupported, "runtime-unavailable");
                 var snapshot = context.Snapshot;
-                var runtimeLengths = runtime.FileLengthsFor(dviOutput).ToArray();
+                var runtimeLengths = (suite ? runtime.SuiteFileLengths(engine) : runtime.FileLengthsFor(dviOutput)).ToArray();
                 bool selectionTools = v4 || factory._plan.UseSelectionTools;
                 bool runBibtex = selectionTools
                     ? snapshot.Selection.Tools.Contains(runtime.Bibtex)
@@ -95,8 +101,8 @@ public sealed class NativeCompilationWorkerFactory : ICompilationWorkerFactory
                 if (runtime.Profile != factory._plan.Profile
                     || NativeRuntimeProfiles.Modern(runtime.Profile) && (snapshot.Selection.Bundles.Length != 1 || snapshot.Selection.Bundles[0] != runtime.Bundle)
                     || context.OutputFormat is not null && context.OutputFormat != NativeRuntimePackage.Pdf
-                    || context.OutputAdapter is not null && context.OutputAdapter != (dviOutput ? runtime.DviOutputAdapter : runtime.OutputAdapter)
-                    || snapshot.Selection.Engine != (dviOutput ? runtime.DviEngine : runtime.Engine) || !snapshot.Selection.Bundles.Contains(runtime.Bundle)
+                    || context.OutputAdapter is not null && context.OutputAdapter != (suite ? runtime.AdapterFor(engine) : dviOutput ? runtime.DviOutputAdapter : runtime.OutputAdapter)
+                    || snapshot.Selection.Engine != (suite ? runtime.EngineFor(engine) : dviOutput ? runtime.DviEngine : runtime.Engine) || !snapshot.Selection.Bundles.Contains(runtime.Bundle)
                     || !selectionTools && factory._plan.BibtexRequired && !snapshot.Selection.Tools.Contains(runtime.Bibtex)
                     || selectionTools && snapshot.Selection.Tools.Any(tool => tool != runtime.Bibtex)
                     || !v4 && snapshot.Selection.Options.Length != 0)
@@ -110,13 +116,21 @@ public sealed class NativeCompilationWorkerFactory : ICompilationWorkerFactory
                         return Finish(CompileOutputStatus.Unsupported, unsupportedEntry);
                     // A supported entry with an invalid derived output namespace is a
                     // failed project admission, not an unsupported compiler selection.
-                    entry = NativeSelectedEntryContract.Create(main.RelativePath, snapshot.Files.Select(f => f.RelativePath), out var entryError, dviOutput);
-                    if (entry is null) return Finish(CompileOutputStatus.Failed, entryError!);
+                    string? entryError;
+                    entry = suite ? NativeCompilerSuiteContract.CreateEntry(main.RelativePath, snapshot.Files.Select(f => f.RelativePath), engine, out entryError)
+                        : NativeSelectedEntryContract.Create(main.RelativePath, snapshot.Files.Select(f => f.RelativePath), out entryError, dviOutput);
+                    if (entry is null) return Finish(entryError == "xetex-non-bmp-main-unsupported" ? CompileOutputStatus.Unsupported : CompileOutputStatus.Failed, entryError!);
                 }
                 else if (main?.RelativePath != "main.tex") return Finish(CompileOutputStatus.Unsupported, "unsupported-main-entry");
                 bool IsState(string name) => entry?.IsState(name) ?? NativeAuthoringV4Contract.IsState(name);
                 string pdfName = entry?.Pdf ?? "main.pdf", auxName = entry?.Aux ?? "main.aux", bblName = entry?.Bbl ?? "main.bbl";
-                if (snapshot.Files.Any(f => f.RelativePath == NativeRuntimePackage.FormatResourceName
+                if (suite && snapshot.Files.Any(f => f.RelativePath.Equals(NativeCompilerSuiteContract.ResourcePrefix.TrimEnd('/'), StringComparison.OrdinalIgnoreCase)
+                    || f.RelativePath.StartsWith(NativeCompilerSuiteContract.ResourcePrefix, StringComparison.OrdinalIgnoreCase)))
+                    return Finish(CompileOutputStatus.Failed, "reserved-runtime-namespace");
+                if (suite && snapshot.Files.Any(f => new[] { NativeRuntimePackage.FormatResourceName, NativeRuntimePackage.NativeFormatName,
+                    "latex-dvi.fmt", "xelatex.fmt", "lualatex.fmt" }.Contains(f.RelativePath, StringComparer.OrdinalIgnoreCase)))
+                    return Finish(CompileOutputStatus.Failed, "reserved-format-input");
+                if (!suite && snapshot.Files.Any(f => f.RelativePath == NativeRuntimePackage.FormatResourceName
                     || dviOutput && f.RelativePath == "latex-dvi.fmt"))
                     return Finish(CompileOutputStatus.Failed, "reserved-format-input");
                 if (snapshot.Files.Length > factory._plan.MaxPhaseFiles - runtimeLengths.Length) throw new NativeResourceLimitException();
@@ -137,6 +151,11 @@ public sealed class NativeCompilationWorkerFactory : ICompilationWorkerFactory
                     if (latex.Value.Reply.Outcome != "native-return" || latex.Value.Reply.NativeReturn != 0)
                         return Finish(latex.Value.Reply.Outcome == "transport-timeout" ? CompileOutputStatus.TimedOut : CompileOutputStatus.Failed, "native-latex-failed");
                     var files = latex.Value.Files;
+                    if (suite && (latex.Value.Reply.Log.Contains("Please (re)run Biber", StringComparison.OrdinalIgnoreCase)
+                        || latex.Value.Reply.Log.Contains("Please rerun Biber", StringComparison.OrdinalIgnoreCase)))
+                        return Finish(CompileOutputStatus.Unsupported, "biber-unavailable");
+                    if (lua && (!files.TryGetValue(pdfName, out var luaPdf) || luaPdf.Length < 5 || !luaPdf.AsSpan(0, 5).SequenceEqual("%PDF-"u8)))
+                        return Finish(CompileOutputStatus.Failed, "missing-native-pdf");
                     Carry(files);
                     if (pass == 1 && runBibtex)
                     {
@@ -159,12 +178,13 @@ public sealed class NativeCompilationWorkerFactory : ICompilationWorkerFactory
                     if (stable >= 1 && pass >= (runBibtex ? 3 : 2) && !warnings)
                     {
                         Check();
-                        if (dviOutput)
+                        if (convertingOutput)
                         {
                             // Only this final successful pass authorizes conversion. DVI is
                             // never state, and a compiler-supplied PDF cannot substitute for it.
-                            if (!files.TryGetValue(entry!.JobName + ".dvi", out var dvi) || dvi.Length == 0)
-                                return Finish(CompileOutputStatus.Failed, "missing-native-dvi");
+                            if (!files.TryGetValue(entry!.JobName + (xe ? ".xdv" : ".dvi"), out var dvi) || dvi.Length == 0
+                                || xe && (dvi.Length < 2 || dvi[0] != 247 || dvi[1] != 7))
+                                return Finish(CompileOutputStatus.Failed, xe ? "missing-native-xdv" : "missing-native-dvi");
                             var conversion = await Run("dvipdfmx", dvi);
                             Check();
                             if (conversion is null) return Finish(CompileOutputStatus.Failed, "invalid-dvi-reply");
@@ -192,7 +212,8 @@ public sealed class NativeCompilationWorkerFactory : ICompilationWorkerFactory
                         || entries.Any(f => f.Length > factory._plan.ProjectFileBytes)
                         || entries.Sum(f => (long)f.Length) > NativeAuthoringV4Contract.StateBytes
                         || entries.Sum(f => (long)f.Length) + runtimeLengths.Sum(f => (long)f.Length)
-                            + snapshot.Files.Sum(f => f.ByteLength) > factory._plan.MaxInputBytes)
+                            + snapshot.Files.Sum(f => f.ByteLength) > factory._plan.MaxInputBytes
+                        || suite && entries.Sum(f => (long)f.Length) + snapshot.Files.Sum(f => f.ByteLength) > 32 * 1024 * 1024)
                         throw new NativeAuthoringV4Exception("v4-state-budget");
                 }
                 void Carry(Dictionary<string, byte[]> files)
@@ -212,40 +233,43 @@ public sealed class NativeCompilationWorkerFactory : ICompilationWorkerFactory
                     bool converting = tool == "dvipdfmx";
                     string[] phaseOutputs = converting ? [pdfName] : outputs;
                     string[]? resourceNames = null;
+                    string[]? generatedNames = suite ? (converting ? [] : generated.Keys.Order(StringComparer.Ordinal).ToArray()) : null;
+                    var phaseLengths = (suite ? runtime.SuiteFileLengths(tool == "bibtex" ? NativeCompilerEngine.PdfLaTeX : engine) : runtime.FileLengthsFor(dviOutput)).ToArray();
                     Dictionary<string, byte[]> all;
                     if (converting)
                     {
-                        if (!dviOutput || entry is null || finalDvi is null) return null;
-                        var resources = runtime.ConverterResourceLengths.ToArray();
+                        if (!convertingOutput || entry is null || finalDvi is null) return null;
+                        var resources = runtime.ConverterResourceLengths.Select(f => (Name: suite ? NativeCompilerSuiteContract.ResourcePrefix + f.Name : f.Name, f.Length)).ToArray();
+                        string intermediate = entry.JobName + (xe ? ".xdv" : ".dvi");
                         var project = snapshot.Files.Select(f => (Name: f.RelativePath, Length: f.ByteLength)).ToArray();
                         // All budgets and namespace checks precede ANY byte copies.
                         if (resources.Length + project.Length + 1 > NativeLatexDviContract.Files
-                            || resources.Any(f => f.Length > NativeLatexDviContract.FileBytes || f.Name.Contains('/'))
+                            || resources.Any(f => f.Length > NativeLatexDviContract.FileBytes || (suite ? f.Name[NativeCompilerSuiteContract.ResourcePrefix.Length..] : f.Name).Contains('/'))
                             || resources.Sum(f => (long)f.Length) > NativeLatexDviContract.ResourceBytes
                             || project.Any(f => f.Length > NativeLatexDviContract.FileBytes)
                             || finalDvi.Length > NativeLatexDviContract.FileBytes
                             || project.Sum(f => f.Length) + finalDvi.Length > NativeLatexDviContract.ProjectBytes)
                             throw new NativeAuthoringV4Exception("dvi-resource-limit");
                         var invalid = NativeAuthoringV4Contract.ValidateNamespace(resources.Select(f => f.Name)
-                            .Concat(project.Select(f => f.Name)).Append(entry.JobName + ".dvi"), phaseOutputs, []);
+                            .Concat(project.Select(f => f.Name)).Append(intermediate), phaseOutputs, []);
                         if (invalid is not null) throw new NativeAuthoringV4Exception(invalid);
                         resourceNames = resources.Select(f => f.Name).Order(StringComparer.Ordinal).ToArray();
-                        all = runtime.CopyConverterResources().ToDictionary(f => f.Name, f => f.Bytes, StringComparer.Ordinal);
+                        all = runtime.CopyConverterResources().ToDictionary(f => suite ? NativeCompilerSuiteContract.ResourcePrefix + f.Name : f.Name, f => f.Bytes, StringComparer.Ordinal);
                         foreach (var file in snapshot.Files) all.Add(file.RelativePath, file.ToArray());
-                        all.Add(entry.JobName + ".dvi", finalDvi.ToArray());
+                        all.Add(intermediate, finalDvi.ToArray());
                     }
                     else
                     {
                         if (v4)
                         {
-                            var inputNames = runtimeLengths.Select(f => f.Name).Concat(snapshot.Files.Select(f => f.RelativePath));
+                            var inputNames = phaseLengths.Select(f => f.Name).Concat(snapshot.Files.Select(f => f.RelativePath));
                             var invalid = entry is null ? NativeAuthoringV4Contract.ValidateNamespace(inputNames, outputs, generated.Keys)
                                 : NativeSelectedEntryContract.ValidateNamespace(entry, inputNames, generated.Keys);
                             if (invalid is not null) throw new NativeAuthoringV4Exception(invalid);
                             ValidateState(generated.Select(f => (f.Key, f.Value.Length)));
                         }
-                        if (runtimeLengths.Length + snapshot.Files.Length + generated.Count > factory._plan.MaxPhaseFiles) throw new NativeResourceLimitException();
-                        var lengths = runtimeLengths.Concat(snapshot.Files.Select(f => (f.RelativePath, checked((int)f.ByteLength))))
+                        if (phaseLengths.Length + snapshot.Files.Length + generated.Count > factory._plan.MaxPhaseFiles) throw new NativeResourceLimitException();
+                        var lengths = phaseLengths.Concat(snapshot.Files.Select(f => (f.RelativePath, checked((int)f.ByteLength))))
                             .Concat(generated.Select(f => (f.Key, f.Value.Length))).ToArray();
                         // Names are mapped in FileLengths already. Reject runtime,
                         // source or generated conflicts BEFORE any byte clones/hashes.
@@ -255,7 +279,17 @@ public sealed class NativeCompilationWorkerFactory : ICompilationWorkerFactory
                             || snapshot.Files.Any(f => f.ByteLength > factory._plan.ProjectFileBytes)
                             || generated.Values.Any(f => f.Length > factory._plan.ProjectFileBytes)
                             || lengths.Sum(f => (long)f.Item2) > factory._plan.MaxInputBytes) throw new NativeResourceLimitException();
-                        all = runtime.CopyFiles(dviOutput).ToDictionary(f => f.Name, f => f.Bytes, StringComparer.Ordinal);
+                        if (suite)
+                        {
+                            int resourceCap = tool == "bibtex" ? NativeCompilerSuiteContract.TotalBytes : lua ? 96 * 1024 * 1024 : xe ? 160 * 1024 * 1024 : NativeCompilerSuiteContract.TotalBytes;
+                            int resourceCount = tool == "latex" && lua ? 4608 : NativeCompilerSuiteContract.Files;
+                            if (phaseLengths.Length > resourceCount || phaseLengths.Sum(f => (long)f.Length) > resourceCap
+                                || snapshot.Files.Sum(f => f.ByteLength) + generated.Sum(f => (long)f.Value.Length) > 32 * 1024 * 1024)
+                                throw new NativeResourceLimitException();
+                            resourceNames = phaseLengths.Select(f => f.Name).Order(StringComparer.Ordinal).ToArray();
+                        }
+                        all = (suite ? runtime.CopySuiteFiles(tool == "bibtex" ? NativeCompilerEngine.PdfLaTeX : engine) : runtime.CopyFiles(dviOutput))
+                            .ToDictionary(f => f.Name, f => f.Bytes, StringComparer.Ordinal);
                         foreach (var file in snapshot.Files)
                         {
                             if (all.ContainsKey(file.RelativePath)) throw new InvalidDataException("Runtime/project collision.");
@@ -269,21 +303,25 @@ public sealed class NativeCompilationWorkerFactory : ICompilationWorkerFactory
                         context.SnapshotIdentity.CaptureId, context.InputContentDigest.Hex, ++ordinal, tool, Guid.NewGuid().ToString("N"), context.SnapshotIdentity,
                         factory._plan.EffectivePhaseVersion, runtime.Profile,
                         runtime.Profile == NativeRuntimeProfile.Legacy ? null : runtime.Identity.Hex,
-                        dviOutput ? "latex-dvi" : null);
+                        suite ? NativeCompilerSuiteContract.EngineId(engine) : dviOutput ? "latex-dvi" : null);
                     var sent = all.OrderBy(x => x.Key, StringComparer.Ordinal).Select(x => new NativeInputFact(x.Key, x.Value.Length, NativeRuntimePackage.Digest(x.Value).Hex)).ToArray();
-                    var toolEntry = converting ? entry!.JobName + ".dvi" : entry is null ? "main.tex" : tool == "latex" ? entry.LatexEntry : entry.BibtexEntry;
+                    string component = converting ? "dvi-converter" : suite && tool == "latex" && xe ? "xetex" : suite && tool == "latex" && lua ? "luatex" : "engine";
+                    string loaderHash = component == "xetex" ? NativeCompilerSuitePins.XeLoaderHash : component == "luatex" ? NativeCompilerSuitePins.LuaLoaderHash
+                        : converting ? runtime.ConverterLoaderHash : NativeRuntimeProfiles.CompilerLoaderHash(runtime.Profile);
+                    string wasmHash = component == "xetex" ? NativeCompilerSuitePins.XeWasmHash : component == "luatex" ? NativeCompilerSuitePins.LuaWasmHash
+                        : converting ? runtime.ConverterWasmHash : NativeRuntimeProfiles.CompilerWasmHash(runtime.Profile);
+                    var toolEntry = converting ? entry!.JobName + (xe ? ".xdv" : ".dvi") : entry is null ? "main.tex" : tool == "latex" ? entry.LatexEntry : entry.BibtexEntry;
                     var request = new NativePhaseRequest(tag, toolEntry, all.Select(x => new NativeFileTransfer(x.Key, x.Value)).ToArray(),
-                        phaseOutputs, runtime.Copy(converting ? "dvi-converter.js" : "engine.js"), runtime.Copy(converting ? "dvi-converter.wasm" : "engine.wasm"),
-                        Math.Min(limits.MaxLogBytes, 256 * 1024), converting ? Math.Min(limits.MaxPayloadBytes, NativeLatexDviContract.PdfBytes) : limits.MaxPayloadBytes,
-                        entry?.SelectedPath, resourceNames);
+                        phaseOutputs, runtime.Copy(component + ".js"), runtime.Copy(component + ".wasm"),
+                        Math.Min(limits.MaxLogBytes, 256 * 1024), converting || lua ? Math.Min(limits.MaxPayloadBytes, NativeLatexDviContract.PdfBytes) : limits.MaxPayloadBytes,
+                        entry?.SelectedPath, resourceNames, generatedNames);
                     var reply = await factory.Operations.RunAsync(() => { lock (_dispatch) { Check(); return factory._transport.ExecuteAsync(request); } }, token).ConfigureAwait(false);
                     Check();
                     if (reply is { Outcome: "transport-timeout", NativeReturn: null, Files.Length: 0 } && reply.Tag == tag)
                     {
                         factory.Observe(new(tag, sent, reply)); return (reply, new Dictionary<string, byte[]>(StringComparer.Ordinal));
                     }
-                    if (reply is null || reply.Tag != tag || reply.WasmSha256 != (converting ? NativeRuntimeProfiles.DviConverterWasmHash : NativeRuntimeProfiles.CompilerWasmHash(runtime.Profile))
-                        || reply.LoaderSha256 != (converting ? NativeRuntimeProfiles.DviConverterLoaderHash : NativeRuntimeProfiles.CompilerLoaderHash(runtime.Profile))
+                    if (reply is null || reply.Tag != tag || reply.WasmSha256 != wasmHash || reply.LoaderSha256 != loaderHash
                         || reply.Files is null || reply.Inputs is null || reply.Log is null || reply.Inputs.Length != sent.Length
                         || !reply.Inputs.OrderBy(x => x.Name, StringComparer.Ordinal).SequenceEqual(sent) || reply.Files.Length > phaseOutputs.Length
                         || reply.Log.Length > request.MaxLogBytes || Encoding.UTF8.GetByteCount(reply.Log) > request.MaxLogBytes) return null;
@@ -296,7 +334,8 @@ public sealed class NativeCompilationWorkerFactory : ICompilationWorkerFactory
                     foreach (var f in reply.Files)
                     {
                         if (f is null || f.Bytes is null || !phaseOutputs.Contains(f.Name, StringComparer.Ordinal) || !names.Add(f.Name)
-                            || f.Bytes.Length > request.MaxOutputBytes || f.Bytes.Length > 2L * limits.MaxPayloadBytes - total) return null;
+                            || f.Bytes.Length > request.MaxOutputBytes || f.Bytes.Length > 2L * limits.MaxPayloadBytes - total
+                            || lua && f.Name == entry!.JobName + ".log" && f.Bytes.Length > request.MaxLogBytes) return null;
                         total += f.Bytes.Length;
                     }
                     if (v4 && !converting) ValidateState(reply.Files.Where(f => IsState(f.Name)).Select(f => (f.Name, f.Bytes.Length)));

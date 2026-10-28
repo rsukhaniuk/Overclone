@@ -1,7 +1,7 @@
 namespace Client.Compilation.Native;
 
 /// <summary>Trusted application composition only; never selected by a project or catalog.</summary>
-public enum NativeRuntimeProfile { Legacy = 0, LocalLatex2023 = 1, LocalLatex2023Authoring = 2, LocalLatex2023SyncTeX = 3, LocalLatex2023Dvi = 4 }
+public enum NativeRuntimeProfile { Legacy = 0, LocalLatex2023 = 1, LocalLatex2023Authoring = 2, LocalLatex2023SyncTeX = 3, LocalLatex2023Dvi = 4, LocalCompilerSuite = 5 }
 
 /// <summary>Closed, versioned technical profiles, not adoption/license/isolation approval.</summary>
 public static class NativeRuntimeProfiles
@@ -33,29 +33,30 @@ public static class NativeRuntimeProfiles
     public const int SyncTeXQueryLoaderLength = 59378;
     public const int SyncTeXQueryWasmLength = 191653;
     public static string CompilerLoaderHash(NativeRuntimeProfile profile) => profile switch
-    { NativeRuntimeProfile.LocalLatex2023SyncTeX or NativeRuntimeProfile.LocalLatex2023Dvi => SyncTeXCompilerLoaderHash, _ => Known(profile) ? NativeRuntimePackage.LoaderHash : "" };
+    { NativeRuntimeProfile.LocalLatex2023SyncTeX or NativeRuntimeProfile.LocalLatex2023Dvi or NativeRuntimeProfile.LocalCompilerSuite => SyncTeXCompilerLoaderHash, _ => Known(profile) ? NativeRuntimePackage.LoaderHash : "" };
     public static string CompilerWasmHash(NativeRuntimeProfile profile) => profile switch
-    { NativeRuntimeProfile.LocalLatex2023SyncTeX or NativeRuntimeProfile.LocalLatex2023Dvi => SyncTeXCompilerWasmHash, _ => Known(profile) ? NativeRuntimePackage.WasmHash : "" };
+    { NativeRuntimeProfile.LocalLatex2023SyncTeX or NativeRuntimeProfile.LocalLatex2023Dvi or NativeRuntimeProfile.LocalCompilerSuite => SyncTeXCompilerWasmHash, _ => Known(profile) ? NativeRuntimePackage.WasmHash : "" };
     public static int CompilerLoaderLength(NativeRuntimeProfile profile) => profile switch
-    { NativeRuntimeProfile.LocalLatex2023SyncTeX or NativeRuntimeProfile.LocalLatex2023Dvi => SyncTeXCompilerLoaderLength, _ => Known(profile) ? 72275 : 0 };
+    { NativeRuntimeProfile.LocalLatex2023SyncTeX or NativeRuntimeProfile.LocalLatex2023Dvi or NativeRuntimeProfile.LocalCompilerSuite => SyncTeXCompilerLoaderLength, _ => Known(profile) ? 72275 : 0 };
     public static int CompilerWasmLength(NativeRuntimeProfile profile) => profile switch
-    { NativeRuntimeProfile.LocalLatex2023SyncTeX or NativeRuntimeProfile.LocalLatex2023Dvi => SyncTeXCompilerWasmLength, _ => Known(profile) ? 1779444 : 0 };
-    public static bool Modern(NativeRuntimeProfile profile) => profile is NativeRuntimeProfile.LocalLatex2023 or NativeRuntimeProfile.LocalLatex2023Authoring or NativeRuntimeProfile.LocalLatex2023SyncTeX or NativeRuntimeProfile.LocalLatex2023Dvi;
+    { NativeRuntimeProfile.LocalLatex2023SyncTeX or NativeRuntimeProfile.LocalLatex2023Dvi or NativeRuntimeProfile.LocalCompilerSuite => SyncTeXCompilerWasmLength, _ => Known(profile) ? 1779444 : 0 };
+    public static bool Modern(NativeRuntimeProfile profile) => profile is NativeRuntimeProfile.LocalLatex2023 or NativeRuntimeProfile.LocalLatex2023Authoring or NativeRuntimeProfile.LocalLatex2023SyncTeX or NativeRuntimeProfile.LocalLatex2023Dvi or NativeRuntimeProfile.LocalCompilerSuite;
+    public static int MaxFiles(NativeRuntimeProfile profile) => profile == NativeRuntimeProfile.LocalCompilerSuite ? NativeCompilerSuiteContract.Files : 512;
     public static bool Known(NativeRuntimeProfile profile) => profile == NativeRuntimeProfile.Legacy || Modern(profile);
     public static int MaxFileBytes(NativeRuntimeProfile profile) => profile switch
-    { NativeRuntimeProfile.Legacy => 16777216, NativeRuntimeProfile.LocalLatex2023 or NativeRuntimeProfile.LocalLatex2023Authoring or NativeRuntimeProfile.LocalLatex2023SyncTeX or NativeRuntimeProfile.LocalLatex2023Dvi => 33554432, _ => 0 };
+    { NativeRuntimeProfile.LocalCompilerSuite => NativeCompilerSuiteContract.FileBytes, NativeRuntimeProfile.Legacy => 16777216, NativeRuntimeProfile.LocalLatex2023 or NativeRuntimeProfile.LocalLatex2023Authoring or NativeRuntimeProfile.LocalLatex2023SyncTeX or NativeRuntimeProfile.LocalLatex2023Dvi => 33554432, _ => 0 };
     public static int MaxTotalBytes(NativeRuntimeProfile profile) => profile switch
-    { NativeRuntimeProfile.Legacy => 33554432, NativeRuntimeProfile.LocalLatex2023 or NativeRuntimeProfile.LocalLatex2023Authoring or NativeRuntimeProfile.LocalLatex2023SyncTeX or NativeRuntimeProfile.LocalLatex2023Dvi => 67108864, _ => 0 };
+    { NativeRuntimeProfile.LocalCompilerSuite => NativeCompilerSuiteContract.TotalBytes, NativeRuntimeProfile.Legacy => 33554432, NativeRuntimeProfile.LocalLatex2023 or NativeRuntimeProfile.LocalLatex2023Authoring or NativeRuntimeProfile.LocalLatex2023SyncTeX or NativeRuntimeProfile.LocalLatex2023Dvi => 67108864, _ => 0 };
     public static int FormatLength(NativeRuntimeProfile profile) => profile switch
-    { NativeRuntimeProfile.Legacy => 715877, NativeRuntimeProfile.LocalLatex2023 or NativeRuntimeProfile.LocalLatex2023Authoring => ModernFormatLength, NativeRuntimeProfile.LocalLatex2023SyncTeX or NativeRuntimeProfile.LocalLatex2023Dvi => SyncTeXFormatLength, _ => 0 };
+    { NativeRuntimeProfile.LocalCompilerSuite => SyncTeXFormatLength, NativeRuntimeProfile.Legacy => 715877, NativeRuntimeProfile.LocalLatex2023 or NativeRuntimeProfile.LocalLatex2023Authoring => ModernFormatLength, NativeRuntimeProfile.LocalLatex2023SyncTeX or NativeRuntimeProfile.LocalLatex2023Dvi => SyncTeXFormatLength, _ => 0 };
     public static string FormatHash(NativeRuntimeProfile profile) => profile switch
-    { NativeRuntimeProfile.Legacy => NativeRuntimePackage.FormatHash, NativeRuntimeProfile.LocalLatex2023 or NativeRuntimeProfile.LocalLatex2023Authoring => ModernFormatHash, NativeRuntimeProfile.LocalLatex2023SyncTeX or NativeRuntimeProfile.LocalLatex2023Dvi => SyncTeXFormatHash, _ => "" };
+    { NativeRuntimeProfile.LocalCompilerSuite => SyncTeXFormatHash, NativeRuntimeProfile.Legacy => NativeRuntimePackage.FormatHash, NativeRuntimeProfile.LocalLatex2023 or NativeRuntimeProfile.LocalLatex2023Authoring => ModernFormatHash, NativeRuntimeProfile.LocalLatex2023SyncTeX or NativeRuntimeProfile.LocalLatex2023Dvi => SyncTeXFormatHash, _ => "" };
     public static int InstalledCount(NativeRuntimeProfile profile) => profile switch
-    { NativeRuntimeProfile.Legacy => InstalledNativeRuntimeProvider.ResourceCount, NativeRuntimeProfile.LocalLatex2023 => ModernResourceCount, NativeRuntimeProfile.LocalLatex2023Authoring => AuthoringResourceCount, NativeRuntimeProfile.LocalLatex2023SyncTeX => SyncTeXResourceCount, NativeRuntimeProfile.LocalLatex2023Dvi => DviResourceCount, _ => 0 };
+    { NativeRuntimeProfile.LocalCompilerSuite => NativeCompilerSuitePins.Ready ? NativeCompilerSuitePins.ResourceCount : 0, NativeRuntimeProfile.Legacy => InstalledNativeRuntimeProvider.ResourceCount, NativeRuntimeProfile.LocalLatex2023 => ModernResourceCount, NativeRuntimeProfile.LocalLatex2023Authoring => AuthoringResourceCount, NativeRuntimeProfile.LocalLatex2023SyncTeX => SyncTeXResourceCount, NativeRuntimeProfile.LocalLatex2023Dvi => DviResourceCount, _ => 0 };
     public static string ClosureHash(NativeRuntimeProfile profile) => profile switch
-    { NativeRuntimeProfile.LocalLatex2023 => ModernClosureHash, NativeRuntimeProfile.LocalLatex2023Authoring => AuthoringClosureHash, NativeRuntimeProfile.LocalLatex2023SyncTeX => SyncTeXClosureHash, NativeRuntimeProfile.LocalLatex2023Dvi => DviClosureHash, _ => "" };
+    { NativeRuntimeProfile.LocalCompilerSuite => NativeCompilerSuitePins.Ready ? NativeCompilerSuitePins.ClosureHash : "", NativeRuntimeProfile.LocalLatex2023 => ModernClosureHash, NativeRuntimeProfile.LocalLatex2023Authoring => AuthoringClosureHash, NativeRuntimeProfile.LocalLatex2023SyncTeX => SyncTeXClosureHash, NativeRuntimeProfile.LocalLatex2023Dvi => DviClosureHash, _ => "" };
     public static string IdentityName(NativeRuntimeProfile profile) => profile switch
-    { NativeRuntimeProfile.LocalLatex2023 => "local-latex-2023-11-01-p1", NativeRuntimeProfile.LocalLatex2023Authoring => "local-latex-2023-11-01-p1-authoring", NativeRuntimeProfile.LocalLatex2023SyncTeX => "local-latex-2023-11-01-p1-synctex", NativeRuntimeProfile.LocalLatex2023Dvi => "local-latex-2023-11-01-p1-dvi", _ => "" };
+    { NativeRuntimeProfile.LocalCompilerSuite => "local-compiler-suite-v1", NativeRuntimeProfile.LocalLatex2023 => "local-latex-2023-11-01-p1", NativeRuntimeProfile.LocalLatex2023Authoring => "local-latex-2023-11-01-p1-authoring", NativeRuntimeProfile.LocalLatex2023SyncTeX => "local-latex-2023-11-01-p1-synctex", NativeRuntimeProfile.LocalLatex2023Dvi => "local-latex-2023-11-01-p1-dvi", _ => "" };
     public static int ProtocolVersion(NativeRuntimeProfile profile) => profile switch
-    { NativeRuntimeProfile.Legacy => 1, NativeRuntimeProfile.LocalLatex2023 => 2, NativeRuntimeProfile.LocalLatex2023Authoring => 3, NativeRuntimeProfile.LocalLatex2023SyncTeX or NativeRuntimeProfile.LocalLatex2023Dvi => 6, _ => 0 };
+    { NativeRuntimeProfile.LocalCompilerSuite => 6, NativeRuntimeProfile.Legacy => 1, NativeRuntimeProfile.LocalLatex2023 => 2, NativeRuntimeProfile.LocalLatex2023Authoring => 3, NativeRuntimeProfile.LocalLatex2023SyncTeX or NativeRuntimeProfile.LocalLatex2023Dvi => 6, _ => 0 };
 }

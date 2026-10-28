@@ -42,6 +42,7 @@ public sealed class InstalledNativeRuntimeProvider(RuntimeAssetStore store, Inst
     {
         if (store is null || mapping is null || budget is not { IsValid: true } || limits is not { IsValid: true }
             || !NativeRuntimeProfiles.Known(mapping.Profile) || mapping.Profile != limits.Profile
+            || mapping.Profile == NativeRuntimeProfile.LocalCompilerSuite && !NativeCompilerSuitePins.Ready
             || mapping.InstallationId == Guid.Empty || !Hex(mapping.InventoryDigest)
             || mapping.Resources.IsDefault || mapping.Resources.Length != NativeRuntimeProfiles.InstalledCount(mapping.Profile)
             || limits.MaxFiles < mapping.Resources.Length || budget.Inventory.MaxAssets < mapping.Resources.Length) return false;
@@ -50,13 +51,15 @@ public sealed class InstalledNativeRuntimeProvider(RuntimeAssetStore store, Inst
         foreach (var resource in mapping.Resources)
         {
             if (resource is null || resource.AssetId.Value == Guid.Empty || !ids.Add(resource.AssetId) || resource.Pin is not { } p
-                || p.Name is not { Length: > 0 and <= 200 } || !p.Name.All(c => char.IsAsciiLetterOrDigit(c) || c is '.' or '-' or '_')
+                || !NativeRuntimePackage.Name(p.Name, mapping.Profile)
                 || !names.Add(p.Name) || !paths.Add(resource.RelativePath) || resource.RelativePath != "runtime/" + p.Name
                 || !Hex(p.Sha256) || p.Length < 0 || p.Length > limits.MaxFileBytes || p.Length > budget.Inventory.MaxAssetBytes
                 || p.Length > limits.MaxTotalBytes - total || p.Length > budget.Inventory.MaxTotalBytes - total) return false;
             total += p.Length;
         }
         if (names.Contains(NativeRuntimePackage.NativeFormatName)) return false;
+        if (mapping.Profile == NativeRuntimeProfile.LocalCompilerSuite && (total != NativeCompilerSuitePins.TotalBytes
+            || !NativeCompilerSuitePins.MatchesComponents(mapping.Resources.AsEnumerable().ToDictionary(r => r.Pin.Name, r => r.Pin, StringComparer.Ordinal)))) return false;
         return Fixed("engine.js", NativeRuntimeProfiles.CompilerLoaderLength(mapping.Profile), NativeRuntimeProfiles.CompilerLoaderHash(mapping.Profile))
             && Fixed("engine.wasm", NativeRuntimeProfiles.CompilerWasmLength(mapping.Profile), NativeRuntimeProfiles.CompilerWasmHash(mapping.Profile))
             && Fixed(NativeRuntimePackage.FormatResourceName, NativeRuntimeProfiles.FormatLength(mapping.Profile), NativeRuntimeProfiles.FormatHash(mapping.Profile))

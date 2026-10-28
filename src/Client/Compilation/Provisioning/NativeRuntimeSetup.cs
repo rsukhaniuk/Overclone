@@ -40,7 +40,8 @@ public sealed class NativeRuntimeSetup(RuntimeAssetStore store, ILocalRuntimeSel
             var pins = LocalRuntimeSelection.ParsePins(pinsJson);
             var profile = LocalRuntimeSelection.ProfileFor(pins);
             var limits = LocalRuntimeSelection.LimitsFor(profile);
-            if (files.Count != pins.Length || files.Count > 512) { Set(RuntimeSetupState.InvalidSelection); return; }
+            var budget = LocalRuntimeSelection.BudgetFor(profile);
+            if (files.Count != pins.Length || files.Count > limits.MaxFiles) { Set(RuntimeSetupState.InvalidSelection); return; }
             var owned = files.ToArray(); var byName = new Dictionary<string, LocalRuntimeFile>(StringComparer.Ordinal);
             foreach (var file in owned)
                 if (file is null || file.Name is null || file.Name.Length > 200 || file.Read is null || !byName.TryAdd(file.Name, file))
@@ -51,7 +52,7 @@ public sealed class NativeRuntimeSetup(RuntimeAssetStore store, ILocalRuntimeSel
             token.ThrowIfCancellationRequested();
             var resources = LocalRuntimeSelection.Resources(pins); var inventory = LocalRuntimeSelection.Inventory(resources);
             reader = new(byName, () => { Completed++; Set(RuntimeSetupState.Preparing); });
-            var verification = await new AssetInventoryVerifier().VerifyAsync(inventory, reader, LocalRuntimeSelection.Budget.Verification, token);
+            var verification = await new AssetInventoryVerifier().VerifyAsync(inventory, reader, budget.Verification, token);
             // Verifier may abandon a noncooperating selected-file read. Retain admission until it ends.
             if (verification is not AssetVerificationResult.Verified verified)
             { Set(token.IsCancellationRequested ? RuntimeSetupState.Cancelled : RuntimeSetupState.Corrupt); return; }
@@ -63,13 +64,13 @@ public sealed class NativeRuntimeSetup(RuntimeAssetStore store, ILocalRuntimeSel
             token.ThrowIfCancellationRequested();
             // Explicit uncancellable publication boundary. Cancel cannot roll back runtime or selection commits.
             CanCancel = false; Set(RuntimeSetupState.Finishing);
-            var installed = await store.InstallAsync(verified.Inventory, LocalRuntimeSelection.Budget);
+            var installed = await store.InstallAsync(verified.Inventory, budget);
             await store.WhenSettled;
             if (installed.Status != RuntimeAssetStatus.Installed || installed.InstallationId is not { } id)
             { Set(Map(installed.Status)); return; }
             var mapping = new InstalledNativeRuntimeMapping(id, inventory.Identity.Digest.Hex, resources, profile);
             // Validate actual published bytes with a fresh provider BEFORE publishing active selection.
-            var check = await new InstalledNativeRuntimeProvider(store, mapping, LocalRuntimeSelection.Budget, limits).ReadPackageAsync();
+            var check = await new InstalledNativeRuntimeProvider(store, mapping, budget, limits).ReadPackageAsync();
             await store.WhenSettled;
             if (check.Package is null) { Set(Map(check.Store.Status)); return; }
             try { await selections.WriteAsync(LocalRuntimeSelection.Encode(mapping)); }
@@ -99,7 +100,7 @@ public sealed class NativeRuntimeSetup(RuntimeAssetStore store, ILocalRuntimeSel
             var text = await selections.ReadAsync(); _cancel!.Token.ThrowIfCancellationRequested();
             if (text is null) { Set(RuntimeSetupState.Empty); return; }
             var mapping = LocalRuntimeSelection.Decode(text); // strict reconstruction before any runtime-store reads
-            var result = await new InstalledNativeRuntimeProvider(store, mapping, LocalRuntimeSelection.Budget, LocalRuntimeSelection.LimitsFor(mapping.Profile)).ReadPackageAsync(_cancel.Token);
+            var result = await new InstalledNativeRuntimeProvider(store, mapping, LocalRuntimeSelection.BudgetFor(mapping.Profile), LocalRuntimeSelection.LimitsFor(mapping.Profile)).ReadPackageAsync(_cancel.Token);
             if (!store.WhenSettled.IsCompleted) Set(RuntimeSetupState.Finishing);
             await store.WhenSettled;
             Set(_cancel.IsCancellationRequested ? RuntimeSetupState.Cancelled : result.Package is not null ? RuntimeSetupState.Installed : Map(result.Store.Status));

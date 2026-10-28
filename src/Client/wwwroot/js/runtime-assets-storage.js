@@ -77,7 +77,7 @@ export function createAssetStorage(owner) {
         return { length: file.size, bytes };
     });
     const catalog = (stage, maximum) => attempt(async () => {
-        check(); if (!Number.isSafeInteger(maximum) || maximum <= 0 || maximum > 1048576) fail('corrupt');
+        check(); if (!Number.isSafeInteger(maximum) || maximum <= 0 || maximum > 4194304) fail('corrupt');
         const metadata = await get('catalog', stage); if (metadata === undefined) return { metadata: null };
         if (typeof metadata !== 'string' || metadata.length > maximum || new TextEncoder().encode(metadata).length > maximum) fail('corrupt');
         return { metadata };

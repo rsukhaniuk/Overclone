@@ -1,6 +1,7 @@
 using System.Buffers.Binary;
 using System.IO.Compression;
 using System.Text;
+using Client.Compilation.Native;
 
 namespace Client.Compilation.Provisioning;
 
@@ -10,7 +11,7 @@ namespace Client.Compilation.Provisioning;
 /// </summary>
 public sealed class ZipRuntimeArchive : IAsyncDisposable
 {
-    public const long MaxZipBytes = 67108864;
+    public const long MaxZipBytes = 268435456;
     private Stream? _source;
     private byte[] _bytes = [];
     private Task? _preparation;
@@ -145,7 +146,10 @@ internal static class ZipDirectory
             if (U32(b, p) == 0x06054b50 && p + 22 + U16(b, p + 20) == b.Length) { end = p; break; }
         if (end < 0 || U16(b, end + 4) != 0 || U16(b, end + 6) != 0) throw Invalid();
         int count = U16(b, end + 10);
-        if (count is not (498 or 499 or 500 or 501 or 508 or 509) || U16(b, end + 8) != count) throw Invalid();
+        bool legacyEnvelope = count is 498 or 499 or 500 or 501 or 508 or 509;
+        bool suiteEnvelope = NativeCompilerSuitePins.Ready && (count == NativeCompilerSuitePins.ResourceCount + 1 || count == NativeCompilerSuitePins.ResourceCount + 2);
+        if ((!legacyEnvelope && !suiteEnvelope) || U16(b, end + 8) != count) throw Invalid();
+        if (!suiteEnvelope && b.Length > 67108864) throw Invalid();
         long central = U32(b, end + 16), centralSize = U32(b, end + 12);
         if (central + centralSize != end || central > int.MaxValue) throw Invalid();
         int cursor = (int)central; long total = 0;
@@ -165,15 +169,16 @@ internal static class ZipDirectory
             foreach (byte value in nameBytes) if (value < 32 || value > 126) throw Invalid();
             string name = Encoding.ASCII.GetString(nameBytes);
             bool folder = name == "files/";
-            if (!names.Add(name) || !(name == "pins.json" || folder || ResourceName(name))) throw Invalid();
+            if (!names.Add(name) || !(name == "pins.json" || folder || ResourceName(name, suiteEnvelope))) throw Invalid();
             uint attributes = U32(b, cursor + 38), type = (attributes >> 16) & 0xf000;
             if (type != 0 && type != (folder ? 0x4000u : 0x8000u)
                 || (attributes & 0x48) != 0 || !folder && (attributes & 0x10) != 0) throw Invalid();
-            long cap = name == "pins.json" ? LocalRuntimeSelection.MaxPinsBytes : LocalRuntimeSelection.Limits.MaxFileBytes;
+            long cap = name == "pins.json" ? (suiteEnvelope ? LocalRuntimeSelection.SuiteMaxPinsBytes : LocalRuntimeSelection.MaxPinsBytes)
+                : suiteEnvelope ? NativeCompilerSuiteContract.FileBytes : LocalRuntimeSelection.Limits.MaxFileBytes;
             if (length > cap || compressed > ZipRuntimeArchive.MaxZipBytes || method == 0 && compressed != length
                 || folder && (length != 0 || compressed != 0)) throw Invalid();
             if (name != "pins.json" && !folder)
-            { total += length; if (total > LocalRuntimeSelection.Limits.MaxTotalBytes) throw Invalid(); }
+            { total += length; if (total > (suiteEnvelope ? NativeCompilerSuiteContract.TotalBytes : LocalRuntimeSelection.Limits.MaxTotalBytes)) throw Invalid(); }
             // Reject ZIP64 and ambiguous extra fields rather than interpret a second length/name.
             if (extra != 0) ValidateExtra(b, cursor + 46 + nameLength, extra);
             long local = U32(b, cursor + 42);
@@ -207,17 +212,18 @@ internal static class ZipDirectory
             if (cursor > end) throw Invalid();
         }
         if (cursor != end || !names.Contains("pins.json")
-            || items.Count(x => x.Name.StartsWith("files/", StringComparison.Ordinal) && x.Name != "files/") is not (497 or 499 or 507)) throw Invalid();
+            || !LocalRuntimeSelection.SupportedCount(items.Count(x => x.Name.StartsWith("files/", StringComparison.Ordinal) && x.Name != "files/"))) throw Invalid();
         long next = 0;
         foreach (var span in spans.OrderBy(x => x.Start)) { if (span.Start != next) throw Invalid(); next = span.End; }
         if (next != central) throw Invalid();
         return items;
     }
-    private static bool ResourceName(string name)
+    private static bool ResourceName(string name, bool suite)
     {
         if (!name.StartsWith("files/", StringComparison.Ordinal)) return false;
         var flat = name[6..];
-        return flat.Length is > 0 and <= 200 && flat.All(c => char.IsAsciiLetterOrDigit(c) || c is '.' or '-' or '_')
+        return suite ? NativeCompilerSuiteContract.ResourceName(flat)
+            : flat.Length is > 0 and <= 200 && flat.All(c => char.IsAsciiLetterOrDigit(c) || c is '.' or '-' or '_')
             && flat is not ("." or "..");
     }
     private static void ValidateExtra(byte[] b, int at, int length)

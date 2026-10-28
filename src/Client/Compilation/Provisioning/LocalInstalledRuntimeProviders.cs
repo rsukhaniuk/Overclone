@@ -44,7 +44,7 @@ public sealed class LocalInstalledRuntimeProviders : INativeRuntimeProvider, IPd
             var before = await _compilerSelection.ReadAsync().ConfigureAwait(false); owned.ThrowIfCancellationRequested();
             if (before is null) return CompilerFailure(RuntimeAssetStatus.Missing);
             var mapping = LocalRuntimeSelection.Decode(before);
-            var result = await new InstalledNativeRuntimeProvider(_compilerStore, mapping, LocalRuntimeSelection.Budget, LocalRuntimeSelection.LimitsFor(mapping.Profile)).ReadPackageAsync(owned).ConfigureAwait(false);
+            var result = await new InstalledNativeRuntimeProvider(_compilerStore, mapping, LocalRuntimeSelection.BudgetFor(mapping.Profile), LocalRuntimeSelection.LimitsFor(mapping.Profile)).ReadPackageAsync(owned).ConfigureAwait(false);
             await _compilerStore.WhenSettled.ConfigureAwait(false); owned.ThrowIfCancellationRequested();
             var after = await _compilerSelection.ReadAsync().ConfigureAwait(false); owned.ThrowIfCancellationRequested();
             return before == after ? result : CompilerFailure(RuntimeAssetStatus.Uncertain);
@@ -106,7 +106,7 @@ public sealed class LocalInstalledRuntimeProviders : INativeRuntimeProvider, IPd
         // before/after and fresh full-closure byte verification. No query cache/store.
         var read = await ReadCompilerAsync(token).ConfigureAwait(false);
         if (read.Package is not { } package
-            || package.Profile is not (NativeRuntimeProfile.LocalLatex2023SyncTeX or NativeRuntimeProfile.LocalLatex2023Dvi)) return null;
+            || package.Profile is not (NativeRuntimeProfile.LocalLatex2023SyncTeX or NativeRuntimeProfile.LocalLatex2023Dvi or NativeRuntimeProfile.LocalCompilerSuite)) return null;
         token.ThrowIfCancellationRequested();
         return new(package.Copy("synctex-query.js"), package.Copy("synctex-query.wasm"),
             NativeRuntimeProfiles.SyncTeXQueryLoaderHash, NativeRuntimeProfiles.SyncTeXQueryWasmHash);

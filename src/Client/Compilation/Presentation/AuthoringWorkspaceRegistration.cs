@@ -53,7 +53,8 @@ public static class AuthoringWorkspaceRegistration
             // provisioned or approved here, including the unavailable default.
             var store = new CompileArtifactHistoryStore(new ArtifactStorageBackend(js),
                 provider.GetRequiredService<IProjectRepository>(), NativeRuntimePackage.Pdf, NativeRuntimePackage.Adapter,
-                [NativeSyncTeXContract.OutputAdapter, NativeLatexDviContract.OutputAdapter]);
+                [NativeSyncTeXContract.OutputAdapter, NativeLatexDviContract.OutputAdapter, NativeCompilerSuiteContract.XeOutputAdapter,
+                    .. (NativeCompilerSuitePins.Ready ? new[] { NativeCompilerSuiteContract.LuaOutputAdapter } : Array.Empty<CompileOutputDescriptor>())]);
             var index = new CompileHistoryIndex(new JsHistoryIndexBackend(js));
             return new(workspace, compile, store, index,
                 new(new(64, 1048576, 8388608, 131072), 8388608, 262144,

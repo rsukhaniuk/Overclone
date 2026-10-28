@@ -39,6 +39,9 @@ internal sealed class RenderedExtentAuthority
             || Output.OutputFormat != NativeRuntimePackage.Pdf || Output.OutputAdapter != (ports.OutputAdapter ?? NativeRuntimePackage.Adapter)
             || Output.OutputAdapter != NativeRuntimePackage.Adapter && Output.OutputAdapter != NativeSyncTeXContract.OutputAdapter
                 && Output.OutputAdapter != NativeLatexDviContract.OutputAdapter
+                && Output.OutputAdapter != NativeCompilerSuiteContract.DviOutputAdapter
+                && Output.OutputAdapter != NativeCompilerSuiteContract.XeOutputAdapter
+                && !(NativeCompilerSuitePins.Ready && Output.OutputAdapter == NativeCompilerSuiteContract.LuaOutputAdapter)
             || Output.OutputLength is < 1 or > 8388608 || !PdfHashes.IsSha(Output.OutputHash?.Hex)
             || Output.WorkerEpoch <= 0 || Output.RequestId.Value == Guid.Empty) return false;
         var snapshot = Output.Snapshot; var identity = snapshot.Identity;

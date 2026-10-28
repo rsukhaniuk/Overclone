@@ -19,7 +19,7 @@
     <button @onclick="Install" disabled="@(Busy || _pins is null || _files.Length is not (497 or 499 or 507))" data-testid="runtime-install">Verify and install resources</button>
     <button @onclick="Recheck" disabled="@Busy" data-testid="runtime-recheck">Recheck stored resources</button>
     <button @onclick="Cancel" disabled="@(!Busy || !_setup.CanCancel)" data-testid="runtime-cancel">Cancel preparation</button>
-    <p role="status" data-testid="runtime-status" data-state="@_setup.State" data-busy="@Busy.ToString().ToLowerInvariant()">@Status</p>
+    <p role="status" data-testid="runtime-status" data-state="@_setup.State" data-busy="@Busy.ToString().ToLowerInvariant()" data-operation="@_setup.OperationVersion">@Status</p>
     <p>Resources stay separate from projects and are not included in project exports or AI context. Browser storage can be evicted; keep your local package. After installation, use Check tools to verify the current supported compiler. PDF preview needs its separate supported renderer resources.</p>
 </details>
 @code {
@@ -38,7 +38,7 @@
         RuntimeSetupState.Preparing => $"Verifying local resource bytes… {_setup.Completed} files read.",
         RuntimeSetupState.Finishing => "Finishing… waiting for reads or storage to settle. Publication cannot be cancelled once started.",
         RuntimeSetupState.Installed => "Compiler resources installed. Use Check tools to verify local compilation availability.",
-        RuntimeSetupState.InvalidSelection => "Invalid resource selection. Choose the supported pins.json and exactly its 497, 499 or 507 matching files, with no duplicates or extras.",
+        RuntimeSetupState.InvalidSelection => "Invalid resource selection. Choose the supported compiler ZIP, or pins.json and all matching files from an earlier flat package, with no duplicates or extras.",
         RuntimeSetupState.Cancelled => "Preparation cancelled. Previous stored selection was not replaced.",
         RuntimeSetupState.Busy => "Resource storage is busy. Close other installer tabs or wait, then recheck.",
         RuntimeSetupState.Missing => "Stored resources are missing or incomplete. Select your local package to reinstall.",

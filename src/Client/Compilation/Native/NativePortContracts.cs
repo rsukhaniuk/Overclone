@@ -8,7 +8,7 @@ public sealed record NativePhaseTag(string Job, string Request, long Epoch, Guid
     CompilationSnapshotIdentity? Snapshot = null, int Version = 1,
     NativeRuntimeProfile Profile = NativeRuntimeProfile.Legacy, string? RuntimeIdentity = null, string? EngineId = null);
 public sealed record NativePhaseRequest(NativePhaseTag Tag, string MainEntry, NativeFileTransfer[] Files,
-    string[] Outputs, byte[] Loader, byte[] Wasm, int MaxLogBytes, int MaxOutputBytes, string? SelectedRoot = null, string[]? RuntimeResourceNames = null);
+    string[] Outputs, byte[] Loader, byte[] Wasm, int MaxLogBytes, int MaxOutputBytes, string? SelectedRoot = null, string[]? RuntimeResourceNames = null, string[]? GeneratedInputNames = null);
 public sealed record NativePhaseReply(NativePhaseTag Tag, string Outcome, int? NativeReturn, bool Entered,
     string Log, NativeFileTransfer[] Files, NativeInputFact[] Inputs, double? ElapsedMs = null, int? HeapBytes = null,
     string? WasmSha256 = null, string? LoaderSha256 = null, byte[]? SourceMapPayload = null);
@@ -23,15 +23,18 @@ public interface INativePhaseTransport
 }
 public sealed record NativeCompilePlan(bool BibtexRequired, int MaxLatexPasses, TimeSpan JobDeadline,
     int MaxPhaseFiles = 512, int MaxInputBytes = 16 * 1024 * 1024, int MaxFileBytes = 8 * 1024 * 1024,
-    bool UseSelectionTools = false, NativeRuntimeProfile Profile = NativeRuntimeProfile.Legacy, int? PhaseProtocolVersion = null, bool DviOutput = false)
+    bool UseSelectionTools = false, NativeRuntimeProfile Profile = NativeRuntimeProfile.Legacy, int? PhaseProtocolVersion = null, bool DviOutput = false, NativeCompilerEngine Engine = NativeCompilerEngine.PdfLaTeX)
 {
     public bool IsValid => MaxLatexPasses is >= 1 and <= 6 && JobDeadline > TimeSpan.Zero && JobDeadline <= TimeSpan.FromMinutes(2)
         && NativeRuntimeProfiles.Known(Profile)
-        && (PhaseProtocolVersion is null || PhaseProtocolVersion == NativeRuntimeProfiles.ProtocolVersion(Profile)
-            || PhaseProtocolVersion is 4 or 5 && Profile == NativeRuntimeProfile.LocalLatex2023Authoring
-            || PhaseProtocolVersion == 7 && Profile == NativeRuntimeProfile.LocalLatex2023Dvi && DviOutput)
+        && (Profile == NativeRuntimeProfile.LocalCompilerSuite
+            ? NativeCompilerSuiteContract.Phase(Engine) != 0 && EffectivePhaseVersion == NativeCompilerSuiteContract.Phase(Engine)
+            : Engine == NativeCompilerEngine.PdfLaTeX && (PhaseProtocolVersion is null || PhaseProtocolVersion == NativeRuntimeProfiles.ProtocolVersion(Profile)
+                || PhaseProtocolVersion is 4 or 5 && Profile == NativeRuntimeProfile.LocalLatex2023Authoring
+                || PhaseProtocolVersion == 7 && Profile == NativeRuntimeProfile.LocalLatex2023Dvi && DviOutput))
         && (DviOutput == (EffectivePhaseVersion == 7))
-        && MaxPhaseFiles >= 1 && MaxPhaseFiles <= (EffectivePhaseVersion is 4 or 5 or 6 or 7 ? NativeAuthoringV4Contract.PhaseFiles : 512)
+        && MaxPhaseFiles >= 1 && MaxPhaseFiles <= (Profile == NativeRuntimeProfile.LocalCompilerSuite ? NativeCompilerSuiteContract.Files + 192
+            : EffectivePhaseVersion is 4 or 5 or 6 or 7 ? NativeAuthoringV4Contract.PhaseFiles : 512)
         && MaxInputBytes > 0 && MaxInputBytes <= NativeRuntimeProfiles.MaxTotalBytes(Profile)
         && MaxFileBytes > 0 && MaxFileBytes <= NativeRuntimeProfiles.MaxFileBytes(Profile);
     public int EffectivePhaseVersion => PhaseProtocolVersion ?? NativeRuntimeProfiles.ProtocolVersion(Profile);
