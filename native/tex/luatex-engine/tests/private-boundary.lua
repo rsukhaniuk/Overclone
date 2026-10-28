@@ -1,0 +1,5 @@
+assert(io.open('/etc/passwd','rb') == nil)
+assert(io.open('/control/baseline.json','rb') == nil)
+assert(io.open('/inputs/texlive/version.ac','rb') == nil)
+local f = io.open('/tmp/escape.aux','wb')
+assert(f == nil, 'write escaped /work')

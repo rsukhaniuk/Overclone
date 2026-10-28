@@ -1,0 +1,35 @@
+\documentclass{article}
+\begin{document}
+\immediate\write18{touch /work/output/WRITE18-ESCAPED}
+\directlua{
+  local function request(name, f)
+    local ok, a, b = pcall(f)
+    texio.write_nl('AUTHORITY ' .. name .. ': ' .. tostring(ok) .. ', ' .. tostring(a) .. ', ' .. tostring(b))
+    assert(not ok or a == nil or a == false or a == -1, name .. ' unexpectedly succeeded')
+  end
+  request('os.execute', function() return os.execute('touch /work/output/EXECUTE-ESCAPED') end)
+  request('os.spawn', function() return os.spawn({'touch','/work/output/SPAWN-ESCAPED'}) end)
+  request('os.exec', function() return os.exec({'touch','/work/output/EXEC-ESCAPED'}) end)
+  request('io.popen', function() return io.popen('cat /etc/passwd','r') end)
+  request('package.loadlib', function() return package.loadlib('/usr/lib/libc.so.6','system') end)
+  for _, name in ipairs({'ffi', 'socket', 'socket.core', 'mime.core', 'js'}) do
+    local ok, why = pcall(require, name)
+    texio.write_nl('MODULE ' .. name .. ': ' .. tostring(ok) .. ', ' .. tostring(why))
+    assert(not ok, name .. ' must not be loadable')
+  end
+  for _, name in ipairs({'/etc/passwd','/control/baseline.json','/inputs/texlive/version.ac'}) do
+    local f, why = io.open(name, 'r')
+    texio.write_nl('HOSTREAD ' .. name .. ': ' .. tostring(f) .. ', ' .. tostring(why))
+    assert(f == nil, name .. ' must not be visible')
+  end
+  for _, name in ipairs({'WRITE18-ESCAPED','EXECUTE-ESCAPED','SPAWN-ESCAPED','EXEC-ESCAPED'}) do
+    assert(io.open('/work/output/' .. name, 'r') == nil)
+  end
+  local f = assert(io.open('/work/project/chapter.tex','r'))
+  assert(f:read('*a'):find('Multi-file ALPHA.', 1, true)); f:close()
+  local out = assert(io.open('/work/output/lua-private.txt','w'))
+  assert(out:write('PRIVATE VFS ONLY')); assert(out:close())
+  texio.write_nl('AUTHORITY private VFS read and write: success')
+}
+Confinement request controls completed.
+\end{document}

@@ -1,0 +1,72 @@
+{
+  "schema": 1,
+  "engine": { "name": "LuaTeX", "version": "1.13.0", "svnRevision": 7410, "abi": 2 },
+  "lua": "5.3.6",
+  "texLiveSource": {
+    "commit": "22d3aa7aded98382a59b1f3dc0e7142a810bdeca",
+    "archiveLength": 90978282,
+    "archiveSha256": "7890ef13b80deae387ebdfe938d3c05a3cc4b5a61f0a96657fd9c851f5a6e585",
+    "expandedFileCount": 16590,
+    "expandedBytes": 357749030,
+    "privateFullFileManifestSha256": "9e448275adc84dda53fe243b9b6b8b26fbeb491a79e206324dcf6b8810f1a932"
+  },
+  "toolchain": {
+    "emscripten": "6.0.13",
+    "emscriptenCommit": "e13ee988ce3d87a738dd8f3661d02223308c412a",
+    "sdkCache": "Approved read-only SDK cache copied privately; EM_FROZEN_CACHE=1 and dead loopback proxies",
+    "buildJobs": 2,
+    "virtualMemoryLimitBytes": 3221225472
+  },
+  "generators": [
+    "Approved native TANGLE, CTANGLE, TIE and Web2C tools built from the same TeX Live source",
+    "otangle: original omegaware/otangle.web + otangle.ch -> TANGLE -> Web2C -> native C",
+    "mplib CWEB files: upstream make rules with approved native CTANGLE",
+    "luatex-core.lua: original self-generator body executed by private source-built Lua 5.3.6; unused stripped sidecar uses identity compaction"
+  ],
+  "linkedComponents": [
+    "LuaTeX authored C and builtin SyncTeX", "Lua 5.3.6", "mplib core", "fontforge fontloader",
+    "LPeg, LuaFileSystem, Unicode, MD5/SHA2, ZIP and zlib Lua bindings",
+    "pplib", "zziplib", "libpng", "zlib", "kpathsea", "mputil", "unilib", "md5"
+  ],
+  "notLinked": [ "Lua FFI", "LuaSocket", "LuaHBTeX/HarfBuzz", "Cairo", "Pixman" ],
+  "buildOnly": [ "Cairo and Pixman upstream header prerequisites" ],
+  "sourcePreimages": [
+    {
+      "path": "texk/web2c/luatexdir/lua/luastuff.c",
+      "before": "94270c83db8c4b78c16fe4c66dffc3cc05c1eb081c4e43dd5ca0d13787ecd11a",
+      "after": "ee81d35e53845dd241fa78bbca73f6b8ff3b919b39113dcbaf03890a7637b698"
+    },
+    {
+      "path": "texk/web2c/luatexdir/lua/luainit.c",
+      "before": "00725905b14ff383c053592daa27b2f284ae675a030d464d1a1ea9ab8a28f285",
+      "after": "e3a97a2259af4f5b19287f13ad5b09147d38e6133a92d4080b64f86ddb19c77f"
+    },
+    {
+      "path": "texk/web2c/luatexdir/lua/luatex-core.lua",
+      "before": "687aea17875ab61a837a7b10e70e876b03a8e65d5e3836c947df32a53e83785c",
+      "after": "ddc2f4b1787f47b98357d2ce6611907d44e6ed4b895dd43fe2863382ce90cea0"
+    }
+  ],
+  "runtime": {
+    "format": "Genuinely generated LuaLaTeX LaTeX2023-11-01 patch1, not a pdfTeX format",
+    "luaotfload": "3.26 (2023-08-31)",
+    "fontspec": "2.8a",
+    "data": "Explicit approved copied TeX data, Unicode algorithm modules and fonts, each verified by input manifests"
+  },
+  "browserVfsGuard": {
+    "source": "Owned vfs-budget.js pre-js plus C++ EM_JS; adapted from existing compile-port-worker installNativeVfsBudget principles",
+    "sdkFunctionShapes": 41,
+    "validation": "WebCrypto SHA256 at preRun; identities/shared aliases checked again at compile entry; fail closed",
+    "automaticSeal": "After explicit input seeding and before native Lua/TeX entry",
+    "aggregateLogicalGrowthBytes": 16777216,
+    "sharedCumulativeBackingAndAllocatingCopyBytes": 16777216,
+    "normalGeneratedFileBytes": 8388608,
+    "initexGeneratedFileBytes": 33554432,
+    "newNodeAttempts": 128,
+    "aggregateLogBytes": 262144,
+    "formatBackingReservationBytes": 14680064,
+    "policy": "Private /work; immutable runtime/config; outside read ENOENT, writes fail; no new mounts/links/devices or mmap; quota latch revokes outputs even after caught error",
+    "parentResponsibilities": "Snapshot/state/transport limits, no credential/network authority, physical cancellation and final browser acceptance"
+  },
+  "distributionStatus": "Private technical candidate only; no dependency adoption, source distribution or license clearance is implied"
+}

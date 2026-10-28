@@ -1,0 +1,11 @@
+\documentclass{article}
+\begin{document}
+\directlua{
+  local bytes = string.rep('x',32*1024*1024)
+  for _, name in ipairs({'a.aux','b.aux'}) do
+    local f = assert(io.open('/work/output/' .. name, 'wb'))
+    assert(f:write(bytes)); assert(f:close())
+  end
+}
+Real PDF plus two declared 32 MiB files must exceed the 64 MiB selected output cap.
+\end{document}

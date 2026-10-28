@@ -1,0 +1,5 @@
+\documentclass{article}
+\begin{document}
+\directlua{texio.write_nl('RUNAWAY-BEGIN' .. string.char(10)); while true do end}
+This line must never be reached.
+\end{document}

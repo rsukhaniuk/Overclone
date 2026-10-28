@@ -1,0 +1,5 @@
+\documentclass{article}
+\begin{document}
+\directlua{local t = {}; for i=1,64 do t[i] = string.rep('x',16*1024*1024) end}
+Unexpected allocation success.
+\end{document}
