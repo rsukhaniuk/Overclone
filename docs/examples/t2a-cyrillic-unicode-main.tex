@@ -1,0 +1,19 @@
+\documentclass[10pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T2A]{fontenc}
+% Explicit candidate: these T2A font contexts use Cyrillic I/i semantics.
+% Not a blanket repair for mixed T2A text, other families or sizes.
+\pdfgentounicode=1
+\pdfglyphtounicode{tfm:larm1000/I}{0406}
+\pdfglyphtounicode{tfm:larm1000/i}{0456}
+\pdfglyphtounicode{tfm:labx1000/I}{0406}
+\pdfglyphtounicode{tfm:labx1000/i}{0456}
+\begin{document}
+\noindent Привіт Київ. Іі Її Єє Ґґ.\par
+\noindent \textbf{Привіт Київ. Іі Її Єє Ґґ.}
+\par
+% Latin text explicitly selects OT1; global I/i mappings stay unchanged.
+{\fontencoding{OT1}\selectfont
+\noindent ASCII I i 123.\par
+\noindent \textbf{ASCII I i 123.}\par}
+\end{document}
