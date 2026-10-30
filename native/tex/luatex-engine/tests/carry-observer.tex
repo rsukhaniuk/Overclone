@@ -1,0 +1,19 @@
+% Synthetic native consumer: compare every carried byte inside genuine LuaTeX.
+% expected-N files contain the original producer bytes, not generated substitutes.
+\documentclass{article}
+\begin{document}
+\directlua{
+  local function read(path)
+    local f = assert(io.open(path, "rb"))
+    local bytes = assert(f:read("*a"))
+    assert(f:close())
+    return bytes
+  end
+  local names = {"result-blx.bib", "result.bcf", "result.run.xml"}
+  for i, name in ipairs(names) do
+    assert(read("/work/output/" .. name) == read("expected-" .. i), name)
+    texio.write_nl("term and log", "ABI3-CARRY-EXACT " .. name)
+  end
+}
+Exact native carry checked.
+\end{document}

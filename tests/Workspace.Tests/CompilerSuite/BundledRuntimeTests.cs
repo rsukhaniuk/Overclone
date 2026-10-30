@@ -11,6 +11,9 @@ namespace Workspace.Tests.CompilerSuite;
 
 public sealed class BundledRuntimeTests
 {
+    internal static string? FixtureDirectory => Environment.GetEnvironmentVariable(NativeCompilerBibliographyPins.Ready
+        ? "COMPILER_BIBLIOGRAPHY_RUNTIME_DIR" : NativeCompilerCompatibilityPins.Ready
+            ? "COMPILER_COMPATIBILITY_RUNTIME_DIR" : "COMPILER_SUITE_RUNTIME_DIR");
     private sealed class Handler(Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> respond) : HttpMessageHandler
     {
         public List<string> Paths { get; } = [];
@@ -77,22 +80,31 @@ public sealed class BundledRuntimeTests
         Assert.Equal(RuntimeAssetStatus.Missing, (await second).Store.Status);
         await assets.WhenSettled;
     }
-    [SuiteFixtureFact]
+    [BundledFixtureFact]
     public async Task Genuine_bundled_archive_is_verified_once_and_owned_package_is_shared_without_installer_calls()
     {
-        string directory = Environment.GetEnvironmentVariable("COMPILER_SUITE_RUNTIME_DIR")!;
+        string directory = FixtureDirectory!;
         var handler = new Handler((_, _) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
             { Content = new StreamContent(File.OpenRead(Path.Combine(directory, "compiler-suite.zip"))) }));
         await using var assets = new BundledRuntimeAssets(Client(handler));
         var first = assets.ReadCompilerAsync(); var second = assets.ReadCompilerAsync();
         var package = Assert.IsType<NativeRuntimePackage>((await first).Package);
         Assert.Same(package, (await second).Package); Assert.Same(package, (await assets.ReadCompilerAsync()).Package);
-        Assert.True(assets.Owns(package)); Assert.Equal(NativeRuntimeProfile.LocalCompilerSuite, package.Profile);
+        Assert.True(assets.Owns(package)); Assert.Equal(BundledRuntimeAssets.CompilerProfile, package.Profile);
         Assert.Single(handler.Paths);
         var wasm = package.Copy("xetex.wasm"); wasm[0] ^= 1;
         Assert.Equal(NativeCompilerSuitePins.XeWasmHash, NativeRuntimePackage.Digest(package.Copy("xetex.wasm")).Hex);
         await assets.DisposeAsync();
         Assert.False(assets.Owns(package));
         Assert.Equal(RuntimeAssetStatus.Disposed, (await assets.ReadCompilerAsync()).Store.Status);
+    }
+}
+
+public sealed class BundledFixtureFactAttribute : FactAttribute
+{
+    public BundledFixtureFactAttribute()
+    {
+        if (!File.Exists(Path.Combine(BundledRuntimeTests.FixtureDirectory ?? "", "compiler-suite.zip")))
+            Skip = "Exact currently bundled compiler archive unavailable; no historical substitute.";
     }
 }

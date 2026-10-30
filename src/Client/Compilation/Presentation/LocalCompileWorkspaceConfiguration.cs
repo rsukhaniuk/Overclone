@@ -73,7 +73,7 @@ public sealed class LocalCompileWorkspaceConfiguration : ICompileWorkspaceConfig
                 token.ThrowIfCancellationRequested();
                 bool provisioned = await _module.ProvisionAsync().ConfigureAwait(false);
                 token.ThrowIfCancellationRequested();
-                bool suite = read.Package.Profile == NativeRuntimeProfile.LocalCompilerSuite;
+                bool suite = NativeRuntimeProfiles.IsSuite(read.Package.Profile);
                 if (provisioned && (suite || read.Package.Profile == NativeRuntimeProfile.LocalLatex2023Dvi))
                 {
                     provisioned = await _module.ProvisionDviAsync().ConfigureAwait(false);
@@ -96,7 +96,7 @@ public sealed class LocalCompileWorkspaceConfiguration : ICompileWorkspaceConfig
                 {
                     bool mapped = suite || read.Package.Profile is NativeRuntimeProfile.LocalLatex2023SyncTeX or NativeRuntimeProfile.LocalLatex2023Dvi;
                     _configuredProfile = read.Package.Profile;
-                    _factory = new(_resources, _module.Transport, suite ? NativeCompilerSuiteContract.CreatePlan(NativeCompilerEngine.PdfLaTeX) : mapped ? NativeSyncTeXContract.CreatePlan(deadline: JobDeadline) with { Profile = read.Package.Profile }
+                    _factory = new(_resources, _module.Transport, suite ? NativeCompilerSuiteContract.CreatePlan(NativeCompilerEngine.PdfLaTeX, profile: read.Package.Profile) : mapped ? NativeSyncTeXContract.CreatePlan(deadline: JobDeadline) with { Profile = read.Package.Profile }
                         : NativeSelectedEntryContract.CreatePlan(deadline: JobDeadline));
                     // Fixed technical closures only; package integrity is not adoption approval.
                     var package = read.Package;
@@ -106,15 +106,15 @@ public sealed class LocalCompileWorkspaceConfiguration : ICompileWorkspaceConfig
                         OutputAdapter: package.OutputAdapter);
                     if (suite || package.Profile == NativeRuntimeProfile.LocalLatex2023Dvi)
                     {
-                        _dviFactory = new(_resources, _module.Transport, suite ? NativeCompilerSuiteContract.CreatePlan(NativeCompilerEngine.LaTeXDvi)
+                        _dviFactory = new(_resources, _module.Transport, suite ? NativeCompilerSuiteContract.CreatePlan(NativeCompilerEngine.LaTeXDvi, profile: package.Profile)
                             : NativeLatexDviContract.CreatePlan(deadline: JobDeadline));
                         _additionalEngines = [new("latex-dvi", "LaTeX (DVI to PDF)", package.DviEngine, [package.Bundle], [package.Bibtex],
                             _dviFactory, _inspector, () => CheckAsync(), this, SelectableBibliography: true,
                             SelectionOptions: NativeLatexDviContract.SelectionOptions, OutputAdapter: package.DviOutputAdapter)];
                         if (suite)
                         {
-                            _xeFactory = new(_resources, _module.Transport, NativeCompilerSuiteContract.CreatePlan(NativeCompilerEngine.XeLaTeX));
-                            _luaFactory = new(_resources, _module.Transport, NativeCompilerSuiteContract.CreatePlan(NativeCompilerEngine.LuaLaTeX));
+                            _xeFactory = new(_resources, _module.Transport, NativeCompilerSuiteContract.CreatePlan(NativeCompilerEngine.XeLaTeX, profile: package.Profile));
+                            _luaFactory = new(_resources, _module.Transport, NativeCompilerSuiteContract.CreatePlan(NativeCompilerEngine.LuaLaTeX, profile: package.Profile));
                             _additionalEngines = [.. _additionalEngines,
                                 new("xelatex", "XeLaTeX (XDV to PDF)", package.EngineFor(NativeCompilerEngine.XeLaTeX), [package.Bundle], [package.Bibtex],
                                     _xeFactory, _inspector, () => CheckAsync(), this, SelectableBibliography: true,

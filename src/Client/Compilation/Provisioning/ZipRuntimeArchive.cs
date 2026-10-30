@@ -56,7 +56,7 @@ public sealed class ZipRuntimeArchive : IAsyncDisposable
         var manifest = entries["pins.json"];
         PinsStreamsOpened++;
         Pins = await ReadEntry(manifest, token);
-        var pins = LocalRuntimeSelection.ParsePins(Pins); // exact trusted profile2/497, profile3/499 or profile4/507 closure
+        var pins = LocalRuntimeSelection.ParsePins(Pins); // exact trusted legacy or ready suite closure
         foreach (var pin in pins)
             if (!entries.TryGetValue("files/" + pin.Name, out var item) || item.Length != pin.Length) throw Invalid();
         // Exact count + unique schema names + all pins present excludes every extra.
@@ -158,7 +158,7 @@ internal static class ZipDirectory
         if (end < 0 || U16(b, end + 4) != 0 || U16(b, end + 6) != 0) throw Invalid();
         int count = U16(b, end + 10);
         bool legacyEnvelope = count is 498 or 499 or 500 or 501 or 508 or 509;
-        bool suiteEnvelope = NativeCompilerSuitePins.Ready && (count == NativeCompilerSuitePins.ResourceCount + 1 || count == NativeCompilerSuitePins.ResourceCount + 2);
+        bool suiteEnvelope = LocalRuntimeSelection.SupportedSuiteCount(count - 1) || LocalRuntimeSelection.SupportedSuiteCount(count - 2);
         if ((!legacyEnvelope && !suiteEnvelope) || U16(b, end + 8) != count) throw Invalid();
         if (!suiteEnvelope && b.Length > 67108864) throw Invalid();
         long central = U32(b, end + 16), centralSize = U32(b, end + 12);

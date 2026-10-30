@@ -16,26 +16,29 @@ if [[ ! -e "$overlay" ]]; then python3 "$here/prepare.py" "$source" "$overlay"; 
 w2c=$source/texk/web2c
 b=$build/texk/web2c
 if [[ ${RELINK_ONLY:-0} != 1 ]]; then
-(cd "$overlay/luatexdir/lua"; /control/build/generators/lua53 "$here/regenerate-core.lua")
-includes=(-DHAVE_CONFIG_H -I"$b" -I"$b/w2c" -I"$w2c" -I"$build/texk" -I"$source/texk"
- -I"$build/libs/zlib/include" -I"$build/libs/libpng/include" -I"$build/libs/pplib/include"
- -I"$build/libs/lua53/include" -DLUA_COMPAT_MODULE -DLUA_COMPAT_5_2 -DLUAI_HASHLIMIT=6 -DLUA_USE_POSIX
- -I"$w2c/libmd5" -DpdfTeX -I"$overlay/luatexdir" -I"$w2c/luatexdir" -I"$w2c/mplibdir"
- -I"$w2c/synctexdir" '-DSYNCTEX_ENGINE_H=<synctex-luatex.h>' '-Dextra_version_info=-browser-abi2')
-flags=(-O1 -Wno-error=incompatible-pointer-types -Wno-error=incompatible-function-pointer-types -Wno-error=implicit-function-declaration)
-for name in luastuff luainit luatex-core; do
- timeout 60 emcc "${includes[@]}" "${flags[@]}" -c "$overlay/luatexdir/lua/$name.c" -o "/control/build/$name.o"
-done
-timeout 60 emcc "${includes[@]}" "${flags[@]}" -Dmain=oc_engine_main -c "$w2c/luatexdir/luatex.c" -o /control/build/luatex-entry.o
-# Use private copies of archives; replace members by exact upstream member name.
-cp "$b/libluatexspecific.a" /control/build/browser-specific.a
-cp "$b/libluatex.a" /control/build/browser-luatex.a
-for name in luastuff luainit; do
- cp "/control/build/$name.o" "/control/build/libluatexspecific_a-$name.o"
- emar r /control/build/browser-specific.a "/control/build/libluatexspecific_a-$name.o"
-done
-cp /control/build/luatex-core.o /control/build/libluatex_a-luatex-core.o
-emar r /control/build/browser-luatex.a /control/build/libluatex_a-luatex-core.o
+ (
+  cd "$overlay/luatexdir/lua"
+  /control/build/generators/lua53 "$here/regenerate-core.lua"
+ )
+ includes=(-DHAVE_CONFIG_H -I"$b" -I"$b/w2c" -I"$w2c" -I"$build/texk" -I"$source/texk"
+  -I"$build/libs/zlib/include" -I"$build/libs/libpng/include" -I"$build/libs/pplib/include"
+  -I"$build/libs/lua53/include" -DLUA_COMPAT_MODULE -DLUA_COMPAT_5_2 -DLUAI_HASHLIMIT=6 -DLUA_USE_POSIX
+  -I"$w2c/libmd5" -DpdfTeX -I"$overlay/luatexdir" -I"$w2c/luatexdir" -I"$w2c/mplibdir"
+  -I"$w2c/synctexdir" '-DSYNCTEX_ENGINE_H=<synctex-luatex.h>' '-Dextra_version_info=-browser-abi3')
+ flags=(-O1 -Wno-error=incompatible-pointer-types -Wno-error=incompatible-function-pointer-types -Wno-error=implicit-function-declaration)
+ for name in luastuff luainit luatex-core; do
+  timeout 60 emcc "${includes[@]}" "${flags[@]}" -c "$overlay/luatexdir/lua/$name.c" -o "/control/build/$name.o"
+ done
+ timeout 60 emcc "${includes[@]}" "${flags[@]}" -Dmain=oc_engine_main -c "$w2c/luatexdir/luatex.c" -o /control/build/luatex-entry.o
+ # Use private copies of archives; replace members by exact upstream member name.
+ cp "$b/libluatexspecific.a" /control/build/browser-specific.a
+ cp "$b/libluatex.a" /control/build/browser-luatex.a
+ for name in luastuff luainit; do
+  cp "/control/build/$name.o" "/control/build/libluatexspecific_a-$name.o"
+  emar r /control/build/browser-specific.a "/control/build/libluatexspecific_a-$name.o"
+ done
+ cp /control/build/luatex-core.o /control/build/libluatex_a-luatex-core.o
+ emar r /control/build/browser-luatex.a /control/build/libluatex_a-luatex-core.o
 fi
 em++ -std=c++17 -O1 -I"$build/libs/lua53/include" -c "$here/engine.cpp" -o /control/build/engine.o
 # Neither FFI nor socket archives are linked into the candidate.
@@ -53,4 +56,4 @@ timeout 180 em++ -O1 /control/build/engine.o /control/build/luatex-entry.o "$b/m
  '-sEXPORTED_RUNTIME_METHODS=["ccall","cwrap","UTF8ToString","FS","HEAPU8"]' \
  '-sEXPORTED_FUNCTIONS=["_malloc","_free","_oc_luatex_abi","_oc_luatex_version","_oc_luatex_configure","_oc_luatex_context","_oc_luatex_add_file","_oc_luatex_declare_output","_oc_luatex_named_output_size","_oc_luatex_copy_named_output","_oc_luatex_compile_format","_oc_luatex_compile_latex","_oc_luatex_output_size","_oc_luatex_copy_output","_oc_luatex_error","_oc_luatex_budget_json"]' \
  -o "$out/luatex.js"
-sha256sum "$out/luatex.js" "$out/luatex.wasm" "$overlay/preimages.json" > "$out/SHA256SUMS"
+sha256sum "$out/luatex.js" "$out/luatex.wasm" "$overlay/preimages.json" >"$out/SHA256SUMS"

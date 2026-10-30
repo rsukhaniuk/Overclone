@@ -17,6 +17,11 @@ public sealed class BundledRuntimeAssets(HttpClient http, IJSRuntime? browser = 
     private static readonly JsonDocument Pins = JsonDocument.Parse(typeof(BundledRuntimeAssets).Assembly
         .GetManifestResourceStream("Client.Compilation.Provisioning.bundled-runtime.json")!);
     public static Asset CompilerAsset => Pin("compiler");
+    // Promotion is explicit: a ready closure may never fall back to older bytes.
+    public static NativeRuntimeProfile CompilerProfile => NativeCompilerBibliographyPins.Ready
+        ? NativeRuntimeProfile.LocalCompilerBibliography
+        : NativeCompilerCompatibilityPins.Ready
+            ? NativeRuntimeProfile.LocalCompilerCompatibility : NativeRuntimeProfile.LocalCompilerSuite;
     public static Asset PdfLoaderAsset => Pin("pdfLoader");
     public static Asset PdfWasmAsset => Pin("pdfWasm");
     private static Asset Pin(string role)
@@ -91,7 +96,8 @@ public sealed class BundledRuntimeAssets(HttpClient http, IJSRuntime? browser = 
         await using var archive = new ZipRuntimeArchive();
         await archive.PrepareOwnedAsync(bytes, token); bytes = [];
         var pins = LocalRuntimeSelection.ParsePins(archive.Pins);
-        if (LocalRuntimeSelection.ProfileFor(pins) != NativeRuntimeProfile.LocalCompilerSuite) throw new InvalidDataException();
+        var profile = CompilerProfile;
+        if (LocalRuntimeSelection.ProfileFor(pins) != profile) throw new InvalidDataException();
         var inputs = new List<NativeResourceInput>(pins.Length);
         foreach (var file in archive.Files)
         {
@@ -101,7 +107,7 @@ public sealed class BundledRuntimeAssets(HttpClient http, IJSRuntime? browser = 
         await archive.DisposeAsync(); // Release archive and read buffers before the owned package clone.
         token.ThrowIfCancellationRequested();
         var result = NativeRuntimePackage.Create(inputs, pins,
-            LocalRuntimeSelection.LimitsFor(NativeRuntimeProfile.LocalCompilerSuite), NativeRuntimeProfile.LocalCompilerSuite);
+            LocalRuntimeSelection.LimitsFor(profile), profile);
         inputs.Clear();
         return result.Package ?? throw new InvalidDataException("Bundled compiler integrity failed.");
     }

@@ -24,7 +24,10 @@ public sealed class NativeProfileTests
     [InlineData(2, true)]
     [InlineData(3, true)]
     [InlineData(4, true)]
-    [InlineData(6, false)]
+    [InlineData(5, true)]
+    [InlineData(6, true)]
+    [InlineData(7, true)]
+    [InlineData(int.MaxValue, false)]
     [InlineData(-1, false)]
     public void Modern_capacity_requires_a_known_explicit_profile(int profile, bool valid)
     {

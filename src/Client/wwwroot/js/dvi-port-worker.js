@@ -52,8 +52,8 @@
         let entered = false, nativeReturn = null, elapsedMs = null, log = '', inputs = [], files = [], outcome = 'setup-failure';
         try {
             const tag = frame.tag, resources = frame.runtimeResourceNames;
-            const suite = tag?.profile === 5, xe = suite && tag.version === 8 && tag.engineId === 'xelatex';
-            const dvi = tag?.version === 7 && [4, 5].includes(tag.profile) && tag.engineId === 'latex-dvi';
+            const suite = [5, 6, 7].includes(tag?.profile), xe = suite && tag.version === 8 && tag.engineId === 'xelatex';
+            const dvi = tag?.version === 7 && [4, 5, 6, 7].includes(tag.profile) && tag.engineId === 'latex-dvi';
             const prefix = '__oop_runtime__/', resourceName = name => suite ? name.slice(prefix.length) : name;
             if (!(dvi || xe) || tag.tool !== 'dvipdfmx'
                 || frame.operation !== 'dvipdfmx' || !/^[0-9a-f]{64}$/.test(tag.runtimeIdentity)

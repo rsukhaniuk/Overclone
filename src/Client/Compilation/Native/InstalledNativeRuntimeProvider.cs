@@ -42,7 +42,7 @@ public sealed class InstalledNativeRuntimeProvider(RuntimeAssetStore store, Inst
     {
         if (store is null || mapping is null || budget is not { IsValid: true } || limits is not { IsValid: true }
             || !NativeRuntimeProfiles.Known(mapping.Profile) || mapping.Profile != limits.Profile
-            || mapping.Profile == NativeRuntimeProfile.LocalCompilerSuite && !NativeCompilerSuitePins.Ready
+            || NativeRuntimeProfiles.IsSuite(mapping.Profile) && !NativeRuntimeProfiles.SuitePinsReady(mapping.Profile)
             || mapping.InstallationId == Guid.Empty || !Hex(mapping.InventoryDigest)
             || mapping.Resources.IsDefault || mapping.Resources.Length != NativeRuntimeProfiles.InstalledCount(mapping.Profile)
             || limits.MaxFiles < mapping.Resources.Length || budget.Inventory.MaxAssets < mapping.Resources.Length) return false;
@@ -58,8 +58,8 @@ public sealed class InstalledNativeRuntimeProvider(RuntimeAssetStore store, Inst
             total += p.Length;
         }
         if (names.Contains(NativeRuntimePackage.NativeFormatName)) return false;
-        if (mapping.Profile == NativeRuntimeProfile.LocalCompilerSuite && (total != NativeCompilerSuitePins.TotalBytes
-            || !NativeCompilerSuitePins.MatchesComponents(mapping.Resources.AsEnumerable().ToDictionary(r => r.Pin.Name, r => r.Pin, StringComparer.Ordinal)))) return false;
+        if (NativeRuntimeProfiles.IsSuite(mapping.Profile) && (total != NativeRuntimeProfiles.SuiteTotalBytes(mapping.Profile)
+            || !NativeRuntimeProfiles.MatchesSuiteComponents(mapping.Profile, mapping.Resources.AsEnumerable().ToDictionary(r => r.Pin.Name, r => r.Pin, StringComparer.Ordinal)))) return false;
         return Fixed("engine.js", NativeRuntimeProfiles.CompilerLoaderLength(mapping.Profile), NativeRuntimeProfiles.CompilerLoaderHash(mapping.Profile))
             && Fixed("engine.wasm", NativeRuntimeProfiles.CompilerWasmLength(mapping.Profile), NativeRuntimeProfiles.CompilerWasmHash(mapping.Profile))
             && Fixed(NativeRuntimePackage.FormatResourceName, NativeRuntimeProfiles.FormatLength(mapping.Profile), NativeRuntimeProfiles.FormatHash(mapping.Profile))

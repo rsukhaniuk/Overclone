@@ -4,7 +4,7 @@ namespace Client.Compilation.Native;
 
 public enum NativeCompilerEngine { PdfLaTeX, LaTeXDvi, XeLaTeX, LuaLaTeX }
 
-/// <summary>Closed profile5 phase choices. C# owns finite passes, not the worker.</summary>
+/// <summary>Closed suite phase choices (profiles5/6). C# owns finite passes, not the worker.</summary>
 public static class NativeCompilerSuiteContract
 {
     public const int Files = 8192, FileBytes = 64 * 1024 * 1024, TotalBytes = 256 * 1024 * 1024;
@@ -18,9 +18,10 @@ public static class NativeCompilerSuiteContract
     public static CompilationOption[] SelectionOptions(NativeCompilerEngine engine) => [new("overclone-native-phase-contract", Phase(engine).ToString(System.Globalization.CultureInfo.InvariantCulture))];
     public static bool MatchesOptions(IEnumerable<CompilationOption> options, NativeCompilerEngine engine) => Phase(engine) != 0 && options.SequenceEqual(SelectionOptions(engine));
     public static bool MatchesOptions(IEnumerable<CompilationOption> options) => Enum.GetValues<NativeCompilerEngine>().Any(e => MatchesOptions(options, e));
-    public static NativeCompilePlan CreatePlan(NativeCompilerEngine engine, int maxLatexPasses = 6, TimeSpan? deadline = null) => new(false,
+    public static NativeCompilePlan CreatePlan(NativeCompilerEngine engine, int maxLatexPasses = 6, TimeSpan? deadline = null,
+        NativeRuntimeProfile profile = NativeRuntimeProfile.LocalCompilerSuite) => new(false,
         maxLatexPasses, deadline ?? JobDeadline, Files + 192, TotalBytes, FileBytes,
-        UseSelectionTools: true, Profile: NativeRuntimeProfile.LocalCompilerSuite, PhaseProtocolVersion: Phase(engine),
+        UseSelectionTools: true, Profile: profile, PhaseProtocolVersion: Phase(engine),
         DviOutput: engine == NativeCompilerEngine.LaTeXDvi, Engine: engine);
     public static CompileOutputDescriptor DviOutputAdapter => new("native-latex-dvi", "dvi-v1", new(NativeCompilerSuitePins.ConverterWasmHash));
     public static CompileOutputDescriptor XeOutputAdapter => new("native-xetex", "xdv-v1", new(NativeCompilerSuitePins.ConverterWasmHash));

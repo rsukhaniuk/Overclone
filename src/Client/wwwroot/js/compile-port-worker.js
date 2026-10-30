@@ -225,15 +225,16 @@ async function installNativeVfsBudget(fs,mem,maximum,maximumLog=65536,nodeLimit=
 function validateAuthoringV4Frame(d){
  const bad=()=>{throw new Error('v4 FFI namespace/frame');};
  const key=n=>d.tag.version>=5?n.normalize('NFC').toUpperCase():n.normalize('NFC').replace(/[a-z]/g,c=>c.toUpperCase());
- const suite=d.tag.profile===5,lua=suite&&d.tag.version===9;
+ const suite=[5,6,7].includes(d.tag.profile),lua=suite&&d.tag.version===9;
  const selected=d.tag.version>=5,root=selected?d.selectedRoot:'main.tex';
  // Finite FFI consistency check only, not pass/tool orchestration. C# supplies both entries.
  if(typeof root!=='string')bad();
  const leaf=root.slice(root.lastIndexOf('/')+1),job=lua?'result':leaf.slice(0,-4);
  if(selected&&(!/^[\p{L}\p{Nd}\p{Mn}\p{Mc}._/ -]+$/u.test(root)||!/^.+\.tex$/i.test(leaf)||/^[.-]/.test(leaf)||leaf.startsWith(' ')||job.endsWith(' ')))bad();
  const latexEntry=selected&&root.includes(' ')?'"'+root+'"':root;
- const state=n=>n.endsWith('.aux')||['.bbl','.toc','.lof','.lot','.out'].some(ext=>n===job+ext);
- const fixed=['.pdf','.aux','.bbl','.blg','.log','.toc','.lof','.lot','.out',...(d.tag.version===7?['.dvi']:[]),...(d.tag.version===8?['.xdv']:[])].map(ext=>job+ext);
+ const bibliography=d.tag.profile===7,blx=job.replaceAll(' ','_')+'-blx.bib';
+ const state=n=>n.endsWith('.aux')||['.bbl','.toc','.lof','.lot','.out'].some(ext=>n===job+ext)||bibliography&&n===blx;
+ const fixed=['.pdf','.aux','.bbl','.blg','.log','.toc','.lof','.lot','.out',...(d.tag.version===7?['.dvi']:[]),...(d.tag.version===8?['.xdv']:[])].map(ext=>job+ext).concat(bibliography?[blx]:[]);
  const valid=n=>typeof n==='string'&&n.length>0&&n===n.trim()&&new TextEncoder().encode(n).length<=249
   &&!/[\u0000-\u001f\u007f-\u009f<>:"|?*\\\\]/.test(n)&&!Array.from(n).some(c=>c.length===1&&c.charCodeAt(0)>=55296&&c.charCodeAt(0)<=57343)
   &&n.split('/').length<=32&&n.split('/').every(s=>s&&s!=='.'&&s!=='..'&&!/[. ]$/.test(s)
@@ -241,13 +242,17 @@ function validateAuthoringV4Frame(d){
  if(!Array.isArray(d.files)||!Array.isArray(d.outputs)||d.files.length<1||d.files.length>(suite?8384:768)||d.outputs.length>128
   ||d.mainEntry!==(selected&&d.operation==='bibtex'?(lua?'result.tex':leaf):latexEntry)||d.tag.tool!==d.operation||!Number.isSafeInteger(d.maxOutputBytes)||d.maxOutputBytes<1||d.maxOutputBytes>8388608
   ||!Number.isSafeInteger(d.maxLogBytes)||d.maxLogBytes<0||d.maxLogBytes>8388608)bad();
+ const carried=bibliography&&Array.isArray(d.generatedInputNames)?new Set(d.generatedInputNames):null;
+ if(bibliography&&(!carried||carried.size!==d.generatedInputNames.length||carried.size>128
+  ||[...carried].some(n=>typeof n!=='string'||!state(n)||!d.outputs.includes(n))))bad();
  const inputs=new Map(),outputs=new Set(),all=new Set();
  for(const f of d.files){if(!f||!valid(f.name)||!(f.bytes instanceof Uint8Array)||inputs.has(key(f.name)))bad();inputs.set(key(f.name),f.name);all.add(key(f.name));}
  if(!valid(root)||!d.files.some(f=>f.name===root))bad();
+ if(bibliography&&[...carried].some(n=>inputs.get(key(n))!==n))bad();
  if(selected&&d.operation==='bibtex'&&!d.files.some(f=>f.name===job+'.aux'&&f.bytes.length>0))bad();
  for(const n of d.outputs){
   if(!valid(n)||(!fixed.includes(n)&&!n.endsWith('.aux'))||outputs.has(key(n)))bad();
-  if(inputs.has(key(n))&&(!state(n)||inputs.get(key(n))!==n))bad();
+  if(inputs.has(key(n))&&(!state(n)||inputs.get(key(n))!==n||bibliography&&!carried.has(n)))bad();
   outputs.add(key(n));all.add(key(n));
  }
  if(fixed.some(n=>!d.outputs.includes(n)))bad();
@@ -259,17 +264,22 @@ async function execute({data:d}){
   const legacy=d.tag.version===1&&(d.tag.profile===undefined||d.tag.profile===0)&&d.tag.runtimeIdentity==null;
   const modern=d.tag.version===2&&d.tag.profile===1&&typeof d.tag.runtimeIdentity==='string'&&/^[0-9a-f]{64}$/.test(d.tag.runtimeIdentity);
   const authoring=d.tag.version===3&&d.tag.profile===2&&typeof d.tag.runtimeIdentity==='string'&&/^[0-9a-f]{64}$/.test(d.tag.runtimeIdentity);
-  const identity=typeof d.tag.runtimeIdentity==='string'&&/^[0-9a-f]{64}$/.test(d.tag.runtimeIdentity),suite=d.tag.profile===5;
+  const identity=typeof d.tag.runtimeIdentity==='string'&&/^[0-9a-f]{64}$/.test(d.tag.runtimeIdentity),suite=[5,6,7].includes(d.tag.profile);
   const mapped=d.tag.version===6&&([3,4].includes(d.tag.profile)&&d.tag.engineId==null
     ||suite&&d.tag.engineId==='pdftex')&&identity;
-  const dvi=d.tag.version===7&&[4,5].includes(d.tag.profile)&&d.tag.engineId==='latex-dvi'&&identity;
+  const dvi=d.tag.version===7&&[4,5,6,7].includes(d.tag.profile)&&d.tag.engineId==='latex-dvi'&&identity;
   const unicodeBibtex=suite&&d.operation==='bibtex'&&(d.tag.version===8&&d.tag.engineId==='xelatex'||d.tag.version===9&&d.tag.engineId==='lualatex')&&identity;
   const v4=mapped||dvi||unicodeBibtex||[4,5].includes(d.tag.version)&&d.tag.profile===2&&identity;
   if((!legacy&&!modern&&!authoring&&!v4)||!['latex','bibtex'].includes(d.operation)||d.files.length>(suite?8384:v4?768:512)||d.outputs.length>(v4?128:64))throw new Error('FFI frame');
   if(v4)validateAuthoringV4Frame(d);
   const maxTotal=suite?167772160:modern||authoring||v4?67108864:16777216,maxFile=suite?67108864:modern||authoring||v4?33554432:8388608;
   let total=0;for(const f of d.files){total+=f.bytes.byteLength;if(total>maxTotal||f.bytes.byteLength>maxFile)throw new Error('VFS transport bound');}
+  if(suite&&(!Array.isArray(d.runtimeResourceNames)||d.runtimeResourceNames.length>8192
+    ||!Array.isArray(d.generatedInputNames)||d.generatedInputNames.length>128))throw new Error('resource/generated projection');
   const resourceNames=suite?new Set(d.runtimeResourceNames):new Set(),prefix='__oop_runtime__/';
+  const generatedNames=suite?new Set(d.generatedInputNames):new Set();
+  if(suite&&(generatedNames.size!==d.generatedInputNames.length||generatedNames.has(d.selectedRoot)
+    ||d.generatedInputNames.some(n=>typeof n!=='string'||resourceNames.has(n)||!d.files.some(f=>f.name===n))))throw new Error('resource/generated projection');
   if(suite&&(!Array.isArray(d.runtimeResourceNames)||resourceNames.size!==d.runtimeResourceNames.length
     ||resourceNames.size>8192||d.runtimeResourceNames.some(n=>!n.startsWith(prefix)||!d.files.some(f=>f.name===n))
     ||d.files.some(f=>!resourceNames.has(f.name)&&f.name.startsWith(prefix))))throw new Error('resource projection');

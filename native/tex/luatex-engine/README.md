@@ -8,12 +8,18 @@ source `22d3aa7aded98382a59b1f3dc0e7142a810bdeca`; Emscripten **6.0.13**.
 edited. Its unused stripped-Lua sidecar uses identity compaction. No vendor
 source, generated C, engine binary, font or format is stored in this subtree.
 
-## ABI 2
+## ABI 3 candidate (old profile5/6 ABI2 remains unchanged)
 
 See `engine.h`. Instantiate supplied WASM bytes through `instantiateWasm`, with
 **one fresh module per attempt**. Configure exact UTF-8 root and opaque ASCII
-revision context; seed verified runtime/project files. No normalization or source
-rewriting. Root ASCII characters are limited to letters/digits/`._-/ `, rejecting
+revision context; seed verified runtime/project files. A unique decomposed UTF-8
+spelling is valid: NFC normalization is used **only for collision keys**, never
+for root, filesystem or document bytes. Case/canonical aliases of an admitted
+path reject. The small EM_JS helper uses browser Unicode normalization and
+full-uppercase keys without adding a Unicode dependency or JavaScript workflow.
+This native guard may conservatively reject additional aliases beyond .NET
+`ToUpperInvariant`; no general cross-runtime casing parity is claimed. Root ASCII
+characters are limited to letters/digits/`._-/` and spaces, rejecting
 TeX syntax. Malformed UTF-8, traversal and unsafe relative paths reject.
 
 The genuine `lualatex.ini` generates `lualatex.fmt`; format generation must use
@@ -22,7 +28,14 @@ root runs its existing separate BibTeX on `result.aux`, returning `result.bbl`.
 Ten indexed outputs remain available. `declare_output` adds explicit generated
 AUX/BBL/BLG/TOC/LOF/LOT/OUT names and precreates parents; only declared names may
 be carried or retrieved by the named APIs. Actual nested `\include` AUX carry is
-tested. No filesystem listing/export API is provided by the C ABI.
+tested. ABI3 additionally admits **exactly** `result-blx.bib`, `result.bcf` and
+`result.run.xml`, only after explicit declaration and only at the fixed job's
+output root. It does not admit arbitrary BIB/BCF/XML names, another job or nested
+aliases. These three names have no indexed IDs; IDs0–9 remain unchanged.
+Project/generated names (including case aliases and file/directory conflicts)
+refuse in either add/declare order before copying or creating output parents.
+Kind2 cannot reclassify captured project files. No filesystem listing/export API
+is provided by the C ABI.
 
 Input limits: 4,608 files / 96 MiB aggregate; runtime files 32 MiB, project/carry
 files 8 MiB. Selected outputs cap at 128 including defaults. WASM memory is 512 MiB.
@@ -34,7 +47,9 @@ Raw ABI copy ceilings remain 32 MiB/file and 64 MiB selected aggregate; the acti
 guard is stricter. `oc_luatex_budget_json` reports counters, latch and truncation.
 Negative statuses: -1 invalid input, -2 lifecycle, -3 VFS, -4 quota, -5 no expected
 output. Positive statuses are engine failures. Failure or rejected reuse revokes
-PDF/format/state access; logs remain available. Context correlation remains the
+PDF/format/state access; a rejected post-entry ABI call also revokes them. Quota
+failure remains latched even if Lua catches it and continues. Logs remain
+available. Context correlation remains the
 parent's responsibility.
 
 ## Build and checks
@@ -44,7 +59,29 @@ uses the private SDK cache copy, frozen cache/dead proxies, jobs <= 2 and bounde
 commands. No acquisition. `RELINK_ONLY=1 bash .../link.sh` compiles only the owned
 wrapper and relinks existing dependency objects; no whole build is required.
 Test entry points: `test-engine.cjs format`, `test-engine.cjs latex`,
-`test-abi.cjs`, `test-cancellation.cjs`, and `inspect-fixture.py PDF [--include]`.
+`test-abi.cjs`, `test-paths.cjs`, `test-bibliography.cjs`, `test-cancellation.cjs`, and
+`inspect-fixture.py PDF [--include]`.
+The ABI3 bibliography test takes explicit `CANDIDATE`, `SUITE_INPUT`,
+`SUITE_PINS_SHA256`, `FORMAT_FILE` and `RESULTS`. It checks every seeded data pin,
+runs unchanged synthetic biblatex sources with both backend selections, extracts
+real `-blx.bib`/BCF/run.xml, and compares every carried byte **inside a fresh
+LuaTeX attempt** and again through named getters. A second unchanged biblatex
+attempt receives its native AUX/control carry. It does not execute Biber/BibTeX
+or claim resolved citations, app integration or offline acceptance.
+`test-engine.cjs` retains the earlier provided-TeXMF mode; `SUITE_INPUT` selects
+explicit pinned suite data instead. Optional `RUNTIME_MANIFEST`, `PROJECT_MANIFEST`
+and `CARRY_MANIFEST` contain `{files:[{name,file,length,sha256}]}`; paths resolve
+relative to the manifest. `OUTPUT_NAMES` declares comma-separated named outputs
+before seeding. `API_ERROR_AFTER_SUCCESS=1` tests post-entry error revocation.
+`test-paths.cjs` uses the same explicit suite/format/candidate/results inputs. It
+runs one unchanged source with decomposed Ukrainian-breve/Latin-acute root,
+included-source and font paths, then the composed spellings. Before execution,
+`PATH_ALIAS_MANIFEST` rejects the opposite spelling without overwriting admitted
+bytes in each order. Genuine native file reads, Lua comparisons and the recorder
+prove the original spellings were retained and used by the engine.
+All fixtures here are synthetic; the existing package-compatibility BibTeX source
+is read unchanged. `carry-observer.tex` is a separate byte-comparison fixture,
+not a rewrite of the producer's source.
 The PDF inspection is a narrow compressed text/ToUnicode assertion, not a renderer.
 Exact commands, hashes, runtime manifests, failures and results are in the private
 frozen handoff receipt; `lineage.json` records source/toolchain identities.

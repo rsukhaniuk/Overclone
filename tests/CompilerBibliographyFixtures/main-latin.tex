@@ -1,0 +1,24 @@
+% Synthetic real biblatex/BibTeX fixture; not representative thesis acceptance.
+\documentclass{article}
+\usepackage{amsmath,graphicx,booktabs,enumitem,setspace,listings,caption}
+\usepackage[colorlinks=true]{hyperref}
+\usepackage{bookmark}
+\usepackage{cleveref}
+\usepackage[backend=bibtex,style=numeric]{biblatex}
+\addbibresource{references.bib}
+\begin{document}
+\section{Compiler suite}\label{sec:main}
+Portable compiler fixture. Section~\ref{sec:chapter} is resolved.
+\href{https://example.org/}{Hyperlink fixture}.
+\begin{enumerate}[label=\arabic*.]
+\item Package compatibility entry.
+\end{enumerate}
+\begin{tabular}{ll}\toprule Compatibility & table\\\midrule One & Two\\\bottomrule\end{tabular}
+\begin{lstlisting}[columns=fullflexible]
+Listing marker
+\end{lstlisting}
+\includegraphics[width=12mm]{figure.png}
+\include{chapter}
+See \cref{sec:chapter}. Book citation~\cite{book}.
+\printbibliography
+\end{document}

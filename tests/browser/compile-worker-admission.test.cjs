@@ -48,7 +48,7 @@ const deadline = setTimeout(() => { console.error('Bridge admission test deadlin
         const savedCallback = worker.onmessage;
         savedCallback({ data: { kind: 'ready' } }); savedCallback({ data: { kind: 'ready' } });
         assert.equal(worker.messages.length, 2, 'only one phase dispatch');
-        assert.equal(worker.messages[1].tag, request.tag);
+        assert.deepEqual(JSON.parse(JSON.stringify(worker.messages[1].tag)), request.tag);
         savedCallback({ data: { kind: 'done', reply: { tag: request.tag, outcome: 'native-return', nativeReturn: 0 } } });
         assert.equal((await result).nativeReturn, 0); savedCallback({ data: { kind: 'ready' } });
         assert.equal(worker.messages.length, 2, 'late saved callbacks cannot dispatch');
@@ -62,7 +62,7 @@ const deadline = setTimeout(() => { console.error('Bridge admission test deadlin
     assert.equal(h.api.observations().started, before4.started); assert.equal(h.stats.urls.length, before4.urls);
     const explicit4 = frame(4, 'phase4'), wire4 = h.api.execute(explicit4), worker4 = h.stats.workers.at(-1);
     worker4.onmessage({ data: { kind: 'ready' } });
-    assert.equal(worker4.messages[1].tag, explicit4.tag); assert.equal(worker4.messages[1].tag.version, 4);
+    assert.deepEqual(JSON.parse(JSON.stringify(worker4.messages[1].tag)), explicit4.tag); assert.equal(worker4.messages[1].tag.version, 4);
     assert.equal(worker4.messages[1].tag.profile, 2); h.api.terminate('phase4', 1);
     assert.equal((await wire4).outcome, 'cancelled'); // wire admission only, never actual worker4 behavior
 
@@ -95,6 +95,8 @@ const deadline = setTimeout(() => { console.error('Bridge admission test deadlin
     const dvi = harness(), conversion = frame(7, 'convert');
     Object.assign(conversion.tag, { profile: 4, engineId: 'latex-dvi', tool: 'dvipdfmx' });
     conversion.runtimeResourceNames = ['cmr10.tfm'];
+    conversion.mainEntry = 'main.dvi';
+    conversion.files.push({ name: 'main.dvi', bytes: new Uint8Array([247, 2]) }, { name: 'cmr10.tfm', bytes: new Uint8Array([5]) });
     assert.throws(() => dvi.api.execute(conversion)); assertPristine(dvi);
     await dvi.api.provisionDvi(); assert.deepEqual(dvi.stats.kinds, ['dvi']);
     const converted = dvi.api.execute(conversion), dviWorker = dvi.stats.workers.at(-1);
@@ -110,21 +112,27 @@ const deadline = setTimeout(() => { console.error('Bridge admission test deadlin
     assert.equal((await converted).outcome, 'worker-error'); assert.equal((await compiled).outcome, 'worker-error');
     assert.ok(dvi.stats.workers.every(worker => worker.terminated === 1));
     assert.equal(dvi.stats.urls.length, dvi.stats.revoked.length); assertDisposed(dvi);
-    for (const [version, engineId, kind, provision] of [[8, 'xelatex', 'xetex', 'provisionXetex'], [9, 'lualatex', 'luatex', 'provisionLuatex']]) {
+    for (const profile of [5, 6, 7]) for (const [version, engineId, kind, provision] of [[6, 'pdftex', 'compile', 'provision'], [7, 'latex-dvi', 'compile', 'provision'], [8, 'xelatex', 'xetex', 'provisionXetex'], [9, 'lualatex', 'luatex', 'provisionLuatex']]) {
         const h = harness(), request = frame(version, kind);
-        Object.assign(request.tag, { profile: 5, engineId, tool: 'latex' });
+        Object.assign(request.tag, { profile, engineId, tool: 'latex' });
         request.runtimeResourceNames = ['__oop_runtime__/geometry.sty'];
         request.generatedInputNames = ['chapters/one.aux'];
+        request.files.push({ name: '__oop_runtime__/geometry.sty', bytes: new Uint8Array([5]) },
+            { name: 'chapters/one.tex', bytes: new Uint8Array([6]) }, { name: 'chapters/one.aux', bytes: new Uint8Array([7]) });
+        request.outputs.push('chapters/one.aux');
+        if (profile === 7) request.outputs.push((version === 9 ? 'result' : 'main') + '-blx.bib');
         assert.throws(() => h.api.execute(request)); assertPristine(h);
         await h.api[provision]();
         assert.deepEqual(h.stats.kinds, [kind]);
+        const unknown = { ...request, tag: { ...request.tag, profile: 99 } };
+        assert.throws(() => h.api.execute(unknown), 'unknown bundle profile must remain rejected');
         const running = h.api.execute(request), worker = h.stats.workers.at(-1);
         assert.ok(worker.url.startsWith(origin + '/__oop/native-worker/' + kind + '?'));
         worker.onmessage({ data: { kind: 'ready' } });
         assert.deepEqual(worker.messages[1].generatedInputNames, request.generatedInputNames);
         assert.deepEqual(worker.messages[1].runtimeResourceNames, request.runtimeResourceNames);
-        const bib = frame(version, kind + '-bib'); Object.assign(bib.tag, { profile: 5, engineId, tool: 'bibtex' });
-        assert.throws(() => h.api.execute(bib), 'native engine admission cannot authorize BibTeX role');
+        const bib = frame(version, kind + '-bib'); Object.assign(bib.tag, { profile, engineId, tool: 'bibtex' });
+        if (kind !== 'compile') assert.throws(() => h.api.execute(bib), 'native engine admission cannot authorize BibTeX role');
         h.changeController();
         assert.equal((await running).outcome, 'worker-error');
         assert.equal(worker.terminated, 1); assertDisposed(h);

@@ -36,8 +36,10 @@ public sealed class NativeLatexDviTests
         Assert.False((plan with { PhaseProtocolVersion = 6 }).IsValid);
         Assert.False((plan with { Profile = NativeRuntimeProfile.LocalLatex2023SyncTeX }).IsValid);
         Assert.True(NativeRuntimeProfiles.Known(NativeRuntimeProfile.LocalCompilerSuite));
-        Assert.False(NativeRuntimeProfiles.Known((NativeRuntimeProfile)6));
+        Assert.True(NativeRuntimeProfiles.Known(NativeRuntimeProfile.LocalCompilerCompatibility));
+        Assert.False(NativeRuntimeProfiles.Known((NativeRuntimeProfile)int.MaxValue));
         Assert.False((plan with { Profile = (NativeRuntimeProfile)5 }).IsValid);
+        Assert.False((plan with { Profile = NativeRuntimeProfile.LocalCompilerCompatibility }).IsValid);
         Assert.True((NativeSyncTeXContract.CreatePlan() with { Profile = Profile }).IsValid);
         Assert.False(NativeLatexDviContract.MatchesOptions(NativeSyncTeXContract.SelectionOptions));
         var entry = NativeSelectedEntryContract.Create("тези/my thesis.tex", ["тези/my thesis.tex"], out _, true)!;

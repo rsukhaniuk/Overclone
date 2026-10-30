@@ -1,0 +1,15 @@
+% Synthetic bundled-font check: cached regular/bold 10pt only.
+% The separate original I/i extraction failure remains an explicit known gap.
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T2A]{fontenc}
+\usepackage[english,ukrainian]{babel}
+\begin{document}
+\selectlanguage{ukrainian}
+\typeout{COMPATIBILITY-UKRAINIAN-ID:\the\language}
+\noindent Україна Єє Її Ґґ.\par
+\noindent\textbf{Україна Єє Її Ґґ.}\par
+{\fontencoding{OT1}\selectfont ASCII I i 123.\par}
+\selectlanguage{english}
+\typeout{COMPATIBILITY-ENGLISH-ID:\the\language}
+\end{document}

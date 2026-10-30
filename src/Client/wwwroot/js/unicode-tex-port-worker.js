@@ -2,7 +2,7 @@
 // conversion and revision authority; native engines enforce their own IO limits.
 (() => {
     const emit = self.postMessage.bind(self), encoder = new TextEncoder();
-    let state = 'boot', module, engine, loaderSha256, wasmSha256;
+    let state = 'boot', module, engine, loaderSha256, wasmSha256, nativeAbi;
     let log = '', logBytes = 0, maxLog = 262144, truncated = false;
     const hash = async bytes => [...new Uint8Array(await crypto.subtle.digest('SHA-256', bytes))]
         .map(value => value.toString(16).padStart(2, '0')).join('');
@@ -40,7 +40,10 @@
                     })).then(resolve, reject);
                 } catch (error) { reject(error); }
             });
-            if (!xe && lua('abi') !== 2) throw 0;
+            if (!xe) {
+                nativeAbi = lua('abi');
+                if (![2, 3].includes(nativeAbi)) throw 0;
+            }
             state = 'ready'; self.onmessage = execute; emit({ kind: 'ready' });
         } catch { state = 'done'; emit({ kind: 'boot-error', error: 'CompilerInit' }); }
     };
@@ -50,7 +53,8 @@
         let entered = false, nativeReturn = null, elapsedMs = null, files = [], inputs = [], outcome = 'setup-failure';
         try {
             const xe = engine === 'xelatex', tag = frame.tag;
-            if (tag?.version !== (xe ? 8 : 9) || tag.profile !== 5 || tag.engineId !== engine || tag.tool !== 'latex'
+            if (tag?.version !== (xe ? 8 : 9) || ![5, 6, 7].includes(tag.profile) || tag.engineId !== engine || tag.tool !== 'latex'
+                || !xe && nativeAbi !== (tag.profile === 7 ? 3 : 2)
                 || frame.operation !== 'latex' || !/^[0-9a-f]{64}$/.test(tag.runtimeIdentity)
                 || !path(frame.selectedRoot) || !/\.tex$/i.test(frame.selectedRoot) || frame.mainEntry !== frame.selectedRoot
                 || !Array.isArray(frame.files) || frame.files.length < 1 || frame.files.length > 8384
@@ -83,9 +87,11 @@
                 || projectBytes > 8388608 || workBytes > 33554432 || resourceBytes > (xe ? 167772160 : 100663296)) throw 0;
             const leaf = frame.selectedRoot.slice(frame.selectedRoot.lastIndexOf('/') + 1);
             const job = xe ? leaf.slice(0, -4) : 'result', artifact = job + (xe ? '.xdv' : '.pdf');
+            const blx = job.replaceAll(' ', '_') + '-blx.bib';
             const outputNames = new Set(frame.outputs);
             if (outputNames.size !== frame.outputs.length || !outputNames.has(artifact)
-                || frame.outputs.some(name => !path(name) || !(/\.(aux|bbl|blg|toc|lof|lot|out|log)$/i.test(name) || name === artifact || xe && name === job + '.pdf')
+                || frame.outputs.some(name => !path(name) || !(/\.(aux|bbl|blg|toc|lof|lot|out|log)$/i.test(name) || name === artifact || xe && name === job + '.pdf'
+                    || tag.profile === 7 && name === blx)
                     || resources.has(name) || names.has(name) && !generated.has(name))) throw 0;
             maxLog = frame.maxLogBytes; log = ''; logBytes = 0; truncated = false;
             const F = module.FS;
@@ -99,7 +105,8 @@
                 if (module.ccall('setMainEntry', 'number', ['string'], [frame.selectedRoot]) !== 0) throw 0;
             } else {
                 if (module.ccall('oc_luatex_configure', 'number', ['string', 'string'], [frame.selectedRoot, tag.nonce]) !== 0) throw 0;
-                for (const name of frame.outputs.filter(name => /\.(aux|bbl|blg|toc|lof|lot|out)$/i.test(name)))
+                for (const name of frame.outputs.filter(name => /\.(aux|bbl|blg|toc|lof|lot|out)$/i.test(name)
+                    || tag.profile === 7 && name === blx))
                     if (module.ccall('oc_luatex_declare_output', 'number', ['string'], [name]) !== 0) throw 0;
                 for (const file of frame.files) {
                     const pointer = module._malloc(Math.max(1, file.bytes.length));

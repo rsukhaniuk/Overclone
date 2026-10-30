@@ -1,0 +1,13 @@
+% Synthetic path regression: literal decomposed/composed spellings are distinct.
+% The same unchanged source is used in both admission-order attempts.
+\documentclass{article}
+\usepackage{fontspec}
+\IfFileExists{/work/runtime/fonts/й-é.ttf}{
+  \setmainfont{й-é.ttf}[Path=/work/runtime/fonts/]
+}{
+  \setmainfont{й-é.ttf}[Path=/work/runtime/fonts/]
+}
+\begin{document}
+Український текст. Unique original path bytes.
+\directlua{dofile('/work/project/path-observer.lua')}
+\end{document}

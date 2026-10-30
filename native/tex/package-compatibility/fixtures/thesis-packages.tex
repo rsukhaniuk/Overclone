@@ -1,0 +1,34 @@
+% Synthetic integration-shaped package probe, not a real thesis.
+\documentclass{article}
+\usepackage{iftex}
+\ifPDFTeX\else
+  \usepackage{fontspec}
+  \setmainfont{DejaVuSerif.ttf}[BoldFont=DejaVuSerif-Bold.ttf,ItalicFont=DejaVuSerif-Italic.ttf,BoldItalicFont=DejaVuSerif-BoldItalic.ttf]
+\fi
+\usepackage{amsmath,amssymb,graphicx,xcolor}
+\usepackage{enumitem,booktabs,setspace,listings,caption,subcaption,longtable}
+\usepackage[colorlinks=true,linkcolor=blue,urlcolor=blue]{hyperref}
+\usepackage{bookmark}
+\usepackage{cleveref}
+\begin{document}
+\tableofcontents
+\section{Hyperlink fixture}\label{sec:one}
+\href{https://example.invalid/}{Hyperlink fixture}. Reference \ref{sec:two}; \cref{sec:two}.
+\ifPDFTeX Latin package text.\else
+Привіт, Україно! Іі Її Єє Ґґ. \textbf{Дипломна робота.} \textit{Київ.}
+\fi
+\begin{enumerate}[label=\alph*)]\item Thesis list\end{enumerate}
+\begin{spacing}{1.5}Spacing fixture.\end{spacing}
+\begin{lstlisting}[language=C,caption={Listing marker}]
+int main(void) { return 0; }
+\end{lstlisting}
+\begin{figure}[h]
+\begin{subfigure}{.4\linewidth}\rule{1cm}{1cm}\caption{Subcaption marker}\end{subfigure}
+\caption{Caption marker}
+\end{figure}
+\begin{longtable}{ll}\toprule Name & Value\\\midrule Table & 1\\\bottomrule\end{longtable}
+\[\mathbb{R}\ni x,\quad \int_0^1 x\,dx=\tfrac12\]
+\input{chapter}
+Citation~\cite{reference2}.
+\bibliographystyle{plain}\bibliography{references}
+\end{document}

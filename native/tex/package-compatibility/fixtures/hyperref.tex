@@ -1,0 +1,18 @@
+% Synthetic package closure fixture, not a representative real thesis.
+\documentclass{article}
+\usepackage{iftex}
+\ifPDFTeX\else
+  \usepackage{fontspec}
+  \setmainfont{DejaVuSerif.ttf}[BoldFont=DejaVuSerif-Bold.ttf,ItalicFont=DejaVuSerif-Italic.ttf,BoldItalicFont=DejaVuSerif-BoldItalic.ttf]
+\fi
+\usepackage{xcolor}
+\usepackage[colorlinks=true,linkcolor=blue,urlcolor=blue]{hyperref}
+\hypersetup{pdftitle={Package compatibility fixture},pdfauthor={Synthetic test}}
+\begin{document}
+\tableofcontents
+\section{Hyperref closure}\label{sec:closure}
+Reference: Section~\ref{sec:closure}. \href{https://example.invalid/}{An inert test link}.
+\ifPDFTeX Latin package text.\else
+Привіт, Україно! Іі Її Єє Ґґ. \textbf{Дипломна робота.} \textit{Київ.}
+\fi
+\end{document}

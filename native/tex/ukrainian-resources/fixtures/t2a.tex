@@ -1,0 +1,30 @@
+% Synthetic T2A regular/bold 10pt regression; no Unicode mapping patch.
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T2A]{fontenc}
+\usepackage[english,ukrainian]{babel}
+\makeatletter
+\typeout{ENGLISH-ID:\number\l@english}
+\typeout{UKRAINIAN-ID:\number\l@ukrainian}
+\makeatother
+\begin{document}
+\selectlanguage{ukrainian}
+\typeout{UKRAINIAN-ACTIVE:\the\language}
+\typeout{UKRAINIAN-CONTENTS:\meaning\contentsname}
+\typeout{UKRAINIAN-CAPTION-EXPANSION:\meaning\ukrainiancontentsname}
+\typeout{UKRAINIAN-HYPHENS-BEGIN}
+\showhyphens{український українська університет комп'ютерний програмування}
+\typeout{UKRAINIAN-HYPHENS-END}
+\contentsname: український університет. Іі Її Єє Ґґ.
+\textbf{Український текст. Іі Її Єє Ґґ.}
+\selectlanguage{english}
+\typeout{ENGLISH-ACTIVE:\the\language}
+\typeout{ENGLISH-CONTENTS:\contentsname}
+\typeout{ENGLISH-HYPHENS-BEGIN}
+\showhyphens{hyphenation university compatibility}
+\typeout{ENGLISH-HYPHENS-END}
+\typeout{UKRAINIAN-IN-ENGLISH-CONTROL-BEGIN}
+\showhyphens{\fontencoding{T2A}\selectfont український університет}
+\typeout{UKRAINIAN-IN-ENGLISH-CONTROL-END}
+ASCII I i 123. English retained.
+\end{document}

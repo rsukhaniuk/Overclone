@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "engine": { "name": "LuaTeX", "version": "1.13.0", "svnRevision": 7410, "abi": 2 },
+  "engine": { "name": "LuaTeX", "version": "1.13.0", "svnRevision": 7410, "abi": 3 },
   "lua": "5.3.6",
   "texLiveSource": {
     "commit": "22d3aa7aded98382a59b1f3dc0e7142a810bdeca",
@@ -67,6 +67,16 @@
     "formatBackingReservationBytes": 14680064,
     "policy": "Private /work; immutable runtime/config; outside read ENOENT, writes fail; no new mounts/links/devices or mmap; quota latch revokes outputs even after caught error",
     "parentResponsibilities": "Snapshot/state/transport limits, no credential/network authority, physical cancellation and final browser acceptance"
+  },
+  "abi3": {
+    "additionalNamedOutputs": ["result-blx.bib", "result.bcf", "result.run.xml"],
+    "indexedOutputs": "IDs 0-9 unchanged; additions require explicit declaration before execution",
+    "namespace": "Exact original UTF-8, including unique decomposed spellings. NFC normalization is for collision keys only; case/canonical, project/generated and file/directory aliases refuse before copies in either add/declare order",
+    "unicodeBoundary": "Minimal EM_JS browser NFC/full-uppercase collision key only; never rewrites caller or filesystem bytes. Native casing may conservatively reject extra aliases beyond .NET ToUpperInvariant; no general parity claim",
+    "relink": "Unchanged approved TL engine/dependency objects and SDK6 flags; owned wrapper recompiled. Reproducing the old link with retained ABI2 wrapper yields the exact accepted loader/WASM hashes before the ABI3 candidate is used.",
+    "previousAbi": 2,
+    "previousProfiles": "5/6 retain their existing binaries, formats, pins and admission; ABI3 is an unregistered candidate only",
+    "verificationScope": "Native Lua producer/carry and regression tests only. No genuine Biber, registered-app biblatex, resolved biblatex-backend citations or cold-offline acceptance claim. Classic BibTeX is a separate genuine regression."
   },
   "distributionStatus": "Private technical candidate only; no dependency adoption, source distribution or license clearance is implied"
 }

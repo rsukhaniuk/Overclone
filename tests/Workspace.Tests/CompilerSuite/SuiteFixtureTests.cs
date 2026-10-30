@@ -134,6 +134,36 @@ public sealed class SuiteFixtureTests
         public void RequestTermination(string job, long epoch) { Stops++; }
     }
     [SuiteFixtureTheory]
+    [InlineData(NativeCompilerEngine.PdfLaTeX)] [InlineData(NativeCompilerEngine.LaTeXDvi)]
+    [InlineData(NativeCompilerEngine.XeLaTeX)] [InlineData(NativeCompilerEngine.LuaLaTeX)]
+    public void Hyperref_package_filenames_do_not_request_endless_extra_passes(NativeCompilerEngine engine) => LifecycleTestHost.Run(async () =>
+    {
+        await using var f = await CompilationTestWorkspace.Open();
+        Assert.True(f.Workspace.RenameFile(f.Main, "main.tex"));
+        Assert.True(f.Workspace.CreateFile("chapters/part.tex", "part"));
+        var context = await Context(f, engine, false);
+        var model = new Model { Mutate = (_, reply) => reply with { Log = "(/tex/hyperref.sty (/tex/rerunfilecheck.sty (/tex/uniquecounter.sty)))\n" } };
+        var result = await Execute(context, model, engine);
+        Assert.Equal(CompileOutputStatus.Succeeded, result.Status);
+        Assert.Equal(2, model.Calls.Count(r => r.Tag.Tool == "latex"));
+    });
+    [SuiteFixtureTheory]
+    [InlineData(NativeCompilerEngine.PdfLaTeX)] [InlineData(NativeCompilerEngine.LaTeXDvi)]
+    [InlineData(NativeCompilerEngine.XeLaTeX)] [InlineData(NativeCompilerEngine.LuaLaTeX)]
+    public void Real_hyperref_rerun_warning_still_prevents_acceptance_at_the_pass_limit(NativeCompilerEngine engine) => LifecycleTestHost.Run(async () =>
+    {
+        await using var f = await CompilationTestWorkspace.Open();
+        Assert.True(f.Workspace.RenameFile(f.Main, "main.tex"));
+        Assert.True(f.Workspace.CreateFile("chapters/part.tex", "part"));
+        var context = await Context(f, engine, false);
+        var model = new Model { Mutate = (_, reply) => reply with { Log = "(/tex/rerunfilecheck.sty)\nPackage rerunfilecheck Warning: File `main.out' has changed.\n(rerunfilecheck) Rerun to get outlines right.\n" } };
+        var result = await Execute(context, model, engine);
+        Assert.Equal(CompileOutputStatus.Failed, result.Status);
+        Assert.Contains(result.Diagnostics!, d => d.Code == "pass-limit-unknown");
+        Assert.Equal(6, model.Calls.Count(r => r.Tag.Tool == "latex"));
+        Assert.DoesNotContain(model.Calls, r => r.Tag.Tool == "dvipdfmx");
+    });
+    [SuiteFixtureTheory]
     [InlineData(NativeCompilerEngine.PdfLaTeX, false)] [InlineData(NativeCompilerEngine.LaTeXDvi, false)]
     [InlineData(NativeCompilerEngine.XeLaTeX, false)] [InlineData(NativeCompilerEngine.XeLaTeX, true)]
     [InlineData(NativeCompilerEngine.LuaLaTeX, false)] [InlineData(NativeCompilerEngine.LuaLaTeX, true)]

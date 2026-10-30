@@ -13,7 +13,7 @@
 //   PDF_RUNTIME_DIR        trusted E1 manifest.json + files/ (loader,wasm)
 // Optional:
 //   RESULT_DIR             writable receipt directory (lead-supplied)
-//   CASE                    plain (default) | golden | long | font-assets | portable
+//   CASE                    plain (default) | golden | long | font-assets | portable | packages | biblatex | t2a-bundled
 //   COMPILER_CHOICE         local-authoring-v4 (default) | latex-dvi | xelatex | lualatex
 //   T2A_FONT_PROJECT_DIR    required only for font-assets: exact 7 private project files
 //   RESULT_DIR             required for font-assets: retain actual downloaded PDFs
@@ -68,12 +68,13 @@ assert.ok(!SOURCE_PDF_CHECKS || ["plain", "golden"].includes(CASE), "source/PDF 
 // Opt-in real UI rename of the original input bytes, followed by the same
 // registered compile/BibTeX/render/full-cold-offline workflow.
 const MAIN_PATH = process.env.SELECTED_MAIN_PATH || "main.tex";
-assert.ok(MAIN_PATH === "main.tex" || ["plain", "golden", "portable"].includes(CASE), "selected root supports plain/golden/portable fixtures");
+assert.ok(MAIN_PATH === "main.tex" || ["plain", "golden", "portable", "packages", "biblatex", "t2a-bundled"].includes(CASE), "selected root supports plain/golden/portable/packages/biblatex/t2a-bundled fixtures");
 assert.ok(MAIN_PATH.length <= 200 && MAIN_PATH.endsWith(".tex") && !MAIN_PATH.split("/").some(n => !n || n === "." || n === ".."));
 const PORT = 8768; // dedicated container-only origin port
-assert.ok(["plain", "golden", "long", "font-assets", "portable"].includes(CASE), "CASE must be plain|golden|long|font-assets|portable");
+assert.ok(["plain", "golden", "long", "font-assets", "portable", "packages", "biblatex", "t2a-bundled"].includes(CASE), "CASE must be plain|golden|long|font-assets|portable|packages|biblatex|t2a-bundled");
+assert.ok(CASE !== 't2a-bundled' || ['local-authoring-v4', 'latex-dvi'].includes(COMPILER_CHOICE), 'bundled T2A fixture targets pdfTeX-based engines');
 const PDF_DOWNLOAD_CHECKS = process.env.PDF_DOWNLOAD_CHECKS === "1";
-assert.ok(!PDF_DOWNLOAD_CHECKS || ["plain", "portable"].includes(CASE), "PDF_DOWNLOAD_CHECKS=1 requires plain/portable");
+assert.ok(!PDF_DOWNLOAD_CHECKS || ["plain", "portable", "packages", "biblatex", "t2a-bundled"].includes(CASE), "PDF_DOWNLOAD_CHECKS=1 requires plain/portable/packages/biblatex/t2a-bundled");
 const repairSetting = process.env.T2A_UNICODE_REPAIR;
 assert.ok(repairSetting === undefined || ["", "0", "1"].includes(repairSetting), "T2A_UNICODE_REPAIR must be absent,0 or1");
 const T2A_UNICODE_REPAIR = repairSetting === "1";
@@ -121,15 +122,18 @@ for (const p of pins) {
 }
 const compilerFiles = pins.map((p) => path.join(RUNTIME_DIR, "files", p.name));
 for (const f of compilerFiles) assert.ok(fs.existsSync(f), `pin file missing: ${path.basename(f)}`);
-const portableFiles = CASE === 'portable' ? (() => {
+const portableFiles = ['portable', 'packages', 'biblatex'].includes(CASE) ? (() => {
   const directory = path.join(__dirname, '../tests/CompilerSuiteFixtures');
+  const mainDirectory = CASE === 'biblatex' ? path.join(__dirname, '../tests/CompilerBibliographyFixtures')
+    : CASE === 'packages' ? path.join(__dirname, '../tests/PackageFontFixtures') : directory;
   const unicode = ['xelatex', 'lualatex'].includes(COMPILER_CHOICE);
   const entries = [['main.tex', unicode ? 'main-unicode.tex' : 'main-latin.tex'],
     ['chapter.tex', 'chapter.tex'], ['references.bib', 'references.bib'], ['figure.xbb', 'figure.xbb']]
-    .map(([name, source]) => ({name, buffer: fs.readFileSync(path.join(directory, source)), mimeType: 'text/plain'}));
+    .map(([name, source]) => ({name, buffer: fs.readFileSync(path.join(name === 'main.tex' ? mainDirectory : directory, source)), mimeType: 'text/plain'}));
   entries.push({name: 'figure.png', buffer: fs.readFileSync(path.join(__dirname, '../src/Client/wwwroot/icons/icon-192.png')), mimeType: 'image/png'});
   return entries;
 })() : null;
+const bundledT2a = CASE === 't2a-bundled' ? fs.readFileSync(path.join(__dirname, '../tests/PackageFontFixtures/t2a-bundled.tex')) : null;
 
 // --- PDF resource manifest: verify actual bytes against the supplied manifest.
 // The application independently pins trusted bytes; this harness does NOT
@@ -796,7 +800,10 @@ let profile, base;
     if (CASE === "plain") {
       await H.$(page, "import-input").setInputFiles({ name: "main.tex", mimeType: "text/plain", buffer: PLAIN_MAIN });
       expectedMainBytes = PLAIN_MAIN;
-    } else if (CASE === 'portable') {
+    } else if (CASE === 't2a-bundled') {
+      await H.$(page, 'import-input').setInputFiles({name: 'main.tex', mimeType: 'text/plain', buffer: bundledT2a});
+      expectedMainBytes = bundledT2a; importedCount = 1;
+    } else if (['portable', 'packages', 'biblatex'].includes(CASE)) {
       for (const input of portableFiles) await H.$(page, 'import-input').setInputFiles(input);
       expectedMainBytes = portableFiles[0].buffer; importedCount = portableFiles.length;
     } else if (CASE === "golden") {
@@ -917,13 +924,13 @@ let profile, base;
     await selectMainInTree(page);
     await page.locator('select[aria-label="Compile main file"]').selectOption({ label: MAIN_PATH });
     await page.locator('select[aria-label="Compile engine"]').selectOption(COMPILER_CHOICE);
-    if (CASE === "golden" || CASE === 'portable') {
+    if (["golden", "portable", "packages", "biblatex"].includes(CASE)) {
       const bibtex = H.$(page, "use-bibtex");
       await bibtex.waitFor({ state: "visible" });
       if (!(await bibtex.isChecked())) await bibtex.check();
       assert.equal(await bibtex.isChecked(), true);
     }
-    if (CASE === "font-assets") {
+    if (["font-assets", "t2a-bundled"].includes(CASE)) {
       const bibtex = H.$(page, "use-bibtex");
       if (await bibtex.isChecked()) await bibtex.uncheck();
       assert.equal(await bibtex.isChecked(), false, "font case uses plain LaTeX; no BibTeX");
@@ -1032,7 +1039,7 @@ let profile, base;
         const norm = allText.replace(/\s+/g, " ").trim();
         assert.match(norm, /Modern CSharp pipeline/);
         assert.ok(norm.includes("Section 1 is resolved."), "plain section reference resolved");
-      } else if (CASE === 'portable') {
+      } else if (['portable', 'packages', 'biblatex'].includes(CASE)) {
         const norm = allText.replace(/\s+/g, ' ').trim();
         assert.match(norm, /Portable compiler fixture/);
         assert.match(norm, /Section 2 is resolved\./);
@@ -1041,7 +1048,28 @@ let profile, base;
         if (['xelatex', 'lualatex'].includes(COMPILER_CHOICE)) {
           assert.match(norm, /Привіт/); assert.match(norm, /Київ/);
         }
+        if (['packages', 'biblatex'].includes(CASE)) {
+          assert.match(norm, /Hyperlink fixture/);
+          assert.match(norm, /Listing marker/);
+          assert.match(norm, /Package compatibility entry/);
+          assert.doesNotMatch(logText, /Missing character:|LaTeX Font Warning:|not loadable|File[^\n]*not found/);
+          if (['xelatex', 'lualatex'].includes(COMPILER_CHOICE)) {
+            assert.match(logText, /COMPATIBILITY-UKRAINIAN-ID:[1-9][0-9]*/);
+            assert.match(logText, /COMPATIBILITY-ENGLISH-ID:0\b/);
+            assert.doesNotMatch(logText, /No hyphenation patterns were preloaded|Unknown language|Ukrainian hyphenation patterns are not loaded/i);
+          }
+        }
         record.online.actualPageText = allText.slice(0, 4096);
+      } else if (CASE === 't2a-bundled') {
+        const norm = allText.replace(/\s+/g, ' ').trim();
+        assert.equal(norm.split('Україна').length - 1, 2, 'actual regular and bold bundled T2A text');
+        assert.match(norm, /Єє Її Ґґ/);
+        assert.match(norm, /ASCII I i 123\./);
+        assert.match(logText, /COMPATIBILITY-UKRAINIAN-ID:[1-9][0-9]*/);
+        assert.match(logText, /COMPATIBILITY-ENGLISH-ID:0\b/);
+        assert.doesNotMatch(logText, /Missing character:|LaTeX Font Warning:|not loadable|File[^\n]*not found/);
+        record.online.actualPageText = allText.slice(0, 4096);
+        record.online.projectFontFiles = 0;
       } else if (CASE === "font-assets") {
         // Preserve diagnostic data and the REAL PDF before strict text assertions.
         // A font/Unicode mismatch must still fail, but cannot hide the oracle artifact.
@@ -1186,7 +1214,7 @@ let profile, base;
       token,
       "% cold-offline fresh source marker\n" +
         "{\\fontencoding{OT1}\\selectfont\n\\noindent Edited offline proof: Kyiv 456. \\par}\n" + token,
-    ) : CASE === "font-assets" ? editorContent.replace(
+    ) : ["font-assets", "t2a-bundled"].includes(CASE) ? editorContent.replace(
       token,
       "% cold-offline fresh source marker\n" +
         "\\noindent Edited offline proof: Kyiv 456. \\par\n" + token,
@@ -1228,12 +1256,12 @@ let profile, base;
     await selectMainInTree(page);
     await page.locator('select[aria-label="Compile main file"]').selectOption({ label: MAIN_PATH });
     await page.locator('select[aria-label="Compile engine"]').selectOption(COMPILER_CHOICE);
-    if (CASE === "golden" || CASE === 'portable') {
+    if (["golden", "portable", "packages", "biblatex"].includes(CASE)) {
       const bibtex = H.$(page, "use-bibtex");
       await bibtex.waitFor({ state: "visible" });
       if (!(await bibtex.isChecked())) await bibtex.check();
     }
-    if (CASE === "font-assets") {
+    if (["font-assets", "t2a-bundled"].includes(CASE)) {
       const bibtex = H.$(page, "use-bibtex");
       if (await bibtex.isChecked()) await bibtex.uncheck();
       assert.equal(await bibtex.isChecked(), false, "offline font compile: BibTeX stays off");
@@ -1291,6 +1319,37 @@ let profile, base;
       const offlineText = await collectAllPageText(page);
       assert.ok(offlineText.trim().length > 0, "offline page text nonblank");
       assert.match(offlineText, /Edited offline/, "offline edited section rendered");
+      if (CASE === 't2a-bundled') {
+        const norm = offlineText.replace(/\s+/g, ' ').trim();
+        assert.equal(norm.split('Україна').length - 1, 2, 'offline bundled regular and bold text');
+        assert.match(norm, /Єє Її Ґґ/);
+        assert.match(norm, /ASCII I i 123\./);
+        const log = await H.$(page, "compiler-log").textContent();
+        assert.match(log, /COMPATIBILITY-UKRAINIAN-ID:[1-9][0-9]*/);
+        assert.match(log, /COMPATIBILITY-ENGLISH-ID:0\b/);
+        assert.doesNotMatch(log, /Missing character:|LaTeX Font Warning:|not loadable|File[^\n]*not found/);
+        record.coldOffline.actualPageText = offlineText.slice(0, 4096);
+        record.coldOffline.projectFontFiles = 0;
+      }
+      if (['packages', 'biblatex'].includes(CASE)) {
+        const norm = offlineText.replace(/\s+/g, ' ').trim();
+        assert.match(norm, /Hyperlink fixture/);
+        assert.match(norm, /Listing marker/);
+        assert.match(norm, /Package compatibility entry/);
+        assert.match(norm, /Section 2 is resolved\./);
+        assert.match(norm, /Portable Compiler Reference/);
+        if (['xelatex', 'lualatex'].includes(COMPILER_CHOICE)) {
+          assert.match(norm, /Привіт/); assert.match(norm, /Київ/);
+        }
+        const log = await H.$(page, "compiler-log").textContent();
+        assert.doesNotMatch(log, /Missing character:|LaTeX Font Warning:|not loadable|File[^\n]*not found/);
+        if (['xelatex', 'lualatex'].includes(COMPILER_CHOICE)) {
+          assert.match(log, /COMPATIBILITY-UKRAINIAN-ID:[1-9][0-9]*/);
+          assert.match(log, /COMPATIBILITY-ENGLISH-ID:0\b/);
+          assert.doesNotMatch(log, /No hyphenation patterns were preloaded|Unknown language|Ukrainian hyphenation patterns are not loaded/i);
+        }
+        record.coldOffline.actualPageText = offlineText.slice(0, 4096);
+      }
       if (CASE === "font-assets") {
         if (T2A_UNICODE_REPAIR) {
           record.coldOffline.actualPageText = offlineText.slice(0, 2048);

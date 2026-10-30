@@ -3,8 +3,13 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-/* ABI 2. Exact UTF-8 relative paths; fresh module for EACH format/LaTeX attempt.
- * kind: 0 runtime, 1 project, 2 selected output carry (result.aux/toc/out/bbl/blg/lof/lot).
+/* ABI 3. Exact UTF-8 relative paths; fresh module for EACH format/LaTeX attempt.
+ * A unique decomposed spelling is valid; normalize collision keys only, never
+ * root/FS bytes. Native JS full-uppercase keys may reject additional aliases
+ * beyond .NET invariant casing; general casing parity is not promised.
+ * kind: 0 runtime, 1 project, 2 declared selected output carry.
+ * Case/NFC aliases, reserved __oop_runtime__/ paths and file/directory collisions
+ * reject before copying. Project/generated collisions reject in either order.
  * artifacts: 0 PDF, 1 log, 2 LuaLaTeX fmt, 3 AUX, 4 TOC, 5 OUT,
  *            6 BBL, 7 BLG, 8 LOF, 9 LOT. Fixed --jobname=result; no source rewriting.
  * Native engine status is returned by compile; negative values are ABI errors.
@@ -14,8 +19,11 @@ const char *oc_luatex_version(void);
 int oc_luatex_configure(const char *root, const char *context);
 const char *oc_luatex_context(void);
 int oc_luatex_add_file(int kind, const char *name, const uint8_t *bytes, uint32_t length);
-/* Ten indexed outputs are declared by default. Add only .aux/.bbl/.blg/.toc/
- * .lof/.lot/.out names before compilation; cap 128 including defaults.
+/* Ten indexed outputs are declared by default, unchanged from ABI2. Add ordinary
+ * .aux/.bbl/.blg/.toc/.lof/.lot/.out names (including selected included AUX), or
+ * EXACT result-blx.bib, result.bcf, result.run.xml before compilation.
+ * No arbitrary .bib/.bcf/.xml, another job or nested alias is admitted.
+ * Additional names are NOT declared by default; cap 128 including defaults.
  * Parents are precreated; kind 2 accepts only declared generated names.
  * Raw copy ceilings: 32 MiB/file, 64 MiB selected total; no filesystem listing.
  * Automatic execution guard is stricter: 8 MiB/file (INITEX 32 MiB), 16 MiB

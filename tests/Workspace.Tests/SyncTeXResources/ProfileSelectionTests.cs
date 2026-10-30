@@ -66,7 +66,7 @@ public sealed class ProfileSelectionTests
     }
 
     [Theory]
-    [InlineData(-1)] [InlineData(0)] [InlineData(1)] [InlineData(6)] [InlineData(99)]
+    [InlineData(-1)] [InlineData(0)] [InlineData(1)] [InlineData(int.MaxValue)] [InlineData(99)]
     public void Local_limits_reject_every_nonlocal_profile(int value)
         => Assert.Throws<FormatException>(() => LocalRuntimeSelection.LimitsFor((NativeRuntimeProfile)value));
 
@@ -75,6 +75,12 @@ public sealed class ProfileSelectionTests
     public void Local_limits_support_only_explicit_local_profiles(int value)
         => Assert.Equal(new NativeRuntimeLimits(512, 33554432, 67108864, (NativeRuntimeProfile)value),
             LocalRuntimeSelection.LimitsFor((NativeRuntimeProfile)value));
+
+    [Theory]
+    [InlineData(5)] [InlineData(6)]
+    public void Local_limits_support_both_explicit_suite_profiles(int value)
+        => Assert.Equal(new NativeRuntimeLimits(NativeCompilerSuiteContract.Files, NativeCompilerSuiteContract.FileBytes,
+            NativeCompilerSuiteContract.TotalBytes, (NativeRuntimeProfile)value), LocalRuntimeSelection.LimitsFor((NativeRuntimeProfile)value));
 
     internal static IEnumerable<NativeResourcePin[]> BadPins()
     {

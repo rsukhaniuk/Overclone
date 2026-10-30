@@ -111,7 +111,7 @@ public sealed class LocalInstalledRuntimeProviders : INativeRuntimeProvider, IPd
         // before/after and fresh full-closure byte verification. No query cache/store.
         var read = await ReadCompilerAsync(token).ConfigureAwait(false);
         if (read.Package is not { } package
-            || package.Profile is not (NativeRuntimeProfile.LocalLatex2023SyncTeX or NativeRuntimeProfile.LocalLatex2023Dvi or NativeRuntimeProfile.LocalCompilerSuite)) return null;
+            || !NativeRuntimeProfiles.IsSuite(package.Profile) && package.Profile is not (NativeRuntimeProfile.LocalLatex2023SyncTeX or NativeRuntimeProfile.LocalLatex2023Dvi)) return null;
         token.ThrowIfCancellationRequested();
         return new(package.Copy("synctex-query.js"), package.Copy("synctex-query.wasm"),
             NativeRuntimeProfiles.SyncTeXQueryLoaderHash, NativeRuntimeProfiles.SyncTeXQueryWasmHash);

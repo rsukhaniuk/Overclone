@@ -26,6 +26,22 @@ public sealed class NativeCompilationWorkerFactory : ICompilationWorkerFactory
         try { PhaseObserved?.Invoke(observation); }
         catch (Exception error) when (error is not OutOfMemoryException) { /* observer cannot change ownership */ }
     }
+    private static bool HasLogWord(ReadOnlySpan<char> text, ReadOnlySpan<char> word)
+    {
+        // Package names such as rerunfilecheck.sty are input records, not a
+        // request for another pass. Keep genuine standalone warning words.
+        int offset = 0;
+        while (offset <= text.Length - word.Length)
+        {
+            int found = text[offset..].IndexOf(word, StringComparison.OrdinalIgnoreCase);
+            if (found < 0) return false;
+            int start = offset + found, end = start + word.Length;
+            if ((start == 0 || !Identifier(text[start - 1])) && (end == text.Length || !Identifier(text[end]))) return true;
+            offset = end;
+        }
+        return false;
+        static bool Identifier(char value) => char.IsLetterOrDigit(value) || value == '_';
+    }
     private sealed class Worker(NativeCompilationWorkerFactory factory, CompileJobId id, long epoch) : ICompilationWorker
     {
         private readonly CancellationTokenSource _stop = new();
@@ -71,7 +87,8 @@ public sealed class NativeCompilationWorkerFactory : ICompilationWorkerFactory
             try
             {
                 Check();
-                bool suite = factory._plan.Profile == NativeRuntimeProfile.LocalCompilerSuite;
+                bool suite = NativeRuntimeProfiles.IsSuite(factory._plan.Profile);
+                bool bibliographyCarry = NativeRuntimeProfiles.HasBibliographyCarry(factory._plan.Profile);
                 var engine = factory._plan.Engine;
                 bool xe = suite && engine == NativeCompilerEngine.XeLaTeX;
                 bool lua = suite && engine == NativeCompilerEngine.LuaLaTeX;
@@ -120,6 +137,14 @@ public sealed class NativeCompilationWorkerFactory : ICompilationWorkerFactory
                     entry = suite ? NativeCompilerSuiteContract.CreateEntry(main.RelativePath, snapshot.Files.Select(f => f.RelativePath), engine, out entryError)
                         : NativeSelectedEntryContract.Create(main.RelativePath, snapshot.Files.Select(f => f.RelativePath), out entryError, dviOutput);
                     if (entry is null) return Finish(entryError == "xetex-non-bmp-main-unsupported" ? CompileOutputStatus.Unsupported : CompileOutputStatus.Failed, entryError!);
+                    if (bibliographyCarry)
+                    {
+                        entry = NativeBibliographyContract.ExtendEntry(runtime.Profile, entry);
+                        var invalid = NativeBibliographyContract.ValidateProjectNames(snapshot.Files.Select(f => f.RelativePath))
+                            ?? NativeBibliographyContract.ValidateNamespace(entry, runtimeLengths.Select(f => f.Name)
+                                .Concat(snapshot.Files.Select(f => f.RelativePath)), []);
+                        if (invalid is not null) return Finish(CompileOutputStatus.Failed, invalid);
+                    }
                 }
                 else if (main?.RelativePath != "main.tex") return Finish(CompileOutputStatus.Unsupported, "unsupported-main-entry");
                 bool IsState(string name) => entry?.IsState(name) ?? NativeAuthoringV4Contract.IsState(name);
@@ -143,7 +168,7 @@ public sealed class NativeCompilationWorkerFactory : ICompilationWorkerFactory
                     || snapshot.Files.Any(f => outputs.Contains(f.RelativePath, StringComparer.Ordinal)))
                     return Finish(CompileOutputStatus.Failed, "generated-input-collision");
                 var generated = new Dictionary<string, byte[]>(StringComparer.Ordinal);
-                string? previous = null; int stable = 0, ordinal = 0;
+                string? previous = null, lastBibtexInput = null; int stable = 0, ordinal = 0;
                 for (int pass = 1; pass <= factory._plan.MaxLatexPasses; pass++)
                 {
                     var latex = await Run("latex");
@@ -157,7 +182,15 @@ public sealed class NativeCompilationWorkerFactory : ICompilationWorkerFactory
                     if (lua && (!files.TryGetValue(pdfName, out var luaPdf) || luaPdf.Length < 5 || !luaPdf.AsSpan(0, 5).SequenceEqual("%PDF-"u8)))
                         return Finish(CompileOutputStatus.Failed, "missing-native-pdf");
                     Carry(files);
-                    if (pass == 1 && runBibtex)
+                    string? bibtexInput = null;
+                    if (bibliographyCarry && runBibtex)
+                    {
+                        var invalid = NativeBibliographyContract.ControlInputIssue(entry!, generated,
+                            snapshot.Files.Select(f => f.RelativePath), runtimeLengths.Select(f => f.Name));
+                        if (invalid is not null) return Finish(CompileOutputStatus.Failed, invalid);
+                        bibtexInput = NativeBibliographyContract.Fingerprint(entry!, generated, snapshot, runtime.Identity.Hex, runtime.Bibtex);
+                    }
+                    if (runBibtex && (bibliographyCarry ? bibtexInput != lastBibtexInput : pass == 1))
                     {
                         if (!generated.TryGetValue(auxName, out var aux) || selectedEntry && aux.Length == 0)
                             return Finish(CompileOutputStatus.Failed, "missing-native-aux");
@@ -165,15 +198,29 @@ public sealed class NativeCompilationWorkerFactory : ICompilationWorkerFactory
                         if (bib is null) return Finish(CompileOutputStatus.Failed, "invalid-native-reply");
                         if (bib.Value.Reply.Outcome != "native-return" || bib.Value.Reply.NativeReturn != 0 || !bib.Value.Files.TryGetValue(bblName, out var bbl) || bbl.Length == 0)
                             return Finish(bib.Value.Reply.Outcome == "transport-timeout" ? CompileOutputStatus.TimedOut : CompileOutputStatus.Failed, "native-bibtex-failed");
-                        Carry(bib.Value.Files); continue;
+                        if (bibliographyCarry)
+                        {
+                            // BibTeX cannot delete/reclassify the TeX control state.
+                            // Actual ports may return just BBL/BLG or unchanged seeded
+                            // outputs; preserve the prior AUX/BLX in either case.
+                            foreach (var file in bib.Value.Files.Where(p => IsState(p.Key) && p.Key != bblName))
+                                if (!generated.TryGetValue(file.Key, out var prior) || !prior.AsSpan().SequenceEqual(file.Value))
+                                    return Finish(CompileOutputStatus.Failed, "bibliography-control-reclassified");
+                            generated[bblName] = bbl;
+                            ValidateState(generated.Select(f => (f.Key, f.Value.Length)));
+                            lastBibtexInput = bibtexInput;
+                            previous = null; stable = 0;
+                        }
+                        else Carry(bib.Value.Files);
+                        continue;
                     }
                     var fingerprint = v4
                         ? string.Join("\n", outputs.Where(IsState).Order(StringComparer.Ordinal)
                             .Select(name => name + ":" + (generated.TryGetValue(name, out var state) ? NativeRuntimePackage.Digest(state).Hex : "absent")))
                         : string.Join("\n", generated.OrderBy(x => x.Key, StringComparer.Ordinal).Select(x => x.Key + ":" + NativeRuntimePackage.Digest(x.Value).Hex));
                     stable = previous == fingerprint ? stable + 1 : 0; previous = fingerprint;
-                    bool warnings = latex.Value.Reply.Log.Contains("undefined", StringComparison.OrdinalIgnoreCase)
-                        || latex.Value.Reply.Log.Contains("Rerun", StringComparison.OrdinalIgnoreCase)
+                    bool warnings = HasLogWord(latex.Value.Reply.Log, "undefined")
+                        || HasLogWord(latex.Value.Reply.Log, "rerun")
                         || latex.Value.Reply.Log.Contains("Label(s) may have changed", StringComparison.Ordinal);
                     if (stable >= 1 && pass >= (runBibtex ? 3 : 2) && !warnings)
                     {
@@ -250,8 +297,10 @@ public sealed class NativeCompilationWorkerFactory : ICompilationWorkerFactory
                             || finalDvi.Length > NativeLatexDviContract.FileBytes
                             || project.Sum(f => f.Length) + finalDvi.Length > NativeLatexDviContract.ProjectBytes)
                             throw new NativeAuthoringV4Exception("dvi-resource-limit");
-                        var invalid = NativeAuthoringV4Contract.ValidateNamespace(resources.Select(f => f.Name)
-                            .Concat(project.Select(f => f.Name)).Append(intermediate), phaseOutputs, []);
+                        var conversionInputs = resources.Select(f => f.Name).Concat(project.Select(f => f.Name)).Append(intermediate);
+                        var invalid = bibliographyCarry
+                            ? NativeSelectedEntryContract.ValidateNamespace(entry with { Outputs = [pdfName], State = [] }, conversionInputs, [])
+                            : NativeAuthoringV4Contract.ValidateNamespace(conversionInputs, phaseOutputs, []);
                         if (invalid is not null) throw new NativeAuthoringV4Exception(invalid);
                         resourceNames = resources.Select(f => f.Name).Order(StringComparer.Ordinal).ToArray();
                         all = runtime.CopyConverterResources().ToDictionary(f => suite ? NativeCompilerSuiteContract.ResourcePrefix + f.Name : f.Name, f => f.Bytes, StringComparer.Ordinal);
@@ -263,7 +312,8 @@ public sealed class NativeCompilationWorkerFactory : ICompilationWorkerFactory
                         if (v4)
                         {
                             var inputNames = phaseLengths.Select(f => f.Name).Concat(snapshot.Files.Select(f => f.RelativePath));
-                            var invalid = entry is null ? NativeAuthoringV4Contract.ValidateNamespace(inputNames, outputs, generated.Keys)
+                            var invalid = bibliographyCarry ? NativeBibliographyContract.ValidateNamespace(entry!, inputNames, generated.Keys)
+                                : entry is null ? NativeAuthoringV4Contract.ValidateNamespace(inputNames, outputs, generated.Keys)
                                 : NativeSelectedEntryContract.ValidateNamespace(entry, inputNames, generated.Keys);
                             if (invalid is not null) throw new NativeAuthoringV4Exception(invalid);
                             ValidateState(generated.Select(f => (f.Key, f.Value.Length)));
@@ -306,10 +356,12 @@ public sealed class NativeCompilationWorkerFactory : ICompilationWorkerFactory
                         suite ? NativeCompilerSuiteContract.EngineId(engine) : dviOutput ? "latex-dvi" : null);
                     var sent = all.OrderBy(x => x.Key, StringComparer.Ordinal).Select(x => new NativeInputFact(x.Key, x.Value.Length, NativeRuntimePackage.Digest(x.Value).Hex)).ToArray();
                     string component = converting ? "dvi-converter" : suite && tool == "latex" && xe ? "xetex" : suite && tool == "latex" && lua ? "luatex" : "engine";
-                    string loaderHash = component == "xetex" ? NativeCompilerSuitePins.XeLoaderHash : component == "luatex" ? NativeCompilerSuitePins.LuaLoaderHash
-                        : converting ? runtime.ConverterLoaderHash : NativeRuntimeProfiles.CompilerLoaderHash(runtime.Profile);
-                    string wasmHash = component == "xetex" ? NativeCompilerSuitePins.XeWasmHash : component == "luatex" ? NativeCompilerSuitePins.LuaWasmHash
-                        : converting ? runtime.ConverterWasmHash : NativeRuntimeProfiles.CompilerWasmHash(runtime.Profile);
+                    var selectedComponent = suite && !converting
+                        ? NativeCompilerComponents.For(runtime.Profile, tool == "bibtex" ? NativeCompilerEngine.PdfLaTeX : engine) : null;
+                    string loaderHash = converting ? runtime.ConverterLoaderHash
+                        : selectedComponent?.LoaderHash ?? NativeRuntimeProfiles.CompilerLoaderHash(runtime.Profile);
+                    string wasmHash = converting ? runtime.ConverterWasmHash
+                        : selectedComponent?.WasmHash ?? NativeRuntimeProfiles.CompilerWasmHash(runtime.Profile);
                     var toolEntry = converting ? entry!.JobName + (xe ? ".xdv" : ".dvi") : entry is null ? "main.tex" : tool == "latex" ? entry.LatexEntry : entry.BibtexEntry;
                     var request = new NativePhaseRequest(tag, toolEntry, all.Select(x => new NativeFileTransfer(x.Key, x.Value)).ToArray(),
                         phaseOutputs, runtime.Copy(component + ".js"), runtime.Copy(component + ".wasm"),

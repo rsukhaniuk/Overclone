@@ -1,0 +1,30 @@
+% Synthetic regression; literal Ukrainian source, never patched by the runner.
+\documentclass{article}
+\usepackage{fontspec}
+\setmainfont{DejaVuSerif.ttf}
+\usepackage[english,ukrainian]{babel}
+\makeatletter
+\typeout{ENGLISH-ID:\number\l@english}
+\typeout{UKRAINIAN-ID:\number\l@ukrainian}
+\makeatother
+\begin{document}
+\selectlanguage{ukrainian}
+\typeout{UKRAINIAN-ACTIVE:\the\language}
+\typeout{UKRAINIAN-CONTENTS:\contentsname}
+\typeout{UKRAINIAN-HYPHENS-BEGIN}
+% XeTeX kernel showhyphens forces TU/lmr; explicitly select the test font
+% inside its diagnostic box, so missing Cyrillic glyphs cannot hide a failure.
+\showhyphens{\fontspec{DejaVuSerif.ttf}український українська університет комп'ютерний програмування}
+\typeout{UKRAINIAN-HYPHENS-END}
+\contentsname: український університет. Іі Її Єє Ґґ.
+\selectlanguage{english}
+\typeout{ENGLISH-ACTIVE:\the\language}
+\typeout{ENGLISH-CONTENTS:\contentsname}
+\typeout{ENGLISH-HYPHENS-BEGIN}
+\showhyphens{\fontspec{DejaVuSerif.ttf}hyphenation university compatibility}
+\typeout{ENGLISH-HYPHENS-END}
+\typeout{UKRAINIAN-IN-ENGLISH-CONTROL-BEGIN}
+\showhyphens{\fontspec{DejaVuSerif.ttf}український університет}
+\typeout{UKRAINIAN-IN-ENGLISH-CONTROL-END}
+ASCII I i 123. English retained.
+\end{document}

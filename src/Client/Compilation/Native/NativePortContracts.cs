@@ -27,13 +27,13 @@ public sealed record NativeCompilePlan(bool BibtexRequired, int MaxLatexPasses, 
 {
     public bool IsValid => MaxLatexPasses is >= 1 and <= 6 && JobDeadline > TimeSpan.Zero && JobDeadline <= TimeSpan.FromMinutes(2)
         && NativeRuntimeProfiles.Known(Profile)
-        && (Profile == NativeRuntimeProfile.LocalCompilerSuite
+        && (NativeRuntimeProfiles.IsSuite(Profile)
             ? NativeCompilerSuiteContract.Phase(Engine) != 0 && EffectivePhaseVersion == NativeCompilerSuiteContract.Phase(Engine)
             : Engine == NativeCompilerEngine.PdfLaTeX && (PhaseProtocolVersion is null || PhaseProtocolVersion == NativeRuntimeProfiles.ProtocolVersion(Profile)
                 || PhaseProtocolVersion is 4 or 5 && Profile == NativeRuntimeProfile.LocalLatex2023Authoring
                 || PhaseProtocolVersion == 7 && Profile == NativeRuntimeProfile.LocalLatex2023Dvi && DviOutput))
         && (DviOutput == (EffectivePhaseVersion == 7))
-        && MaxPhaseFiles >= 1 && MaxPhaseFiles <= (Profile == NativeRuntimeProfile.LocalCompilerSuite ? NativeCompilerSuiteContract.Files + 192
+        && MaxPhaseFiles >= 1 && MaxPhaseFiles <= (NativeRuntimeProfiles.IsSuite(Profile) ? NativeCompilerSuiteContract.Files + 192
             : EffectivePhaseVersion is 4 or 5 or 6 or 7 ? NativeAuthoringV4Contract.PhaseFiles : 512)
         && MaxInputBytes > 0 && MaxInputBytes <= NativeRuntimeProfiles.MaxTotalBytes(Profile)
         && MaxFileBytes > 0 && MaxFileBytes <= NativeRuntimeProfiles.MaxFileBytes(Profile);

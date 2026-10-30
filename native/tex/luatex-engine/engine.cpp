@@ -4,6 +4,8 @@
 #include <cstdlib>
 #include <cstring>
 #include <initializer_list>
+#include <set>
+#include <string>
 #include <setjmp.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -19,6 +21,16 @@ EM_JS(void, oc_budget_reason, (char *destination, int capacity), {
 });
 EM_JS(void, oc_budget_report, (char *destination, int capacity), {
     stringToUTF8(JSON.stringify(ocVfsSnapshot()), destination, capacity);
+});
+// Browser Unicode APIs only: normalize collision keys, never caller/FS bytes.
+// JS full-uppercase comparison can reject extra aliases beyond .NET invariant
+// casing; no general cross-runtime casing parity is claimed.
+EM_JS(int, oc_path_key, (const char *name, char *key, int capacity), {
+    const text = UTF8ToString(name);
+    const folded = text.normalize('NFC').toUpperCase().normalize('NFC');
+    if (lengthBytesUTF8(folded) >= capacity) return 0;
+    stringToUTF8(folded, key, capacity);
+    return 1;
 });
 extern "C" {
 #include "lua.h"
@@ -36,11 +48,13 @@ uint32_t declaredCount = 0;
 char root[250] = {}, context[129] = {}, message[256] = {};
 bool configured = false, used = false, running = false, succeeded = false, formatAttempt = false;
 uint32_t inputBytes = 0, inputFiles = 0;
+std::set<std::string> inputKeys[3], projectKeys, outputKeys;
 jmp_buf engineExit;
 int engineStatus = 0;
 const char *const outputs[] = {"result.pdf", "result.log", "lualatex.fmt", "result.aux", "result.toc", "result.out", "result.bbl", "result.blg", "result.lof", "result.lot"};
 int fail(int code, const char *text) {
     std::snprintf(message, sizeof(message), "%s", text);
+    if (used) succeeded = false;
     return code;
 }
 bool validUtf8(const char *name) {
@@ -72,8 +86,23 @@ bool validPath(const char *name) {
             if (!n || (n == 1 && component[0] == '.') || (n == 2 && component[0] == '.' && component[1] == '.')) return false;
             component = reinterpret_cast<const char *>(p) + 1;
         }
-        if (!*p) return true;
+        if (!*p) break;
     }
+    char key[1024];
+    if (!oc_path_key(name, key, sizeof(key))) return false;
+    const std::string folded(key);
+    return folded != "__OOP_RUNTIME__" && folded.rfind("__OOP_RUNTIME__/", 0) != 0;
+}
+std::string pathKey(const char *name) {
+    char key[1024];
+    return oc_path_key(name, key, sizeof(key)) ? std::string(key) : std::string();
+}
+bool namespaceConflict(const std::set<std::string> &keys, const std::string &key) {
+    if (keys.count(key)) return true;
+    for (size_t at = key.find('/'); at != std::string::npos; at = key.find('/', at + 1))
+        if (keys.count(key.substr(0, at))) return true;
+    auto child = keys.lower_bound(key + "/");
+    return child != keys.end() && child->compare(0, key.size() + 1, key + "/") == 0;
 }
 bool validRoot(const char *name) {
     if (!validPath(name)) return false;
@@ -85,6 +114,9 @@ bool validRoot(const char *name) {
     return true;
 }
 bool isCarryName(const char *name) {
+    // ABI3 additions are exact fixed-job basenames, never extension wildcards.
+    for (const char *allowed : {"result-blx.bib", "result.bcf", "result.run.xml"})
+        if (!std::strcmp(name, allowed)) return true;
     const char *extension = std::strrchr(name, '.');
     if (!extension) return false;
     for (const char *allowed : {".aux", ".bbl", ".blg", ".toc", ".lof", ".lot", ".out"})
@@ -228,8 +260,8 @@ void oc_restrict_lua(lua_State *L) {
     lua_pushnil(L); lua_rawseti(L, -2, 4);
     lua_pop(L, 2);
 }
-uint32_t oc_luatex_abi() { return 2; }
-const char *oc_luatex_version() { return "LuaTeX 1.13.0 (TeX Live 2021, svn 7410); browser ABI 2"; }
+uint32_t oc_luatex_abi() { return 3; }
+const char *oc_luatex_version() { return "LuaTeX 1.13.0 (TeX Live 2021, svn 7410); browser ABI 3"; }
 const char *oc_luatex_error() { return message; }
 const char *oc_luatex_budget_json() {
     static char report[2048];
@@ -256,7 +288,10 @@ int oc_luatex_configure(const char *name, const char *identity) {
     bool ok = std::fputs(policy, cnf) >= 0;
     ok = std::fclose(cnf) == 0 && ok;
     if (!ok) return fail(-3, "cannot close VFS policy");
-    for (const char *output : outputs) std::snprintf(declared[declaredCount++], sizeof(declared[0]), "%s", output);
+    for (const char *output : outputs) {
+        std::snprintf(declared[declaredCount++], sizeof(declared[0]), "%s", output);
+        outputKeys.insert(pathKey(output));
+    }
     configured = true;
     return 0;
 }
@@ -264,13 +299,17 @@ int oc_luatex_declare_output(const char *name) {
     if (!configured || used) return fail(-2, "outputs are immutable after the attempt starts");
     if (!validPath(name)) return fail(-1, "invalid output name");
     if (isDeclared(name)) return 0;
-    if (!isCarryName(name)) return fail(-1, "only selected generated extensions are permitted");
+    if (!isCarryName(name)) return fail(-1, "only selected generated names are permitted");
+    const auto key = pathKey(name);
+    if (namespaceConflict(projectKeys, key)) return fail(-1, "project/generated namespace collision");
+    if (namespaceConflict(outputKeys, key)) return fail(-1, "output namespace collision");
     if (declaredCount >= MaxOutputs) return fail(-4, "selected output count exceeded");
     for (uint32_t i = 0; i < declaredCount; ++i)
         if (prefixConflict(name, declared[i]) || prefixConflict(declared[i], name)) return fail(-1, "output file/directory conflict");
     char path[300]; std::snprintf(path, sizeof(path), "/work/output/%s", name);
     if (!makeParents(path)) return fail(-3, "cannot predeclare output parents");
     std::snprintf(declared[declaredCount++], sizeof(declared[0]), "%s", name);
+    outputKeys.insert(key);
     return 0;
 }
 int oc_luatex_add_file(int kind, const char *name, const uint8_t *bytes, uint32_t length) {
@@ -281,6 +320,9 @@ int oc_luatex_add_file(int kind, const char *name, const uint8_t *bytes, uint32_
     else if (kind == 1) base = "project";
     else if (kind == 2 && isCarryName(name) && isDeclared(name)) base = "output";
     else return fail(-1, "invalid input kind or carry name");
+    const auto key = pathKey(name);
+    if (namespaceConflict(inputKeys[kind], key)) return fail(-1, "input namespace collision");
+    if (kind == 1 && namespaceConflict(outputKeys, key)) return fail(-1, "project/generated namespace collision");
     char path[300]; std::snprintf(path, sizeof(path), "/work/%s/%s", base, name);
     struct stat st{};
     if (!stat(path, &st)) return fail(-1, "duplicate input path");
@@ -291,6 +333,8 @@ int oc_luatex_add_file(int kind, const char *name, const uint8_t *bytes, uint32_
     ok = std::fclose(file) == 0 && ok;
     if (!ok) { unlink(path); return fail(-3, "input write failed"); }
     inputBytes += length; ++inputFiles;
+    inputKeys[kind].insert(key);
+    if (kind == 1) projectKeys.insert(key);
     return 0;
 }
 int oc_luatex_compile_format() { return compile(true); }

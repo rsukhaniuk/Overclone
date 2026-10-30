@@ -43,19 +43,21 @@ public sealed class NativeRuntimePackage
         NativeRuntimeProfile.LocalLatex2023SyncTeX => new("local-latex-synctex", "2023-11-01-p1-synctex-profile-v1", Identity),
         NativeRuntimeProfile.LocalLatex2023Dvi => new("local-latex-dvi", "2023-11-01-p1-dvi-profile-v1", Identity),
         NativeRuntimeProfile.LocalCompilerSuite => new("local-compiler-suite", "1", Identity),
+        NativeRuntimeProfile.LocalCompilerCompatibility => new("local-compiler-suite", "2", Identity),
+        NativeRuntimeProfile.LocalCompilerBibliography => new("local-compiler-suite", "3", Identity),
         _ => throw new InvalidOperationException("Unknown trusted runtime profile.")
     };
     public CompilationDescriptor Bibtex => new("bibtex", "0.99d", new(NativeRuntimeProfiles.CompilerWasmHash(Profile)));
     public static CompileOutputDescriptor Pdf => new("pdf", "1", null);
     public static CompileOutputDescriptor Adapter => new("native-pdftex", "n11-v1", new(WasmHash));
     public CompilationDescriptor DviEngine => new("latex-dvi", EngineVersion, new(NativeRuntimeProfiles.CompilerWasmHash(Profile)));
-    public CompileOutputDescriptor DviOutputAdapter => Profile == NativeRuntimeProfile.LocalCompilerSuite
+    public CompileOutputDescriptor DviOutputAdapter => NativeRuntimeProfiles.IsSuite(Profile)
         ? NativeCompilerSuiteContract.DviOutputAdapter : NativeLatexDviContract.OutputAdapter;
-    internal string ConverterLoaderHash => Profile == NativeRuntimeProfile.LocalCompilerSuite
+    internal string ConverterLoaderHash => NativeRuntimeProfiles.IsSuite(Profile)
         ? NativeCompilerSuitePins.ConverterLoaderHash : NativeRuntimeProfiles.DviConverterLoaderHash;
-    internal string ConverterWasmHash => Profile == NativeRuntimeProfile.LocalCompilerSuite
+    internal string ConverterWasmHash => NativeRuntimeProfiles.IsSuite(Profile)
         ? NativeCompilerSuitePins.ConverterWasmHash : NativeRuntimeProfiles.DviConverterWasmHash;
-    public CompileOutputDescriptor OutputAdapter => Profile is NativeRuntimeProfile.LocalLatex2023SyncTeX or NativeRuntimeProfile.LocalLatex2023Dvi or NativeRuntimeProfile.LocalCompilerSuite
+    public CompileOutputDescriptor OutputAdapter => NativeRuntimeProfiles.IsSuite(Profile) || Profile is NativeRuntimeProfile.LocalLatex2023SyncTeX or NativeRuntimeProfile.LocalLatex2023Dvi
         ? new("native-pdftex", "n11-synctex-v1", new(NativeRuntimeProfiles.SyncTeXCompilerWasmHash)) : Adapter;
     public byte[] Copy(string name) => _bytes[name].ToArray();
     // The inventory/Identity always use logical package names. Only the phase
@@ -72,7 +74,7 @@ public sealed class NativeRuntimePackage
         .OrderBy(x => PhaseDestination(x.Key), StringComparer.Ordinal).Select(x => new NativeFileTransfer(PhaseDestination(x.Key), x.Value.ToArray())).ToArray();
     private bool ConverterResource(string name) => name is "glyphlist.txt" or "pdfglyphlist.txt"
         || Path.GetExtension(name) is ".tfm" or ".pfb" or ".ttf" or ".map" or ".enc"
-        || Profile == NativeRuntimeProfile.LocalCompilerSuite && Path.GetExtension(name) is ".otf" or ".vf";
+        || NativeRuntimeProfiles.IsSuite(Profile) && Path.GetExtension(name) is ".otf" or ".vf";
     internal IEnumerable<(string Name, int Length)> ConverterResourceLengths => _bytes.Where(x => ConverterResource(x.Key)).Select(x => (x.Key, x.Value.Length));
     internal NativeFileTransfer[] CopyConverterResources() => _bytes.Where(x => ConverterResource(x.Key))
         .OrderBy(x => x.Key, StringComparer.Ordinal).Select(x => new NativeFileTransfer(x.Key, x.Value.ToArray())).ToArray();
@@ -81,14 +83,14 @@ public sealed class NativeRuntimePackage
     {
         NativeCompilerEngine.PdfLaTeX => Engine, NativeCompilerEngine.LaTeXDvi => DviEngine,
         NativeCompilerEngine.XeLaTeX => new("xelatex", "native-v1", new(NativeCompilerSuitePins.XeWasmHash)),
-        NativeCompilerEngine.LuaLaTeX => new("lualatex", "abi2", new(NativeCompilerSuitePins.LuaWasmHash)),
+        NativeCompilerEngine.LuaLaTeX => new("lualatex", NativeCompilerComponents.For(Profile, engine).EngineVersion, new(NativeCompilerComponents.For(Profile, engine).WasmHash)),
         _ => throw new ArgumentOutOfRangeException(nameof(engine))
     };
     public CompileOutputDescriptor AdapterFor(NativeCompilerEngine engine) => engine switch
     {
         NativeCompilerEngine.PdfLaTeX => OutputAdapter, NativeCompilerEngine.LaTeXDvi => DviOutputAdapter,
         NativeCompilerEngine.XeLaTeX => NativeCompilerSuiteContract.XeOutputAdapter,
-        NativeCompilerEngine.LuaLaTeX => NativeCompilerSuiteContract.LuaOutputAdapter,
+        NativeCompilerEngine.LuaLaTeX => NativeCompilerComponents.For(Profile, engine).OutputAdapter,
         _ => throw new ArgumentOutOfRangeException(nameof(engine))
     };
     private IEnumerable<KeyValuePair<string, byte[]>> SuiteFiles(NativeCompilerEngine engine)
@@ -111,7 +113,7 @@ public sealed class NativeRuntimePackage
     {
         if (!NativeRuntimeProfiles.Known(profile) || limits is null || !limits.IsValid || limits.Profile != profile)
             return new(null, NativeRuntimeIssue.InvalidLimits);
-        if (profile == NativeRuntimeProfile.LocalCompilerSuite && !NativeCompilerSuitePins.Ready)
+        if (NativeRuntimeProfiles.IsSuite(profile) && !NativeRuntimeProfiles.SuitePinsReady(profile))
             return new(null, NativeRuntimeIssue.Unavailable);
         if (input is null || expected is null) return new(null, NativeRuntimeIssue.Unavailable);
         // Counts first: don't access an entry or allocate a count-sized collection yet.
@@ -145,9 +147,8 @@ public sealed class NativeRuntimePackage
                 || !Fixed("dvi-converter.js", 12606, NativeRuntimeProfiles.DviConverterLoaderHash)
                 || !Fixed("dvi-converter.wasm", 685953, NativeRuntimeProfiles.DviConverterWasmHash)))
             return new(null, NativeRuntimeIssue.TechnicalHashMismatch);
-        if (profile == NativeRuntimeProfile.LocalCompilerSuite && (!Fixed("latex-dvi.fmt", NativeRuntimeProfiles.DviFormatLength, NativeRuntimeProfiles.DviFormatHash)
-            || !NativeCompilerSuitePins.MatchesComponents(pins)
-            || pins.Values.Sum(p => (long)p.Length) != NativeCompilerSuitePins.TotalBytes))
+        if (NativeRuntimeProfiles.IsSuite(profile) && (!NativeRuntimeProfiles.MatchesSuiteComponents(profile, pins)
+            || declaredTotal != NativeRuntimeProfiles.SuiteTotalBytes(profile)))
             return new(null, NativeRuntimeIssue.TechnicalHashMismatch);
         // Bind the complete declared closure before even inspecting resource bytes.
         // Supplied expected pins alone cannot expand the trusted set.
@@ -180,7 +181,7 @@ public sealed class NativeRuntimePackage
     internal static Hash ResourceIdentity(IEnumerable<NativeResourcePin> pins)
         => Digest(Encoding.UTF8.GetBytes(string.Join("\n", pins.OrderBy(x => x.Name, StringComparer.Ordinal)
             .Select(x => FormattableString.Invariant($"{x.Name}\t{x.Length}\t{x.Sha256}")))));
-    internal static bool Name(string? name, NativeRuntimeProfile profile) => profile == NativeRuntimeProfile.LocalCompilerSuite
+    internal static bool Name(string? name, NativeRuntimeProfile profile) => NativeRuntimeProfiles.IsSuite(profile)
         ? NativeCompilerSuiteContract.ResourceName(name)
         : name is { Length: > 0 and <= 200 } && name.All(c => char.IsAsciiLetterOrDigit(c) || c is '.' or '-' or '_');
     private static bool Hex(string? s) => s is { Length: 64 } && s.All(c => c is >= '0' and <= '9' or >= 'a' and <= 'f');

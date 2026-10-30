@@ -1,0 +1,24 @@
+{
+  "schema": 1,
+  "suitePins": {"length": 526500, "sha256": "622ababb78d1a48e72e8a3a995f08dd260a5b7f27d5920ad66c01e760a8c4e16"},
+  "dviInitializer": {"length": 528, "sha256": "27c03e72a58bbcd5d58bdb62c1c223e0cd420bb0957f0d6e8e67e9d853247e33"},
+  "resources": {
+    "notices/ruhyphen.tex": {"length": 1633, "sha256": "9501414b2b32c2780068268e905a44f7dcd7b009af0bd1b97ad044674614c567"},
+    "notices/lppl.tex": {"length": 23386, "sha256": "c3c7c49085d4c8d722ca98937b2378619b45dd0b5bd1456bcd61be95d8b954f1"},
+    "hyphen.cfg": {"length": 6425, "sha256": "79b2c65add13b16e2d4693e3d103227811b5c3ba2001e2ea97c5f00e521312ac"},
+    "language.dat": {"length": 45, "sha256": "c26c376de22b5e35d9d60aa566c985669b458f57e1bfcc506ad5fbd6bd464d15"},
+    "hypht2.tex": {"length": 541, "sha256": "e8c4eeb5c84ef29711cf2ffc9d0d98127d5336fa0dcb1e466ee289903a7b789f"},
+    "catlcy.tex": {"length": 1327, "sha256": "9f13591f87a891c5415f0e27b83b1f20dfc66d34f52809c35ee0a43dab84411f"},
+    "lcy2t2a.tex": {"length": 1003, "sha256": "dd84524d6127d20918cbd09a0e8de10669657164352d81678287a8d6b0fc6e78"},
+    "ukrhypmp.tex": {"length": 16075, "sha256": "fc6e1c2b18a7f6af455d18586be2b7db1c8b89060f18beaa735e713694e92806"},
+    "ukrhyph.tex": {"length": 2132, "sha256": "4585623ae28ed2e0419be2c3270a52fb36ba9428cfe591f6914f2cce90e7e8ba"},
+    "t2acmr.fd": {"length": 2556, "sha256": "193f28c15cf5506b89694f1a155307016cc00a3eec05f07c2c6cb4e6835580b5"},
+    "larm1000.tfm": {"length": 3220, "sha256": "edf9222464ab7249229895bc59e612d9d7e5538777a856f8fda689249b364d64"},
+    "labx1000.tfm": {"length": 3300, "sha256": "07d9c79950301380f351a6fc6fd25f9c8aabcb9ca964d99d496024b835753f1b"},
+    "cm-super-t2a.enc": {"length": 3141, "sha256": "bbf41f1c0858e9ba489dfd9a6290d17b189345c1e982a096efe4de4547fdff31"},
+    "sfrm1000.pfb": {"length": 138258, "sha256": "650a5428cc0729742dcf1935dba1f504e27bbb5ec5936aeaf5f4955909a0f540"},
+    "sfbx1000.pfb": {"length": 145408, "sha256": "b6ef43f479c1e94d1414ecd09246af4ee082444deed96a82cd4b6b8cd8fb4566"},
+    "notices/cm-super-COPYING.txt": {"length": 17992, "sha256": "32b1062f7da84967e7019d01ab805935caa7ab7321a7ced0e30ebe75e5df1670"},
+    "notices/cm-super-INSTALL.txt": {"length": 5919, "sha256": "dbb04c7d15d7910d3410314985f0fb300c3c686905ad0881973b067713ac288b"}
+  }
+}
