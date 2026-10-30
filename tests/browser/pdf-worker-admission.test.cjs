@@ -10,7 +10,8 @@ const raw = { document: new Uint8Array([10, 11]), loader: new Uint8Array([12, 13
 function request(id = 'pdf-request', changes = {}) {
     return { version: 2, inspectActions: false, requestId: id, documentSha256: hash(raw.document),
         loaderSha256: hash(raw.loader), wasmSha256: hash(raw.wasm), epoch: 1, pageIndex: 0,
-        search: null, raster: false, width: 0, height: 0, budget: { deadlineMs: 10000, inputBytes: 64 }, ...changes };
+        search: null, raster: false, width: 240, height: 340, budget: { deadlineMs: 10000, inputBytes: 64,
+            pages: 32, textUnits: 100000, searchHits: 256, rasterPixels: 4000000, outputBytes: 16777216, liveHandles: 64 }, ...changes };
 }
 function inspect(port, metadata = request(), data = raw) {
     return port.inspect(JSON.stringify(metadata), data.document, data.loader, data.wasm);

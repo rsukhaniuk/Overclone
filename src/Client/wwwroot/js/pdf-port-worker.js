@@ -1,11 +1,32 @@
 // Standalone CLASSIC release-bound worker entry, never an imported ES module.
 // JS only loads parent-provisioned bytes and invokes/copies the actual C++ E1 ABI.
 function pdfWorkerMain() {
+    function validPdfRequest(r) {
+        const b=r?.budget, positive=(v,max)=>Number.isSafeInteger(v)&&v>0&&v<=max;
+        if(!r||r.version!==2||typeof r.inspectActions!=='boolean'||typeof r.raster!=='boolean'
+            ||typeof r.requestId!=='string'||r.requestId.length<1||r.requestId.length>64
+            ||!Number.isSafeInteger(r.epoch)||r.epoch<1
+            ||![r.documentSha256,r.loaderSha256,r.wasmSha256].every(v=>typeof v==='string'&&/^[0-9a-f]{64}$/.test(v))
+            ||!b||!positive(b.deadlineMs,30000)||!positive(b.inputBytes,8388608)||!positive(b.pages,512)
+            ||!positive(b.textUnits,100000)||!positive(b.searchHits,256)||!positive(b.rasterPixels,4000000)
+            ||!positive(b.outputBytes,16777216)||!positive(b.liveHandles,64)
+            ||!Number.isSafeInteger(r.pageIndex)||r.pageIndex<0||r.pageIndex>=b.pages
+            ||!positive(r.width,16384)||!positive(r.height,16384)||r.width*r.height>b.rasterPixels
+            ||r.raster&&r.width*r.height*4+16>b.outputBytes)return false;
+        return r.search===null||typeof r.search==='string'&&r.search.length>0&&r.search.length<=255
+            &&r.search.isWellFormed()&&!r.search.includes('\0');
+    }
+    const typedLength=value=>{
+        try {
+            if(!(value instanceof Uint8Array)||!ArrayBuffer.isView(value))return -1;
+            return Object.getOwnPropertyDescriptor(Object.getPrototypeOf(Uint8Array.prototype),'byteLength').get.call(value);
+        } catch { return -1; }
+    };
     let used = false;
     self.onmessage = async ({ data: d }) => {
         if (used) return;
         used = true;
-        const request = d.request,
+        const request = d?.request ?? {},
             requestId = request.requestId,
             documentSha256 = request.documentSha256,
             epoch = request.epoch;
@@ -41,6 +62,10 @@ function pdfWorkerMain() {
             nativeCalls: calls,
         });
         try {
+            const documentLength=typedLength(d.document),loaderLength=typedLength(d.loader),wasmLength=typedLength(d.wasm);
+            if(!validPdfRequest(request)||documentLength<1||documentLength>request.budget.inputBytes
+                ||loaderLength<1||loaderLength>1048576||wasmLength<8||wasmLength>16777216)
+                throw new Error('Invalid bounded PDF frame');
             // Parent owns this validated-loader Blob URL and revokes it AFTER
             // terminating us, including cancellation that skips this worker's finally.
             if (typeof d.loaderUrl !== "string" || !d.loaderUrl.startsWith("blob:"))

@@ -1,17 +1,37 @@
 // Fixed CLASSIC worker entry admitted by the production service worker.
 // No project filesystem, host mount, fetch, parser, policy or DOM coordinate conversion.
 (() => {
+    function validQueryFields(r) {
+        const coordinate=v=>typeof v==='number'&&Number.isFinite(v)&&Math.abs(v)<=1000000;
+        if(!r||r.version!==1||typeof r.requestId!=='string'||!/^[0-9a-f]{32}$/.test(r.requestId)
+            ||!coordinate(r.h)||!coordinate(r.v)||!Number.isSafeInteger(r.page))return false;
+        if(r.direction==='inverse')return r.file===null&&r.line===0&&r.page>=1&&r.page<=512;
+        if(r.direction!=='forward'||!Number.isSafeInteger(r.line)||r.line<1||r.line>2147483647||r.page<0||r.page>512)return false;
+        const f=r.file;
+        return typeof f==='string'&&f.length>0&&f.length<=1024&&f.isWellFormed()
+            &&new TextEncoder().encode(f).length<=1024&&!/[\u0000-\u001f\u007f-\u009f\u2028\u2029\\:]/.test(f)
+            &&f.split('/').every(p=>p&&p!=='.'&&p!=='..');
+    }
+    const typedLength=value=>{
+        try {
+            if(!(value instanceof Uint8Array)||!ArrayBuffer.isView(value))return -1;
+            return Object.getOwnPropertyDescriptor(Object.getPrototypeOf(Uint8Array.prototype),'byteLength').get.call(value);
+        } catch { return -1; }
+    };
     let used = false;
     self.onmessage = async ({ data }) => {
         if (used) return;
         used = true;
-        const request = data.request;
+        const request = data?.request ?? {};
         let module = null, response;
         const allocations = new Set();
         const envelope = (status, nativeStatus = null, json = null) => ({
             version: 1, requestId: request.requestId, status, nativeStatus, json
         });
         try {
+            const mapLength=typedLength(data.map),wasmLength=typedLength(data.wasm);
+            if(!validQueryFields(request)||mapLength<1||mapLength>1048575||wasmLength<8||wasmLength>1048576)
+                throw new Error('Invalid bounded query frame');
             // URL created from the verified provider bytes by this query's parent.
             // The parent revokes it on EVERY settlement, even forced termination.
             if (typeof data.loaderUrl !== 'string' || !data.loaderUrl.startsWith('blob:')) throw 0;

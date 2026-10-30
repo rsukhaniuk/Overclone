@@ -74,7 +74,7 @@ function harness(options = {}) {
     const context = vm.createContext({ navigator: { serviceWorker: sw }, location: { origin }, URL: OwnedURL, URLSearchParams,
         AbortController, MessageChannel: Channel, crypto: { getRandomValues: value => webcrypto.getRandomValues(value),
             subtle: { async digest(algorithm, bytes) { stats.hashes++; if (control.hashGate) await control.hashGate; return webcrypto.subtle.digest(algorithm, bytes); } } },
-        Uint8Array: ObservedBytes, ArrayBuffer, TextDecoder, Blob, btoa, atob, structuredClone, console,
+        Uint8Array: ObservedBytes, ArrayBuffer, TextDecoder, TextEncoder, Blob, btoa, atob, structuredClone, console,
         async fetch(url, options) {
             stats.fetches++;
             const kind = Object.keys(workerBodies).find(role => String(url) === origin + sourceFor(role));
@@ -96,7 +96,10 @@ function harness(options = {}) {
 }
 function frame(version = 1, id = 'job') {
     return { tag: { version, profile: version === 1 ? 0 : version === 2 ? 1 : 2, runtimeIdentity: version === 1 ? null : 'a'.repeat(64),
-        job: id, epoch: 1, nonce: 'accepted-csharp-nonce', tool: 'latex' }, loader: new Uint8Array([1, 2]), wasm: new Uint8Array([3]),
-        files: [{ name: 'main.tex', bytes: new Uint8Array([4]) }], outputs: ['main.pdf'], maxLogBytes: 100, maxOutputBytes: 100, mainEntry: 'main.tex' };
+        job: id, request: '2'.repeat(32), epoch: 1, capture: '33333333-3333-4333-8333-333333333333',
+        digest: hash(new Uint8Array([4])), ordinal: 1, nonce: '4'.repeat(32), snapshot: null,
+        engineId: null, tool: 'latex' }, loader: new Uint8Array([1, 2]), wasm: new Uint8Array([3]),
+        files: [{ name: 'main.tex', bytes: new Uint8Array([4]) }], outputs: ['main.pdf'], maxLogBytes: 100, maxOutputBytes: 100,
+        mainEntry: 'main.tex', selectedRoot: 'main.tex', runtimeResourceNames: [], generatedInputNames: [] };
 }
 module.exports = { harness, frame, tick, origin, policy, workerBodies, hash };

@@ -1,0 +1,12 @@
+% SYNTHETIC Lua-only fixture. Never run outside root's supervised worker.
+\documentclass{article}
+\begin{document}
+\directlua{dofile("caught-output-quota.lua")}
+\directlua{
+  local ok = pcall(function()
+    local chunk = string.rep("L", 1024)
+    for i = 1, 257 do texio.write_nl(chunk) end
+  end)
+  tex.print("R4_SYNTHETIC_AFTER_LOG_CAP_" .. tostring(ok))
+}
+\end{document}

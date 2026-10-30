@@ -1,0 +1,9 @@
+% SYNTHETIC display/URI strings. They must stay passive text/metadata.
+% No external endpoint exists here: .invalid is DATA and is never requested.
+\documentclass{article}
+\begin{document}
+\texttt{R4\_SYNTHETIC\_DISPLAY\_CANARY}
+\verb|<img src=x onerror="R4_SYNTHETIC_DISPLAY_CANARY">|
+\verb|javascript:R4_SYNTHETIC_URI_CANARY|
+\verb|https://r4-synthetic.invalid/?canary=R4_SYNTHETIC_NOT_A_SECRET|
+\end{document}

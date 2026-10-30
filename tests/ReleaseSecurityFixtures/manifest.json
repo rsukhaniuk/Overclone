@@ -1,0 +1,402 @@
+{
+  "schemaVersion": 1,
+  "synthetic": true,
+  "execution": "preflight-only",
+  "files": [
+    {
+      "path": "README.md",
+      "length": 4471,
+      "sha256": "45e426e3ea35d6579ad08e6802c7eeb6b06afbb76b40f99c6d26fb20ef8c4fd4"
+    },
+    {
+      "path": "caught-output-quota.lua",
+      "length": 645,
+      "sha256": "0ce0f575ad307c74480bf3f773e1ee7db68060aa210bb8e10c55977384a2eafd"
+    },
+    {
+      "path": "caught-quotas.tex",
+      "length": 374,
+      "sha256": "e5c08001161e7d6392cd36bc1d98b52856e5384bcf3bd746b27e6dac0205dbee"
+    },
+    {
+      "path": "display-data.tex",
+      "length": 413,
+      "sha256": "45f1387a588cb78bdc4310e26b851a999094a66cf4a8aef58d4ce7bf6f9e7c38"
+    },
+    {
+      "path": "lua-runaway.tex",
+      "length": 166,
+      "sha256": "b9f37a8e2464e7cde63040de2655354d4adc2ef4bf39bd47d760b0dc44ea34f4"
+    },
+    {
+      "path": "namespace-control.tex",
+      "length": 292,
+      "sha256": "ec070ac491acf48479329863bf9dc2881f0e87c4ac9b685c1cf960862dc2c0b5"
+    },
+    {
+      "path": "passive-uri.tex",
+      "length": 313,
+      "sha256": "36cd32d63ae8add5d0fb64438672f52cc44b505d90684b100299acc2edc6fe38"
+    },
+    {
+      "path": "runaway.lua",
+      "length": 173,
+      "sha256": "fbd6052090f15712a6b14640aef48f2e24fc99913d54e882b54b70fa6659c5a2"
+    },
+    {
+      "path": "runaway.tex",
+      "length": 223,
+      "sha256": "e627089743d525e3ec6e6adf03fe28c434a9b72926212d7bda323e3c5aed488e"
+    }
+  ],
+  "cases": [
+    {
+      "id": "cpu-tex",
+      "synthetic": true,
+      "acceptanceIds": [
+        "R4-RES-01",
+        "R4-CAN-01"
+      ],
+      "mode": "cpu",
+      "entry": "runaway.tex",
+      "files": [
+        "runaway.tex"
+      ],
+      "engineIds": [
+        "pdftex",
+        "latex-dvi",
+        "xelatex",
+        "lualatex"
+      ],
+      "limits": {
+        "outerWallMs": 30000,
+        "heapBytes": 2147483648,
+        "outputBytes": 8388608,
+        "logBytes": 262144,
+        "cancelRetireMs": 2000
+      },
+      "expected": {
+        "statuses": [
+          "cancelled",
+          "transport-timeout"
+        ],
+        "preserveSavedProjectBytes": true,
+        "sourceEditableAfter": true,
+        "benignRecoveryCompleted": true,
+        "noNetworkOrHostSideEffect": true
+      },
+      "unproved": [
+        "Actual accepted native execution/source/runtime/publication",
+        "Measured heap/process RSS and physical cancellation",
+        "Real browser CSP/owned-loopback sinks/UI availability"
+      ]
+    },
+    {
+      "id": "cpu-lua",
+      "synthetic": true,
+      "acceptanceIds": [
+        "R4-RES-01",
+        "R4-CAN-01"
+      ],
+      "mode": "cpu",
+      "entry": "lua-runaway.tex",
+      "files": [
+        "lua-runaway.tex",
+        "runaway.lua"
+      ],
+      "engineIds": [
+        "lualatex"
+      ],
+      "limits": {
+        "outerWallMs": 30000,
+        "heapBytes": 536870912,
+        "outputBytes": 8388608,
+        "logBytes": 262144,
+        "cancelRetireMs": 2000
+      },
+      "expected": {
+        "statuses": [
+          "cancelled",
+          "transport-timeout"
+        ],
+        "preserveSavedProjectBytes": true,
+        "sourceEditableAfter": true,
+        "benignRecoveryCompleted": true,
+        "noNetworkOrHostSideEffect": true
+      },
+      "unproved": [
+        "Actual accepted native execution/source/runtime/publication",
+        "Measured heap/process RSS and physical cancellation",
+        "Real browser CSP/owned-loopback sinks/UI availability"
+      ]
+    },
+    {
+      "id": "namespace",
+      "synthetic": true,
+      "acceptanceIds": [
+        "R4-RES-01",
+        "R4-STALE-01"
+      ],
+      "mode": "admission",
+      "entry": "namespace-control.tex",
+      "files": [
+        "namespace-control.tex"
+      ],
+      "engineIds": [
+        "pdftex",
+        "latex-dvi",
+        "xelatex",
+        "lualatex"
+      ],
+      "limits": {
+        "outerWallMs": 30000,
+        "heapBytes": 536870912,
+        "outputBytes": 8388608,
+        "logBytes": 262144,
+        "cancelRetireMs": 2000
+      },
+      "expected": {
+        "statuses": [
+          "setup-failure",
+          "transport-error",
+          "rejected"
+        ],
+        "preserveSavedProjectBytes": true,
+        "sourceEditableAfter": true,
+        "benignRecoveryCompleted": true,
+        "noNetworkOrHostSideEffect": true
+      },
+      "unproved": [
+        "Actual accepted native execution/source/runtime/publication",
+        "Measured heap/process RSS and physical cancellation",
+        "Real browser CSP/owned-loopback sinks/UI availability"
+      ],
+      "wireNames": [
+        {
+          "name": "../r4-synthetic-outside.tex",
+          "expect": "traversal rejection"
+        },
+        {
+          "name": "/r4-synthetic-virtual-canary.tex",
+          "expect": "absolute rejection"
+        },
+        {
+          "name": "__oop_runtime__/r4-canary.tex",
+          "expect": "untrusted runtime role rejection"
+        },
+        {
+          "names": [
+            "MAIN.TEX",
+            "main.tex"
+          ],
+          "expect": "case alias rejection"
+        },
+        {
+          "names": [
+            "é.tex",
+            "é.tex"
+          ],
+          "expect": "NFC alias rejection"
+        }
+      ]
+    },
+    {
+      "id": "generated-collision",
+      "synthetic": true,
+      "acceptanceIds": [
+        "R4-RES-01",
+        "R4-STALE-01"
+      ],
+      "mode": "admission",
+      "entry": "namespace-control.tex",
+      "files": [
+        "namespace-control.tex"
+      ],
+      "engineIds": [
+        "lualatex"
+      ],
+      "limits": {
+        "outerWallMs": 30000,
+        "heapBytes": 536870912,
+        "outputBytes": 8388608,
+        "logBytes": 262144,
+        "cancelRetireMs": 2000
+      },
+      "expected": {
+        "statuses": [
+          "setup-failure",
+          "transport-error",
+          "rejected"
+        ],
+        "preserveSavedProjectBytes": true,
+        "sourceEditableAfter": true,
+        "benignRecoveryCompleted": true,
+        "noNetworkOrHostSideEffect": true
+      },
+      "unproved": [
+        "Actual accepted native execution/source/runtime/publication",
+        "Measured heap/process RSS and physical cancellation",
+        "Real browser CSP/owned-loopback sinks/UI availability"
+      ],
+      "wireCases": [
+        {
+          "capturedName": "result.pdf",
+          "declaredOutput": "result.pdf",
+          "expect": "captured/generated collision"
+        },
+        {
+          "selectedRoot": "namespace-control.tex",
+          "generatedInputNames": [
+            "namespace-control.tex"
+          ],
+          "expect": "captured root cannot become generated input"
+        }
+      ]
+    },
+    {
+      "id": "caught-quotas",
+      "synthetic": true,
+      "acceptanceIds": [
+        "R4-RES-01"
+      ],
+      "mode": "quota",
+      "entry": "caught-quotas.tex",
+      "files": [
+        "caught-quotas.tex",
+        "caught-output-quota.lua"
+      ],
+      "engineIds": [
+        "lualatex"
+      ],
+      "limits": {
+        "outerWallMs": 30000,
+        "heapBytes": 536870912,
+        "outputBytes": 8388608,
+        "logBytes": 262144,
+        "cancelRetireMs": 2000
+      },
+      "expected": {
+        "statuses": [
+          "resource-limit",
+          "protocol-failure"
+        ],
+        "preserveSavedProjectBytes": true,
+        "sourceEditableAfter": true,
+        "benignRecoveryCompleted": true,
+        "noNetworkOrHostSideEffect": true
+      },
+      "unproved": [
+        "Actual accepted native execution/source/runtime/publication",
+        "Measured heap/process RSS and physical cancellation",
+        "Real browser CSP/owned-loopback sinks/UI availability"
+      ],
+      "boundedPayloads": {
+        "virtualFile": "result.aux",
+        "chunkBytes": 65536,
+        "maxWriteCalls": 129,
+        "maxLogicalWriteBytes": 8454144,
+        "terminalChunkBytes": 1024,
+        "maxTerminalWrites": 257,
+        "latchedQuotaMustRevokeOutputs": true,
+        "mereLogTruncationIsNotLatchProof": true
+      }
+    },
+    {
+      "id": "display-data",
+      "synthetic": true,
+      "acceptanceIds": [
+        "R4-STALE-01",
+        "R4-NET-01"
+      ],
+      "mode": "display",
+      "entry": "display-data.tex",
+      "files": [
+        "display-data.tex"
+      ],
+      "engineIds": [
+        "pdftex",
+        "latex-dvi",
+        "xelatex",
+        "lualatex"
+      ],
+      "limits": {
+        "outerWallMs": 30000,
+        "heapBytes": 536870912,
+        "outputBytes": 8388608,
+        "logBytes": 262144,
+        "cancelRetireMs": 2000
+      },
+      "expected": {
+        "statuses": [
+          "completed"
+        ],
+        "preserveSavedProjectBytes": true,
+        "sourceEditableAfter": true,
+        "benignRecoveryCompleted": true,
+        "noNetworkOrHostSideEffect": true
+      },
+      "unproved": [
+        "Actual accepted native execution/source/runtime/publication",
+        "Measured heap/process RSS and physical cancellation",
+        "Real browser CSP/owned-loopback sinks/UI availability"
+      ]
+    },
+    {
+      "id": "passive-uri",
+      "synthetic": true,
+      "acceptanceIds": [
+        "R4-STALE-01",
+        "R4-NET-01"
+      ],
+      "mode": "display",
+      "entry": "passive-uri.tex",
+      "files": [
+        "passive-uri.tex"
+      ],
+      "engineIds": [
+        "pdftex"
+      ],
+      "limits": {
+        "outerWallMs": 30000,
+        "heapBytes": 2147483648,
+        "outputBytes": 8388608,
+        "logBytes": 262144,
+        "cancelRetireMs": 2000
+      },
+      "expected": {
+        "statuses": [
+          "completed"
+        ],
+        "preserveSavedProjectBytes": true,
+        "sourceEditableAfter": true,
+        "benignRecoveryCompleted": true,
+        "noNetworkOrHostSideEffect": true
+      },
+      "unproved": [
+        "Actual accepted native execution/source/runtime/publication",
+        "Measured heap/process RSS and physical cancellation",
+        "Real browser CSP/owned-loopback sinks/UI availability"
+      ],
+      "pdfActionOracle": {
+        "kind": "URI",
+        "value": "javascript:R4_SYNTHETIC_URI_CANARY",
+        "expect": "passive metadata only;never open or execute"
+      }
+    }
+  ],
+  "runtimeGate": "No accepted final runtime/publication provided. Biber10 and map11-14 reservations are not admission. Root supplies closed profile7 identities separately.",
+  "supervisorPolicy": {
+    "oneJobAtATime": true,
+    "cpuQuota": 2,
+    "memoryBytes": 2147483648,
+    "masterOuterWallMs": 300000,
+    "outerKillIsFailure": true
+  },
+  "limitSources": [
+    "src/Client/Compilation/Native/NativeCompilerSuiteContract.cs",
+    "src/Client/Pdf/PdfContracts.cs",
+    "src/Client/Compilation/Native/NativeSyncTeXContract.cs"
+  ],
+  "networkPolicy": "No network operation in B1. Future root probes only use an owned loopback sink.",
+  "claims": "Authored bounded source/oracles only. No WASM/build/browser/CSP/physical cancellation acceptance."
+}

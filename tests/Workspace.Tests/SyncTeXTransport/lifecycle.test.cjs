@@ -34,7 +34,7 @@ async function harness(options = {}) {
         static createObjectURL(blob) { const url = 'blob:owned-' + created.length; created.push({ url, blob }); options.blob?.(port); return url; }
         static revokeObjectURL(url) { revoked.push(url); }
     }
-    const context = vm.createContext({ Uint8Array, ArrayBuffer, URL: URLMock, Blob, Worker,
+    const context = vm.createContext({ Uint8Array, ArrayBuffer, TextEncoder, URL: URLMock, Blob, Worker,
         location: { origin: 'https://app.test' },
         setTimeout(fn) { const key = ++nextTimer; timers.set(key, fn); return key; },
         clearTimeout(key) { timers.delete(key); }
@@ -173,7 +173,7 @@ async function workerHarness(options = {}) {
         assert.equal(Object.keys(immediate).length, 0);
     }),
         postMessage(value) { messages.push(value); } };
-    const context = vm.createContext({ self, Uint8Array, TextEncoder,
+    const context = vm.createContext({ self, Uint8Array, ArrayBuffer, TextEncoder,
         WebAssembly: { async instantiate(binary, actualImports) {
             calls.push(['instantiate', [...binary]]); assert.equal(actualImports, imports);
             if (options.instantiateFailure) throw new Error('synthetic WASM initialization failure');
@@ -181,7 +181,7 @@ async function workerHarness(options = {}) {
         } },
         importScripts(url) { assert.equal(url, 'blob:approved'); calls.push(['import']); } });
     vm.runInContext(workerSource, context);
-    const request = { requestId: id(1), direction: 'forward', file: 'розділ/🙂.tex', line: 100, page: 0, h: 12.5, v: -5, ...options.request };
+    const request = { version: 1, requestId: id(1), direction: 'forward', file: 'розділ/🙂.tex', line: 100, page: 0, h: 12.5, v: -5, ...options.request };
     const event = { data: { request, loaderUrl: 'blob:approved', map: bytes()[0], wasm: bytes()[2] } };
     await self.onmessage(event); await self.onmessage(event); // one-use even after errors
     return { calls, messages, output, factoryOptions };
@@ -208,7 +208,7 @@ test('rejected supplied WASM initialization finishes without native calls or net
 });
 
 test('inverse preserves upstream visible coordinates with no DOM conversion', async () => {
-    const h = await workerHarness({ request: { direction: 'inverse', page: 512 } });
+    const h = await workerHarness({ request: { direction: 'inverse', file: null, line: 0, page: 512 } });
     assert.deepEqual(h.calls.find(v => v[0] === 'inverse'), ['inverse', 512, 12.5, -5]);
 });
 

@@ -1,0 +1,2 @@
+SYNTHETIC TEST NOTICE — not a license decision for the application.
+This authored fixture tests exact source/member/Work/text associations only.

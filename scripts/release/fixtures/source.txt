@@ -1,0 +1,2 @@
+SYNTHETIC R4 A1 source. Український текст, emoji 🧪.
+No real compiler or renderer is contained in this fixture.

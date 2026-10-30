@@ -70,6 +70,21 @@ export function createPdfPort() {
         }
         entry.resolve(response);
     }
+    function validPdfRequest(r) {
+        const b=r?.budget, positive=(v,max)=>Number.isSafeInteger(v)&&v>0&&v<=max;
+        if(!r||r.version!==2||typeof r.inspectActions!=='boolean'||typeof r.raster!=='boolean'
+            ||typeof r.requestId!=='string'||r.requestId.length<1||r.requestId.length>64
+            ||!Number.isSafeInteger(r.epoch)||r.epoch<1
+            ||![r.documentSha256,r.loaderSha256,r.wasmSha256].every(v=>typeof v==='string'&&/^[0-9a-f]{64}$/.test(v))
+            ||!b||!positive(b.deadlineMs,30000)||!positive(b.inputBytes,8388608)||!positive(b.pages,512)
+            ||!positive(b.textUnits,100000)||!positive(b.searchHits,256)||!positive(b.rasterPixels,4000000)
+            ||!positive(b.outputBytes,16777216)||!positive(b.liveHandles,64)
+            ||!Number.isSafeInteger(r.pageIndex)||r.pageIndex<0||r.pageIndex>=b.pages
+            ||!positive(r.width,16384)||!positive(r.height,16384)||r.width*r.height>b.rasterPixels
+            ||r.raster&&r.width*r.height*4+16>b.outputBytes)return false;
+        return r.search===null||typeof r.search==='string'&&r.search.length>0&&r.search.length<=255
+            &&r.search.isWellFormed()&&!r.search.includes('\0');
+    }
     function inspect(metadata, documentBytes, loaderBytes, wasmBytes) {
         let request;
         try { request = JSON.parse(metadata); }
@@ -85,6 +100,7 @@ export function createPdfPort() {
             !Number.isSafeInteger(request.budget.inputBytes) || request.budget.inputBytes <= 0 || request.budget.inputBytes > 8388608 ||
             !isHash(request.documentSha256) || !isHash(request.loaderSha256) || !isHash(request.wasmSha256)
         ) return Promise.resolve(terminal(request, 'transport-error'));
+        if (!validPdfRequest(request)) return Promise.resolve(terminal(request, 'transport-error'));
         if (disposed) return Promise.resolve(terminal(request, 'disposed'));
         if (earlyCancel === request.requestId) {
             earlyCancel = null;

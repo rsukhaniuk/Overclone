@@ -1,5 +1,6 @@
 #!/bin/sh
 set -eu
+
 cd /workspace
 
 # These checks use Node built-ins only. Real browser/PWA acceptance is separate.

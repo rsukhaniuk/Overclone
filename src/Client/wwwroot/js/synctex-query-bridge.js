@@ -47,6 +47,17 @@ export function createSyncTeXQueryPort() {
         if (entry.starting) { entry.terminal = response; return; }
         finish(entry, response);
     }
+    function validQueryFields(r) {
+        const coordinate=v=>typeof v==='number'&&Number.isFinite(v)&&Math.abs(v)<=1000000;
+        if(!r||r.version!==1||typeof r.requestId!=='string'||!/^[0-9a-f]{32}$/.test(r.requestId)
+            ||!coordinate(r.h)||!coordinate(r.v)||!Number.isSafeInteger(r.page))return false;
+        if(r.direction==='inverse')return r.file===null&&r.line===0&&r.page>=1&&r.page<=512;
+        if(r.direction!=='forward'||!Number.isSafeInteger(r.line)||r.line<1||r.line>2147483647||r.page<0||r.page>512)return false;
+        const f=r.file;
+        return typeof f==='string'&&f.length>0&&f.length<=1024&&f.isWellFormed()
+            &&new TextEncoder().encode(f).length<=1024&&!/[\u0000-\u001f\u007f-\u009f\u2028\u2029\\:]/.test(f)
+            &&f.split('/').every(p=>p&&p!=='.'&&p!=='..');
+    }
     function query(metadata, mapBytes, loaderBytes, wasmBytes) {
         // Bound strings/arrays before parsing or allocating any owned copy.
         if (typeof metadata !== 'string' || metadata.length > 8192)
@@ -58,6 +69,7 @@ export function createSyncTeXQueryPort() {
             !Number.isInteger(source.deadlineMs) || source.deadlineMs < 1 || source.deadlineMs > 15000)
             return Promise.resolve(terminal('', 'failed'));
         const id = source.requestId;
+        if (!validQueryFields(source)) return Promise.resolve(terminal(id, 'failed'));
         if (disposed) return Promise.resolve(terminal(id, 'disposed'));
         if (cancelled.has(id)) return Promise.resolve(terminal(id, 'cancelled'));
         if (active || preparation) return Promise.resolve(terminal(id, 'busy'));
