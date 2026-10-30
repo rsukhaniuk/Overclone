@@ -1,5 +1,6 @@
 using System.Text;
 using Client.Workspace.Drive;
+using Client.Workspace.Domain;
 using Client.Workspace.Transfer;
 using Xunit;
 using static Workspace.Tests.Drive.DriveRestTests;
@@ -205,6 +206,120 @@ public sealed class DriveSessionTests
         Assert.Equal(notice, remount.Notice); // no old-project view update
         Assert.Contains("uncertain", remount.RemoteNotice); // separate remote ledger
         Assert.Equal(0, fixture.Repo.Publishes);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task AbaDraftEditDoesNotReviveImportOrExportConfirmation(bool import)
+    {
+        await using var fixture = await CompilationTestWorkspace.Open();
+        var handler = new Handler(_ => Response([]));
+        var auth = new Auth();
+        using var rest = new DriveRestClient(new HttpClient(handler), auth);
+        var transfer = new ZipTransferService(fixture.Repo);
+        using var session = new DriveTransferSession(fixture.Workspace, transfer, transfer, rest, auth);
+        if (import)
+        {
+            var bytes = await Archive(fixture);
+            handler.Next = _ => Task.FromResult(Response(bytes));
+            await session.ChooseAsync(); await session.DownloadAndStageAsync();
+            Assert.True(session.CanAccept);
+        }
+        else { await session.PrepareExportAsync(); Assert.True(session.CanUpload); }
+        var initial = fixture.Workspace.Files.Single(f => f.Id == fixture.Main).Content!;
+        var generation = fixture.Workspace.WorkingGeneration;
+        fixture.Workspace.EditText(fixture.Main, initial + "ABA");
+        fixture.Workspace.EditText(fixture.Main, initial);
+        Assert.True(fixture.Workspace.WorkingGeneration > generation);
+        Assert.Equal(initial, fixture.Workspace.Files.Single(f => f.Id == fixture.Main).Content);
+        Assert.Null(session.ImportPreview); Assert.Null(session.ExportPreview);
+        Assert.False(session.CanAccept); Assert.False(session.CanUpload);
+        var calls = handler.Calls;
+        Assert.Null(await session.AcceptImportAsync()); await session.UploadNewAsync();
+        Assert.Equal(calls, handler.Calls); Assert.Equal(0, fixture.Repo.Publishes);
+    }
+
+    [Fact]
+    public async Task LocalSaveHeadMovementRefusesStagedImportWithoutDraftGenerationChange()
+    {
+        await using var fixture = await CompilationTestWorkspace.Open();
+        var bytes = await Archive(fixture);
+        fixture.Workspace.EditText(fixture.Main, "dirty before stage");
+        var handler = new Handler(_ => Response(bytes));
+        var auth = new Auth();
+        using var rest = new DriveRestClient(new HttpClient(handler), auth);
+        var transfer = new ZipTransferService(fixture.Repo);
+        using var session = new DriveTransferSession(fixture.Workspace, transfer, transfer, rest, auth);
+        await session.ChooseAsync(); await session.DownloadAndStageAsync();
+        Assert.True(session.CanAccept);
+        var generation = fixture.Workspace.WorkingGeneration;
+        var head = fixture.Workspace.CurrentRevision!.Id;
+        await fixture.Workspace.SaveAsync(default);
+        Assert.NotEqual(head, fixture.Workspace.CurrentRevision!.Id);
+        Assert.Equal(generation, fixture.Workspace.WorkingGeneration);
+        // A save-only head move need not emit WorkspaceChanged. Acceptance
+        // must compare the live full stamp even without an invalidation event.
+        Assert.False(session.CanAccept);
+        Assert.Null(await session.AcceptImportAsync()); Assert.Equal(0, fixture.Repo.Publishes);
+    }
+
+    [Theory]
+    [InlineData("cancel")]
+    [InlineData("disconnect")]
+    [InlineData("unmount")]
+    public async Task CompletedLocalPublicationWithHeldReceiptIsReconciledWithoutRepeatAcceptance(string invalidation)
+    {
+        await using var fixture = await CompilationTestWorkspace.Open();
+        var bytes = await Archive(fixture);
+        fixture.Workspace.EditText(fixture.Main, "dirty current draft survives late import🙂");
+        var state = fixture.State();
+        var handler = new Handler(_ => Response(bytes));
+        var auth = new Auth();
+        using var rest = new DriveRestClient(new HttpClient(handler), auth);
+        var zip = new ZipTransferService(fixture.Repo);
+        var transfer = new HeldPublication(zip);
+        using var session = new DriveTransferSession(fixture.Workspace, transfer, zip, rest, auth);
+        await session.ChooseAsync(); await session.DownloadAndStageAsync();
+        var pending = session.AcceptImportAsync();
+        var published = await transfer.Published.Task.WaitAsync(Wait);
+        Assert.True(published.Published); Assert.Equal(1, fixture.Repo.Publishes);
+        Assert.True(session.Busy); Assert.Null(session.ImportPreview);
+        if (invalidation == "cancel") session.Cancel();
+        else if (invalidation == "disconnect") session.Disconnect();
+        else session.Dispose();
+        Assert.True(session.Busy); // receipt/transport still physically owned
+        using var remount = new DriveTransferSession(fixture.Workspace, transfer, zip, rest, auth);
+        Assert.Null(await remount.AcceptImportAsync());
+        transfer.Release.TrySetResult();
+        Assert.Null(await pending.WaitAsync(Wait)); // late result cannot repaint cancelled view
+        Assert.False(session.Busy);
+        Assert.Null(await session.AcceptImportAsync()); Assert.Null(await remount.AcceptImportAsync());
+        Assert.Equal(1, fixture.Repo.Publishes); Assert.Equal(1, handler.Calls);
+        Assert.Equal(state, fixture.State());
+        // Reconcile the committed project through the existing project-list seam,
+        // not by blindly re-importing after loss of the panel's receipt.
+        var projects = await fixture.Repo.ListProjectsAsync(default);
+        var recovered = Assert.Single(projects, p => p.Id == published.Project!.Id);
+        Assert.NotEqual(fixture.Workspace.Project!.Id, recovered.Id);
+        Assert.Equal(published.Head, recovered.HeadRevisionId);
+    }
+
+    private sealed class HeldPublication(IProjectTransfer inner) : IProjectTransfer
+    {
+        internal readonly TaskCompletionSource<ImportPublishResult> Published = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        internal readonly TaskCompletionSource Release = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public Task<TransferStageResult> StageZipImportAsync(byte[] bytes, string name, CancellationToken ct)
+            => inner.StageZipImportAsync(bytes, name, ct);
+        public Task<ExportReceipt> ExportZipAsync(ExportSource source, CancellationToken ct)
+            => inner.ExportZipAsync(source, ct);
+        public async Task<ImportPublishResult> PublishAsync(StagedProject staged, string name, CancellationToken ct)
+        {
+            var result = await inner.PublishAsync(staged, name, ct);
+            Published.TrySetResult(result);
+            await Release.Task; // committed publication cannot be undone by cancellation
+            return result;
+        }
     }
 
     private static async Task<byte[]> Archive(CompilationTestWorkspace fixture)

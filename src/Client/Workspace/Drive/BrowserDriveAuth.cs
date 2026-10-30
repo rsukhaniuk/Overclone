@@ -157,6 +157,9 @@ public sealed class BrowserDriveAuth(IJSRuntime js, TimeProvider? clock = null) 
     {
         "offline" => DriveCode.Offline, "denied" => DriveCode.Denied,
         "popup" => DriveCode.Popup, "cancelled" => DriveCode.Cancelled,
+        // A cancelled public JS gesture can settle before its optional library
+        // loader. The browser retains that slot until callback/error/deadline.
+        "busy" => DriveCode.Busy,
         _ => DriveCode.Configuration
     };
     public ValueTask DisposeAsync()

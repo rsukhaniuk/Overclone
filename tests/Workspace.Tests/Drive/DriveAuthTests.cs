@@ -52,6 +52,7 @@ public sealed class DriveAuthTests
     [InlineData("offline", DriveCode.Offline)]
     [InlineData("popup", DriveCode.Popup)]
     [InlineData("configuration", DriveCode.Configuration)]
+    [InlineData("busy", DriveCode.Busy)]
     public async Task SafeBrowserStatuses(string reply, DriveCode expected)
     {
         var js = new Interop();
@@ -113,6 +114,54 @@ public sealed class DriveAuthTests
             (await Assert.ThrowsAsync<DriveFailure>(() => auth.ChooseZipAsync(Config))).Code);
         js.Module.Selection = new() { Code = "ready", Id = "safe_id-1", Name = "Україна🙂.zip" };
         Assert.Equal(new DriveSelection("safe_id-1", "Україна🙂.zip"), await auth.ChooseZipAsync(Config));
+    }
+
+    [Fact]
+    public async Task BrowserLoaderBusyRefusesPickerButKeepsExistingAuthorization_OnlyExplicitRetry()
+    {
+        var js = new Interop(); js.Module.Token = () => Task.FromResult(Ready());
+        await using var auth = new BrowserDriveAuth(js);
+        await auth.ConnectAsync(Config);
+        // JS can cancel its public gesture while retaining a held library load.
+        // A later gesture must report Busy, not bad operator configuration.
+        js.Module.Selection = new() { Code = "busy" };
+        Assert.Equal(DriveCode.Busy,
+            (await Assert.ThrowsAsync<DriveFailure>(() => auth.ChooseZipAsync(Config))).Code);
+        Assert.Equal(DriveCode.Ready, auth.Status);
+        using var request = new HttpRequestMessage(); auth.Authorize(request);
+        Assert.Equal("synthetic-memory-token", request.Headers.Authorization!.Parameter);
+        Assert.Equal(1, js.Module.Calls.Count(n => n == "chooseZip"));
+        js.Module.Selection = new() { Code = "ready", Id = "new_id", Name = "new.zip" };
+        Assert.Equal(new DriveSelection("new_id", "new.zip"), await auth.ChooseZipAsync(Config));
+        Assert.Equal(2, js.Module.Calls.Count(n => n == "chooseZip"));
+        Assert.Equal(1, js.Module.Calls.Count(n => n == "connect"));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task TokenExpiresAfterPickerBeforeRestDispatch_NoRequestOrUncertainUpload(bool upload)
+    {
+        var time = new Clock(); var js = new Interop();
+        js.Module.Token = () => Task.FromResult(Ready());
+        js.Module.Selection = new() { Code = "ready", Id = "selected_id", Name = "selected.zip" };
+        await using var auth = new BrowserDriveAuth(js, time);
+        await auth.ConnectAsync(Config);
+        Assert.NotNull(await auth.ChooseZipAsync(Config));
+        // Status was Ready at selection. Dispatch must recheck the real token
+        // owner at the exact 30-second safety boundary, not trust that UI state.
+        time.Now = time.Now.AddSeconds(3570);
+        var handler = new DriveRestTests.Handler(_ => DriveRestTests.Response(new byte[] { 1 }));
+        using var rest = new DriveRestClient(new HttpClient(handler), auth);
+        var failure = await Assert.ThrowsAsync<DriveFailure>(async () =>
+        {
+            if (upload) await rest.CreateZipAsync("x.zip", new byte[] { 1 }, default);
+            else await rest.DownloadAsync(new("selected_id", "selected.zip"), default);
+        });
+        Assert.Equal(DriveCode.Expired, failure.Code);
+        Assert.False(failure.Uncertain);
+        Assert.Equal(0, handler.Calls);
+        Assert.Equal(1, js.Module.Calls.Count(n => n == "connect"));
     }
 
     [Fact]
