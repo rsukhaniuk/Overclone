@@ -1,0 +1,30 @@
+{
+  "protocolVersion": 1,
+  "requestId": "request-vector",
+  "operation": "authoringAssist",
+  "payload": {
+    "snapshotId": "snapshot-vector",
+    "projectId": "project-vector",
+    "sessionId": "session-vector",
+    "workingGeneration": 7,
+    "baseHeadRevisionId": null,
+    "rootFileId": "main",
+    "fileId": "main",
+    "caretByte": 60,
+    "context": "reference",
+    "query": "Ки",
+    "catalogVersion": "1.0",
+    "files": [
+      {
+        "fileId": "main",
+        "relativePath": "main.tex",
+        "mediaKind": "text",
+        "hasBom": true,
+        "sha256": "a8fd512f07ad796f332de81c825db6c902c06b797fa14df2bb0f7bf44a671a2b",
+        "byteOffset": 0,
+        "byteLength": 61
+      }
+    ],
+    "limits": {}
+  }
+}

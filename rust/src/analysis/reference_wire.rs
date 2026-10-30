@@ -54,7 +54,12 @@ impl<'de> Deserialize<'de> for Unique {
         d.deserialize_any(V)
     }
 }
-fn keys(value: &Value, allowed: &[&str]) -> bool {
+/// Shared strict JSON preflight for opt-in operations; legacy parsing is unchanged.
+pub(crate) fn unique_value(json: &str) -> Option<Value> {
+    serde_json::from_str::<Unique>(json).ok().map(|v| v.0)
+}
+
+pub(crate) fn keys(value: &Value, allowed: &[&str]) -> bool {
     value
         .as_object()
         .is_some_and(|m| m.keys().all(|k| allowed.contains(&k.as_str())))

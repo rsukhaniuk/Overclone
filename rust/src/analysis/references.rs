@@ -43,7 +43,7 @@ pub fn configuration<'de, D: Deserializer<'de>>(
     ReferenceConfiguration::deserialize(d).map(Some)
 }
 
-fn tex(path: &str) -> bool {
+pub(crate) fn tex(path: &str) -> bool {
     path.rsplit_once('.')
         .is_some_and(|(_, ext)| ext.eq_ignore_ascii_case("tex"))
 }
@@ -81,7 +81,7 @@ pub(super) fn validate(payload: &AnalyzePayload) -> Result<usize, &'static str> 
 
 /// Filename policy is deliberately separate from key equality. Only literal
 /// project-root-CWD input paths are normalized; no case/NFC/basename repair.
-fn include_path(raw: &[u8], include: bool) -> Option<String> {
+pub(crate) fn include_path(raw: &[u8], include: bool) -> Option<String> {
     if raw.is_empty() || raw.len() > super::MAX_PATH_BYTES {
         return None;
     }
@@ -114,7 +114,7 @@ fn include_path(raw: &[u8], include: bool) -> Option<String> {
     (normalized.len() <= super::MAX_PATH_BYTES).then_some(normalized)
 }
 
-fn literal_key(raw: &[u8]) -> bool {
+pub(crate) fn literal_key(raw: &[u8]) -> bool {
     !raw.is_empty()
         && raw.len() <= MAX_TOKEN_TEXT_BYTES
         && std::str::from_utf8(raw).is_ok_and(|s| {

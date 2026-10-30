@@ -19,6 +19,7 @@ builder.RootComponents.Add<HeadOutlet>("head::after");
 // Pages borrow them across remounts. Compiler/PDF assets ship with the app and
 // prepare automatically; actual native execution remains in isolated workers.
 builder.Services.AddAuthoringWorkspace();
+builder.Services.AddScoped<Client.Editing.Assistance.IAuthoringAssistProvider, Client.Editing.Assistance.RustAuthoringAssistProvider>();
 builder.Services.AddScoped(services => new BundledRuntimeAssets(new HttpClient
 {
     BaseAddress = new Uri(services.GetRequiredService<NavigationManager>().BaseUri),

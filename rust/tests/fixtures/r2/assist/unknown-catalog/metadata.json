@@ -1,0 +1,30 @@
+{
+  "protocolVersion": 1,
+  "requestId": "request-vector",
+  "operation": "authoringAssist",
+  "payload": {
+    "snapshotId": "snapshot-vector",
+    "projectId": "project-vector",
+    "sessionId": "session-vector",
+    "workingGeneration": 7,
+    "baseHeadRevisionId": null,
+    "rootFileId": "main",
+    "fileId": "main",
+    "caretByte": 4,
+    "context": "command",
+    "query": "sec",
+    "catalogVersion": "2.0",
+    "files": [
+      {
+        "fileId": "main",
+        "relativePath": "main.tex",
+        "mediaKind": "text",
+        "hasBom": false,
+        "sha256": "72398ff18d39e1f625fd57340bb2bf931c07e314cc1d1efb24041604b72bda58",
+        "byteOffset": 0,
+        "byteLength": 4
+      }
+    ],
+    "limits": {}
+  }
+}

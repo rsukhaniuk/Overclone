@@ -1,0 +1,44 @@
+{
+  "protocolVersion": 1,
+  "requestId": "request-vector",
+  "status": "completed",
+  "payload": {
+    "snapshotId": "snapshot-vector",
+    "rootFileId": "main",
+    "fileId": "main",
+    "caretByte": 32,
+    "catalogVersion": "1.0",
+    "complete": false,
+    "limitations": [
+      "sourceIntentOnly",
+      "macroExpansionUnsupported",
+      "runtimeResourcesUnverified",
+      "macroExecutionUnsupported"
+    ],
+    "candidates": [
+      {
+        "id": "candidate-0",
+        "kind": "macro",
+        "label": "hello",
+        "detail": "Literal newcommand; 1 argument(s); not expanded",
+        "insertText": "\\hello{}",
+        "replaceSpan": {
+          "startByte": 27,
+          "endByte": 32
+        },
+        "caretOffsetUtf16": 7,
+        "requiresReview": false,
+        "origin": "projectDeclaration",
+        "definition": {
+          "fileId": "main",
+          "span": {
+            "startByte": 13,
+            "endByte": 18
+          }
+        }
+      }
+    ],
+    "outline": [],
+    "loadedPackages": []
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "protocolVersion": 1,
+  "requestId": "request-vector",
+  "status": "failed",
+  "error": {
+    "code": "UnsupportedCapability",
+    "safeMessage": "authoring request could not be completed",
+    "retryable": false
+  }
+}

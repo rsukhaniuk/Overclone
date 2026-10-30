@@ -102,6 +102,21 @@ public sealed record VerifyResult(bool Ok, string? Reason)
 /// resolve from DI (scoped) and reuse across page mounts.</summary>
 public sealed class SourceNavigator
 {
+    /// <summary>Dedicated authoring reports have their own captured/session
+    /// authority, not a fabricated AnalysisCoordinator report or running-worker
+    /// epoch. Keep exact source/preimage/map/DOM guards; navigation grants no edit.</summary>
+    public SpanMappingResult? VerifyAuthoringNavigation(Client.Editing.Assistance.AuthoringAssistNavigation request)
+    {
+        if (!request.IsCurrent()) return null;
+        var captured = request.File;
+        var live = _workspace.Files.SingleOrDefault(f => f.Id == captured.FileId && !f.Deleted);
+        if (live is not { MediaKind: "text" } || live.RelativePath != captured.RelativePath || live.HasBom != captured.HasBom
+            || !TextContent.TryDecode(captured.Bytes.ToArray(), out var text, out _)
+            || SpanMapping.NormalizeNewlines(live.Content) != SpanMapping.NormalizeNewlines(text)) return null;
+        var mapping = SpanMapping.Map(captured, captured.FileId.ToString(), request.Span.StartByte, request.Span.EndByte);
+        return request.IsCurrent() ? mapping : null;
+    }
+
     private const int MaxExcerptChars = 120;
 
     private readonly AnalysisCoordinator _analysis;

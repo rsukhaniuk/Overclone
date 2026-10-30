@@ -1,0 +1,39 @@
+{
+  "protocolVersion": 1,
+  "requestId": "request-vector",
+  "operation": "authoringAssist",
+  "payload": {
+    "snapshotId": "snapshot-vector",
+    "projectId": "project-vector",
+    "sessionId": "session-vector",
+    "workingGeneration": 7,
+    "baseHeadRevisionId": null,
+    "rootFileId": "main",
+    "fileId": "main",
+    "caretByte": 11,
+    "context": "inputPath",
+    "query": "chap",
+    "catalogVersion": "1.0",
+    "files": [
+      {
+        "fileId": "main",
+        "relativePath": "main.tex",
+        "mediaKind": "text",
+        "hasBom": false,
+        "sha256": "966f6362b88f3c292a0dd17a641d4e7f14eee54591266c08498510eceba8cb73",
+        "byteOffset": 0,
+        "byteLength": 12
+      },
+      {
+        "fileId": "chapter",
+        "relativePath": "chapter.tex",
+        "mediaKind": "text",
+        "hasBom": false,
+        "sha256": "820fc585415afbd5f32eb25247fa0d0139a0af9563cefb6f2b3d9d33a2bd53f9",
+        "byteOffset": 12,
+        "byteLength": 6
+      }
+    ],
+    "limits": {}
+  }
+}

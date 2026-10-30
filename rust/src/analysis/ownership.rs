@@ -57,7 +57,7 @@ pub(super) fn group(
 
 /// One linear brace pairing over already bounded tokens. Callers reserve token
 /// work BEFORE allocating. Unowned braces remain unsafe semantic scope.
-pub(super) fn index(tokens: &[Token]) -> (Vec<Option<usize>>, Vec<usize>, bool) {
+pub(crate) fn index(tokens: &[Token]) -> (Vec<Option<usize>>, Vec<usize>, bool) {
     let mut closes = vec![None; tokens.len()];
     let mut depths = vec![0; tokens.len()];
     let mut stack = Vec::new();

@@ -125,7 +125,7 @@ fn find_byte(body: &[u8], target: &[u8], from: usize) -> Option<usize> {
 /// consumed by a preceding escape starts a comment through CR/LF/EOF, so
 /// braces inside that comment cannot change depth or close the group.
 /// Every byte/scalar examined consumes the shared `budget`.
-fn find_group_close(
+pub(crate) fn find_group_close(
     bytes: &[u8],
     from: usize,
     budget: &mut LookaheadBudget,
@@ -180,7 +180,7 @@ fn find_group_close(
 /// comment through CR/LF/EOF, so a `]` inside that comment is NOT the close; a
 /// `]` inside a nested `{...}` is not the close either. Every byte/scalar
 /// examined consumes the shared `budget`.
-fn find_optional_close(
+pub(crate) fn find_optional_close(
     bytes: &[u8],
     from: usize,
     budget: &mut LookaheadBudget,
@@ -236,7 +236,7 @@ fn find_optional_close(
 /// past it, so all skipped whitespace/comments/braces are still visited and
 /// brace-balanced by the main scan. Every byte examined consumes the budget.
 /// `Exhausted` means the budget ran out before a `{` could be confirmed.
-fn skip_to_group_open(
+pub(crate) fn skip_to_group_open(
     bytes: &[u8],
     from: usize,
     budget: &mut LookaheadBudget,

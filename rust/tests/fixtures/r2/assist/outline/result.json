@@ -1,0 +1,42 @@
+{
+  "protocolVersion": 1,
+  "requestId": "request-vector",
+  "status": "completed",
+  "payload": {
+    "snapshotId": "snapshot-vector",
+    "rootFileId": "main",
+    "fileId": "main",
+    "caretByte": 41,
+    "catalogVersion": "1.0",
+    "complete": true,
+    "limitations": [
+      "sourceIntentOnly",
+      "macroExpansionUnsupported",
+      "runtimeResourcesUnverified"
+    ],
+    "candidates": [],
+    "outline": [
+      {
+        "kind": "heading",
+        "label": "Вступ",
+        "fileId": "main",
+        "span": {
+          "startByte": 9,
+          "endByte": 19
+        },
+        "parentIndex": null
+      },
+      {
+        "kind": "heading",
+        "label": "Мета",
+        "fileId": "main",
+        "span": {
+          "startByte": 32,
+          "endByte": 40
+        },
+        "parentIndex": 0
+      }
+    ],
+    "loadedPackages": []
+  }
+}

@@ -13,6 +13,8 @@
 @using Client.Editing
 @using Client.Editing.Search
 @using Client.Editing.Completion
+@using Client.Editing.Assistance
+@inject IAuthoringAssistProvider AuthoringAssistProvider
 @using Client.Compilation.Navigation
 @using Client.Compilation.SyncTeX
 @using Client.Pdf.Preview
@@ -393,6 +395,16 @@ else
                                 }
                             </div>
                         </details>
+                        <details data-testid="authoring-assist-disclosure">
+                            <summary>Local source assistance</summary>
+                            <label>Selected source root
+                                <select value="@_assistRoot" @onchange="AssistanceRootChanged" data-testid="authoring-assist-root">
+                                    <option value="">Select a current .tex root</option>
+                                    @foreach (var root in ReferenceRootFiles) { <option value="@root.Id">@root.RelativePath</option> }
+                                </select>
+                            </label>
+                            @if (_assistance is { } assistance) { <AuthoringAssistPanel Session="@assistance" /> }
+                        </details>
                         <div class="source-pdf-navigation" aria-label="Source and PDF navigation">
                             <button type="button" data-testid="source-go-to-pdf" disabled="@(!CanMapNavigate || _syncBusy)" @onclick="GoToPdfAsync">Go to PDF</button>
                             <span role="status" data-testid="source-map-status">@_syncStatus</span>
@@ -416,6 +428,8 @@ else
                                   disabled="@Coordinator.IsReadOnly"
                                   data-file-id="@active.Id.ToString()"
                                   data-highlight-revision="@Coordinator.WorkingGeneration.ToString(System.Globalization.CultureInfo.InvariantCulture)"
+                                  @onselect="AssistanceEditorIntentChanged" @onkeydown="AssistanceEditorIntentChanged"
+                                  @onkeyup="AssistanceEditorIntentChanged" @onpointerup="AssistanceEditorIntentChanged"
                                   data-testid="editor" @ref="_editorRef" spellcheck="false" wrap="off"></textarea>
                         </div>
                     }
@@ -747,7 +761,7 @@ else
     // Ownership is separate from query/navigation intent: a query-only change
     // invalidates work but its eventual finalizer must still release its busy state.
     private object? _sourceOperation;
-    private bool _sourceBusy => _sourceOperation is not null || _completionOperation is not null;
+    private bool _sourceBusy => _sourceOperation is not null || _completionOperation is not null || _assistance?.Busy == true;
     private bool SourceEditsDisabled => _sourceBusy || Coordinator.IsReadOnly || Coordinator.Recovery is not null ||
         Coordinator.ActiveFile is not { Deleted: false, MediaKind: "text" };
 
@@ -755,6 +769,7 @@ else
     {
         _sourceIntent++;
         InvalidateCompletion();
+        _assistance?.Invalidate();
         _sourceStatus = "Search changed; choose Next or Previous.";
     }
 
@@ -1214,6 +1229,7 @@ else
         _projectRename = new(Coordinator, action => InvokeAsync(action));
         _projectRename.Changed += ProjectRenameChanged;
         _completions = new(Coordinator, StarterLocks);
+        InitializeAssistance();
         Coordinator.WorkspaceChanged += CompletionAuthorityChanged;
         _singleFileImport = new(Coordinator, StarterLocks, action => InvokeAsync(action), selected: SelectFile);
         _singleFileImport.Changed += SingleFileImportChanged;
@@ -1261,6 +1277,7 @@ else
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        await AssistanceAfterRenderAsync();
         if (firstRender)
         {
             // Subscribe to the service-worker warm-result readiness event so the
@@ -1799,8 +1816,13 @@ else
     // an older deferred selection must never run under a newer click's render.
     private void CancelSelectionIntents()
     {
+        // A deferred callback has started no foreign work. Started callbacks
+        // clear this slot and retain their actual settlement lease in finally.
+        if (_assistPendingNavigation is { } assistance) assistance.Completion.TrySetResult(false);
+        _assistPendingNavigation = null;
         _sourceIntent++;
         InvalidateCompletion();
+        _assistance?.Invalidate();
         // A deferred selection not yet started owns no foreign work. Once the
         // after-render callback starts it clears this slot and owns retirement.
         if (_sourceSelection is { } deferred && ReferenceEquals(deferred.Owner, _completionOperation))
@@ -2342,6 +2364,7 @@ else
     {
         if (_pageDisposed) return; // idempotent
         _pageDisposed = true;
+        DisposeAssistance();
         _articleStarter?.Dispose();
         if (_projectRename is { } rename) { rename.Changed -= ProjectRenameChanged; rename.Dispose(); }
         Coordinator.WorkspaceChanged -= CompletionAuthorityChanged;

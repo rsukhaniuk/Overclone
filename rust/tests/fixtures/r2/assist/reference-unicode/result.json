@@ -1,0 +1,43 @@
+{
+  "protocolVersion": 1,
+  "requestId": "request-vector",
+  "status": "completed",
+  "payload": {
+    "snapshotId": "snapshot-vector",
+    "rootFileId": "main",
+    "fileId": "main",
+    "caretByte": 60,
+    "catalogVersion": "1.0",
+    "complete": true,
+    "limitations": [
+      "sourceIntentOnly",
+      "macroExpansionUnsupported",
+      "runtimeResourcesUnverified"
+    ],
+    "candidates": [
+      {
+        "id": "candidate-0",
+        "kind": "label",
+        "label": "Київ😀е́",
+        "detail": "Literal label; compiled counter unknown",
+        "insertText": "Київ😀е́",
+        "replaceSpan": {
+          "startByte": 56,
+          "endByte": 60
+        },
+        "caretOffsetUtf16": 8,
+        "requiresReview": false,
+        "origin": "projectLabel",
+        "definition": {
+          "fileId": "main",
+          "span": {
+            "startByte": 32,
+            "endByte": 48
+          }
+        }
+      }
+    ],
+    "outline": [],
+    "loadedPackages": []
+  }
+}

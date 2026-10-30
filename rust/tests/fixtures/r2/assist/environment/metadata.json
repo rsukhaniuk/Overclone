@@ -1,0 +1,30 @@
+{
+  "protocolVersion": 1,
+  "requestId": "request-vector",
+  "operation": "authoringAssist",
+  "payload": {
+    "snapshotId": "snapshot-vector",
+    "projectId": "project-vector",
+    "sessionId": "session-vector",
+    "workingGeneration": 7,
+    "baseHeadRevisionId": null,
+    "rootFileId": "main",
+    "fileId": "main",
+    "caretByte": 30,
+    "context": "environment",
+    "query": "ali",
+    "catalogVersion": "1.0",
+    "files": [
+      {
+        "fileId": "main",
+        "relativePath": "main.tex",
+        "mediaKind": "text",
+        "hasBom": false,
+        "sha256": "80baced8c5b8338529f4dfb6964676e6fc4bff2b0e31469a266318b7500d8ba6",
+        "byteOffset": 0,
+        "byteLength": 31
+      }
+    ],
+    "limits": {}
+  }
+}

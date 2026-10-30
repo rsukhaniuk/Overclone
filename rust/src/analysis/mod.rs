@@ -10,9 +10,9 @@ pub mod knu_dto;
 pub mod lexer;
 pub mod mapping;
 pub mod observations;
-mod ownership;
+pub(crate) mod ownership;
 pub mod profiles;
-mod reference_wire;
+pub(crate) mod reference_wire;
 pub mod references;
 pub mod rules;
 
@@ -47,7 +47,7 @@ pub const MAX_PATH_BYTES: usize = 1024;
 
 /// Resolve request limits: a request may LOWER a default but MUST NOT raise
 /// the hard default. None ⇒ default.
-fn resolve_limits(req: &Limits) -> ResolvedLimits {
+pub(crate) fn resolve_limits(req: &Limits) -> ResolvedLimits {
     let mut r = ResolvedLimits {
         max_bytes_per_file: D_MAX_BYTES_PER_FILE,
         max_files: D_MAX_FILES,
@@ -104,7 +104,7 @@ fn init_completed_response(request_id: Option<String>, payload: &InitializePaylo
     }
 }
 
-fn failed_response(
+pub(crate) fn failed_response(
     request_id: Option<String>,
     code: &'static str,
     safe_message: impl Into<String>,
@@ -176,19 +176,19 @@ fn static_failed(_request_id: Option<String>, code: &'static str, safe_message: 
 }
 
 /// io::Write wrapper that refuses writes beyond a byte ceiling.
-struct CappedWriter {
+pub(crate) struct CappedWriter {
     buf: Vec<u8>,
     remaining: usize,
 }
 
 impl CappedWriter {
-    fn new(cap: usize) -> Self {
+    pub(crate) fn new(cap: usize) -> Self {
         Self {
             buf: Vec::with_capacity(cap.min(64 * 1024)),
             remaining: cap,
         }
     }
-    fn into_string(self) -> String {
+    pub(crate) fn into_string(self) -> String {
         // serde_json writes valid UTF-8 JSON. On the (impossible) branch
         // where the bytes are not UTF-8, return ONLY a small valid canonical
         // envelope — never append partial/lossy output to a valid envelope
@@ -637,7 +637,7 @@ pub fn analyze_source(metadata_json: &str, packed_bytes: &[u8]) -> String {
 /// requestId (never echoes a huge/invalid id). This is the FIRST validation
 /// at both public boundaries; once a valid id is recovered it is kept on
 /// every later failure (version/operation/snapshot/profile/file/slice/limit).
-fn recover_request_id(json: &str) -> Result<String, &'static str> {
+pub(crate) fn recover_request_id(json: &str) -> Result<String, &'static str> {
     let value: serde_json::Value = match serde_json::from_str(json) {
         Ok(v) => v,
         Err(_) => return Err("malformed envelope"),
@@ -665,7 +665,7 @@ fn recover_request_id(json: &str) -> Result<String, &'static str> {
 
 /// KNU observations never resolve includes or access a filesystem. Reject raw
 /// path escapes rather than normalizing them at this untrusted boundary.
-fn valid_project_path(path: &str) -> bool {
+pub(crate) fn valid_project_path(path: &str) -> bool {
     !path.is_empty()
         && !path.contains(['\\', ':'])
         && !path.chars().any(char::is_control)
@@ -746,7 +746,7 @@ fn validate_payload_identity(payload: &AnalyzePayload) -> Result<(), String> {
 /// Bounds-check a file descriptor's offset+length against the packed buffer
 /// length. Returns `(offset, length)` or an error message. Never panics;
 /// uses `usize::try_from` so 64-bit host tests and 32-bit wasm targets agree.
-fn checked_slice(f: &FileDescriptor, packed_len: usize) -> Result<(usize, u64), String> {
+pub(crate) fn checked_slice(f: &FileDescriptor, packed_len: usize) -> Result<(usize, u64), String> {
     let off = usize::try_from(f.byte_offset).map_err(|_| "file offset out of range".to_string())?;
     let len = usize::try_from(f.byte_length).map_err(|_| "file length out of range".to_string())?;
     let end = off

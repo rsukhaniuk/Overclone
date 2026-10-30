@@ -1,0 +1,39 @@
+{
+  "protocolVersion": 1,
+  "requestId": "request-vector",
+  "operation": "authoringAssist",
+  "payload": {
+    "snapshotId": "snapshot-vector",
+    "projectId": "project-vector",
+    "sessionId": "session-vector",
+    "workingGeneration": 7,
+    "baseHeadRevisionId": null,
+    "rootFileId": "main",
+    "fileId": "main",
+    "caretByte": 27,
+    "context": "citation",
+    "query": "uk",
+    "catalogVersion": "1.0",
+    "files": [
+      {
+        "fileId": "main",
+        "relativePath": "main.tex",
+        "mediaKind": "text",
+        "hasBom": false,
+        "sha256": "77b21c182b55334157e30bb5532dc385e054b7cf6a33393e55d77dc1489bd285",
+        "byteOffset": 0,
+        "byteLength": 28
+      },
+      {
+        "fileId": "bib",
+        "relativePath": "refs.bib",
+        "mediaKind": "text",
+        "hasBom": false,
+        "sha256": "ad2323ab2f399b28b3c53330c6596d0a5c1b7b61da4ef783730511a093e442b7",
+        "byteOffset": 28,
+        "byteLength": 53
+      }
+    ],
+    "limits": {}
+  }
+}

@@ -1,0 +1,43 @@
+{
+  "protocolVersion": 1,
+  "requestId": "request-vector",
+  "status": "completed",
+  "payload": {
+    "snapshotId": "snapshot-vector",
+    "rootFileId": "main",
+    "fileId": "main",
+    "caretByte": 27,
+    "catalogVersion": "1.0",
+    "complete": true,
+    "limitations": [
+      "sourceIntentOnly",
+      "macroExpansionUnsupported",
+      "runtimeResourcesUnverified"
+    ],
+    "candidates": [
+      {
+        "id": "candidate-0",
+        "kind": "citation",
+        "label": "ukr😀",
+        "detail": "Literal bibliography key; fields/backend not evaluated",
+        "insertText": "ukr😀",
+        "replaceSpan": {
+          "startByte": 25,
+          "endByte": 27
+        },
+        "caretOffsetUtf16": 5,
+        "requiresReview": false,
+        "origin": "projectBibliography",
+        "definition": {
+          "fileId": "bib",
+          "span": {
+            "startByte": 6,
+            "endByte": 13
+          }
+        }
+      }
+    ],
+    "outline": [],
+    "loadedPackages": []
+  }
+}

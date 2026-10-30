@@ -196,3 +196,35 @@ export function detachHighlight(root) {
   highlightControllers.get(root)?.detach();
   highlightControllers.delete(root);
 }
+
+// DOM event/selection
+// transport only. Native sequence catches caret ABA even before a queued .NET
+// event callback runs. No document lexing or source/edit policy here.
+const assistanceObservers = new WeakMap();
+export function inspectAssistanceSelection(element, expectedFileId, expectedNormalizedText) {
+  const selection = readSelection(element, expectedFileId, expectedNormalizedText);
+  if (!selection) return null;
+  let observer = assistanceObservers.get(element);
+  if (!observer) {
+    observer = { sequence: 0, composing: false, invalid: false, events: [] };
+    const changed = event => {
+      if (observer.sequence >= Number.MAX_SAFE_INTEGER) { observer.invalid = true; return; }
+      observer.sequence++;
+      if (event.type === 'compositionstart') observer.composing = true;
+      else if (event.type === 'compositionend') observer.composing = false;
+      else if (typeof event.isComposing === 'boolean') observer.composing = event.isComposing;
+    };
+    for (const name of ['beforeinput', 'input', 'keydown', 'keyup', 'pointerdown', 'pointerup', 'select', 'compositionstart', 'compositionend']) {
+      element.addEventListener(name, changed);
+      observer.events.push([name, changed]);
+    }
+    assistanceObservers.set(element, observer);
+  }
+  if (observer.invalid) return null;
+  return { start: selection.start, end: selection.end, sequence: observer.sequence, composing: observer.composing };
+}
+export function detachAssistanceEditor(element) {
+  const observer = assistanceObservers.get(element);
+  if (observer) for (const [name, handler] of observer.events) element.removeEventListener(name, handler);
+  assistanceObservers.delete(element);
+}

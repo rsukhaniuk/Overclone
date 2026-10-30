@@ -1,6 +1,7 @@
 use wasm_bindgen::prelude::*;
 
 pub mod analysis;
+pub mod authoring;
 pub mod rendered_extent;
 
 /// Counts words separated by ASCII whitespace, matching the C++ example.
@@ -28,6 +29,13 @@ pub fn initialize(request_json: &str) -> String {
 #[wasm_bindgen]
 pub fn analyze_source(metadata_json: &str, packed_bytes: &[u8]) -> String {
     analysis::analyze_source(metadata_json, packed_bytes)
+}
+
+/// Literal source assistance over captured bytes. Request echoes are correlation
+/// only; the host must validate current snapshot, caret and writer authority.
+#[wasm_bindgen]
+pub fn authoring_assist(metadata_json: &str, packed_bytes: &[u8]) -> String {
+    authoring::assist(metadata_json, packed_bytes)
 }
 
 /// Pure, bounded usual-extent observation over caller-supplied PDF page count.

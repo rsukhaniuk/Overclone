@@ -1,0 +1,43 @@
+{
+  "protocolVersion": 1,
+  "requestId": "request-vector",
+  "status": "completed",
+  "payload": {
+    "snapshotId": "snapshot-vector",
+    "rootFileId": "main",
+    "fileId": "main",
+    "caretByte": 30,
+    "catalogVersion": "1.0",
+    "complete": true,
+    "limitations": [
+      "sourceIntentOnly",
+      "macroExpansionUnsupported",
+      "runtimeResourcesUnverified"
+    ],
+    "candidates": [
+      {
+        "id": "candidate-0",
+        "kind": "environment",
+        "label": "align",
+        "detail": "\\begin{align} … \\end{align}; engines: all; resources unverified; requires literal package/class; https://ctan.org/pkg/amsmath",
+        "insertText": "align",
+        "replaceSpan": {
+          "startByte": 27,
+          "endByte": 30
+        },
+        "caretOffsetUtf16": 5,
+        "requiresReview": false,
+        "origin": "packageCatalog",
+        "definition": null
+      }
+    ],
+    "outline": [],
+    "loadedPackages": [
+      {
+        "name": "amsmath",
+        "options": "",
+        "status": "catalogKnownResourcesUnverified"
+      }
+    ]
+  }
+}

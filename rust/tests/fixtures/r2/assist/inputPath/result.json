@@ -1,0 +1,44 @@
+{
+  "protocolVersion": 1,
+  "requestId": "request-vector",
+  "status": "completed",
+  "payload": {
+    "snapshotId": "snapshot-vector",
+    "rootFileId": "main",
+    "fileId": "main",
+    "caretByte": 11,
+    "catalogVersion": "1.0",
+    "complete": false,
+    "limitations": [
+      "sourceIntentOnly",
+      "macroExpansionUnsupported",
+      "runtimeResourcesUnverified",
+      "missingInclude"
+    ],
+    "candidates": [
+      {
+        "id": "candidate-0",
+        "kind": "path",
+        "label": "chapter.tex",
+        "detail": "Captured project path; input command/format compatibility not verified",
+        "insertText": "chapter.tex",
+        "replaceSpan": {
+          "startByte": 7,
+          "endByte": 11
+        },
+        "caretOffsetUtf16": 11,
+        "requiresReview": false,
+        "origin": "projectPath",
+        "definition": {
+          "fileId": "chapter",
+          "span": {
+            "startByte": 0,
+            "endByte": 0
+          }
+        }
+      }
+    ],
+    "outline": [],
+    "loadedPackages": []
+  }
+}

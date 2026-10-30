@@ -1,0 +1,99 @@
+@using Client.Editing.Assistance
+@implements IDisposable
+
+<section aria-label="Local authoring assistance" data-testid="authoring-assist-panel">
+    <label>Source context
+        <select value="@Session.Context" @onchange="ContextChanged" data-testid="authoring-assist-context">
+            @foreach (var context in Enum.GetValues<AuthoringAssistContext>())
+            {
+                <option value="@context">@ContextLabel(context)</option>
+            }
+        </select>
+    </label>
+    <label>Exact prefix (optional; blank uses the current caret prefix)
+        <input value="@_query" @oninput="QueryChanged" maxlength="1024" data-testid="authoring-assist-query" />
+    </label>
+    <button type="button" @onclick="Suggest" disabled="@Session.Busy" data-testid="authoring-assist-suggest">Suggest</button>
+    <button type="button" @onclick="Cancel" disabled="@(!Session.Busy && Session.Report is null)" data-testid="authoring-assist-cancel">Cancel</button>
+    <p role="status" aria-live="polite" data-testid="authoring-assist-status">@Session.Notice</p>
+    <small>Local literal source observations, catalog 1.0. Package names do not prove provisioned resources or effective loading. No macro expansion or compiler/compliance claim.</small>
+    @if (Session.Report is { } report)
+    {
+        <p data-testid="authoring-assist-coverage">@(report.Result.Complete ? "Literal extraction complete for this request." : "Literal extraction has uncertainties.")</p>
+        <ul aria-label="Source limitations" data-testid="authoring-assist-limitations">
+            @foreach (var limitation in report.Result.Limitations) { <li>@limitation</li> }
+        </ul>
+        @if (!report.Result.LoadedPackages.IsEmpty)
+        {
+            <details><summary>Literal package/class mentions (resources unverified)</summary>
+                <ul>@foreach (var package in report.Result.LoadedPackages) { <li><code>@package.Name</code> @package.Options — @package.Status</li> }</ul>
+            </details>
+        }
+        <ol aria-label="Source suggestions" data-testid="authoring-assist-candidates">
+            @foreach (var candidate in report.Result.Candidates)
+            {
+                <li @key="candidate.Id">
+                    <code>@candidate.Label</code> <span>@candidate.Detail</span>
+                    <pre aria-label="Proposed insertion">@candidate.InsertText</pre>
+                    @if (report.Request.Context != AuthoringAssistContext.Definition)
+                    {
+                        <button type="button" disabled="@(Session.Busy || !Session.CanInsert(report) || candidate.RequiresReview)"
+                                @onclick="() => Insert(report, candidate.Id)" data-testid="authoring-assist-insert" data-candidate-id="@candidate.Id">Insert</button>
+                    }
+                    @if (candidate.Definition is not null)
+                    {
+                        <button type="button" disabled="@(Session.Busy || !Session.IsCurrent(report))" @onclick="() => Navigate(report,candidate.Id,null)"
+                                data-testid="authoring-assist-definition">Go to source</button>
+                    }
+                    @if (candidate.RequiresReview) { <span>This proposal requires a separate reviewed-edit workflow; it cannot be inserted here.</span> }
+                </li>
+            }
+        </ol>
+        @if (!report.Result.Outline.IsEmpty)
+        {
+            <ol aria-label="Literal source outline" data-testid="authoring-assist-outline">
+                @for (int i=0;i<report.Result.Outline.Length;i++)
+                {
+                    int index=i; var heading=report.Result.Outline[i];
+                    <li><button type="button" disabled="@(Session.Busy || !Session.IsCurrent(report))" @onclick="() => Navigate(report,null,index)"
+                                data-testid="authoring-assist-heading">@heading.Label</button></li>
+                }
+            </ol>
+        }
+        @if (report.Result.Candidates.IsEmpty && report.Result.Outline.IsEmpty) { <p>No matching literal source facts for this request.</p> }
+    }
+</section>
+
+@code {
+    [Parameter, EditorRequired] public AuthoringAssistSession Session { get; set; } = default!;
+    private AuthoringAssistSession? _initial;
+    private bool _disposed;
+    private string _query="";
+    protected override void OnParametersSet()
+    {
+        ArgumentNullException.ThrowIfNull(Session);
+        if (_initial is not null && !ReferenceEquals(_initial,Session))
+            throw new InvalidOperationException("AuthoringAssistPanel.Session is fixed for this mount. Remount to change it.");
+        if (_initial is null) { _initial=Session; Session.Changed+=Changed; }
+    }
+    private void ContextChanged(ChangeEventArgs e)
+    {
+        if (Enum.TryParse<AuthoringAssistContext>(e.Value?.ToString(),out var context) && Enum.IsDefined(context)) Session.SetContext(context);
+    }
+    private void QueryChanged(ChangeEventArgs e) { _query=e.Value?.ToString()??"";Session.Invalidate(); }
+    private async Task Suggest() { await Session.SuggestAsync(_query.Length==0?null:_query); }
+    private void Cancel()=>Session.Cancel();
+    private async Task Insert(AuthoringAssistReport report,string id) { await Session.InsertAsync(report,id); }
+    private async Task Navigate(AuthoringAssistReport report,string? id,int? index) { await Session.NavigateAsync(report,id,index); }
+    private static string ContextLabel(AuthoringAssistContext context)=>context switch
+    { AuthoringAssistContext.InputPath=>"Project path",AuthoringAssistContext.Definition=>"Definition (read only)",AuthoringAssistContext.Outline=>"Outline (read only)",_=>context.ToString() };
+    private void Changed() { if (!_disposed) _=Render(); }
+    private async Task Render()
+    {
+        try { await InvokeAsync(()=>{if(!_disposed)StateHasChanged();}); }
+        catch(ObjectDisposedException){}
+        catch(InvalidOperationException) when(_disposed){}
+    }
+    public void Dispose()
+    { if(_disposed)return;_disposed=true;if(_initial is not null){_initial.Changed-=Changed;_initial.Invalidate();} }
+}

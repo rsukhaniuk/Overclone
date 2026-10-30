@@ -1,0 +1,38 @@
+{
+  "protocolVersion": 1,
+  "requestId": "request-vector",
+  "status": "completed",
+  "payload": {
+    "snapshotId": "snapshot-vector",
+    "rootFileId": "main",
+    "fileId": "main",
+    "caretByte": 4,
+    "catalogVersion": "1.0",
+    "complete": false,
+    "limitations": [
+      "sourceIntentOnly",
+      "macroExpansionUnsupported",
+      "runtimeResourcesUnverified",
+      "macroExecutionUnsupported"
+    ],
+    "candidates": [
+      {
+        "id": "candidate-0",
+        "kind": "command",
+        "label": "section",
+        "detail": "\\section{title}; engines: all; resources unverified; https://latex-project.org/help/documentation/source2e.pdf",
+        "insertText": "\\section{}",
+        "replaceSpan": {
+          "startByte": 0,
+          "endByte": 4
+        },
+        "caretOffsetUtf16": 9,
+        "requiresReview": false,
+        "origin": "builtin",
+        "definition": null
+      }
+    ],
+    "outline": [],
+    "loadedPackages": []
+  }
+}
