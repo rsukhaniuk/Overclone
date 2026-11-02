@@ -1726,14 +1726,17 @@ public class AnalysisCoordinatorTests
     private sealed class FakeLocks : IWorkspaceLocks
     {
         public bool ReadOnly;
+        private readonly HashSet<string> _held = new();
         public Task<WorkspaceCapabilities> GetCapabilitiesAsync(CancellationToken ct)
             => Task.FromResult(new WorkspaceCapabilities(true, true, true, true));
         public Task<string?> TryAcquireAsync(string name, CancellationToken ct)
-            => Task.FromResult<string?>(ReadOnly ? null : "lock:" + name);
+        { if (ReadOnly) return Task.FromResult<string?>(null); var id = "lock:" + name; _held.Add(id); return Task.FromResult<string?>(id); }
         public Task<string> WaitForAsync(string name, CancellationToken ct)
-            => Task.FromResult("lock:" + name);
-        public Task<bool> ReleaseAsync(string lockId, CancellationToken ct) => Task.FromResult(true);
-        public Task<bool> IsHeldAsync(string name, CancellationToken ct) => Task.FromResult(false);
+        { var id = "lock:" + name; _held.Add(id); return Task.FromResult(id); }
+        public Task<bool> ReleaseAsync(string lockId, CancellationToken ct) => Task.FromResult(_held.Remove(lockId));
+        public Task<bool> IsHeldAsync(string name, CancellationToken ct) => Task.FromResult(_held.Contains("lock:" + name));
+        public bool IsOwnedLocally(string id, string name) => id == "lock:" + name && _held.Contains(id);
+        public Task<bool> OwnsAsync(string id, string name, CancellationToken ct) => Task.FromResult(IsOwnedLocally(id, name));
         public ValueTask DisposeAsync() => ValueTask.CompletedTask;
     }
 }

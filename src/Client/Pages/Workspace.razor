@@ -241,8 +241,8 @@ else
                 }
                 else
                 {
-                    <span>Another tab is editing this project. Opened read-only.</span>
-                    <button @onclick="TakeOverAsync" data-testid="takeover">Take over editing</button>
+                    <span>@(Coordinator.IsDirty ? "Writer authority is unavailable. Unsaved working bytes remain in this tab; Download text before closing. A different writer may have saved newer content." : "Another tab is editing this project. Opened read-only.")</span>
+                    <button @onclick="TakeOverAsync" disabled="@Coordinator.IsDirty" data-testid="takeover">Take over editing</button>
                 }
             </div>
         }

@@ -332,11 +332,14 @@ public sealed class KnuWorkflowTests
     }
     private sealed class Locks(bool readOnly) : IWorkspaceLocks
     {
+        private string? _heldName;
         public Task<WorkspaceCapabilities> GetCapabilitiesAsync(CancellationToken ct) => Task.FromResult(new WorkspaceCapabilities(true,true,true,true));
-        public Task<string?> TryAcquireAsync(string n,CancellationToken ct) => Task.FromResult<string?>(readOnly?null:"lock");
-        public Task<string> WaitForAsync(string n,CancellationToken ct) => Task.FromResult("lock");
-        public Task<bool> ReleaseAsync(string n,CancellationToken ct) => Task.FromResult(true);
-        public Task<bool> IsHeldAsync(string n,CancellationToken ct) => Task.FromResult(!readOnly);
+        public Task<string?> TryAcquireAsync(string n,CancellationToken ct) { if (readOnly) return Task.FromResult<string?>(null); _heldName = n; return Task.FromResult<string?>("lock"); }
+        public Task<string> WaitForAsync(string n,CancellationToken ct) { _heldName = n; return Task.FromResult("lock"); }
+        public Task<bool> ReleaseAsync(string n,CancellationToken ct) { var held = n == "lock" && _heldName is not null; if (held) _heldName = null; return Task.FromResult(held); }
+        public Task<bool> IsHeldAsync(string n,CancellationToken ct) => Task.FromResult(_heldName == n);
+        public bool IsOwnedLocally(string id, string name) => id == "lock" && _heldName == name;
+        public Task<bool> OwnsAsync(string id, string name, CancellationToken ct) => Task.FromResult(IsOwnedLocally(id, name));
         public ValueTask DisposeAsync() => ValueTask.CompletedTask;
     }
 }

@@ -144,6 +144,11 @@ public sealed partial class WorkspaceCoordinator : IAsyncDisposable
     public async Task<bool> TakeOverAsync(CancellationToken ct)
     {
         if (Project is null || Capabilities?.WebLocks != true) return false;
+        if (IsReadOnly && IsDirty)
+        {
+            LastError = "Takeover cannot replace retained unsaved working bytes. Download them, then use a separate clean writer tab.";
+            return false;
+        }
         if (LockId is null)
         {
             LockId = await _locks.WaitForAsync(LockName(Project.Id), ct);
@@ -550,7 +555,31 @@ public sealed partial class WorkspaceCoordinator : IAsyncDisposable
         var saveProject = Project!;
         var saveSession = SessionId;
         var saveParent = CurrentRevision?.Id;
+        var saveLock = LockId;
         bool SameSaveSession() => SessionId == saveSession && Project?.Id == saveProject.Id;
+        CommitResult LostSaveWriter()
+        {
+            // Preserve Files, dirty text/binary and durable head for Download.
+            // A stale non-null ID must not let TakeOverAsync skip acquisition.
+            if (SameSaveSession())
+            {
+                LockId = null; IsReadOnly = true; SavePhase = SavePhase.Failed;
+                LastError = "Writer lock lost. Unsaved working bytes remain in this tab; download them before closing.";
+                // Notify existing owners to retire stale work. This is NOT a
+                // content/generation/head/session mutation or owner disposal.
+                RaiseWorkspaceChanged();
+            }
+            return CommitResult.Unavailable("Writer lock lost; unsaved working bytes are retained.");
+        }
+        async Task<bool> SaveWriterCurrent()
+        {
+            if (saveLock is null || LockId != saveLock || !SameSaveSession()) return false;
+            try { return await _locks.OwnsAsync(saveLock, LockName(saveProject.Id), ct)
+                && SameSaveSession() && LockId == saveLock && _locks.IsOwnedLocally(saveLock, LockName(saveProject.Id)); }
+            catch (OperationCanceledException) { throw; }
+            catch { return false; }
+        }
+        if (!await SaveWriterCurrent()) return LostSaveWriter();
         SavePhase = SavePhase.Saving;
         // Snapshot the working state at the moment the save actually runs, so
         // edits made while a previous save was in flight are picked up by the
@@ -603,6 +632,8 @@ public sealed partial class WorkspaceCoordinator : IAsyncDisposable
             contentInputs.ToImmutableArray());
 
         var expectedHead = saveProject.HeadRevisionId;
+        if (!SameSaveSession()) return CommitResult.Unavailable("The save session changed.");
+        if (!await SaveWriterCurrent()) return LostSaveWriter();
         var result = await _repo.CommitAsync(commit, expectedHead, ct);
 
         if (!SameSaveSession())
