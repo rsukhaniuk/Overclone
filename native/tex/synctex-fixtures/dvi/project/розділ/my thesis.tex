@@ -1,0 +1,30 @@
+﻿% Synthetic DVI coordinates: Україна 😀 е́; original BOM/CRLF.
+\documentclass{\detokenize{стилі/local class}}
+\input{"\detokenize{стилі/local style.sty}"}
+\pagestyle{empty}
+\hoffset=7bp \voffset=-3bp
+\begin{document}
+\shipout\vbox to 150bp{\offinterlineskip
+\special{pdf:pagesize width 300bp height 200bp xoffset 12bp yoffset 15bp}
+\special{pdf:put @thispage << /CropBox [5 10 290 190] /Rotate 0 >>}
+\kern20bp\hbox{\kern30bp ROOTMARK}
+\kern8bp\hbox{\kern40bp\copy\classbox}
+\kern8bp\hbox{\kern50bp\copy\stylebox}
+\kern8bp\hbox{\kern60bp\input{"\detokenize{глави/chapter one.tex}"}}
+\vss}
+\shipout\vbox to 170bp{\offinterlineskip
+\special{pdf:pagesize width 360bp height 240bp xoffset -10bp yoffset 22bp}
+\special{pdf:put @thispage << /CropBox [-20 -30 345 230] /Rotate 90 >>}
+\kern25bp\hbox{\kern40bp TWOMARK}
+\vss}
+\shipout\vbox to 190bp{\offinterlineskip
+\special{pdf:pagesize width 420bp height 280bp xoffset 25bp yoffset -10bp}
+\special{pdf:put @thispage << /CropBox [15 20 405 270] /Rotate 180 >>}
+\kern30bp\hbox{\kern45bp THREEMARK}
+\vss}
+\shipout\vbox to 210bp{\offinterlineskip
+\special{pdf:pagesize width 480bp height 320bp xoffset 35bp yoffset 30bp}
+\special{pdf:put @thispage << /CropBox [-10 -15 460 300] /Rotate 270 >>}
+\kern35bp\hbox{\kern50bp FOURMARK}
+\vss}
+\end{document}

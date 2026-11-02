@@ -15,6 +15,10 @@ const create = require(path.join(candidate, 'oc-dvi.js'));
   }
   for (const name of fs.readdirSync(resources)) add(name, fs.readFileSync(path.join(resources, name)), 1);
   add('cap.dvi', fs.readFileSync(fixture), 0);
+  if (process.env.DVI_EXPECTED_ABI === '2') {
+    assert.equal(m._oc_dvi_abi_version(), 2);
+    assert.equal(m._oc_dvi_geometry_configure(1, 701), 1);
+  }
   const p = string('cap.dvi');
   const code = m._oc_dvi_run(p);
   const receipt = {code, nativeReturn: m._oc_dvi_native_return(), pdfBytes: m._oc_dvi_pdf_size(), logBytes: m._oc_dvi_log_size(), logTruncated: m._oc_dvi_log_truncated(), heapBytes: m.HEAPU8.length};
@@ -25,4 +29,8 @@ const create = require(path.join(candidate, 'oc-dvi.js'));
   assert.equal(receipt.logBytes, 262144);
   assert.equal(receipt.logTruncated, 1);
   assert.ok(receipt.heapBytes <= 536870912);
+  if (process.env.DVI_EXPECTED_ABI === '2') {
+    assert.equal(m._oc_dvi_geometry_size(), 0);
+    assert.equal(m._oc_dvi_geometry_length(701), 0);
+  }
 })().catch(e => { console.error(e); process.exitCode = 1; });

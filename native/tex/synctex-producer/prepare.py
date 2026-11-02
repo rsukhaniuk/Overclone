@@ -22,6 +22,8 @@ def main():
     ap.add_argument('--generators', type=Path, required=True,
                     help='directory containing tie, tangle, web2c/{web2c,fixwrites,splitup,makecpool}')
     ap.add_argument('--out', type=Path, required=True)
+    ap.add_argument('--dvi-maps', action='store_true',
+                    help='separate DVI-close candidate; default pdfTeX overlay is unchanged')
     args = ap.parse_args()
     roots = {'port': args.port.resolve(), 'texlive': args.texlive.resolve(),
              'tools': args.generators.resolve()}
@@ -95,6 +97,12 @@ def main():
             for name in ('synctex-memory.patch', 'driver.patch', 'port-header.patch'):
                 run(['patch', '--batch', '--fuzz=0', '-p1', '-i', HERE / 'patches' / name],
                     dest, mode + '-' + name)
+        if args.dvi_maps and mode == 'on':
+            for name in ('oc_synctex_dvi_guard.h', 'oc_synctex_dvi_files.h'):
+                shutil.copyfile(HERE / name, dest / name)
+            for name in ('driver-dvi.patch', 'kpse-dvi.patch'):
+                run(['patch', '--batch', '--fuzz=0', '-p1', '-i', HERE / 'patches' / name],
+                    dest, mode + '-' + name)
         generate = dest / 'regenerate'
         generate.mkdir()
         sequence = order['prefix'] + (order['synctex'] if mode == 'on' else []) + order['suffix']
@@ -103,6 +111,8 @@ def main():
         paths += [HERE / 'port-abi.ch']
         if mode == 'on':
             paths += [HERE / 'producer.ch']
+            if args.dvi_maps:
+                paths += [HERE / 'producer-dvi.ch']
         run([roots['tools'] / 'tie', '-c', 'pdftex-final.ch', *paths], generate, mode + '-tie')
         run([roots['tools'] / 'tangle', dest / 'pdftexdir/pdftex.web', 'pdftex-final.ch'],
             generate, mode + '-tangle')

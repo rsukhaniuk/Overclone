@@ -66,11 +66,13 @@ const call = (m, n, t, a) => m.ccall("oc_luatex_" + n, "number", t, a);
     invalid._free(p);
   }
   const declared = await fresh();
-  assert.equal(call(declared, "abi", [], []), 3);
+  const expectedAbi = Number(process.env.LUA_ABI || 3);
+  assert.ok(expectedAbi === 3 || expectedAbi === 4 || expectedAbi === 5);
+  assert.equal(call(declared, "abi", [], []), expectedAbi);
   ++checks;
   assert.match(
     declared.ccall("oc_luatex_version", "string", [], []),
-    /browser ABI 3/,
+    new RegExp("browser ABI " + expectedAbi),
   );
   ++checks;
   assert.equal(

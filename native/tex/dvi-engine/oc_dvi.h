@@ -36,6 +36,32 @@ uint32_t oc_dvi_log_size(void);
 uint32_t oc_dvi_log_truncated(void);
 /* First missing/rejected lookup; path data only, no automatic acquisition. */
 const char *oc_dvi_missing_file(void);
+/* Separate ABI2 DVI candidate (build.py --geometry), or ABI3 XDV7 candidate
+ * (build.py --xdv-geometry). Default ABI1 and DVI ABI2 meanings unchanged.
+ * Configure optional geometry exactly once before run, default off. No success,
+ * close, page or seal operation is exported. Readers share the actual successful
+ * PDF lifetime; exact-token length/copy are complete-or-none, <=131072 bytes.
+ * Strict schema1 {schemaVersion,pages}; <=512 contiguous one-based actual pages.
+ * ABI2 maps canonical pdfTeX/DVI visible SyncTeX bp; ABI3 maps the pinned Xe
+ * XDV7 visible SyncTeX bp, to unrotated PDF raw space. Each is a separate closed
+ * geometry domain; selecting ABI3 does not make arbitrary XDV versions valid.
+ * C# binds ACTUAL copied map/intermediate/PDF hashes in the final wrapper (§5.1).
+ */
+int oc_dvi_geometry_configure(uint32_t mode, uint32_t pass_tag);
+const uint8_t *oc_dvi_geometry_data(void);
+uint32_t oc_dvi_geometry_size(void);
+uint32_t oc_dvi_geometry_length(uint32_t pass_tag);
+uint32_t oc_dvi_geometry_copy(uint32_t pass_tag, uint8_t *dst, uint32_t capacity);
+#ifdef OC_DVI_INTERNAL_GEOMETRY
+/* Private measured-state hooks, NEVER in EXPORTED_FUNCTIONS. */
+void oc_dvi_geo_units(double unit_bp, double header_mag, int kind);
+void oc_dvi_geo_begin(uint32_t page, double a,double b,double c,double d,double e,double f,
+                      double llx,double lly,double urx,double ury);
+void oc_dvi_geo_end(uint32_t page);
+void oc_dvi_geo_special(const char *bytes, int32_t length);
+void oc_dvi_geo_put(int safe);
+void oc_dvi_geo_special_end(int actual_result);
+#endif
 #ifdef __cplusplus
 }
 #endif

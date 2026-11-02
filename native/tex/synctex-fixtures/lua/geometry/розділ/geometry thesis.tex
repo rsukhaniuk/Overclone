@@ -1,0 +1,36 @@
+﻿% Synthetic writer geometry: Україна 😀 е́; exact BOM/CRLF.
+\documentclass{article}
+\pdfvariable compresslevel=0
+\pdfvariable objcompresslevel=0
+\input{"стилі/local style.sty"}
+\pagestyle{empty}
+\begin{document}
+\pagewidth=300bp \pageheight=200bp
+\pdfvariable horigin=12bp \pdfvariable vorigin=15bp
+\pdfvariable pageattr{/CropBox [5 10 290 190] /Rotate 0}
+\shipout\vbox to 150bp{\offinterlineskip
+\kern20bp\hbox{\kern30bp ROOTMARK}
+\kern10bp\hbox{\kern50bp\copy\stylebox}
+\kern10bp\hbox{\kern70bp\input{"глави/chapter one.tex"}}
+\vss}
+\pagewidth=360bp \pageheight=240bp
+\pdfvariable horigin=-10bp \pdfvariable vorigin=22bp
+\directlua{pdf.setpageattributes("/CropBox [-20 -30 345 230] /Rotate 90")}
+\pdfvariable pageattr{}
+\shipout\vbox to 170bp{\offinterlineskip
+\kern25bp\hbox{\kern40bp TWOMARK}
+\vss}
+\pagewidth=420bp \pageheight=280bp
+\pdfvariable horigin=25bp \pdfvariable vorigin=-10bp
+\directlua{pdf.setpageattributes("")}
+\pdfvariable pageattr{/CropBox [15 20 405 270] /Rotate 180}
+\shipout\vbox to 190bp{\offinterlineskip
+\kern30bp\hbox{\kern45bp THREEMARK}
+\vss}
+\pagewidth=480bp \pageheight=320bp
+\pdfvariable horigin=35bp \pdfvariable vorigin=30bp
+\pdfvariable pageattr{/CropBox [-10 -15 460 300] /Rotate 270}
+\shipout\vbox to 210bp{\offinterlineskip
+\kern35bp\hbox{\kern50bp FOURMARK}
+\vss}
+\end{document}

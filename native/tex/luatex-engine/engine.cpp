@@ -1,4 +1,11 @@
 #include "engine.h"
+#ifndef OC_LUATEX_ABI
+#define OC_LUATEX_ABI 3
+#endif
+#if OC_LUATEX_ABI == 4 || OC_LUATEX_ABI == 5
+#include "../synctex-producer/oc_synctex_internal.h"
+#include "../synctex-producer/oc_synctex_memory_sink.h"
+#endif
 #include <cerrno>
 #include <cstdio>
 #include <cstdlib>
@@ -53,6 +60,9 @@ jmp_buf engineExit;
 int engineStatus = 0;
 const char *const outputs[] = {"result.pdf", "result.log", "lualatex.fmt", "result.aux", "result.toc", "result.out", "result.bbl", "result.blg", "result.lof", "result.lot"};
 int fail(int code, const char *text) {
+#if OC_LUATEX_ABI == 4 || OC_LUATEX_ABI == 5
+    oc_mem_abort();
+#endif
     std::snprintf(message, sizeof(message), "%s", text);
     if (used) succeeded = false;
     return code;
@@ -200,12 +210,19 @@ int compile(bool format) {
     }
     if (!configured) return fail(-1, "configure root and context first");
     used = true; succeeded = false; formatAttempt = format; message[0] = 0;
+#if OC_LUATEX_ABI == 4 || OC_LUATEX_ABI == 5
+    if (!oc_synctex_begin()) return fail(-2, "map attempt already consumed");
+    if (format) oc_mem_discard(); // INITEX/BibTeX/carry can never publish a map.
+#endif
     unlink("/work/output/result.pdf");
     unlink("/work/output/lualatex.fmt");
     environment();
     if (chdir("/work/project")) return fail(-3, "project VFS unavailable");
     if (!oc_budget_begin(format ? 1 : 0)) {
         oc_budget_reason(message, sizeof(message));
+#if OC_LUATEX_ABI == 4 || OC_LUATEX_ABI == 5
+        oc_mem_abort();
+#endif
         return -4;
     }
     char argument[256];
@@ -226,6 +243,9 @@ int compile(bool format) {
     std::fflush(nullptr);
     if (oc_budget_failed()) {
         oc_budget_reason(message, sizeof(message));
+#if OC_LUATEX_ABI == 4 || OC_LUATEX_ABI == 5
+        oc_mem_abort();
+#endif
         return -4;
     }
     if (engineStatus != 0) return fail(engineStatus, "LuaTeX reported failure; no PDF is eligible");
@@ -233,6 +253,9 @@ int compile(bool format) {
     int budget = selectedOutputBudget();
     if (budget < 0) return budget;
     succeeded = true;
+#if OC_LUATEX_ABI == 4 || OC_LUATEX_ABI == 5
+    if (!format) oc_synctex_finish(engineStatus); // After real PDF close and every output/quota check.
+#endif
     return 0;
 }
 }
@@ -260,8 +283,21 @@ void oc_restrict_lua(lua_State *L) {
     lua_pushnil(L); lua_rawseti(L, -2, 4);
     lua_pop(L, 2);
 }
-uint32_t oc_luatex_abi() { return 3; }
+uint32_t oc_luatex_abi() { return OC_LUATEX_ABI; }
+#if OC_LUATEX_ABI == 4 || OC_LUATEX_ABI == 5
+// Used only by the private adapter, not an exported success/seal operation.
+int oc_lua_maps_eligible() {
+    if (oc_budget_failed()) { succeeded = false; oc_mem_abort(); }
+    return used && !running && succeeded && !formatAttempt;
+}
+#if OC_LUATEX_ABI == 5
+const char *oc_luatex_version() { return "LuaTeX 1.13.0 (TeX Live 2021, svn 7410); browser ABI 5"; }
+#else
+const char *oc_luatex_version() { return "LuaTeX 1.13.0 (TeX Live 2021, svn 7410); browser ABI 4"; }
+#endif
+#else
 const char *oc_luatex_version() { return "LuaTeX 1.13.0 (TeX Live 2021, svn 7410); browser ABI 3"; }
+#endif
 const char *oc_luatex_error() { return message; }
 const char *oc_luatex_budget_json() {
     static char report[2048];

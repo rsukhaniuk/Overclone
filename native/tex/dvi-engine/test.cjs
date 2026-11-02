@@ -33,7 +33,9 @@ function run(m, name) {
 }
 async function fresh(seed = true) {
   const m = await create({wasmBinary, print: () => { throw new Error('Unexpected native stdout'); }, printErr: () => { throw new Error('Unexpected native stderr'); }});
-  assert.equal(m._oc_dvi_abi_version(), 1);
+  const expectedAbi = Number(process.env.DVI_EXPECTED_ABI || 1);
+  assert.ok(expectedAbi === 1 || expectedAbi === 2);
+  assert.equal(m._oc_dvi_abi_version(), expectedAbi);
   if (seed) for (const name of resourceNames) {
     const bytes = fs.readFileSync(path.join(resources, name));
     assert.equal(add(m, name, bytes, 1), 0, name);

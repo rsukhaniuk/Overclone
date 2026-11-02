@@ -1,0 +1,56 @@
+--- a/main.c
++++ b/main.c
+@@ -535,6 +535,8 @@
+ #else
+ 
+ char main_entry_file[MAXMAINFILENAME];
++#include "oc_synctex_dvi_guard.h"
++unsigned int oc_dvi_maps_abi(void) { return 1; }
+ 
+ int _compile() {
+   haltonerrorp = 1;
+@@ -555,6 +557,8 @@
+ }
+ 
+ int compileLaTeX() {
++    if (oc_dvi_attempted) { oc_mem_abort(); return -1; }
++    oc_dvi_attempted = 1;
+     if (!oc_synctex_begin()) return -1;
+     synctexoption = oc_synctex_enabled() ? -1 : 0;
+     if (strlen(main_entry_file) == 0) {
+@@ -565,11 +569,14 @@
+     bootstrapcmd[MAXMAINFILENAME - 1] = 0;
+     exit_code = -1; /* no retained/default success across longjmp */
+     const int actual_native_result = _compile();
++    if (pdfoutputvalue <= 0 && !oc_dvi_native_output_valid()) oc_mem_abort();
+     oc_synctex_finish(actual_native_result);
+     return actual_native_result;
+ }
+ 
+ int compileFormat() {
++    if (oc_dvi_attempted) { oc_mem_abort(); return -1; }
++    oc_dvi_attempted = 1;
+     oc_mem_discard(); /* INITEX never publishes mapping */
+     synctexoption = 0;
+     iniversion = 1;
+@@ -578,6 +585,8 @@
+ }
+ 
+ int compileBibtex() {
++    if (oc_dvi_attempted) { oc_mem_abort(); return -1; }
++    oc_dvi_attempted = 1;
+     oc_mem_discard(); /* must use a different fresh module for final LaTeX pass */
+     char main_aux_file[MAXMAINFILENAME];
+     strncpy(main_aux_file, main_entry_file, MAXMAINFILENAME);
+@@ -593,6 +602,11 @@
+ }
+ 
+ int setMainEntry(const char *p) {
++    if (oc_dvi_entry_set || !oc_dvi_entry_valid(p)) {
++      oc_mem_abort();
++      return -1;
++    }
++    oc_dvi_entry_set = 1;
+     strncpy(main_entry_file, p, MAXMAINFILENAME);
+     main_entry_file[MAXMAINFILENAME - 1] = 0;
+     // fprintf(stderr,"setting main entry from c %s\n", main_entry_file);

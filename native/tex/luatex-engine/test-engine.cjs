@@ -58,7 +58,9 @@ const create = require(path.join(candidate, "luatex.js"));
   const call = (name, types, args, result = "number") =>
     m.ccall("oc_luatex_" + name, result, types, args);
   const error = () => call("error", [], [], "string");
-  assert.equal(call("abi", [], []), 3);
+  const expectedAbi = Number(process.env.LUA_ABI || 3);
+  assert.ok(expectedAbi === 3 || expectedAbi === 4 || expectedAbi === 5);
+  assert.equal(call("abi", [], []), expectedAbi);
   assert.match(call("version", [], [], "string"), /LuaTeX 1\.13\.0/);
   const root = process.env.ROOT_NAME || "розділ/my thesis.tex";
   assert.equal(
@@ -262,6 +264,11 @@ Reference: \ref{sec:test}.
     [],
     [],
   );
+  if (expectedAbi === 4 || expectedAbi === 5) {
+    // Existing ABI3 regression flows never opt into maps, including AUX/BCF carry.
+    assert.equal(m._oc_synctex_length(401), 0);
+    assert.equal(m._oc_synctex_geometry_length(401), 0);
+  }
   let postCase = null;
   if (process.env.POST_CASE) {
     assert.equal(

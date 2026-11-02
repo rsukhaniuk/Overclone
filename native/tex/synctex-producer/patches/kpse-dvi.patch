@@ -1,0 +1,69 @@
+--- a/kpseemu.c
++++ b/kpseemu.c
+@@ -5,6 +5,7 @@
+ #include <pdftexd.h>
+ #include <stdlib.h>
+ #include <libgen.h>
++static int oc_dvi_path_ok(const char *,int);
+ void setupboundvariable(integer *var, const_string var_name, integer dflt) {
+ 
+   *var = dflt;
+@@ -116,8 +117,8 @@
+ void kpse_init_prog(const_string prefix, unsigned dpi, const_string mode,
+                     const_string fallback) {}
+ 
+-boolean kpse_in_name_ok(const_string fname) { return true; }
+-boolean kpse_out_name_ok(const_string fname) { return true; }
++boolean kpse_in_name_ok(const_string fname) { return oc_dvi_path_ok(fname,0); }
++boolean kpse_out_name_ok(const_string fname) { return oc_dvi_path_ok(fname,1); }
+ 
+ void kpse_set_program_enabled(kpse_file_format_type fmt, boolean value,
+                               kpse_src_type level) {}
+@@ -339,13 +340,14 @@
+ }
+ 
+ #define MAX_PATH_LEN 256
++#include "oc_synctex_dvi_files.h"
+ char* kpse_find_file(const char* name, kpse_file_format_type format,
+                      boolean must_exist) {
+   if (name == NULL) {
+     return NULL;
+   }
+ 
+-  if (strlen(name) > MAX_PATH_LEN) {
++  if (!oc_dvi_path_ok(name,0) || strlen(name) > MAX_PATH_LEN) {
+     return NULL;
+   }
+ 
+@@ -371,7 +373,7 @@
+   free(local_name);
+ 
+   // Head to network search
+-  return kpse_find_file_js(name, format, must_exist);
++  return oc_dvi_find_runtime(name, format);
+ 
+ }
+ 
+@@ -380,12 +382,13 @@
+     return NULL;
+   }
+ 
+-  if (strlen(fontname) > MAX_PATH_LEN) {
++  if (!oc_dvi_path_ok(fontname,0) || strlen(fontname) > MAX_PATH_LEN) {
+     return NULL;
+   }
+ 
+   // Search local directory
+   char* local_name = xmalloc(MAX_PATH_LEN + 32);
++  strcpy(local_name,fontname);
+   if (access(local_name, F_OK) != -1) {
+     return local_name;
+   }
+@@ -400,5 +403,5 @@
+   free(local_name);
+   
+   // Head to network search
+-  return kpse_find_pk_js(fontname, dpi);
++  return oc_dvi_find_runtime_pk(fontname, dpi);
+ }
+\ No newline at end of file

@@ -3,7 +3,11 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-/* ABI 3. Exact UTF-8 relative paths; fresh module for EACH format/LaTeX attempt.
+/* ABI 3 (default recipe), ABI 4 (synctex/build.sh candidate ONLY),
+ * ABI 5 (synctex/build-geometry.sh separate writer-geometry candidate ONLY).
+ * ABI4/5 preserve all ten indexed outputs and ABI3 bibliography/carry semantics;
+ * additive map/geometry reader declarations are in synctex/lua_maps_api.h.
+ * Exact UTF-8 relative paths; fresh module for EACH format/LaTeX attempt.
  * A unique decomposed spelling is valid; normalize collision keys only, never
  * root/FS bytes. Native JS full-uppercase keys may reject additional aliases
  * beyond .NET invariant casing; general casing parity is not promised.

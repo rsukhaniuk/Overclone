@@ -1,0 +1,16 @@
+﻿% Synthetic runtime correctness fixture: Україна 😀; original BOM/CRLF bytes.
+\documentclass{article}
+\pdfvariable compresslevel=0
+\pdfvariable objcompresslevel=0
+\input{"стилі/local style.sty"}
+\pagestyle{empty}
+\begin{document}
+\shipout\vbox to 200bp{\offinterlineskip
+\kern40bp\hbox{\kern30bp ROOTMARK}
+\kern20bp\hbox{\kern50bp\copy\stylebox}
+\kern20bp\hbox{\kern70bp\input{"глави/chapter one.tex"}}
+\vss}
+\shipout\vbox to 200bp{\offinterlineskip
+\kern60bp\hbox{\kern40bp SECONDMARK}
+\vss}
+\end{document}
