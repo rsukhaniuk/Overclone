@@ -19,6 +19,12 @@ namespace Client.Compilation.Presentation;
 
 public static class AuthoringWorkspaceRegistration
 {
+    public static IReadOnlyList<CompileOutputDescriptor> HistoricalOutputAdapters() =>
+        new[] { NativeSyncTeXContract.OutputAdapter, NativeLatexDviContract.OutputAdapter }
+            .Concat(Enum.GetValues<NativeRuntimeProfile>()
+                .Where(p => NativeRuntimeProfiles.IsSuite(p) && NativeRuntimeProfiles.SuitePinsReady(p))
+                .SelectMany(p => Enum.GetValues<NativeCompilerEngine>().Select(e => NativeCompilerComponents.For(p, e).OutputAdapter)))
+            .Where(adapter => adapter != NativeRuntimePackage.Adapter).Distinct().ToArray();
     /// <summary>Shared app services with fixed local authoring trust and no bundled runtime bytes.
     /// A trusted TEST/application builder may explicitly replace the configuration.</summary>
     public static IServiceCollection AddAuthoringWorkspace(this IServiceCollection services)
@@ -53,13 +59,13 @@ public static class AuthoringWorkspaceRegistration
             // provisioned or approved here, including the unavailable default.
             var store = new CompileArtifactHistoryStore(new ArtifactStorageBackend(js),
                 provider.GetRequiredService<IProjectRepository>(), NativeRuntimePackage.Pdf, NativeRuntimePackage.Adapter,
-                [NativeSyncTeXContract.OutputAdapter, NativeLatexDviContract.OutputAdapter, NativeCompilerSuiteContract.XeOutputAdapter,
-                    .. (NativeCompilerSuitePins.Ready ? new[] { NativeCompilerSuiteContract.LuaOutputAdapter } : Array.Empty<CompileOutputDescriptor>())]);
+                HistoricalOutputAdapters());
             var index = new CompileHistoryIndex(new JsHistoryIndexBackend(js));
             return new(workspace, compile, store, index,
                 new(new(64, 1048576, 8388608, 131072), 8388608, 262144,
                     new(new(2, 256, 8388608, 16777216, 65536, 256, 256), 16384, 64, 128, 15000)),
-                new(64, 65536, 15000));
+                new(64, 65536, 15000),
+                (provider.GetRequiredService<ICompileWorkspaceConfiguration>() as LocalCompileWorkspaceConfiguration)?.PdfInspector);
         });
         return services;
     }

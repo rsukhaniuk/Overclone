@@ -13,6 +13,8 @@ namespace Client.Compilation.History;
 // an artifact-only backend. Storage is integrity, not live compile acceptance.
 public sealed class CompileArtifactHistoryStore : IAsyncDisposable
 {
+    // Explicit application-owned descriptor list, including retained runtime versions.
+    public const int MaxAdditionalAdapters = 12;
     private readonly IRuntimeAssetBackend _backend;
     private readonly RuntimeAssetStore _content;
     private readonly IProjectRepository _repository;
@@ -29,7 +31,7 @@ public sealed class CompileArtifactHistoryStore : IAsyncDisposable
         if (expectedPdfFormat is null || expectedPdfFormat.Id != "pdf" || expectedAdapter is null) throw new ArgumentException("Explicit PDF format/adapter required.");
         using var measure = new CompileArtifactCanonical(CompileArtifactCanonical.MetadataDomain, Array.MaxLength);
         measure.Descriptor(expectedPdfFormat); measure.Descriptor(expectedAdapter);
-        if (additionalAdapters is { Count: > 4 }) throw new ArgumentException("Explicit adapter count limit.");
+        if (additionalAdapters is { Count: > MaxAdditionalAdapters }) throw new ArgumentException("Explicit adapter count limit.");
         _additionalAdapters = additionalAdapters?.ToImmutableArray() ?? [];
         foreach (var descriptor in _additionalAdapters)
         {

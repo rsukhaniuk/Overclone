@@ -15,6 +15,8 @@ public sealed class LocalCompileWorkspaceConfiguration : ICompileWorkspaceConfig
     private readonly LocalInstalledRuntimeProviders _resources;
     private readonly NativeBrowserModuleLoader _loader;
     private readonly IPdfInspector _inspector;
+    // Same borrowed renderer, available independently of compiler readiness.
+    public IPdfInspector PdfInspector => _inspector;
     private readonly NativeForeignOperations _checks = new(1);
     private readonly CancellationTokenSource _shutdown = new();
     private readonly object _gate = new();

@@ -3,6 +3,8 @@ using System.Text.Json.Nodes;
 using Client.Compilation;
 using Client.Compilation.Assets;
 using Client.Compilation.History;
+using Client.Compilation.Native;
+using Client.Compilation.Presentation;
 using Client.RuntimeAssets;
 using Client.Workspace;
 using Client.Workspace.Domain;
@@ -15,9 +17,10 @@ public sealed class ArtifactHistoryTests
 {
     private static readonly CompileOutputDescriptor Format = new("pdf", "fixture-v1", null), Adapter = new("historical-fixture-transport", "test-v1", null);
     private static ArtifactHistoryBudget Budget(int deadline = 30000) => new(new(32, 1048576, 8388608, 65536), 1048576, 65536, new(new(2, 256, 1048576, 2097152, 4096, 256, 256), 16384, 16, 32, deadline));
-    private static async Task<AcceptedCompileOutput> Accepted(CompilationTestWorkspace fixture, byte[]? pdf = null, CompileOutputStatus status = CompileOutputStatus.Succeeded)
+    private static async Task<AcceptedCompileOutput> Accepted(CompilationTestWorkspace fixture, byte[]? pdf = null, CompileOutputStatus status = CompileOutputStatus.Succeeded, CompileOutputDescriptor? adapter = null)
     {
-        var snapshot = await fixture.Snapshot(); var context = CompileRequestContext.Create(snapshot, 1, 4096, Format, Adapter).Context!; byte[] bytes = pdf ?? [1, 2, 3, 4];
+        adapter ??= Adapter;
+        var snapshot = await fixture.Snapshot(); var context = CompileRequestContext.Create(snapshot, 1, 4096, Format, adapter).Context!; byte[] bytes = pdf ?? [1, 2, 3, 4];
         var input = new CompileOutputEnvelopeInput
         {
             RequestId = context.RequestId,
@@ -29,9 +32,32 @@ public sealed class ArtifactHistoryTests
             ClaimedLength = bytes.Length,
             ClaimedHash = status == CompileOutputStatus.Succeeded ? CompilationTestWorkspace.Hash(bytes) : null,
             OutputFormat = Format,
-            OutputAdapter = Adapter
+            OutputAdapter = adapter
         };
         return CompileOutputEnvelope.Create(input, new(1048576, 65536, 8, 64, 1024, 4096)).Envelope!.TryAccept(context).Output!;
+    }
+    [Fact]
+    public async Task Registered_history_retains_every_known_engine_adapter_but_rejects_an_unregistered_hash()
+    {
+        var adapters = AuthoringWorkspaceRegistration.HistoricalOutputAdapters();
+        Assert.InRange(adapters.Count, 5, CompileArtifactHistoryStore.MaxAdditionalAdapters);
+        foreach (var profile in Enum.GetValues<NativeRuntimeProfile>().Where(p => NativeRuntimeProfiles.IsSuite(p) && NativeRuntimeProfiles.SuitePinsReady(p)))
+            foreach (var engine in Enum.GetValues<NativeCompilerEngine>())
+                Assert.Contains(NativeCompilerComponents.For(profile, engine).OutputAdapter, adapters);
+        await using var f = await CompilationTestWorkspace.Open(); var io = new Backend();
+        await using var store = new CompileArtifactHistoryStore(io, f.Repo, Format, Adapter, adapters);
+        foreach (var adapter in adapters)
+        {
+            var accepted = await Accepted(f, adapter: adapter);
+            var saved = await store.PersistAsync(accepted, null, Budget()); Assert.Equal(RuntimeAssetStatus.Installed, saved.Status);
+            var loaded = await store.ReadAsync(saved.Key!, f.Repo.Project.Id, null, Budget());
+            Assert.Equal(RuntimeAssetStatus.Ready, loaded.Status); Assert.Equal(accepted.ToPayloadArray(), loaded.Artifact!.CopyPdf());
+            Assert.Equal("HistoricalOnly", loaded.Artifact.Classification);
+        }
+        var forged = await Accepted(f, adapter: adapters[0] with { Hash = new Hash(new string('0', 64)) });
+        Assert.Equal(RuntimeAssetStatus.InvalidInput, (await store.PersistAsync(forged, null, Budget())).Status);
+        Assert.Throws<ArgumentException>(() => new CompileArtifactHistoryStore(io, f.Repo, Format, Adapter,
+            Enumerable.Repeat(Adapter, CompileArtifactHistoryStore.MaxAdditionalAdapters + 1).ToArray()));
     }
     private static TaskCompletionSource<T> Signal<T>() => new(TaskCreationOptions.RunContinuationsAsynchronously);
     [Fact]

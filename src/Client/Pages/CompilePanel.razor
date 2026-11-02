@@ -118,7 +118,7 @@
         SourceMatch="@SourceMatch" SourceMatchPdfHash="@SourceMatchPdfHash"
         SourceMatchTransform="@SourceMatchTransform" SourceMatchUsesNativeTransform="@SourceMatchUsesNativeTransform" />
     <RenderedExtentPanel ControllerAvailable="RenderedExtentAvailable" />
-    <CompileHistoryPanel Session="@History" />
+    <CompileHistoryPanel Session="@History" DownloadBrowser="@DownloadBrowser" />
 </aside>
 @code {
     [Parameter] public EventCallback<CompilerSourceNavigationRequest> SourceLineRequested { get; set; }

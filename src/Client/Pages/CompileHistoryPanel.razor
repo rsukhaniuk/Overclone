@@ -1,6 +1,8 @@
 @using Client.Compilation.History
+@using Client.Compilation.Download
 @using Client.Pdf.Preview
 @implements IDisposable
+@{ var view = Session.View; }
 <details class="pdf-history" aria-label="Saved PDF history" data-testid="compile-history-panel">
     <summary>PDF history</summary>
     <div class="settings-content">
@@ -9,7 +11,7 @@
     <details>
         <summary>Saved PDFs</summary>
         <button @onclick="Session.RefreshAsync" disabled="@Session.Busy" data-testid="refresh-pdf-history">Refresh saved PDFs</button>
-        <p role="status" data-testid="history-status">@Session.View.Notice</p>
+        <p role="status" data-testid="history-status">@view.Notice</p>
         @if (Session.RecoverableKey is not null)
         {
             <p data-testid="history-recovery">@(Session.PersistenceUncertain ? "Save outcome uncertain — reconcile before listing." : "PDF was saved; listing update needs retry.")</p>
@@ -17,22 +19,53 @@
         }
         @if (Session.Busy) { <p>History work is still finishing. Retry is explicit.</p> }
         <ul aria-label="Saved PDF list">
-            @for (var i = 0; i < Session.View.Entries.Length; i++)
+            @for (var i = 0; i < view.Entries.Length; i++)
             {
-                var key = Session.View.Entries[i];
-                <li><span>Saved PDF @(i + 1)</span>
+                var key = view.Entries[i];
+                <li><span>Saved PDF @(i + 1) — record @(key.RecordId.ToString("N")[..12])</span>
                     <button @onclick="() => Session.OpenAsync(key)" disabled="@Session.Busy" data-testid="open-saved-pdf">Open saved PDF</button></li>
             }
         </ul>
-        @if (Session.View.Opened is not null)
+        @if (view.Opened is { } artifact)
         {
+            var capturedRoot = artifact.Files.FirstOrDefault(file => file.Id == artifact.Selection.MainFileId);
             <h3 data-testid="historical-pdf-label">Saved PDF</h3>
             <p>This saved PDF may differ from the current source.</p>
+            <button @onclick="() => DownloadSavedPdf(artifact.Key)" disabled="@(!Session.CanDownloadOpened || DownloadBrowser is null)" data-testid="download-saved-pdf">Download saved PDF</button>
             <details data-testid="saved-pdf-details">
                 <summary>Saved PDF details</summary>
-                <p>Provenance: @Session.View.Opened.Classification. Stored pointers are revalidated on Open.</p>
+                <p>Provenance: @artifact.Classification. Stored pointers are revalidated on Open.</p>
+                <dl>
+                    <dt>Opened record</dt><dd data-testid="history-record-identity">@artifact.Key.RecordId.ToString("N")</dd>
+                    <dt>Captured source base head</dt><dd data-testid="history-captured-head">@(artifact.OriginalSnapshot.BaseHeadRevisionId?.ToString() ?? "none")</dd>
+                    <dt>Captured snapshot</dt><dd data-testid="history-captured-snapshot">@artifact.OriginalSnapshot.CaptureId.ToString("N")</dd>
+                    <dt>Captured root</dt><dd data-testid="history-captured-root">@(capturedRoot?.RelativePath ?? "Unavailable")</dd>
+                    <dt>Captured engine</dt><dd data-testid="history-captured-engine">@artifact.Selection.Engine.Id / @artifact.Selection.Engine.Version</dd>
+                    <dt>Captured compile input digest</dt><dd data-testid="history-captured-input">@artifact.ContentIdentity.InputContentDigest.Hex</dd>
+                    <dt>PDF SHA-256</dt><dd data-testid="history-pdf-sha256">@artifact.ContentIdentity.OutputHash.Hex</dd>
+                    <dt>PDF bytes</dt><dd data-testid="history-pdf-size">@artifact.PdfLength</dd>
+                </dl>
+                <p>Captured base-head is provenance only, not proof that this PDF matches that revision. Captured files may include unsaved work. No saved time is inferred from the record identity.</p>
                 <p>Revision association covers source files only; durable compile settings are not available.</p>
             </details>
+            <section aria-label="Historical PDF saved-source comparison">
+                <button @onclick="Session.CompareWithCurrentSavedSourceAsync" disabled="@(!Session.CanCompareSavedSource)" data-testid="compare-saved-pdf-source">Compare with current saved source</button>
+                <p>Current saved source head: <span data-testid="history-current-saved-head">@(Session.CurrentSavedHead?.ToString() ?? "none")</span></p>
+                <p data-testid="history-working-source-disclosure" data-dirty-working-source="@Session.HasUnsavedSourceChanges.ToString().ToLowerInvariant()">This read-only action compares only the saved revision's file manifest, not current working text. Unsaved working changes are never compared or saved by this action. Compile-setting equality is unavailable.</p>
+                <p role="status" data-testid="history-source-association"
+                   data-association-status="@(view.SourceAssociation?.Status.ToString() ?? "")"
+                   data-association-scope="@(view.SourceAssociation?.Scope ?? "")"
+                   data-association-read-status="@(view.ComparisonReadStatus?.ToString() ?? "")"
+                   data-compared-revision="@(view.ComparedSavedRevision?.ToString() ?? "")"
+                   data-comparison-requested="@view.ComparisonRequested.ToString().ToLowerInvariant()"
+                   data-comparison-pending="@view.ComparingSavedSource.ToString().ToLowerInvariant()"
+                   data-comparison-stale="@view.AssociationStale.ToString().ToLowerInvariant()">@view.ComparisonNotice</p>
+                @if (view.ComparisonRequested)
+                {
+                    <p>Compared saved revision: <span data-testid="history-compared-revision">@(view.ComparedSavedRevision?.ToString() ?? "none")</span>.
+                    HistoricalOnly remains; no current compilation, working-source equality or live source/PDF navigation authority is restored.</p>
+                }
+            </section>
             <PdfPreviewPane Controller="@Session.Preview" OwnsController="false" />
         }
     </details>
@@ -40,6 +73,8 @@
 </details>
 @code {
     [Parameter, EditorRequired] public CompileHistoryUiSession Session { get; set; } = default!;
+    [Parameter] public IPdfDownloadBrowser? DownloadBrowser { get; set; }
+    private Task DownloadSavedPdf(HistoricalArtifactKey key) => DownloadBrowser is { } browser ? Session.DownloadOpenedAsync(key, browser) : Task.CompletedTask;
     private CompileHistoryUiSession? _subscribed;
     private bool _disposed;
     protected override void OnParametersSet()
