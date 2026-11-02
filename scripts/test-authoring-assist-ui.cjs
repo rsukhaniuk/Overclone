@@ -86,8 +86,8 @@ async function caret(token) {
     await H.$(page,'editor').evaluate((element,token)=>{
         const index=element.value.lastIndexOf(token);if(index<0)throw Error('Missing caret token');
         element.focus();element.setSelectionRange(index+token.length,index+token.length);
-        element.dispatchEvent(new Event('select',{bubbles:true}));
     },token);
+    await H.$(page,'editor').evaluate(e=>({start:e.selectionStart,end:e.selectionEnd}));
 }
 async function suggest(contextName,token,query) {
     await caret(token);
@@ -140,8 +140,10 @@ async function exercise(label) {
     for(const f of before.files)assert.deepEqual(unmodified.files.find(g=>g.id===f.id)?.bytes,f.bytes);
     // A native DOM caret move must invalidate insertion, even with unchanged source.
     await caret('\\sec');
-    const insert=H.$(page,'authoring-assist-insert').first();
-    if(await insert.count() && await insert.isEnabled())await insert.click();
+    // The current report may be removed between a locator count and click.
+    // Require the real UI to retire every eligible stale insertion instead.
+    await page.waitForFunction(()=>[...document.querySelectorAll('[data-testid=authoring-assist-insert]')]
+        .every(button=>button.disabled||!button.getClientRects().length));
     await saveCurrent();
     const stale=await H.head(page,name);assert.equal(stale.id,before.id);
     await suggest('Command','\\sec','sec');
@@ -190,7 +192,14 @@ async function exercise(label) {
         assert.ok(assistanceWorkers.length>=14,'real dedicated Rust workers in both sessions');
         assert.ok(assistanceWorkers.every(w=>w.closed),'completed assistance workers physically close');
         record.result='PASS';
-    } catch(error) {record.failure=String(error.stack||error).slice(0,4096);process.exitCode=1;}
+    } catch(error) {record.failure=String(error.stack||error).slice(0,4096);process.exitCode=1;
+        if(page)record.failureState=await page.evaluate(()=>({
+            assistance:document.querySelector('[data-testid=authoring-assist-status]')?.textContent,
+            query:document.querySelector('[data-testid=authoring-assist-query]')?.value,
+            context:document.querySelector('[data-testid=authoring-assist-context]')?.value,
+            source:document.querySelector('[data-testid=editor]')?.value,
+            selection:[document.querySelector('[data-testid=editor]')?.selectionStart,document.querySelector('[data-testid=editor]')?.selectionEnd]
+        })).catch(()=>null);}
     finally {
         if(context)await context.close().catch(()=>{});await stop();fs.rmSync(profile,{recursive:true,force:true});
         fs.writeFileSync(receiptPath,JSON.stringify(record,null,2)+'\n');

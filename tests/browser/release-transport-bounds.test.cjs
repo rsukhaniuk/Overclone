@@ -247,9 +247,9 @@ test('R4-STALE-01 compile malformed role/epoch/tool tag rejected before any allo
     }
     assert.deepEqual(bad, []);
 });
-test('R4-NET-01 reserved Biber/maps and unknown profiles do not create an entry', async () => {
+test('R4-NET-01 reserved Biber/mismatched map phases and unknown profiles do not create an entry', async () => {
     for (const tag of [{ version: 10, tool: 'biber', engineId: 'pdftex' }, { version: 11 }, { version: 12 },
-        { version: 13 }, { version: 14 }, { profile: 8 }, { profile: 999 }]) {
+        { version: 13 }, { version: 14 }, { profile: 10 }, { profile: 999 }]) {
         assertNoWork(await compileRefusal(f => Object.assign(f.tag, tag)), 'reservation is not admission');
     }
     const h = harness(); try { assert.throws(() => h.context.createRestrictedWorkerAdmission('biber')); } finally { await h.close(); }
@@ -454,8 +454,9 @@ test('R4-RES-01 actual worker FFI rejects malformed UTF16/traversal/case/output 
 });
 test('R4-RES-01 actual suite aggregate byte guard runs before VFS (tiny literal scale)', async () => {
     const raw = source('compile-port-worker.js');
-    assert.equal((raw.match(/167772160/g) || []).length, 1);
-    const scaled = raw.replace('167772160', '48').replaceAll('67108864', '32').replaceAll('33554432', '32');
+    const target = 'const maxTotal=suite?167772160:';
+    assert.equal(raw.split(target).length - 1, 1);
+    const scaled = raw.replace(target, 'const maxTotal=suite?48:').replaceAll('67108864', '32').replaceAll('33554432', '32');
     for (const count of [2, 3]) {
         const h = entry('compile-port-worker.js', scaled), frame = compileFrame(); frame.operation = frame.tag.tool;
         frame.files = Array.from({ length: count }, (_, i) => ({ name: i === 0 ? 'main.tex' : 'small-' + i + '.txt', bytes: new Uint8Array(17) }));

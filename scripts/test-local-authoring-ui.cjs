@@ -63,8 +63,7 @@ const COMPILER_CHOICE = process.env.COMPILER_CHOICE || "local-authoring-v4";
 assert.ok(["local-authoring-v4", "latex-dvi", "xelatex", "lualatex"].includes(COMPILER_CHOICE), "explicit supported compiler choice");
 const BUNDLED_RUNTIME = process.env.BUNDLED_RUNTIME === "1";
 const SOURCE_PDF_CHECKS = process.env.SOURCE_PDF_CHECKS === "1";
-assert.ok(!SOURCE_PDF_CHECKS || COMPILER_CHOICE === "local-authoring-v4", "DVI has no source map");
-assert.ok(!SOURCE_PDF_CHECKS || ["plain", "golden"].includes(CASE), "source/PDF checks support plain/golden fixtures");
+assert.ok(!SOURCE_PDF_CHECKS || ["plain", "golden", "portable"].includes(CASE), "source/PDF checks support plain/golden/portable fixtures");
 // Opt-in real UI rename of the original input bytes, followed by the same
 // registered compile/BibTeX/render/full-cold-offline workflow.
 const MAIN_PATH = process.env.SELECTED_MAIN_PATH || "main.tex";
@@ -112,6 +111,8 @@ const pins = json(fs.readFileSync(pinsPath, "utf8"));
 const suite = pins.some(pin => pin.name === 'xetex.wasm') && pins.some(pin => pin.name === 'luatex.wasm');
 assert.ok([497, 499, 507].includes(pins.length) || suite && pins.length <= 8192, "supported authoring resource inventory");
 if (SOURCE_PDF_CHECKS) assert.ok([499, 507].includes(pins.length) || suite, "navigation requires source-map resources");
+if (SOURCE_PDF_CHECKS && COMPILER_CHOICE !== "local-authoring-v4")
+  assert.ok(pins.some(pin => pin.name === 'xdv-map-converter.wasm'), "non-pdfTeX navigation requires the complete P9 bundle");
 if (COMPILER_CHOICE === "latex-dvi") assert.ok(pins.length === 507 || suite, "DVI requires its resource package");
 if (["xelatex", "lualatex"].includes(COMPILER_CHOICE)) assert.ok(suite, "Unicode engines require the explicit suite");
 for (const p of pins) {
@@ -375,6 +376,8 @@ function chromiumCensus() {
 
 const record = {
   result: "FAIL", case: CASE, compilerChoice: COMPILER_CHOICE, scope: "local-authoring-compile-pdf-cold-offline", pdfDownloadChecksEnabled: CHECK_DOWNLOADS, bundledRuntime: BUNDLED_RUNTIME,
+  harnessSha256: sha256(fs.readFileSync(__filename)),
+  sourcePdfHelperSha256: sha256(fs.readFileSync(path.join(__dirname, 'source-pdf-navigation-ui-checks.cjs'))),
   sdk: { cspValid: true, manifestVersion: manifest.version, manifestAssets: manifest.assets.length, allAssetHashesVerified: true },
   resources: {
     compilerPins: pins.length, pinsSha256: sha256(fs.readFileSync(pinsPath)),
@@ -1111,7 +1114,7 @@ let profile, base;
 
     if (SOURCE_PDF_CHECKS) {
       phase = "online-source-pdf-navigation";
-      record.online.sourcePdfNavigation = await sourcePdfNavigation.verify(page, project, MAIN_PATH, CASE === "golden", phase);
+      record.online.sourcePdfNavigation = await sourcePdfNavigation.verify(page, project, MAIN_PATH, CASE === "portable" ? "portable" : CASE === "golden", phase);
     }
     // --- Wait for the offline cache to be genuinely provisioned.
     await page.waitForFunction(() => window.__oopOfflineReady === true, null, { timeout: 90000 });
@@ -1370,7 +1373,7 @@ let profile, base;
 
     if (SOURCE_PDF_CHECKS) {
       phase = "offline-source-pdf-navigation";
-      record.coldOffline.sourcePdfNavigation = await sourcePdfNavigation.verify(page, project, MAIN_PATH, CASE === "golden", phase);
+      record.coldOffline.sourcePdfNavigation = await sourcePdfNavigation.verify(page, project, MAIN_PATH, CASE === "portable" ? "portable" : CASE === "golden", phase);
     }
     if (CHECK_DOWNLOADS) {
       assert.equal((await H.$(page, "pdf-hash").textContent()).trim(), offlineOutputHash);
