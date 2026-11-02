@@ -12,7 +12,8 @@ namespace Workspace.Tests.CompilerSuite;
 public sealed class BundledRuntimeTests
 {
     internal static string? FixtureDirectory => Environment.GetEnvironmentVariable("BUNDLED_COMPILER_RUNTIME_DIR")
-        ?? Environment.GetEnvironmentVariable(NativeCompilerXeNavigationPins.Ready
+        ?? Environment.GetEnvironmentVariable(NativeCompilerGraphicsNavigationPins.Ready
+        ? "GRAPHICS_NAVIGATION_RUNTIME_DIR" : NativeCompilerXeNavigationPins.Ready
         ? "XE_NAVIGATION_RUNTIME_DIR" : NativeCompilerNavigationPins.Ready
             ? "NAVIGATION_RUNTIME_DIR" : NativeCompilerBibliographyPins.Ready
         ? "COMPILER_BIBLIOGRAPHY_RUNTIME_DIR" : NativeCompilerCompatibilityPins.Ready

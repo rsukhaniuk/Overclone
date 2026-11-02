@@ -249,7 +249,7 @@ test('R4-STALE-01 compile malformed role/epoch/tool tag rejected before any allo
 });
 test('R4-NET-01 reserved Biber/mismatched map phases and unknown profiles do not create an entry', async () => {
     for (const tag of [{ version: 10, tool: 'biber', engineId: 'pdftex' }, { version: 11 }, { version: 12 },
-        { version: 13 }, { version: 14 }, { profile: 10 }, { profile: 999 }]) {
+        { version: 13 }, { version: 14 }, { version: 15 }, { version: 16 }, { version: 17 }, { profile: 11 }, { profile: 999 }]) {
         assertNoWork(await compileRefusal(f => Object.assign(f.tag, tag)), 'reservation is not admission');
     }
     const h = harness(); try { assert.throws(() => h.context.createRestrictedWorkerAdmission('biber')); } finally { await h.close(); }

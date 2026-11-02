@@ -9,9 +9,10 @@ public static class NativeNavigationContract
     public const int DviPhase = 12, LuaPhase = 14;
     public const string LimitationCode = "native-navigation-unavailable";
     public const string LimitationMessage = "The PDF is available, but measured source navigation is unavailable for this output.";
-    public static bool IsNavigationProfile(NativeRuntimeProfile profile) => profile is Profile or NativeXeNavigationContract.Profile;
-    public static bool IsMapped(NativeRuntimeProfile profile, int phase, NativeCompilerEngine engine) => IsNavigationProfile(profile)
-        && (phase == DviPhase && engine == NativeCompilerEngine.LaTeXDvi || phase == LuaPhase && engine == NativeCompilerEngine.LuaLaTeX
+    public static bool IsNavigationProfile(NativeRuntimeProfile profile) => profile is Profile or NativeXeNavigationContract.Profile or NativeGraphicsNavigationContract.Profile;
+    public static bool IsMapped(NativeRuntimeProfile profile, int phase, NativeCompilerEngine engine) => profile == NativeGraphicsNavigationContract.Profile
+        ? engine != NativeCompilerEngine.PdfLaTeX && NativeCompilerSuiteContract.Phase(profile, engine) != 0 && phase == NativeCompilerSuiteContract.Phase(profile, engine)
+        : IsNavigationProfile(profile) && (phase == DviPhase && engine == NativeCompilerEngine.LaTeXDvi || phase == LuaPhase && engine == NativeCompilerEngine.LuaLaTeX
             || profile == NativeXeNavigationContract.Profile && phase == NativeXeNavigationContract.Phase && engine == NativeCompilerEngine.XeLaTeX);
     public static NativeCompilerComponent Component(NativeCompilerEngine engine)
     {

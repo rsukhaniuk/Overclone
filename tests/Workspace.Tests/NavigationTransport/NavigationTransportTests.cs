@@ -41,13 +41,13 @@ public sealed class NavigationTransportTests(ITestOutputHelper output)
             Assert.True(NativeCompilerSuiteContract.MatchesOptions(NativeCompilerSuiteContract.SelectionOptions(Profile, e), Profile, e));
             foreach (int bad in new[] { 0, 1, 7, 9, 10, 11, 13, 15, 99 })
                 Assert.False((p with { PhaseProtocolVersion = bad }).IsValid);
-            Assert.False((p with { Profile = (NativeRuntimeProfile)10 }).IsValid);
+            Assert.False((p with { Profile = (NativeRuntimeProfile)11 }).IsValid);
             if (e is NativeCompilerEngine.LaTeXDvi or NativeCompilerEngine.LuaLaTeX)
                 Assert.False(NativeCompilerSuiteContract.MatchesOptions(NativeCompilerSuiteContract.SelectionOptions(e), Profile, e));
         }
-        Assert.False(NativeRuntimeProfiles.Known((NativeRuntimeProfile)10));
+        Assert.False(NativeRuntimeProfiles.Known((NativeRuntimeProfile)11));
         Assert.False(NativeRuntimeProfiles.Known((NativeRuntimeProfile)int.MaxValue));
-        Assert.Equal(0, NativeCompilerSuiteContract.Phase((NativeRuntimeProfile)10, NativeCompilerEngine.LuaLaTeX));
+        Assert.Equal(0, NativeCompilerSuiteContract.Phase((NativeRuntimeProfile)11, NativeCompilerEngine.LuaLaTeX));
         Assert.True(NativeRuntimeProfiles.HasBibliographyCarry(Profile));
         Assert.Equal(8, (int)Profile); Assert.Equal(7, (int)NativeRuntimeProfile.LocalCompilerBibliography);
     }

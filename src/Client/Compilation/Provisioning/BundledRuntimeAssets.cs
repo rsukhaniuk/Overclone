@@ -18,14 +18,7 @@ public sealed class BundledRuntimeAssets(HttpClient http, IJSRuntime? browser = 
         .GetManifestResourceStream("Client.Compilation.Provisioning.bundled-runtime.json")!);
     public static Asset CompilerAsset => Pin("compiler");
     // Promotion is explicit: a ready closure may never fall back to older bytes.
-    public static NativeRuntimeProfile CompilerProfile => NativeCompilerXeNavigationPins.Ready
-        ? NativeRuntimeProfile.LocalCompilerXeNavigation
-        : NativeCompilerNavigationPins.Ready
-            ? NativeRuntimeProfile.LocalCompilerNavigation
-            : NativeCompilerBibliographyPins.Ready
-        ? NativeRuntimeProfile.LocalCompilerBibliography
-        : NativeCompilerCompatibilityPins.Ready
-            ? NativeRuntimeProfile.LocalCompilerCompatibility : NativeRuntimeProfile.LocalCompilerSuite;
+    public static NativeRuntimeProfile CompilerProfile => NativeRuntimeProfile.LocalCompilerGraphicsNavigation;
     public static Asset PdfLoaderAsset => Pin("pdfLoader");
     public static Asset PdfWasmAsset => Pin("pdfWasm");
     private static Asset Pin(string role)

@@ -366,6 +366,49 @@ public sealed class CompileWorkspaceTests
             await Drain(session);
         }
     });
+    [Theory]
+    [InlineData(NativeCompilerEngine.PdfLaTeX)] [InlineData(NativeCompilerEngine.LaTeXDvi)]
+    [InlineData(NativeCompilerEngine.XeLaTeX)] [InlineData(NativeCompilerEngine.LuaLaTeX)]
+    public void Graphics_profile_options_dispatch_from_app_selection_and_keep_suite_deadline(NativeCompilerEngine engine) => Run(async () =>
+    {
+        await using var f = await CompilationTestWorkspace.Open();
+        var options = NativeCompilerSuiteContract.SelectionOptions(NativeGraphicsNavigationContract.Profile, engine);
+        var c = new Configuration(selectionOptions: options); var clock = new Clock();
+        var session = new CompileWorkspaceSession(f.Workspace, c, clock); session.AttachRenderer(Dispatcher());
+        try
+        {
+            Assert.True(f.Workspace.RenameFile(f.Main, "тези/my thesis.tex"));
+            await session.RefreshToolsAsync(); session.SelectMain(f.Main); session.SelectEngine("contract");
+            await session.CompileAsync();
+            var worker = await c.Workers.Next(); var ticket = session.LastTicket!;
+            Assert.Equal(options, worker.Context.Snapshot.Selection.Options);
+            clock.Advance(TimeSpan.FromSeconds(31)); await Task.Yield();
+            Assert.False(ticket.Completion.IsCompleted); // Native suite jobs retain their existing two-minute lifecycle.
+            worker.Reply.SetResult(worker.Output());
+            Assert.Equal(CompileLifecycleReason.Succeeded, (await ticket.Completion.WaitAsync(Bound)).Reason);
+            Assert.True(session.State!.IsCurrent);
+        }
+        finally
+        {
+            foreach (var worker in c.Workers.Created) worker.Reply.TrySetResult(worker.Output());
+            await Drain(session);
+        }
+    });
+    [Theory] [InlineData(10)] [InlineData(11)] [InlineData(18)] [InlineData(99)]
+    public void Reserved_or_unknown_native_options_do_not_enable_nested_native_roots(int phase) => Run(async () =>
+    {
+        await using var f = await CompilationTestWorkspace.Open();
+        var c = new Configuration(selectionOptions: [new("overclone-native-phase-contract", phase.ToString(System.Globalization.CultureInfo.InvariantCulture))]);
+        var session = Attach(f, c);
+        try
+        {
+            Assert.True(f.Workspace.RenameFile(f.Main, "тези/my thesis.tex"));
+            await session.RefreshToolsAsync(); session.SelectMain(f.Main); session.SelectEngine("contract");
+            await session.CompileAsync();
+            Assert.Null(session.LastTicket); Assert.Empty(c.Workers.Created); Assert.Null(session.DisplayedOutput);
+        }
+        finally { await Drain(session); }
+    });
     private sealed class Lifetime : IAsyncDisposable
     { internal int Disposals; public ValueTask DisposeAsync() { Disposals++; return ValueTask.CompletedTask; } }
     private sealed class MultipleConfiguration : ICompileWorkspaceConfiguration

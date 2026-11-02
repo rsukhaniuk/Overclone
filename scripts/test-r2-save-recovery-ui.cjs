@@ -58,7 +58,8 @@ async function stop() {
 }
 async function open(offline) {
   const { chromium } = require("playwright");
-  context = await chromium.launchPersistentContext(path.join(out, "profile"), { headless: true, offline, acceptDownloads: true });
+  context = await chromium.launchPersistentContext(path.join(out, "profile"), { headless: true, offline, acceptDownloads: true,
+    permissions: ["clipboard-read", "clipboard-write"] }); // Synthetic test context only: real native paste.
   browser = context.browser(); record.runtime.browser = browser?.version();
   try { record.runtime.playwright = require("playwright/package.json").version; } catch { record.runtime.playwright = "version unavailable"; }
   assert.equal(record.runtime.playwright, "1.56.1", "Root must use the accepted cached Playwright1.56.1");
@@ -140,13 +141,40 @@ async function quotaLimit(page, label) {
 }
 async function fillOnce(page, name, expectedBefore, text, label) {
   const id = await choose(page, name, expectedBefore), before = await state(page); assert.equal(before.readonly, false);
-  const attempt = { label, tab: ids.get(page), before: stateBrief(before), intendedUtf16Units: text.length, intendedSavedSha256: sha(editedBytes(text)), inputCount: 1 }; record.attempts.push(attempt); flush();
-  await $(page, "editor").fill(text); // ONE input, after exact file/full-value render fence
+  const attempt = { label, tab: ids.get(page), before: stateBrief(before), intendedUtf16Units: text.length, intendedSavedSha256: sha(editedBytes(text)), inputMechanism: "native clipboard paste, unchanged full multiline text" }; record.attempts.push(attempt); flush();
+  const editor = $(page, "editor");
+  await editor.focus();
+  await editor.press("Control+A");
+  await page.evaluate(async value => {
+    await navigator.clipboard.writeText(value);
+    const element = document.querySelector('[data-testid="editor"]');
+    const observation = { input: 0, beforeinput: 0, types: [] };
+    window.__a09PasteEvents = observation;
+    window.__a09PasteDetach = [];
+    for (const name of ["input", "beforeinput"]) {
+      const observe = event => {
+        observation[name]++;
+        observation.types.push({ name, inputType: event.inputType, trusted: event.isTrusted });
+      };
+      element.addEventListener(name, observe); // Count every event, without mutation.
+      window.__a09PasteDetach.push(() => element.removeEventListener(name, observe));
+    }
+  }, text);
+  await editor.press("Control+V");
   await page.waitForFunction(({ id, text, generation, session }) => {
     const e = document.querySelector("[data-testid=editor]"), a = document.querySelector("[data-testid=analysis-panel]");
     return e?.dataset.fileId === id && e.value === text && a?.dataset.session === session && Number(a?.dataset.generation) > Number(generation);
   }, { id, text, generation: before.generation, session: before.session });
-  attempt.modelAcknowledged = stateBrief(await state(page)); flush(); return attempt;
+  attempt.modelAcknowledged = stateBrief(await state(page));
+  attempt.nativeEvents = await page.evaluate(() => {
+    for (const detach of window.__a09PasteDetach) detach();
+    window.__a09PasteDetach = [];
+    return window.__a09PasteEvents;
+  });
+  assert.equal(attempt.nativeEvents.input, 1);
+  assert.equal(attempt.nativeEvents.beforeinput, 1);
+  assert(attempt.nativeEvents.types.every(e => e.inputType === "insertFromPaste" && e.trusted));
+  flush(); return attempt;
 }
 async function failedSave(page, name, A, label) {
   const initial = await state(page);
@@ -277,12 +305,19 @@ async function writerLoss(page) {
   record.phases.writerLoss.C = brief(C); record.phases.writerLoss.unsavedBIsDownloadOnly = true; flush(); return { name, A, C, reader };
 }
 async function captureFailure() {
+  const bounded = (promise, milliseconds = 10000) => {
+    let timer;
+    return Promise.race([promise, new Promise((_, reject) => {
+      timer = setTimeout(() => reject(new Error("Failure capture timed out")), milliseconds);
+    })]).finally(() => clearTimeout(timer));
+  };
   record.failureTabs ||= [];
   for (const page of context?.pages() || []) {
-    if (page.isClosed()) continue; const id = ids.get(page); const s = await state(page).catch(e => ({ unavailable: String(e) }));
+    if (page.isClosed()) continue; const id = ids.get(page); const s = await bounded(state(page)).catch(e => ({ unavailable: String(e) }));
     if (s.value !== undefined) fs.writeFileSync(path.join(out, "failure-" + id + "-textarea.txt"), s.value);
-    const body = await page.locator("body").innerText().catch(() => "unavailable"); record.failureTabs.push({ id, active: page === active, url: page.url(), state: stateBrief(s), body: body.slice(0, 45000), exactTextareaFile: "failure-" + id + "-textarea.txt" });
-    await page.screenshot({ path: path.join(out, "failure-" + id + ".png"), fullPage: true }).catch(() => {});
+    const body = await bounded(page.locator("body").innerText({ timeout: 10000 })).catch(() => "unavailable"); record.failureTabs.push({ id, active: page === active, url: page.url(), state: stateBrief(s), body: body.slice(0, 45000), exactTextareaFile: "failure-" + id + "-textarea.txt" });
+    flush();
+    await page.screenshot({ path: path.join(out, "failure-" + id + ".png"), fullPage: true, timeout: 10000 }).catch(() => {});
   }
 }
 (async () => {
@@ -316,7 +351,7 @@ async function captureFailure() {
     record.phases.coldOffline = { verifiedA: brief(q.A), verifiedB: brief(q.B), D: brief(D), unrelatedWriterCUnchanged: true, offlineNormalEditSaveDownload: true };
     await page.screenshot({ path: path.join(out, "cold-offline-success.png"), fullPage: true }); assert.deepEqual(record.externalRequests, []); assert.deepEqual(record.pageErrors, []); workflowComplete = true;
   } catch (error) {
-    record.failure = { code: error.code || "ASSERTION_OR_OPERATION_FAILED", message: String(error.stack || error), cause: String(error.cause?.stack || error.cause || "") }; process.exitCode = 1; await captureFailure().catch(e => { record.failureCaptureError = String(e); });
+    record.failure = { code: error.code || "ASSERTION_OR_OPERATION_FAILED", message: String(error.stack || error), cause: String(error.cause?.stack || error.cause || "") }; process.exitCode = 1; flush(); await captureFailure().catch(e => { record.failureCaptureError = String(e); });
   } finally {
     // Only the test-owned native lease is released here, never a product lock.
     try { await releaseNativeFault(); } catch (e) { record.nativeLeaseCleanupFailure = String(e); process.exitCode = 1; }
@@ -325,6 +360,6 @@ async function captureFailure() {
     if (context) { try { await closeBrowser(); } catch (e) { record.browserCleanupFailure = String(e); process.exitCode = 1; } }
     try { await stop(); } catch (e) { record.serverCleanupFailure = String(e); process.exitCode = 1; }
     if (workflowComplete && !record.nativeLeaseCleanupFailure && !record.quotaCleanupFailure && !record.browserCleanupFailure && !record.serverCleanupFailure) { record.result = "PASS"; record.step = "PASS: bounded quota/retry, cooperative handover, native-revocation FAULT recovery and cold-offline"; }
-    flush(); process.stdout.write(JSON.stringify({ result: record.result, step: record.step, receipt: receiptPath, failure: record.failure }) + "\n");
+    flush(); process.stdout.write(JSON.stringify({ result: record.result, step: record.step, receipt: receiptPath, failure: record.failure ? { ...record.failure, message: record.failure.message.slice(0, 2000) } : null }) + "\n");
   }
 })();

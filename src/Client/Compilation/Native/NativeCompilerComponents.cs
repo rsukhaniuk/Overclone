@@ -12,6 +12,7 @@ public static class NativeCompilerComponents
     public static NativeCompilerComponent For(NativeRuntimeProfile profile, NativeCompilerEngine engine)
     {
         if (!NativeRuntimeProfiles.IsSuite(profile)) throw new ArgumentOutOfRangeException(nameof(profile));
+        if (profile == NativeGraphicsNavigationContract.Profile) return NativeGraphicsNavigationContract.Component(engine);
         if (profile == NativeXeNavigationContract.Profile) return NativeXeNavigationContract.Component(engine);
         if (profile == NativeNavigationContract.Profile) return NativeNavigationContract.Component(engine);
         bool expanded = profile is NativeRuntimeProfile.LocalCompilerCompatibility or NativeRuntimeProfile.LocalCompilerBibliography;

@@ -54,17 +54,19 @@
         let sourceMapGeometryPayload = null;
         try {
             const tag = frame.tag, resources = frame.runtimeResourceNames;
-            const xeNavigation = tag?.profile === 9 && tag.version === 13 && tag.engineId === 'xelatex';
-            const dviNavigation = [8, 9].includes(tag?.profile) && tag.version === 12 && tag.engineId === 'latex-dvi';
+            const graphics = tag?.profile === 10;
+            const xeNavigation = (tag?.profile === 9 && tag.version === 13 || graphics && tag.version === 16) && tag.engineId === 'xelatex';
+            const dviNavigation = ([8, 9].includes(tag?.profile) && tag.version === 12 || graphics && tag.version === 15) && tag.engineId === 'latex-dvi';
             const navigation = xeNavigation || dviNavigation;
-            const suite = [5, 6, 7, 8, 9].includes(tag?.profile), xe = xeNavigation || [5, 6, 7, 8].includes(tag?.profile) && tag.version === 8 && tag.engineId === 'xelatex';
+            const suite = [5, 6, 7, 8, 9, 10].includes(tag?.profile), xe = xeNavigation || [5, 6, 7, 8].includes(tag?.profile) && tag.version === 8 && tag.engineId === 'xelatex';
             const dvi = dviNavigation || tag?.version === 7 && [4, 5, 6, 7].includes(tag.profile) && tag.engineId === 'latex-dvi';
             const prefix = '__oop_runtime__/', resourceName = name => suite ? name.slice(prefix.length) : name;
             if (!(dvi || xe) || tag.tool !== 'dvipdfmx' || nativeAbi !== (xeNavigation ? 3 : navigation ? 2 : 1)
                 || [8, 9].includes(tag.profile) && !navigation && (loaderSha256 !== 'dc31543194583c105228dc791040c2f09afd7aa64311ce254b215c9fcd24e54a'
                     || wasmSha256 !== '52085c656ec2680150519d39ecd8588326e123652d72294e7e19eedd0ec0171c')
-                || navigation && (loaderSha256 !== 'd79dca5dd87ab27ecb7dcc63cc96171092ea6a57c43054e4cabcf39a0f5c8c72'
-                    || wasmSha256 !== (xeNavigation ? '10031d2748be3f6fa6ba5bc99fd4ef597f06f66208c5b9a5aeba60d5dc3aecac' : 'fb6d4da9ee438d66d89a7a0ec36ab7dd243ea2a5c32c4a426179b935e383ca84')
+                || graphics && (typeof module._oc_dvi_graphics_abi !== 'function' || module._oc_dvi_graphics_abi() !== 1)
+                || navigation && (loaderSha256 !== (graphics ? 'a961144a37546755175dfda0687c22bb79e67ebef495aa84c3922b01af6f2c57' : 'd79dca5dd87ab27ecb7dcc63cc96171092ea6a57c43054e4cabcf39a0f5c8c72')
+                    || wasmSha256 !== (graphics ? xeNavigation ? 'ca030fe4077fc02338e4d92cdc5c0ef1b89c73bcb629b9d44f59708993fa15ef' : '53bd8a8a98c509afa8b0e0e5451bf78d7e9d765da1c8f513d9c1a909e9d5270d' : xeNavigation ? '10031d2748be3f6fa6ba5bc99fd4ef597f06f66208c5b9a5aeba60d5dc3aecac' : 'fb6d4da9ee438d66d89a7a0ec36ab7dd243ea2a5c32c4a426179b935e383ca84')
                     || !Number.isSafeInteger(tag.ordinal) || tag.ordinal < 1 || tag.ordinal > 4294967295
                     || ['_oc_dvi_geometry_configure','_oc_dvi_geometry_length','_oc_dvi_geometry_copy','_oc_dvi_geometry_data','_oc_dvi_geometry_size']
                         .some(n => typeof module[n] !== 'function'))

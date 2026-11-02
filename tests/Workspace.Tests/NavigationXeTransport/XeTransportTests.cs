@@ -30,7 +30,7 @@ public sealed class XeTransportTests(ITestOutputHelper output)
     private static readonly byte[] Sidecar = Bytes("{\"schemaVersion\":1,\"pages\":[{\"page\":1,\"status\":\"available\",\"reason\":\"none\",\"writerToPdfRaw\":[1,0,0,-1,3,800],\"writerPageBoxBp\":[0,0,600,800]}]}");
 
     [Fact]
-    public void Closed_P9_matrix_preserves_P8_and_legacy_overloads_and_unknown10()
+    public void Closed_P9_matrix_preserves_P8_and_legacy_overloads_and_unknown11()
     {
         Assert.Equal(9,(int)Profile);
         Assert.Equal(new[]{6,7,8,9},Enum.GetValues<NativeCompilerEngine>().Select(NativeCompilerSuiteContract.Phase));
@@ -41,10 +41,10 @@ public sealed class XeTransportTests(ITestOutputHelper output)
             var plan=NativeCompilerSuiteContract.CreatePlan(engine,profile:Profile); Assert.True(plan.IsValid);
             foreach(int phase in Enumerable.Range(1,16).Where(p => p!=plan.EffectivePhaseVersion))
                 Assert.False((plan with {PhaseProtocolVersion=phase}).IsValid);
-            Assert.False((plan with {Profile=(NativeRuntimeProfile)10}).IsValid);
+            Assert.False((plan with {Profile=(NativeRuntimeProfile)11}).IsValid);
             Assert.True(NativeCompilerSuiteContract.MatchesOptions(NativeCompilerSuiteContract.SelectionOptions(Profile,engine),Profile,engine));
         }
-        foreach(var p in new[]{(NativeRuntimeProfile)10,(NativeRuntimeProfile)int.MaxValue})
+        foreach(var p in new[]{(NativeRuntimeProfile)11,(NativeRuntimeProfile)int.MaxValue})
         {
             Assert.False(NativeRuntimeProfiles.Known(p)); Assert.False(NativeRuntimeProfiles.IsSuite(p));
             Assert.Equal(0,NativeCompilerSuiteContract.Phase(p,NativeCompilerEngine.XeLaTeX));

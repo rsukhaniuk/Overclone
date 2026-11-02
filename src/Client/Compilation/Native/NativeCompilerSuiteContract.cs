@@ -16,6 +16,8 @@ public static class NativeCompilerSuiteContract
     public static string EngineId(NativeCompilerEngine engine) => engine switch
     { NativeCompilerEngine.PdfLaTeX => "pdftex", NativeCompilerEngine.LaTeXDvi => "latex-dvi", NativeCompilerEngine.XeLaTeX => "xelatex", NativeCompilerEngine.LuaLaTeX => "lualatex", _ => "" };
     public static int Phase(NativeRuntimeProfile profile, NativeCompilerEngine engine) => !NativeRuntimeProfiles.IsSuite(profile) ? 0
+        : profile == NativeGraphicsNavigationContract.Profile ? engine switch
+        { NativeCompilerEngine.PdfLaTeX => 6, NativeCompilerEngine.LaTeXDvi => NativeGraphicsNavigationContract.DviPhase, NativeCompilerEngine.XeLaTeX => NativeGraphicsNavigationContract.XePhase, NativeCompilerEngine.LuaLaTeX => NativeGraphicsNavigationContract.LuaPhase, _ => 0 }
         : profile == NativeXeNavigationContract.Profile ? engine switch
         { NativeCompilerEngine.PdfLaTeX => 6, NativeCompilerEngine.LaTeXDvi => 12, NativeCompilerEngine.XeLaTeX => 13, NativeCompilerEngine.LuaLaTeX => 14, _ => 0 }
         : profile == NativeNavigationContract.Profile ? engine switch

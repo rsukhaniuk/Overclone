@@ -56,7 +56,8 @@ public sealed class CompileWorkspaceSession(WorkspaceCoordinator workspace, ICom
     // Configured port options only. Actual runtime/engine admission stays in the factory.
     private static bool SuiteOptions(IEnumerable<CompilationOption> options) => NativeCompilerSuiteContract.MatchesOptions(options)
         || NativeCompilerSuiteContract.MatchesOptions(options, NativeNavigationContract.Profile)
-        || NativeCompilerSuiteContract.MatchesOptions(options, NativeXeNavigationContract.Profile);
+        || NativeCompilerSuiteContract.MatchesOptions(options, NativeXeNavigationContract.Profile)
+        || NativeCompilerSuiteContract.MatchesOptions(options, NativeGraphicsNavigationContract.Profile);
     private CompileLifecycleOptions Options => new(new(64, 1048576, 8388608, 131072),
         new(8388608, 2097152, 64, 128, 4096, 1048576), 65536,
         _ports?.SelectionOptions is { } options && SuiteOptions(options)

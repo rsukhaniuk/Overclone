@@ -36,7 +36,7 @@ public sealed record NativeCompilePlan(bool BibtexRequired, int MaxLatexPasses, 
             : Engine == NativeCompilerEngine.PdfLaTeX && (PhaseProtocolVersion is null || PhaseProtocolVersion == NativeRuntimeProfiles.ProtocolVersion(Profile)
                 || PhaseProtocolVersion is 4 or 5 && Profile == NativeRuntimeProfile.LocalLatex2023Authoring
                 || PhaseProtocolVersion == 7 && Profile == NativeRuntimeProfile.LocalLatex2023Dvi && DviOutput))
-        && (DviOutput == (EffectivePhaseVersion == 7 || NativeNavigationContract.IsNavigationProfile(Profile) && EffectivePhaseVersion == NativeNavigationContract.DviPhase))
+        && (DviOutput == (EffectivePhaseVersion == 7 || NativeNavigationContract.IsNavigationProfile(Profile) && Engine == NativeCompilerEngine.LaTeXDvi && EffectivePhaseVersion == NativeCompilerSuiteContract.Phase(Profile, Engine)))
         && MaxPhaseFiles >= 1 && MaxPhaseFiles <= (NativeRuntimeProfiles.IsSuite(Profile) ? NativeCompilerSuiteContract.Files + 192
             : EffectivePhaseVersion is 4 or 5 or 6 or 7 ? NativeAuthoringV4Contract.PhaseFiles : 512)
         && MaxInputBytes > 0 && MaxInputBytes <= NativeRuntimeProfiles.MaxTotalBytes(Profile)

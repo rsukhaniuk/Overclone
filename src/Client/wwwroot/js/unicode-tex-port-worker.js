@@ -56,15 +56,17 @@
         let sourceMapPayload = null, sourceMapGeometryPayload = null;
         try {
             const xe = engine === 'xelatex', tag = frame.tag;
-            const xeNavigation = tag?.profile === 9 && xe;
-            const navigation = xeNavigation || [8, 9].includes(tag?.profile) && !xe;
+            const graphics = tag?.profile === 10;
+            const xeNavigation = [9, 10].includes(tag?.profile) && xe;
+            const navigation = xeNavigation || [8, 9, 10].includes(tag?.profile) && !xe;
             if (xe && xeMapModule !== xeNavigation
-                || tag?.version !== (xe ? xeNavigation ? 13 : 8 : navigation ? 14 : 9) || ![5, 6, 7, 8, 9].includes(tag.profile) || tag.engineId !== engine || tag.tool !== 'latex'
+                || tag?.version !== (graphics ? xe ? 16 : 17 : xe ? xeNavigation ? 13 : 8 : navigation ? 14 : 9) || ![5, 6, 7, 8, 9, 10].includes(tag.profile) || tag.engineId !== engine || tag.tool !== 'latex'
                 || !xe && nativeAbi !== (navigation ? 5 : tag.profile === 7 ? 3 : 2)
                 || xe && tag.profile === 8 && (loaderSha256 !== '4ca80d7ed06d550632766dc3629f394f7f41b586d96682e98b87ca8fe8c72255'
                     || wasmSha256 !== 'b02ff092694071320785486618aa0de7df2d12fae7d3e92c5a32c5cda5980243')
-                || navigation && (loaderSha256 !== (xeNavigation ? 'a2d90034e871d75d48596b26a5856ac6eed86b6396bd563e610b0ffa7a6be21c' : '7282eb2decde52603417b94d363a6d3258e8ef1451a0d20847bee70084c70a21')
-                    || wasmSha256 !== (xeNavigation ? '61ef6fe76724c7bd9532f05224d03829e40393c61acd68da0fd0589d8e60c7c2' : '1f5b9ca7742693299f1074c47e2a3b91d1df2d6c0381d5c4d1a628965cde542e')
+                || graphics && !xe && (typeof module._oc_lua_graphics_abi !== 'function' || module._oc_lua_graphics_abi() !== 1)
+                || navigation && (loaderSha256 !== (xeNavigation ? 'a2d90034e871d75d48596b26a5856ac6eed86b6396bd563e610b0ffa7a6be21c' : graphics ? '6fb762c18ea4719dd2157d5950303a5f498ad511df0665cca54af141ff0882b5' : '7282eb2decde52603417b94d363a6d3258e8ef1451a0d20847bee70084c70a21')
+                    || wasmSha256 !== (xeNavigation ? '61ef6fe76724c7bd9532f05224d03829e40393c61acd68da0fd0589d8e60c7c2' : graphics ? '220999882c2ddb4057b6d798f21785fce35accb4c63c0436dfa62af9f3987dbc' : '1f5b9ca7742693299f1074c47e2a3b91d1df2d6c0381d5c4d1a628965cde542e')
                     || !Number.isSafeInteger(tag.ordinal) || tag.ordinal < 1 || tag.ordinal > 4294967295
                     || ['_oc_mem_configure','_oc_synctex_abi','_oc_synctex_status','_oc_synctex_length','_oc_synctex_copy',
                         ...(xeNavigation ? ['_oc_xe_maps_abi'] : ['_oc_synctex_geometry_length','_oc_synctex_geometry_copy'])].some(n => typeof module[n] !== 'function')
@@ -105,7 +107,7 @@
             const outputNames = new Set(frame.outputs);
             if (outputNames.size !== frame.outputs.length || !outputNames.has(artifact)
                 || frame.outputs.some(name => !path(name) || !(/\.(aux|bbl|blg|toc|lof|lot|out|log)$/i.test(name) || name === artifact || xe && name === job + '.pdf'
-                    || [7, 8, 9].includes(tag.profile) && name === blx)
+                    || [7, 8, 9, 10].includes(tag.profile) && name === blx)
                     || resources.has(name) || names.has(name) && !generated.has(name))) throw 0;
             maxLog = frame.maxLogBytes; log = ''; logBytes = 0; truncated = false;
             const F = module.FS;
@@ -120,7 +122,7 @@
             } else {
                 if (module.ccall('oc_luatex_configure', 'number', ['string', 'string'], [frame.selectedRoot, tag.nonce]) !== 0) throw 0;
                 for (const name of frame.outputs.filter(name => /\.(aux|bbl|blg|toc|lof|lot|out)$/i.test(name)
-                    || [7, 8, 9].includes(tag.profile) && name === blx))
+                    || [7, 8, 9, 10].includes(tag.profile) && name === blx))
                     if (module.ccall('oc_luatex_declare_output', 'number', ['string'], [name]) !== 0) throw 0;
                 for (const file of frame.files) {
                     const pointer = module._malloc(Math.max(1, file.bytes.length));

@@ -256,7 +256,7 @@ async function executeDvi({data:d}){
  let files=[],inputs=[],outcome='setup-failure';
  try{
   const t=d.tag;
-  if(![8,9].includes(t?.profile)||t.version!==12||t.engineId!=='latex-dvi'||t.tool!=='latex'||d.operation!=='latex'
+  if(![8,9,10].includes(t?.profile)||t.version!==(t.profile===10?15:12)||t.engineId!=='latex-dvi'||t.tool!=='latex'||d.operation!=='latex'
    ||!Number.isSafeInteger(t.ordinal)||t.ordinal<1||t.ordinal>4294967295
    ||!(/^[0-9a-f]{64}$/.test(t.runtimeIdentity)))throw new Error('DVI frame');
   validateAuthoringV4Frame(d);
@@ -312,16 +312,16 @@ async function executeDvi({data:d}){
 function validateAuthoringV4Frame(d){
  const bad=()=>{throw new Error('v4 FFI namespace/frame');};
  const key=n=>d.tag.version>=5?n.normalize('NFC').toUpperCase():n.normalize('NFC').replace(/[a-z]/g,c=>c.toUpperCase());
- const suite=[5,6,7,8,9].includes(d.tag.profile),lua=suite&&[9,14].includes(d.tag.version);
+ const suite=[5,6,7,8,9,10].includes(d.tag.profile),lua=suite&&[9,14,17].includes(d.tag.version);
  const selected=d.tag.version>=5,root=selected?d.selectedRoot:'main.tex';
  // Finite FFI consistency check only, not pass/tool orchestration. C# supplies both entries.
  if(typeof root!=='string')bad();
  const leaf=root.slice(root.lastIndexOf('/')+1),job=lua?'result':leaf.slice(0,-4);
  if(selected&&(!/^[\p{L}\p{Nd}\p{Mn}\p{Mc}._/ -]+$/u.test(root)||!/^.+\.tex$/i.test(leaf)||/^[.-]/.test(leaf)||leaf.startsWith(' ')||job.endsWith(' ')))bad();
  const latexEntry=selected&&root.includes(' ')?'"'+root+'"':root;
- const bibliography=[7,8,9].includes(d.tag.profile),blx=job.replaceAll(' ','_')+'-blx.bib';
+ const bibliography=[7,8,9,10].includes(d.tag.profile),blx=job.replaceAll(' ','_')+'-blx.bib';
  const state=n=>n.endsWith('.aux')||['.bbl','.toc','.lof','.lot','.out'].some(ext=>n===job+ext)||bibliography&&n===blx;
- const fixed=['.pdf','.aux','.bbl','.blg','.log','.toc','.lof','.lot','.out',...([7,12].includes(d.tag.version)?['.dvi']:[]),...([8,13].includes(d.tag.version)?['.xdv']:[])].map(ext=>job+ext).concat(bibliography?[blx]:[]);
+ const fixed=['.pdf','.aux','.bbl','.blg','.log','.toc','.lof','.lot','.out',...([7,12,15].includes(d.tag.version)?['.dvi']:[]),...([8,13,16].includes(d.tag.version)?['.xdv']:[])].map(ext=>job+ext).concat(bibliography?[blx]:[]);
  const valid=n=>typeof n==='string'&&n.length>0&&n===n.trim()&&new TextEncoder().encode(n).length<=249
   &&!/[\u0000-\u001f\u007f-\u009f<>:"|?*\\\\]/.test(n)&&!Array.from(n).some(c=>c.length===1&&c.charCodeAt(0)>=55296&&c.charCodeAt(0)<=57343)
   &&n.split('/').length<=32&&n.split('/').every(s=>s&&s!=='.'&&s!=='..'&&!/[. ]$/.test(s)
@@ -351,15 +351,15 @@ async function execute({data:d}){
   const legacy=d.tag.version===1&&(d.tag.profile===undefined||d.tag.profile===0)&&d.tag.runtimeIdentity==null;
   const modern=d.tag.version===2&&d.tag.profile===1&&typeof d.tag.runtimeIdentity==='string'&&/^[0-9a-f]{64}$/.test(d.tag.runtimeIdentity);
   const authoring=d.tag.version===3&&d.tag.profile===2&&typeof d.tag.runtimeIdentity==='string'&&/^[0-9a-f]{64}$/.test(d.tag.runtimeIdentity);
-  const identity=typeof d.tag.runtimeIdentity==='string'&&/^[0-9a-f]{64}$/.test(d.tag.runtimeIdentity),suite=[5,6,7,8,9].includes(d.tag.profile);
+  const identity=typeof d.tag.runtimeIdentity==='string'&&/^[0-9a-f]{64}$/.test(d.tag.runtimeIdentity),suite=[5,6,7,8,9,10].includes(d.tag.profile);
   const mapped=d.tag.version===6&&([3,4].includes(d.tag.profile)&&d.tag.engineId==null
     ||suite&&d.tag.engineId==='pdftex')&&identity;
   const dvi=d.tag.version===7&&[4,5,6,7].includes(d.tag.profile)&&d.tag.engineId==='latex-dvi'&&identity;
-  const unicodeBibtex=suite&&d.operation==='bibtex'&&((d.tag.version===8&&[5,6,7,8].includes(d.tag.profile)||d.tag.version===13&&d.tag.profile===9)&&d.tag.engineId==='xelatex'||(d.tag.version===9&&[5,6,7].includes(d.tag.profile)||d.tag.version===14&&[8,9].includes(d.tag.profile))&&d.tag.engineId==='lualatex')&&identity;
-  const navigationBibtex=[8,9].includes(d.tag.profile)&&d.tag.version===12&&d.tag.engineId==='latex-dvi'&&d.operation==='bibtex'&&identity;
+  const unicodeBibtex=suite&&d.operation==='bibtex'&&((d.tag.version===8&&[5,6,7,8].includes(d.tag.profile)||d.tag.version===(d.tag.profile===10?16:13)&&[9,10].includes(d.tag.profile))&&d.tag.engineId==='xelatex'||(d.tag.version===9&&[5,6,7].includes(d.tag.profile)||d.tag.version===(d.tag.profile===10?17:14)&&[8,9,10].includes(d.tag.profile))&&d.tag.engineId==='lualatex')&&identity;
+  const navigationBibtex=[8,9,10].includes(d.tag.profile)&&d.tag.version===(d.tag.profile===10?15:12)&&d.tag.engineId==='latex-dvi'&&d.operation==='bibtex'&&identity;
   const v4=mapped||dvi||unicodeBibtex||navigationBibtex||[4,5].includes(d.tag.version)&&d.tag.profile===2&&identity;
   if((!legacy&&!modern&&!authoring&&!v4)||!['latex','bibtex'].includes(d.operation)||d.files.length>(suite?8384:v4?768:512)||d.outputs.length>(v4?128:64))throw new Error('FFI frame');
-  if([8,9].includes(d.tag.profile)&&(loaderSha256!=='b514d2b72aa44ec47923735f8f1be43a93351931beb183d57a7429b73e74a9a9'
+  if([8,9,10].includes(d.tag.profile)&&(loaderSha256!=='b514d2b72aa44ec47923735f8f1be43a93351931beb183d57a7429b73e74a9a9'
    ||wasmSha256!=='70008f66d8acb88ee40e8c17b5a48dc81003852e569833444dd3cda7539ce235'
    ||cwrap('oc_synctex_abi','number',[])()!==65536))throw new Error('P8 legacy component identity');
   if(v4)validateAuthoringV4Frame(d);
