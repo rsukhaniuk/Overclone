@@ -18,3 +18,6 @@ v['abi']=3;v['geometrySource']='Actual native XDV7 postamble units/magnification
 v['sharedOverlayRecipeSha256']=sha(shared);v['xdvOverlayRecipeSha256']=sha(__file__)
 for x in v['source']:x['after']=sha(out/x['path'])
 a.write_text(json.dumps(v,indent=2)+'\n')
+if sys.argv[4:]:
+ if sys.argv[4:]!=['--graphics']:raise SystemExit('unknown explicit converter capability')
+ subprocess.run([sys.executable,str(Path(__file__).resolve().parent.parent/'graphics-navigation/converter-graphics.py'),str(out),str(source)],check=True,timeout=60)

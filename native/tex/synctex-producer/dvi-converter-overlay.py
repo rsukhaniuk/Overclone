@@ -4,6 +4,7 @@ import hashlib
 import json
 from pathlib import Path
 import sys
+import subprocess
 
 source,out,base_doc=map(Path,sys.argv[1:4])
 if out.exists(): raise SystemExit('fresh converter overlay required')
@@ -90,3 +91,6 @@ for n,b in texts.items(): (out/n).write_bytes(b)
  'source':[{'path':n,'before':h,'after':sha(out/n)} for n,h in pins.items()],
  'geometrySource':'Actual native DVI scale/header magnification, actual writer BOP matrix and resolved native writer extent, not PDF-derived approximation',
 },indent=2)+'\n')
+if sys.argv[4:]:
+ if sys.argv[4:]!=['--graphics']:raise SystemExit('unknown explicit converter capability')
+ subprocess.run([sys.executable,str(Path(__file__).resolve().parent.parent/'graphics-navigation/converter-graphics.py'),str(out),str(source)],check=True,timeout=60)
