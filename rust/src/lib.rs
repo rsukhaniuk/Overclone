@@ -3,6 +3,7 @@ use wasm_bindgen::prelude::*;
 pub mod analysis;
 pub mod authoring;
 pub mod rendered_extent;
+pub mod thesis_catalog;
 
 /// Counts words separated by ASCII whitespace, matching the C++ example.
 /// Non-ASCII whitespace remains word content; this is not a tokenizer.

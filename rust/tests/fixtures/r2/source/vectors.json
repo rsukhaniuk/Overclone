@@ -1,0 +1,540 @@
+{
+  "schemaVersion": 1,
+  "synthetic": true,
+  "vectors": [
+    {
+      "id": "manual-positive",
+      "synthetic": true,
+      "files": [
+        {
+          "path": "main.tex",
+          "text": "\\documentclass{article}\n\\begin{document}\n\\cite{а,б}\\begin{thebibliography}{9}\\bibitem{а}Один\\bibitem{б}Два\\end{thebibliography}\n\\end{document}"
+        }
+      ],
+      "expected": {
+        "1": "pass",
+        "2": "pass"
+      }
+    },
+    {
+      "id": "manual-unresolved",
+      "synthetic": true,
+      "files": [
+        {
+          "path": "main.tex",
+          "text": "\\documentclass{article}\n\\begin{document}\n\\cite{а,в}\\begin{thebibliography}{9}\\bibitem{а}Один\\bibitem{б}Два\\end{thebibliography}\n\\end{document}"
+        }
+      ],
+      "expected": {
+        "1": "fail",
+        "2": "fail"
+      }
+    },
+    {
+      "id": "manual-duplicate",
+      "synthetic": true,
+      "files": [
+        {
+          "path": "main.tex",
+          "text": "\\documentclass{article}\n\\begin{document}\n\\cite{а,б}\\begin{thebibliography}{9}\\bibitem{а}Один\\bibitem{а}Два\\end{thebibliography}\n\\end{document}"
+        }
+      ],
+      "expected": {
+        "1": "fail"
+      }
+    },
+    {
+      "id": "manual-first-use-negative",
+      "synthetic": true,
+      "files": [
+        {
+          "path": "main.tex",
+          "text": "\\documentclass{article}\n\\begin{document}\n\\cite{б,а}\\begin{thebibliography}{9}\\bibitem{а}Один\\bibitem{б}Два\\end{thebibliography}\n\\end{document}"
+        }
+      ],
+      "expected": {
+        "1": "pass",
+        "2": "fail"
+      }
+    },
+    {
+      "id": "manual-uncited",
+      "synthetic": true,
+      "files": [
+        {
+          "path": "main.tex",
+          "text": "\\documentclass{article}\n\\begin{document}\n\\cite{а}\\begin{thebibliography}{9}\\bibitem{а}Один\\bibitem{б}Два\\end{thebibliography}\n\\end{document}"
+        }
+      ],
+      "expected": {
+        "2": "fail"
+      }
+    },
+    {
+      "id": "manual-malformed",
+      "synthetic": true,
+      "files": [
+        {
+          "path": "main.tex",
+          "text": "\\documentclass{article}\n\\begin{document}\n\\cite{а,б}\\begin{thebibliography}{9}\\bibitem{а}Один\\bibitem{б}Два\n\\end{document}"
+        }
+      ],
+      "expected": {
+        "1": "indeterminate",
+        "2": "indeterminate"
+      }
+    },
+    {
+      "id": "optional-bibitem-label-unsupported",
+      "synthetic": true,
+      "files": [
+        {
+          "path": "main.tex",
+          "text": "\\documentclass{article}\n\\begin{document}\n\\cite{а,б}\\begin{thebibliography}{9}\\bibitem[7]{а}Один\\bibitem{б}Два\\end{thebibliography}\n\\end{document}"
+        }
+      ],
+      "expected": {
+        "1": "indeterminate",
+        "2": "indeterminate"
+      }
+    },
+    {
+      "id": "appendix-7",
+      "synthetic": true,
+      "files": [
+        {
+          "path": "main.tex",
+          "text": "\\documentclass{article}\n\\begin{document}\n\\section*{ДОДАТОК А}\n\\end{document}"
+        }
+      ],
+      "expected": {
+        "3": "pass"
+      }
+    },
+    {
+      "id": "appendix-8",
+      "synthetic": true,
+      "files": [
+        {
+          "path": "main.tex",
+          "text": "\\documentclass{article}\n\\begin{document}\n\\section*{ДОДАТОК И}\n\\end{document}"
+        }
+      ],
+      "expected": {
+        "3": "pass"
+      }
+    },
+    {
+      "id": "appendix-9",
+      "synthetic": true,
+      "files": [
+        {
+          "path": "main.tex",
+          "text": "\\documentclass{article}\n\\begin{document}\n\\section*{ДОДАТОК A}\n\\end{document}"
+        }
+      ],
+      "expected": {
+        "3": "fail"
+      }
+    },
+    {
+      "id": "appendix-10",
+      "synthetic": true,
+      "files": [
+        {
+          "path": "main.tex",
+          "text": "\\documentclass{article}\n\\begin{document}\n\\section*{ДОДАТОК Ґ}\n\\end{document}"
+        }
+      ],
+      "expected": {
+        "3": "fail"
+      }
+    },
+    {
+      "id": "appendix-11",
+      "synthetic": true,
+      "files": [
+        {
+          "path": "main.tex",
+          "text": "\\documentclass{article}\n\\begin{document}\n\\section*{ДОДАТОК А́}\n\\end{document}"
+        }
+      ],
+      "expected": {
+        "3": "fail"
+      }
+    },
+    {
+      "id": "optional-appendix-absent",
+      "synthetic": true,
+      "files": [
+        {
+          "path": "main.tex",
+          "text": "\\documentclass{article}\n\\begin{document}\nЛише текст\n\\end{document}"
+        }
+      ],
+      "expected": {
+        "3": "unavailable"
+      }
+    },
+    {
+      "id": "figure-positive",
+      "synthetic": true,
+      "files": [
+        {
+          "path": "main.tex",
+          "text": "\\documentclass{article}\n\\begin{document}\n\\begin{figure}\\caption{Назва}\\end{figure}\n\\end{document}"
+        }
+      ],
+      "expected": {
+        "4": "pass"
+      }
+    },
+    {
+      "id": "figure-missing-literal-caption-unavailable",
+      "synthetic": true,
+      "files": [
+        {
+          "path": "main.tex",
+          "text": "\\documentclass{article}\n\\begin{document}\n\\begin{figure}Зображення\\end{figure}\n\\end{document}"
+        }
+      ],
+      "expected": {
+        "4": "unavailable"
+      }
+    },
+    {
+      "id": "figure-empty-caption-title",
+      "synthetic": true,
+      "files": [
+        {
+          "path": "main.tex",
+          "text": "\\documentclass{article}\n\\begin{document}\n\\begin{figure}\\caption{}\\end{figure}\n\\end{document}"
+        }
+      ],
+      "expected": {
+        "4": "fail"
+      }
+    },
+    {
+      "id": "table-positive",
+      "synthetic": true,
+      "files": [
+        {
+          "path": "main.tex",
+          "text": "\\documentclass{article}\n\\begin{document}\n\\begin{table}\\caption{Назва}\\end{table}\n\\end{document}"
+        }
+      ],
+      "expected": {
+        "4": "pass"
+      }
+    },
+    {
+      "id": "caption-short-unsupported",
+      "synthetic": true,
+      "files": [
+        {
+          "path": "main.tex",
+          "text": "\\documentclass{article}\n\\begin{document}\n\\begin{figure}\\caption[Коротка]{Назва}\\end{figure}\n\\end{document}"
+        }
+      ],
+      "expected": {
+        "4": "indeterminate"
+      }
+    },
+    {
+      "id": "float-placement-unsupported",
+      "synthetic": true,
+      "files": [
+        {
+          "path": "main.tex",
+          "text": "\\documentclass{article}\n\\begin{document}\n\\begin{figure}[h]\\caption{Назва}\\end{figure}\n\\end{document}"
+        }
+      ],
+      "expected": {
+        "4": "indeterminate"
+      }
+    },
+    {
+      "id": "macro-known-literal-retained",
+      "synthetic": true,
+      "files": [
+        {
+          "path": "main.tex",
+          "text": "\\documentclass{article}\n\\begin{document}\n\\unknown\\section*{ДОДАТОК A}\n\\end{document}"
+        }
+      ],
+      "expected": {
+        "3": "indeterminate"
+      }
+    },
+    {
+      "id": "missing-include",
+      "synthetic": true,
+      "files": [
+        {
+          "path": "main.tex",
+          "text": "\\documentclass{article}\n\\begin{document}\n\\input{missing}\\section*{ДОДАТОК А}\n\\end{document}"
+        }
+      ],
+      "expected": {
+        "3": "indeterminate"
+      }
+    },
+    {
+      "id": "cycle",
+      "synthetic": true,
+      "files": [
+        {
+          "path": "main.tex",
+          "text": "\\documentclass{article}\n\\begin{document}\n\\input{main}\n\\end{document}"
+        }
+      ],
+      "expected": {
+        "0": "indeterminate"
+      }
+    },
+    {
+      "id": "repeated-include",
+      "synthetic": true,
+      "files": [
+        {
+          "path": "main.tex",
+          "text": "\\documentclass{article}\n\\begin{document}\n\\input{chapter}\\input{chapter}\n\\end{document}"
+        },
+        {
+          "path": "chapter.tex",
+          "text": "\\section{Методи}"
+        }
+      ],
+      "expected": {
+        "0": "indeterminate"
+      }
+    },
+    {
+      "id": "external-bibliography-key-positive-order-open",
+      "synthetic": true,
+      "files": [
+        {
+          "path": "main.tex",
+          "text": "\\documentclass{article}\n\\begin{document}\n\\cite{a}\\bibliography{refs}\n\\end{document}"
+        },
+        {
+          "path": "refs.bib",
+          "text": "@book{a,title={Текст}}"
+        }
+      ],
+      "expected": {
+        "1": "pass",
+        "2": "unavailable"
+      }
+    },
+    {
+      "id": "external-malformed-bibliography-explicit-open",
+      "synthetic": true,
+      "files": [
+        {
+          "path": "main.tex",
+          "text": "\\documentclass{article}\n\\begin{document}\n\\cite{a}\\bibliography{refs}\n\\end{document}"
+        },
+        {
+          "path": "refs.bib",
+          "text": "@book{a,title={Незакрите"
+        }
+      ],
+      "expected": {
+        "1": "indeterminate",
+        "2": "indeterminate"
+      }
+    },
+    {
+      "id": "external-duplicate-bibliography-key-negative-order-open",
+      "synthetic": true,
+      "files": [
+        {
+          "path": "main.tex",
+          "text": "\\documentclass{article}\n\\begin{document}\n\\cite{a}\\bibliography{refs}\n\\end{document}"
+        },
+        {
+          "path": "refs.bib",
+          "text": "@book{a,title={A}}\n@book{a,title={B}}"
+        }
+      ],
+      "expected": {
+        "1": "fail",
+        "2": "unavailable"
+      }
+    },
+    {
+      "id": "appendix-independent-list-unavailable",
+      "synthetic": true,
+      "files": [
+        {
+          "path": "main.tex",
+          "text": "\\documentclass{article}\n\\begin{document}\n\\section*{ДОДАТОК А}\\cite{а,б}\\begin{thebibliography}{9}\\bibitem{а}Один\\bibitem{б}Два\\end{thebibliography}\n\\end{document}"
+        }
+      ],
+      "expected": {
+        "1": "indeterminate",
+        "2": "indeterminate",
+        "3": "pass"
+      }
+    },
+    {
+      "id": "comments-verbatim-ignored",
+      "synthetic": true,
+      "files": [
+        {
+          "path": "main.tex",
+          "text": "\\documentclass{article}\n\\begin{document}\n% \\section*{ДОДАТОК A}\n\\begin{verbatim}\n\\cite{unknown}\n\\end{verbatim}\n\\section*{ДОДАТОК А}\n\\end{document}"
+        }
+      ],
+      "expected": {
+        "3": "pass"
+      }
+    },
+    {
+      "id": "unclosed-group",
+      "synthetic": true,
+      "files": [
+        {
+          "path": "main.tex",
+          "text": "\\documentclass{article}\n\\begin{document}\n\\section{Незакрите\n\\end{document}"
+        }
+      ],
+      "expected": {
+        "0": "indeterminate"
+      }
+    },
+    {
+      "id": "outside-document-candidate",
+      "synthetic": true,
+      "files": [
+        {
+          "path": "main.tex",
+          "text": "\\section*{ДОДАТОК А}"
+        }
+      ],
+      "expected": {
+        "3": "indeterminate"
+      }
+    },
+    {
+      "id": "structure-positive",
+      "synthetic": true,
+      "files": [
+        {
+          "path": "main.tex",
+          "text": "\\documentclass{article}\n\\begin{document}\n\\maketitle\\section*{РЕФЕРАТ}\\tableofcontents\\section*{ВСТУП}\\input{chapter}\\section*{ВИСНОВКИ}\\section*{ПЕРЕЛІК ДЖЕРЕЛ ПОСИЛАННЯ}\n\\end{document}"
+        },
+        {
+          "path": "chapter.tex",
+          "text": "\\section{Методи}"
+        }
+      ],
+      "expected": {
+        "0": "pass"
+      }
+    },
+    {
+      "id": "structure-inversion",
+      "synthetic": true,
+      "files": [
+        {
+          "path": "main.tex",
+          "text": "\\documentclass{article}\n\\begin{document}\n\\maketitle\\section*{РЕФЕРАТ}\\tableofcontents\\input{chapter}\\section*{ВСТУП}\\section*{ВИСНОВКИ}\\section*{ПЕРЕЛІК ДЖЕРЕЛ ПОСИЛАННЯ}\n\\end{document}"
+        },
+        {
+          "path": "chapter.tex",
+          "text": "\\section{Методи}"
+        }
+      ],
+      "expected": {
+        "0": "fail"
+      }
+    },
+    {
+      "id": "unicode-bom-crlf",
+      "synthetic": true,
+      "files": [
+        {
+          "path": "main.tex",
+          "text": "﻿\\documentclass{article}\r\n\\begin{document}\r\n😀 й\r\n\\cite{ключ😀,á}\\begin{thebibliography}{9}\\bibitem{ключ😀}Один\\bibitem{á}Двключ😀\\end{thebibliography}\r\n\\end{document}"
+        }
+      ],
+      "expected": {
+        "1": "pass",
+        "2": "pass"
+      }
+    },
+    {
+      "id": "external-unresolved-key",
+      "synthetic": true,
+      "files": [
+        {
+          "path": "main.tex",
+          "text": "\\documentclass{article}\n\\begin{document}\n\\cite{missing}\\bibliographystyle{plain}\\bibliography{refs}\n\\end{document}"
+        },
+        {
+          "path": "refs.bib",
+          "text": "@book{a,title={Текст}}"
+        }
+      ],
+      "expected": {
+        "1": "fail",
+        "2": "unavailable"
+      }
+    },
+    {
+      "id": "external-quoted-parenthesized-key",
+      "synthetic": true,
+      "files": [
+        {
+          "path": "main.tex",
+          "text": "\\documentclass{article}\n\\begin{document}\n\\cite{ключ😀}\\bibliography{refs}\n\\end{document}"
+        },
+        {
+          "path": "refs.bib",
+          "text": "@book(ключ😀,title=\"Текст {вкладений}\")"
+        }
+      ],
+      "expected": {
+        "1": "pass",
+        "2": "unavailable"
+      }
+    },
+    {
+      "id": "external-string-macro-uncertain",
+      "synthetic": true,
+      "files": [
+        {
+          "path": "main.tex",
+          "text": "\\documentclass{article}\n\\begin{document}\n\\cite{a}\\bibliography{refs}\n\\end{document}"
+        },
+        {
+          "path": "refs.bib",
+          "text": "@string{pub=\"P\"}\n@book{a,publisher=pub}"
+        }
+      ],
+      "expected": {
+        "1": "indeterminate"
+      }
+    },
+    {
+      "id": "external-key-no-unicode-normalization",
+      "synthetic": true,
+      "files": [
+        {
+          "path": "main.tex",
+          "text": "\\documentclass{article}\n\\begin{document}\n\\cite{á}\\bibliography{refs}\n\\end{document}"
+        },
+        {
+          "path": "refs.bib",
+          "text": "@book{á,title={Текст}}"
+        }
+      ],
+      "expected": {
+        "1": "fail"
+      }
+    }
+  ]
+}

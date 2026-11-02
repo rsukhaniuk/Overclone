@@ -15,6 +15,7 @@ pub mod profiles;
 pub(crate) mod reference_wire;
 pub mod references;
 pub mod rules;
+mod thesis;
 
 use dto::{
     AnalysisResult, AnalyzePayload, ErrorBody, FileDescriptor, InitializePayload, Limits,
@@ -339,6 +340,11 @@ pub fn analyze_source(metadata_json: &str, packed_bytes: &[u8]) -> String {
     // A failure here echoes the valid requestId (never drops it).
     if let Err(msg) = validate_payload_identity(&payload) {
         return failed_response(Some(request_id), "InvalidInput", msg);
+    }
+    if payload.profile.id == profiles::KNU_ID
+        && payload.profile.version == crate::thesis_catalog::SOURCE_PROFILE_VERSION
+    {
+        return thesis::analyze(metadata_json, packed_bytes, payload, request_id);
     }
     let Some(selected_profile) = profiles::resolve(&payload.profile) else {
         return failed_response(

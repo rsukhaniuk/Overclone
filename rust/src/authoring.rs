@@ -3,7 +3,7 @@
 //! snapshot/caret/lock authority are deliberately outside this producer.
 pub mod catalog;
 mod dto;
-mod project;
+pub(crate) mod project;
 #[cfg(test)]
 mod tests;
 

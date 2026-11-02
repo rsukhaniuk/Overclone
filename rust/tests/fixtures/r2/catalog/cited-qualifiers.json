@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "synthetic": true,
+  "evidenceKind": "catalog-transcription-only-not-native-measurements",
+  "cases": [
+    {"ruleId":"KNU-ABSTRACT-001","pointer":"/predicates/1/strength","expected":"usual","qualifier":"5–15 keywords is usual, not an unconditional mandatory count"},
+    {"ruleId":"KNU-ABSTRACT-001","pointer":"/predicates/1/min","expected":5,"qualifier":"usual lower keyword count"},
+    {"ruleId":"KNU-ABSTRACT-001","pointer":"/predicates/1/max","expected":15,"qualifier":"usual upper keyword count"},
+    {"ruleId":"KNU-LENGTH-001","pointer":"/predicates/1/introductionMaxPages","expected":3,"qualifier":"mandatory introduction maximum; delegate existing length evaluator"},
+    {"ruleId":"KNU-LENGTH-001","pointer":"/predicates/1/conclusionsMaxPages","expected":5,"qualifier":"mandatory conclusions maximum; no duplicated source length checker"},
+    {"ruleId":"KNU-LENGTH-001","pointer":"/predicates/1/bodyMinimumPages/bachelorQualification","expected":25,"qualifier":"degree-dependent minimum; unspecified must not select it"},
+    {"ruleId":"KNU-LENGTH-001","pointer":"/predicates/2/strength","expected":"usual","qualifier":"total-length ranges are usual"},
+    {"ruleId":"KNU-PAPER-001","pointer":"/predicates/1/condition","expected":"Necessary for illustrations","qualifier":"A3 is conditional, not universally forbidden or accepted"},
+    {"ruleId":"KNU-MARGINS-001","pointer":"/predicates/0/comparison","expected":"atLeast","qualifier":"margin minima are not exact equalities"},
+    {"ruleId":"KNU-MARGINS-001","pointer":"/predicates/0/left","expected":25,"qualifier":"left margin minimum mm; no current PDF measurement capability"},
+    {"ruleId":"KNU-TYPOGRAPHY-001","pointer":"/predicates/0/decision","expected":"measurement-definition-unresolved","qualifier":"do not substitute nominal point size for visible font height"},
+    {"ruleId":"KNU-TYPOGRAPHY-001","pointer":"/predicates/1/strength","expected":"usual","qualifier":"Times New Roman Cyr 14pt is usual, not mandatory family/size"},
+    {"ruleId":"KNU-TYPOGRAPHY-001","pointer":"/predicates/3/nominalPoints","expected":12,"qualifier":"notes/footnotes have their own role-specific point-size clause"},
+    {"ruleId":"KNU-REFERENCES-001","pointer":"/predicates/0/strength","expected":"recommended","qualifier":"end-text placement recommendation is not mandatory"},
+    {"ruleId":"KNU-REFERENCES-001","pointer":"/predicates/2/allowedExamples/3","expected":"[3 с. 124; 4 с. 211; 5 с. 5]","qualifier":"per-source page-specific citations are permitted"},
+    {"ruleId":"KNU-APPENDIX-001","pointer":"/predicates/1/excluded","expected":"ҐЄЗІЇЙОЧЬ","qualifier":"exact excluded Ukrainian letters; no Latin/Cyrillic normalization"},
+    {"ruleId":"KNU-CAPTION-RENDERED-001","pointer":"/predicates/7/minimumMm","expected":8,"qualifier":"table row-height minimum; unavailable until actual physical facts/classification"},
+    {"ruleId":"KNU-CAPTION-RENDERED-001","pointer":"/supportState","expected":"unsupported","qualifier":"complete transcription is not rendered implementation"},
+    {"ruleId":"KNU-BIBLIOGRAPHY-RENDERED-001","pointer":"/supportState","expected":"unsupported","qualifier":"permitted bibliographic simplifications do not establish external DSTU certification"}
+  ]
+}
