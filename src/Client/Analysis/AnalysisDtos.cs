@@ -139,7 +139,8 @@ public sealed record AnalysisResultDto(
     IReadOnlyList<string> UnavailableCapabilities,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] AnalysisConfigurationDto? Configuration = null,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] AnalysisKnuDto? Knu = null,
-    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] AnalysisReferenceConfigurationDto? ReferenceConfiguration = null);
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] AnalysisReferenceConfigurationDto? ReferenceConfiguration = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] AnalysisThesisDto? Thesis = null);
 
 public sealed record AnalysisSourceFactsDto(IReadOnlyList<AnalysisSourceFileFactsDto> Files);
 

@@ -13,6 +13,7 @@
 @using Client.Editing
 @using Client.Editing.Search
 @using Client.Editing.Completion
+@using Client.Editing.Undo
 @using Client.Editing.Assistance
 @inject IAuthoringAssistProvider AuthoringAssistProvider
 @using Client.Compilation.Navigation
@@ -21,6 +22,7 @@
 @inject ISyncTeXQuery SourceMapQueries
 @inject Client.Compilation.Presentation.CompileWorkspaceSession CompileSession
 @inject IChangeReviewService ReviewService
+@inject Client.Workspace.History.HistoryComparisonSession HistoryComparisons
 @inject IJSRuntime JS
 @implements IAsyncDisposable
 
@@ -302,7 +304,7 @@ else
                 </div>
                 <details class="project-search-disclosure" data-testid="project-search-disclosure">
                     <summary>Search project</summary>
-                    <ProjectSearchPanel OnNavigate="OnProjectSearchNavigateAsync" NavigationStatus="@_projectSearchNavigationStatus" />
+                    <ProjectSearchPanel OnNavigate="OnProjectSearchNavigateAsync" NavigationStatus="@_projectSearchNavigationStatus" OnPreviewRequested="PreviewProjectReplaceAsync" />
                 </details>
                 <ul class="files">
                     @foreach (var f in Coordinator.Files.Where(f => !f.Deleted))
@@ -358,8 +360,19 @@ else
                     }
                     else
                     {
+                            @if (_journal is { } journal)
+                            {
+                                <div role="group" aria-label="Source editor history">
+                                    <button type="button" data-testid="source-undo" disabled="@(!journal.CanUndo || _sourceBusy || JournalComposing)" @onclick="() => RunEditorHistory(false)">Source Undo</button>
+                                    <button type="button" data-testid="source-redo" disabled="@(!journal.CanRedo || _sourceBusy || JournalComposing)" @onclick="() => RunEditorHistory(true)">Source Redo</button>
+                                    <span role="status" data-testid="source-journal-status">@journal.Notice</span>
+                                    @if (journal.HistoryNotice is { } limit) { <p role="status" data-testid="source-journal-limit">@limit</p> }
+                                    @if (_journalInputNotice is { } inputNotice) { <p role="status">@inputNotice</p> }
+                                </div>
+                            }
                         <details class="source-tools" data-testid="source-tools" aria-busy='@(_sourceBusy ? "true" : "false")'>
                             <summary>Source tools</summary>
+
                             <div class="source-tools-controls" role="group" aria-label="Find and replace">
                                 <label for="source-query">Find</label>
                                 <input id="source-query" data-testid="source-query" @bind="_sourceQuery" @bind:event="oninput" @bind:after="SourceQueryChanged" autocomplete="off" />
@@ -424,12 +437,12 @@ else
                             <SourceHighlightLayer Source="@active.Content" FileIdentity="@active.Id.ToString()"
                                 Revision="@Coordinator.WorkingGeneration.ToString(System.Globalization.CultureInfo.InvariantCulture)"
                                 ReadOnly="@Coordinator.IsReadOnly" />
-                            <textarea id="editor" @bind="ActiveContent" @bind:event="oninput"
+                            <textarea id="editor" @key="(Coordinator.SessionId, active.Id, _journalViewEpoch)" @bind="ActiveContent" @bind:event="oninput"
+                                  data-source-journal="true" data-journal-session="@(Coordinator.SessionId.ToString("N"))" data-journal-path="@active.RelativePath"
                                   disabled="@Coordinator.IsReadOnly"
                                   data-file-id="@active.Id.ToString()"
                                   data-highlight-revision="@Coordinator.WorkingGeneration.ToString(System.Globalization.CultureInfo.InvariantCulture)"
-                                  @onselect="AssistanceEditorIntentChanged" @onkeydown="AssistanceEditorIntentChanged"
-                                  @onkeyup="AssistanceEditorIntentChanged" @onpointerup="AssistanceEditorIntentChanged"
+                                  @onselect="JournalAwareSourceSelectionChanged" @onpointerup="JournalSourcePointerChanged"
                                   data-testid="editor" @ref="_editorRef" spellcheck="false" wrap="off"></textarea>
                         </div>
                     }
@@ -452,9 +465,10 @@ else
                 }
             </div>
 
-            <CompilePanel SourceLineRequested="OnCompilerSourceNavigateAsync" SourceNavigationStatus="@_compilerSourceStatus"
+            <CompilePanel SourceLineRequested="OnCompilerSourceNavigateAsync" SourceNavigationStatus="@_compilerSourceStatus" RenderedExtentAvailable="OnDiagnosticRenderedAvailable"
                 SourceMappingAvailable="@CanMapNavigate" SourcePointRequested="OnPdfPointAsync" MapNavigationStatus="@_syncStatus"
-                SourceMatch="@CurrentSyncMatch" SourceMatchPdfHash="@(_syncResult?.Output.OutputHash?.Hex)" />
+                SourceMatch="@CurrentSyncMatch" SourceMatchPdfHash="@(_syncResult?.Output.OutputHash?.Hex)"
+                SourceMatchTransform="@CurrentSyncTransform" SourceMatchUsesNativeTransform="@(_syncResult?.Geometry is not null)" />
 
         </div>
 
@@ -474,7 +488,7 @@ else
                             var cpId = cp.Id;
                             <li class="@(SelectedHistoryId == cpId ? "selected" : "")">
                                 <button class="history-link" @onclick='() => SelectHistoryAsync(cpId)'
-                                        data-testid="select-history">
+                                        data-testid="select-history" disabled="@(_historyWholeBusy || HistoryComparisons.Busy)">
                                     @cp.Reason
                                     <span class="meta">@cp.CreatedAt.ToLocalTime().ToString("g")</span>
                                 </button>
@@ -487,10 +501,24 @@ else
                     }
                 }
 
+                <fieldset disabled="@_historyWholeBusy">
+                    <HistoryComparisonPanel @key="Coordinator.SessionId" Session="HistoryComparisons" Review="ReviewService" Revisions="_history"
+                        Writable="ReviewWritable" WholeProjectRequested="OpenHistoryWholeRestoreAsync" ReviewPrepared="HistoryReviewPreparedAsync" />
+                </fieldset>
+                @if (_historyWholeBusy) { <p role="status">Whole-project restore operation is settling. Preview cancellation does not release active reads or undo a begun commit.</p> }
+                @if (_historyWholeBusy || _restorePreview is not null)
+                { <button type="button" @onclick="CancelHistoryWholePreview" disabled="@(_historyWholeBusy && _historyWholeCts is null)">Cancel whole-project preview</button> }
+                @if (HistoryPriorHead is { } previous)
+                {
+                    <p>Prior checkpoint: @previous. Reversal is another explicitly previewed child revision, not a head rewind.</p>
+                    <button type="button" @onclick="() => OpenHistoryWholeRestoreAsync(previous)"
+                        disabled="@(!ReviewWritable || _historyWholeBusy || HistoryComparisons.Busy || HistoryHasUnresolvedReview)">Preview reversal to prior checkpoint…</button>
+                }
+
                 @if (_comparison is { } comp)
                 {
                     <section class="comparison" data-testid="comparison">
-                        <h3>Changes vs current head</h3>
+                        <h3>Whole-project restore preview: current → saved</h3>
                         @if (comp.DiffBudgetExceeded)
                         {
                             <p class="hint">Detailed diff budget exceeded; showing summary.</p>
@@ -538,7 +566,7 @@ else
                         {
                             <div class="actions">
                                 <button @onclick="AcceptRestoreAsync" data-testid="restore"
-                                        disabled="@Coordinator.IsReadOnly">Restore this revision</button>
+                                        disabled="@(!ReviewWritable || _historyWholeBusy || HistoryComparisons.Busy || HistoryHasUnresolvedReview)">Restore this revision</button>
                             </div>
                         }
                         @if (!string.IsNullOrEmpty(_restoreError))
@@ -550,6 +578,10 @@ else
                 </div>
             </details>
 
+        <details class="tool-disclosure" data-testid="diagnostic-filter-disclosure">
+            <summary>Diagnostic filters <span>Existing source / compiler / narrow rendered reports</span></summary>
+            <DiagnosticListPanel Session="_diagnostics" SourceRequested="OnDiagnosticSourceAsync" CompilerRequested="OnDiagnosticCompilerAsync" PageRequested="OnDiagnosticPageAsync" />
+        </details>
         <details class="tool-disclosure" data-testid="analysis-disclosure">
             <summary>Analysis <span class="@AnalysisStatusClass">@AnalysisStatusText</span></summary>
         <section class="analysis-panel tool-content" aria-label="Source analysis" data-testid="analysis-panel" data-generation="@Coordinator.WorkingGeneration" data-session="@Coordinator.SessionId" data-head="@Coordinator.CurrentRevision?.Id">
@@ -562,18 +594,20 @@ else
                     <option value="knu-csc-2025-source">KNU CSC 2025 source observations v1.1</option>
                     <option value="knu-csc-2025-source@1.3.0">KNU CSC 2025 source observations — geometry package v1.3</option>
                     <option value="knu-csc-2025-source@1.4.0">KNU CSC 2025 source observations — formatting intent v1.4</option>
+                    <option value="knu-csc-2025-source@1.5.0">KNU CSC 2025 cited source/catalog v1.5 — explicit root/work type</option>
                     <option value="knu-csc-2025-source@1.2.0">KNU CSC 2025 source observations — reviewable margin fixes v1.2</option>
                     <option value="knu-csc-2025-source@1.0.0">KNU CSC 2025 source observations — legacy v1.0</option>
                 </select>
-                @if (AnalysisCoord.CurrentConfiguration is { } configuration)
+                @if (AnalysisCoord.CurrentConfiguration is not null || AnalysisCatalog.IsThesis(AnalysisCoord.CurrentProfile))
                 {
                     <label for="analysis-work-type">Work type</label>
-                    <select id="analysis-work-type" data-testid="analysis-work-type" value="@AnalysisPresentation.WorkValue(configuration.WorkType)" @onchange="ChangeWorkType">
+                    <select id="analysis-work-type" data-testid="analysis-work-type" value="@(AnalysisCoord.CurrentConfiguration is { } configuration ? AnalysisPresentation.WorkValue(configuration.WorkType) : "")" @onchange="ChangeWorkType">
+                        @if (AnalysisCoord.CurrentConfiguration is null) { <option value="">Select a work type (unspecified is allowed)</option> }
                         @foreach (var work in Enum.GetValues<AnalysisWorkType>())
                         { <option value="@AnalysisPresentation.WorkValue(work)">@AnalysisPresentation.WorkType(work)</option> }
                     </select>
                 }
-                @if (AnalysisCoord.CurrentProfile.Id == AnalysisCatalog.ReferenceId)
+                @if (AnalysisCatalog.RequiresRoot(AnalysisCoord.CurrentProfile))
                 {
                     <label for="reference-root">Source-reference root (independent of compile main)</label>
                     <select id="reference-root" data-testid="reference-root" value="@AnalysisCoord.CurrentReferenceConfiguration?.RootFileId" @onchange="ChangeReferenceRoot">
@@ -585,7 +619,7 @@ else
                     @if (!HasReferenceRoot)
                     { <p role="status" data-testid="reference-root-unavailable">No valid selected root. Choose a current .tex text file; analysis will not use an alternative root automatically.</p> }
                 }
-                <button @onclick="AnalyzeNowAsync" disabled="@(AnalysisCoord.CurrentProfile.Id == AnalysisCatalog.ReferenceId && !HasReferenceRoot)" data-testid="analyze-now">Analyze now</button>
+                <button @onclick="AnalyzeNowAsync" disabled="@(AnalysisCatalog.RequiresRoot(AnalysisCoord.CurrentProfile) && (!HasReferenceRoot || !AnalysisCoord.CurrentSelection.IsValid))" data-testid="analyze-now">Analyze now</button>
                 <button @onclick="CancelAnalysis" data-testid="cancel-analysis">Cancel</button>
             </div>
             <p class="analysis-status-line @AnalysisStatusClass" role="status" aria-live="polite"
@@ -653,7 +687,9 @@ else
                     }
                 </section>
                 @if (report.Result.Knu is not null)
-                { <KnuReportView Report="report" FindingSelected="@(d => OnFindingClickAsync(report, d))" FixRequested="PreviewFixAsync" ReviewWorking="@(_reviewPending || CurrentReview.Busy)" /> }
+                { <KnuReportView Report="report" FindingSelected="@(d => OnFindingClickAsync(report, d))" FixRequested="PreviewFixAsync" ReviewWorking="@(_reviewPending || CurrentReview.Busy || _historyWholeBusy)" /> }
+                @if (report.Result.Thesis is not null)
+                { <ThesisReportView Report="report" IsCurrent="@Navigator.IsStillCurrent(report)" EvidenceSelected="OnThesisEvidenceAsync" /> }
             }
             @if (!string.IsNullOrEmpty(_navNotice))
             {
@@ -664,8 +700,25 @@ else
         <details class="tool-disclosure review-disclosure" data-testid="review-disclosure"
                  open="@(_reviewPending || CurrentReview.Busy || CurrentReview.Preview is not null || CurrentReview.Action is not null || CurrentReview.Notice is not null || !string.IsNullOrEmpty(_reviewNotice))">
             <summary>Review <span>Preview &amp; accept edits</span></summary>
-            <ReviewPanel State="CurrentReview" Writable="ReviewWritable" Working="_reviewPending" Notice="@_reviewNotice"
+            <ReviewSubsetPanel State="CurrentReview" Writable="ReviewWritable" Working="@(_reviewPending || _historyWholeBusy)" Preview="PreviewReviewSubsetAsync" />
+            <ReviewPanel State="CurrentReview" Writable="ReviewWritable" Working="@(_reviewPending || _historyWholeBusy)" Notice="@_reviewNotice"
                          Accept="AcceptReviewAsync" Decline="DeclineReview" Retry="RetryReviewAsync" Undo="UndoReviewAsync" Cancel="CancelReview" />
+            @if (CurrentReview.Action is { Persisted: false } historyRecoveryAction)
+            {
+                <section aria-label="Download retained reviewed bytes" data-testid="history-review-recovery-export">
+                    <p>Retained reviewed bytes remain downloadable if save fails. This recovery copy excludes unrelated later edits; it is not a project ZIP or a claim that the current workspace is saved. Retry save and review Undo remain above.</p>
+                    <label>Retained file
+                        <select @bind="_historyRecoveryFile" disabled="@_historyRecoveryBusy">
+                            <option value="">Choose a retained file</option>
+                            @foreach (var file in historyRecoveryAction.Exact.Files) { <option value="@file.FileId.ToString()">@file.RelativePath</option> }
+                        </select>
+                    </label>
+                    <button type="button" @onclick="() => DownloadSelectedReviewRecoveryAsync(historyRecoveryAction.Id)"
+                        disabled="@(_historyRecoveryBusy || CurrentReview.Busy || _reviewPending || !Guid.TryParse(_historyRecoveryFile, out _))">Download retained reviewed bytes</button>
+                    @if (_historyRecoveryNotice is not null) { <p role="status">@_historyRecoveryNotice</p> }
+                </section>
+            }
+
         </details>
         <details class="tool-disclosure" data-testid="ai-disclosure">
             <summary>AI assistance</summary>
@@ -728,6 +781,8 @@ else
         && ReferenceEquals(output, state.LastSuccessful);
     private SyncTeXMatch? CurrentSyncMatch => _syncResult is { } result && _syncNavigation.IsCurrent(result)
         && _syncIndex >= 0 && _syncIndex < result.Matches.Length ? result.Matches[_syncIndex].Native : null;
+    private SourceMapPageTransform? CurrentSyncTransform => _syncResult is { } result && CurrentSyncMatch is { } match
+        ? _syncNavigation.PageTransform(result, match.Page) : null;
     // One navigation intent at a time: a new click cancels the previous, and page
     // dispose cancels any in flight. Each navigation re-checks its own token after
     // every await, so a late callback cannot activate/select a stale file.
@@ -761,8 +816,8 @@ else
     // Ownership is separate from query/navigation intent: a query-only change
     // invalidates work but its eventual finalizer must still release its busy state.
     private object? _sourceOperation;
-    private bool _sourceBusy => _sourceOperation is not null || _completionOperation is not null || _assistance?.Busy == true;
-    private bool SourceEditsDisabled => _sourceBusy || Coordinator.IsReadOnly || Coordinator.Recovery is not null ||
+    private bool _sourceBusy => _sourceOperation is not null || _completionOperation is not null || _assistance?.Busy == true || _journal?.Busy == true;
+    private bool SourceEditsDisabled => _sourceBusy || JournalComposing || Coordinator.IsReadOnly || Coordinator.Recovery is not null ||
         Coordinator.ActiveFile is not { Deleted: false, MediaKind: "text" };
 
     private void SourceQueryChanged()
@@ -878,7 +933,7 @@ else
             { InvalidateCompletion(); return; }
             var edit = _completions.Consume(proposal, commandId, new(start, end), _sourceIntent, SourceByteBudget(snapshot));
             if (edit is null) { _completions.Clear(); _completionState = "unavailable"; return; }
-            if (!ApplyOrdinarySourceEdit(owner, snapshot, edit, ct)) { if (CompletionOwns(owner, ct)) _completionState = "stale"; return; }
+            if (!ApplyOrdinarySourceEdit(owner, snapshot, edit, ct, "completion")) { if (CompletionOwns(owner, ct)) _completionState = "stale"; return; }
             _completionApplied = proposal; // Consumed proposal is now post-edit selection authority only.
         }
         catch (Exception error) when (error is JSException or System.Text.Json.JsonException or System.OperationCanceledException or ObjectDisposedException)
@@ -979,7 +1034,7 @@ else
             if (edit is null)
             { _sourceStatus = "No edit: select an exact match for Replace current; check text, range and size limits."; return; }
             if (edit.Text == snapshot.Text) { _sourceStatus = "No text changes."; return; }
-            ApplyOrdinarySourceEdit(owner, snapshot, edit, ct);
+            ApplyOrdinarySourceEdit(owner, snapshot, edit, ct, action is "replace" or "all" ? "replace" : "lineTool");
         }
         catch (JSException)
         {
@@ -993,7 +1048,10 @@ else
         }
     }
 
-    private bool ApplyOrdinarySourceEdit(object owner, SourceToolSnapshot snapshot, SourceEdit edit, System.Threading.CancellationToken ct)
+    private bool ApplyOrdinarySourceEdit(object owner, SourceToolSnapshot snapshot, SourceEdit edit, System.Threading.CancellationToken ct, string journalKind = "lineTool")
+        => JournalExplicitEdit(journalKind, edit, () => ApplyOrdinarySourceEditCore(owner, snapshot, edit, ct));
+
+    private bool ApplyOrdinarySourceEditCore(object owner, SourceToolSnapshot snapshot, SourceEdit edit, System.Threading.CancellationToken ct)
     {
         if (!SourceOperationCurrent(owner, snapshot, ct, true)) return false;
         // Existing ordinary edit path, shared without another autosave/commit.
@@ -1047,6 +1105,7 @@ else
         get => Coordinator.ActiveFile?.Content ?? "";
         set
         {
+            if (TryJournalNativeInput(value)) return;
             if (Coordinator.ActiveFile is { } af && Coordinator.EditText(af.Id, value))
             {
                 ScheduleAutosave();
@@ -1150,6 +1209,7 @@ else
         { Id: AnalysisCatalog.KnuId, Version: AnalysisCatalog.MarginFixVersion } => AnalysisCatalog.KnuId + "@" + AnalysisCatalog.MarginFixVersion,
         { Id: AnalysisCatalog.KnuId, Version: AnalysisCatalog.GeometryPackageVersion } => AnalysisCatalog.KnuId + "@" + AnalysisCatalog.GeometryPackageVersion,
         { Id: AnalysisCatalog.KnuId, Version: AnalysisCatalog.FormattingVersion } => AnalysisCatalog.KnuId + "@" + AnalysisCatalog.FormattingVersion,
+        { Id: AnalysisCatalog.KnuId, Version: AnalysisCatalog.ThesisVersion } => AnalysisCatalog.KnuId + "@" + AnalysisCatalog.ThesisVersion,
         _ => "",
     };
 
@@ -1167,6 +1227,8 @@ else
         else if (e.Value?.ToString() == AnalysisCatalog.KnuId + "@" + AnalysisCatalog.MarginFixVersion) AnalysisCoord.SetSelection(AnalysisSelection.KnuWithMarginFixes(AnalysisWorkType.Unspecified));
         else if (e.Value?.ToString() == AnalysisCatalog.KnuId + "@" + AnalysisCatalog.GeometryPackageVersion) AnalysisCoord.SetSelection(AnalysisSelection.KnuWithGeometryPackage(AnalysisWorkType.Unspecified));
         else if (e.Value?.ToString() == AnalysisCatalog.KnuId + "@" + AnalysisCatalog.FormattingVersion) AnalysisCoord.SetSelection(AnalysisSelection.KnuWithFormatting(AnalysisWorkType.Unspecified));
+        else if (e.Value?.ToString() == AnalysisCatalog.KnuId + "@" + AnalysisCatalog.ThesisVersion)
+            AnalysisCoord.SetSelection(new(new(AnalysisCatalog.KnuId, AnalysisCatalog.ThesisVersion), null, null)); // both selections explicit; no default root or degree
         else AnalysisCoord.SetSelection(default);
     }
     private IEnumerable<WorkingFile> ReferenceRootFiles => Coordinator.Files.Where(ReferenceChecks.CanBeRoot);
@@ -1174,7 +1236,9 @@ else
     private void ChangeReferenceRoot(ChangeEventArgs e)
     {
         ClearSelectionIntent();
-        AnalysisCoord.SetSelection(AnalysisSelection.SourceReferences(e.Value?.ToString()));
+        if (AnalysisCatalog.IsThesis(AnalysisCoord.CurrentProfile))
+            AnalysisCoord.SetSelection(new(AnalysisCoord.CurrentProfile, AnalysisCoord.CurrentConfiguration, string.IsNullOrEmpty(e.Value?.ToString()) ? null : new(e.Value!.ToString()!)));
+        else AnalysisCoord.SetSelection(AnalysisSelection.SourceReferences(e.Value?.ToString()));
     }
     private void ChangeWorkType(ChangeEventArgs e)
     {
@@ -1184,7 +1248,8 @@ else
             "bachelorQualification" => AnalysisWorkType.BachelorQualification,
             "masterQualification" => AnalysisWorkType.MasterQualification, _ => (AnalysisWorkType)(-1),
         };
-        AnalysisCoord.SetSelection(new AnalysisSelection(AnalysisCoord.CurrentProfile, new(work)));
+        AnalysisCoord.SetSelection(new AnalysisSelection(AnalysisCoord.CurrentProfile, new(work),
+            AnalysisCatalog.IsThesis(AnalysisCoord.CurrentProfile) ? AnalysisCoord.CurrentReferenceConfiguration : null));
     }
     private void ClearSelectionIntent()
     {
@@ -1225,11 +1290,13 @@ else
 
     protected override async Task OnInitializedAsync()
     {
+        InitializeDiagnosticList();
         _articleStarter = new(Coordinator, StarterLocks);
         _projectRename = new(Coordinator, action => InvokeAsync(action));
         _projectRename.Changed += ProjectRenameChanged;
         _completions = new(Coordinator, StarterLocks);
         InitializeAssistance();
+        InitializeJournal();
         Coordinator.WorkspaceChanged += CompletionAuthorityChanged;
         _singleFileImport = new(Coordinator, StarterLocks, action => InvokeAsync(action), selected: SelectFile);
         _singleFileImport.Changed += SingleFileImportChanged;
@@ -1277,6 +1344,8 @@ else
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        CompleteDiagnosticRender(); // actual DOM render fence for diagnostic cross-file actions
+        await JournalAfterRenderAsync();
         await AssistanceAfterRenderAsync();
         if (firstRender)
         {
@@ -1564,7 +1633,7 @@ else
         // Keep the explicit cancellation notice for the interrupted action.
         // A later tree click with no active operation owns its normal file notice.
         if (!sourceWasBusy) SourceQueryChanged();
-        Coordinator.SelectFile(id);
+        JournalSelectFile(id);
         StateHasChanged();
     }
 
@@ -1720,15 +1789,13 @@ else
 
     private async Task LoadHistoryAsync(bool first)
     {
-        if (Coordinator.Project is null) return;
-        if (first)
-        {
-            _history.Clear();
-            _historyNextCursor = null;
-        }
-        var page = await Coordinator.ReadHistoryAsync(Coordinator.Project.Id,
-            _historyNextCursor is null ? null : new HistoryCursor(_historyNextCursor),
-            System.Threading.CancellationToken.None);
+        if (Coordinator.Project is not { } project) return;
+        var session = Coordinator.SessionId; long intent = ++_historyListIntent;
+        var cursor = first ? null : _historyNextCursor;
+        var page = await Coordinator.ReadHistoryAsync(project.Id,
+            cursor is null ? null : new HistoryCursor(cursor), System.Threading.CancellationToken.None);
+        if (_pageDisposed || intent != _historyListIntent || Coordinator.Project?.Id != project.Id || Coordinator.SessionId != session) return;
+        if (first) _history.Clear();
         _history.AddRange(page.Checkpoints);
         _historyNextCursor = page.NextCursor;
     }
@@ -1741,58 +1808,45 @@ else
 
     private async Task SelectHistoryAsync(CheckpointId id)
     {
-        SelectedHistoryId = id;
-        _restoreError = null;
-        if (Coordinator.Project is null) return;
-        var cp = _history.FirstOrDefault(c => c.Id == id);
+        if (_pageDisposed || _historyWholeBusy || HistoryComparisons.Busy || Coordinator.Project is not { } project) return;
+        var cp = _history.FirstOrDefault(c => c.Id == id && c.ProjectId == project.Id);
         if (cp is null) return;
-        try
-        {
-            _restorePreview = await Coordinator.CaptureRestorePreviewAsync(cp.RevisionId, System.Threading.CancellationToken.None);
-            _comparison = _restorePreview.Summary;
-            // Pick the first content-changed text file for an optional detailed diff.
-            var changed = _comparison.Changes.FirstOrDefault(c =>
-                c.Kind == FileChangeKind.ContentChanged && c.Diff is not null);
-            if (changed is { } ch && ch.Diff is { } d)
-            {
-                _selectedDiff = d;
-                _selectedDiffPath = ch.Path;
-            }
-            else
-            {
-                _selectedDiff = null;
-                _selectedDiffPath = "";
-            }
-        }
-        catch (System.Exception ex)
-        {
-            _restoreError = ex.Message;
-            _comparison = null;
-            _restorePreview = null;
-        }
+        SelectedHistoryId = id; _restoreError = null; _restorePreview = null;
+        _comparison = null; _selectedDiff = null; _selectedDiffPath = "";
+        // A history-list click displays bytes only. Whole-project preview has
+        // its own explicit action; no writer-only capture or forced Save here.
+        var session = Coordinator.SessionId;
+        var result = await HistoryComparisons.CompareWorkingAsync(cp.RevisionId, System.Threading.CancellationToken.None);
+        if (_pageDisposed || Coordinator.Project?.Id != project.Id || Coordinator.SessionId != session) return;
+        if (result.Code != Client.Workspace.History.HistoryComparisonCode.Ready)
+            _restoreError = "Source comparison is unavailable or stale. Compare again after the current operation settles.";
         StateHasChanged();
     }
 
     private async Task AcceptRestoreAsync()
     {
-        if (_restorePreview is null) return;
-        var result = await Coordinator.AcceptRestoreAsync(_restorePreview, System.Threading.CancellationToken.None);
-        if (result.Status == CommitStatus.Saved)
+        if (_restorePreview is not { } preview || _historyWholeBusy || HistoryComparisons.Busy || !ReviewWritable || HistoryHasUnresolvedReview) return;
+        var project = Coordinator.Project?.Id; var session = Coordinator.SessionId;
+        _historyWholeBusy = true; _restorePreview = null;
+        bool Current() => !_pageDisposed && Coordinator.Project?.Id == project && Coordinator.SessionId == session;
+        try
         {
-            _restoreError = null;
-            _comparison = null;
-            _restorePreview = null;
-            SelectedHistoryId = null;
-            await LoadHistoryAsync(first: true);
+            var result = await Coordinator.AcceptRestoreAsync(preview, System.Threading.CancellationToken.None);
+            if (!Current()) return;
+            if (result.Status == CommitStatus.Saved)
+            {
+                _historyPriorHead = preview.Token.ExpectedHead; _historyPriorSession = session;
+                _restoreError = null; _comparison = null; SelectedHistoryId = null;
+                await LoadHistoryAsync(first: true);
+            }
+            else
+            {
+                _restoreError = "Whole-project restore did not finish. Inspect local save/recovery status and request a fresh preview.";
+                _comparison = null;
+            }
         }
-        else
-        {
-            _restoreError = result.SafeMessage ?? result.ErrorCode ?? "Restore failed.";
-            // The preview is stale; clear it so the user re-captures.
-            _restorePreview = null;
-            _comparison = null;
-        }
-        StateHasChanged();
+        catch (Exception) { if (Current()) _restoreError = "Whole-project restore could not finish displaying its result. Inspect the current head and save/recovery state before retrying."; }
+        finally { _historyWholeBusy = false; if (!_pageDisposed) StateHasChanged(); }
     }
 
     // ---- independent engine analysis actions ----
@@ -1816,6 +1870,9 @@ else
     // an older deferred selection must never run under a newer click's render.
     private void CancelSelectionIntents()
     {
+        _journal?.Cancel();
+        if (_journalSelection is { } journal) journal.Completion.TrySetResult(false); // Deferred only; started render claimed its lease.
+        _journalSelection = null;
         // A deferred callback has started no foreign work. Started callbacks
         // clear this slot and retain their actual settlement lease in finally.
         if (_assistPendingNavigation is { } assistance) assistance.Completion.TrySetResult(false);
@@ -1856,6 +1913,7 @@ else
 
     private System.Threading.CancellationToken NavCancelAndStart()
     {
+        ObserveAssistanceSynchronously(); // Capture known native caret epochs before starting new authority.
         CancelSelectionIntents();
         _navCts = new System.Threading.CancellationTokenSource();
         return _navCts.Token;
@@ -1926,13 +1984,11 @@ else
     {
         if (!CanMapNavigate || !SyncPointerCurrent(point) || CompileSession.Preview.State.PageGeometry is not { } geometry
             || CompileSession.Preview.State.DocumentSha256 != CompileSession.DisplayedOutput?.OutputHash?.Hex) return;
-        var location = SyncTeXDisplayGeometry.Inverse(geometry, point.X, point.Y);
-        if (location is null) { _syncStatus = "Source navigation is unavailable for this page geometry."; return; }
         var ct = NavCancelAndStart(); _syncPointer = point; _syncBusy = true; _syncStatus = "Locating PDF position in source…";
-        var result = await _syncNavigation.InverseAsync(point.PageIndex + 1, location.H, location.V, ct);
+        var result = await _syncNavigation.InverseAsync(point.PageIndex + 1, geometry, point.X, point.Y, ct);
         if (!SyncIntentCurrent(ct)) return;
         if (result is null || !_syncNavigation.IsCurrent(result, ct))
-        { SyncNotice(ct, "No captured source line is available at that PDF position."); return; }
+        { SyncNotice(ct, "No current source location is available for this PDF position or page geometry."); return; }
         _syncResult = result;
         await ActivateSyncMatchAsync(result, 0);
     }
@@ -1956,7 +2012,7 @@ else
         if (selection is null || !_syncNavigation.IsCurrent(selection, ct))
         { SyncNotice(ct, "Captured source changed. Compile again before navigating."); return; }
         if (Coordinator.ActiveFileId == selection.File.FileId) { await ApplySyncSourceAsync(selection, ct); return; }
-        if (!_syncNavigation.IsCurrent(selection, ct) || !Coordinator.SelectFile(selection.File.FileId))
+        if (!_syncNavigation.IsCurrent(selection, ct) || !JournalSelectFile(selection.File.FileId))
         { SyncNotice(ct, "Captured source file is unavailable."); return; }
         if (!SyncIntentCurrent(ct) || !_syncNavigation.IsCurrent(selection, ct, requireActiveFile: true)) return;
         _pendingSyncSource = selection; _pendingSyncSourceCt = ct; StateHasChanged();
@@ -2010,7 +2066,7 @@ else
             return;
         }
         // Validated authority, never a path/file-ID alleged by UI or a PDF.
-        if (!_compilerSource.IsCurrent(selection, ct) || !Coordinator.SelectFile(request.File.FileId))
+        if (!_compilerSource.IsCurrent(selection, ct) || !JournalSelectFile(request.File.FileId))
         { RejectCompilerSource(ct, "Compiler source file is no longer available; compile again."); return; }
         if (!CompilerSourceIntentCurrent(ct)) return;
         if (!_compilerSource.IsCurrent(selection, ct, requireActiveFile: true))
@@ -2021,13 +2077,13 @@ else
     }
 
     private async Task ApplyCompilerSourceSelectionAsync(CompilerSourceNavigationPolicy.Selection selection,
-        System.Threading.CancellationToken ct)
+        System.Threading.CancellationToken ct, Func<bool>? diagnosticEligible = null)
     {
-        if (!CompilerSourceIntentCurrent(ct)) return;
+        if (!CompilerSourceIntentCurrent(ct) || diagnosticEligible?.Invoke() == false) return;
         if (!_compilerSource.IsCurrent(selection, ct, requireActiveFile: true))
         { RejectCompilerSource(ct, "Compiler attempt or source is stale; compile again."); return; }
         var module = await GetEditorSelectAsync(ct);
-        if (!CompilerSourceIntentCurrent(ct)) return;
+        if (!CompilerSourceIntentCurrent(ct) || diagnosticEligible?.Invoke() == false) return;
         if (!_compilerSource.IsCurrent(selection, ct, requireActiveFile: true))
         { RejectCompilerSource(ct, "Compiler attempt or source changed; selection discarded."); return; }
         if (module is null)
@@ -2035,7 +2091,7 @@ else
         // Re-materialize exact bytes after the render/import await, not merely
         // a file hash allegation. The centralized policy checks after this IO.
         var verified = await _compilerSource.PrepareAsync(selection.Request, ct);
-        if (!CompilerSourceIntentCurrent(ct)) return;
+        if (!CompilerSourceIntentCurrent(ct) || diagnosticEligible?.Invoke() == false) return;
         if (verified is null || !_compilerSource.IsCurrent(verified, ct, requireActiveFile: true))
         { RejectCompilerSource(ct, "Compiler source preimage changed; selection discarded."); return; }
         try
@@ -2046,7 +2102,7 @@ else
             bool selected = await module.InvokeAsync<bool>("trySelectForFind", _editorRef,
                 verified.Request.File.FileId.ToString(), verified.ExpectedTextareaText,
                 verified.TextareaRange.Start, verified.TextareaRange.End);
-            if (!CompilerSourceIntentCurrent(ct)) return;
+            if (!CompilerSourceIntentCurrent(ct) || diagnosticEligible?.Invoke() == false) return;
             if (!_compilerSource.IsCurrent(verified, ct, requireActiveFile: true))
             { RejectCompilerSource(ct, "Compiler attempt or source changed; selection discarded."); return; }
             if (!selected)
@@ -2096,7 +2152,7 @@ else
         }
         // Active-file changes are not source mutations and do not invalidate the
         // listing. Only this validated request may supply the target identity.
-        if (!ProjectSearchCurrent(request, ct) || !Coordinator.SelectFile(request.FileId))
+        if (!ProjectSearchCurrent(request, ct) || !JournalSelectFile(request.FileId))
         {
             RejectProjectSearchNavigation(ct, "Search target is no longer available. Search again.");
             return;
@@ -2202,6 +2258,12 @@ else
         }
         if (ct.IsCancellationRequested || _pageDisposed) return;
 
+        await HandleAnalysisNavigationAsync(result, ct);
+    }
+
+    private async Task HandleAnalysisNavigationAsync(NavigationResult result, System.Threading.CancellationToken ct)
+    {
+        if (ct.IsCancellationRequested || _pageDisposed) return;
         switch (result)
         {
             case NavigationResult.Selected s:
@@ -2216,7 +2278,7 @@ else
                     // Switch files: SelectFile + render, then OnAfterRenderAsync
                     // applies the selection once the target textarea has rendered.
                     SourceQueryChanged();
-                    if (!Coordinator.SelectFile(s.FileId))
+                    if (!JournalSelectFile(s.FileId))
                     {
                         if (!ct.IsCancellationRequested && !_pageDisposed)
                         { _navNotice = "The diagnostic's file is no longer open."; StateHasChanged(); }
@@ -2239,19 +2301,19 @@ else
         }
     }
 
-    private async Task ApplySelectionAsync(NavigationResult.Selected s, System.Threading.CancellationToken ct)
+    private async Task ApplySelectionAsync(NavigationResult.Selected s, System.Threading.CancellationToken ct, Func<bool>? diagnosticEligible = null)
     {
         // Check after EVERY await: a newer navigation, a page dispose, or an
         // edit/close/worker-reset during any await must prevent a stale
         // selection. The JS module then atomically verifies the DOM
         // (data-file-id + live value) in the SAME call as focus/setSelectionRange.
-        if (_pageDisposed || ct.IsCancellationRequested) return;
+        if (_pageDisposed || ct.IsCancellationRequested || diagnosticEligible?.Invoke() == false) return;
 
         // Load/import the DOM module FIRST (shared single-flight import). A late
         // module arriving after page dispose is disposed, not assigned into a
         // dead page.
         var mod = await GetEditorSelectAsync(ct);
-        if (ct.IsCancellationRequested || _pageDisposed) return;
+        if (ct.IsCancellationRequested || _pageDisposed || diagnosticEligible?.Invoke() == false) return;
         if (mod is null)
         {
             _navNotice = "Could not load the editor selection module; run analysis again.";
@@ -2264,7 +2326,7 @@ else
         // the worker-epoch check that NavigateAsync already did — an edit/close/
         // reset during the module import/render is caught here.
         var v = await Navigator.VerifyCurrentAsync(s.Report, ct);
-        if (ct.IsCancellationRequested || _pageDisposed) return;
+        if (ct.IsCancellationRequested || _pageDisposed || diagnosticEligible?.Invoke() == false) return;
         if (!v.Ok)
         {
             _navNotice = v.Reason ?? "This analysis is no longer current; run analysis again.";
@@ -2275,7 +2337,7 @@ else
         // Synchronous final checks IMMEDIATELY before the final DOM call (no
         // unrelated await between these and trySelect): page lifetime, intent,
         // report currency, and the target file is the active file.
-        if (_pageDisposed || ct.IsCancellationRequested) return;
+        if (_pageDisposed || ct.IsCancellationRequested || diagnosticEligible?.Invoke() == false) return;
         if (!Navigator.IsStillCurrent(s.Report))
         {
             _navNotice = "The workspace changed since this analysis; run analysis again.";
@@ -2291,13 +2353,14 @@ else
 
         try
         {
-            var ok = await mod.InvokeAsync<bool>("trySelect", _editorRef, s.FileId.ToString(), s.ExpectedTextareaText, s.TextareaStart, s.TextareaEnd);
-            if (ct.IsCancellationRequested || _pageDisposed) return;
+            var selectionMethod = diagnosticEligible is null ? "trySelect" : "trySelectForFind";
+            var ok = await mod.InvokeAsync<bool>(selectionMethod, _editorRef, s.FileId.ToString(), s.ExpectedTextareaText, s.TextareaStart, s.TextareaEnd);
+            if (ct.IsCancellationRequested || _pageDisposed || diagnosticEligible?.Invoke() == false) return;
             _navNotice = ok ? null : "The editor no longer matches the analyzed source; run analysis again.";
         }
         catch (JSException)
         {
-            if (ct.IsCancellationRequested || _pageDisposed) return;
+            if (ct.IsCancellationRequested || _pageDisposed || diagnosticEligible?.Invoke() == false) return;
             _navNotice = "Could not select the diagnostic location; run analysis again.";
         }
         if (!_pageDisposed && !ct.IsCancellationRequested) StateHasChanged();
@@ -2364,6 +2427,10 @@ else
     {
         if (_pageDisposed) return; // idempotent
         _pageDisposed = true;
+        DisposeDiagnosticList();
+        _historyListIntent++; _historyWholeIntent++; _historyWholeCts?.Cancel();
+        HistoryComparisons.Cancel(); // DI owns this scoped service; retain real admission through late callbacks.
+        DisposeJournal();
         DisposeAssistance();
         _articleStarter?.Dispose();
         if (_projectRename is { } rename) { rename.Changed -= ProjectRenameChanged; rename.Dispose(); }

@@ -12,6 +12,8 @@
     <EmbeddedResource Include="Analysis/knu-profile-v1_2-metadata.json" />
     <EmbeddedResource Include="Analysis/knu-profile-v1_3-metadata.json" />
     <EmbeddedResource Include="Analysis/knu-profile-v1_4-metadata.json" />
+    <EmbeddedResource Include="Analysis/knu-profile-v1_5-metadata.json" />
+    <EmbeddedResource Include="Analysis/thesis-support-catalog.json" />
     <EmbeddedResource Include="Compilation/Provisioning/bundled-runtime.json" />
     <Content Remove="wwwroot/**/.pi-lens.json" />
   </ItemGroup>

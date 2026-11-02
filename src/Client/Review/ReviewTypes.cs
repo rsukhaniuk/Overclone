@@ -104,6 +104,10 @@ public interface IChangeReviewService : IAsyncDisposable
     event Action<ReviewServiceState>? Changed;
     Task<ReviewResult> PreviewAsync(TextChangeSet changeSet,CancellationToken ct);
     Task<ReviewResult> PreviewFixAsync(string descriptorId,CancellationToken ct);
+    // Default preserves existing narrow adapters; the registered service below
+    // implements exact subset preparation, never a fallback to full preview.
+    Task<ReviewResult> PreviewSubsetAsync(Guid expectedPreviewId,ReviewSubsetSelection selection,CancellationToken ct)
+        => Task.FromResult(new ReviewResult(ReviewStatus.Idle,Failure:new(ReviewCode.Unavailable,"Subset preview is unavailable in this adapter.")));
     ReviewResult Decline(Guid previewId);
     void Cancel();
     Task<ReviewResult> AcceptAsync(Guid previewId,CancellationToken ct);

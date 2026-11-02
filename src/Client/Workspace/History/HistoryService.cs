@@ -14,7 +14,7 @@ namespace Client.Workspace.History;
 /// lock; this service only computes the preview that the coordinator validates
 /// again at acceptance.
 /// </summary>
-public sealed class HistoryService
+public sealed partial class HistoryService
 {
     private readonly IProjectRepository _repo;
 

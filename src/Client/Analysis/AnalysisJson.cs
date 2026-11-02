@@ -56,6 +56,7 @@ public static class AnalysisJson
         if (!AnalysisCatalog.IsValid(envelope.Payload.Profile.Id, envelope.Payload.Profile.Version, envelope.Payload.Configuration, envelope.Payload.ReferenceConfiguration))
             throw new ArgumentException("Unknown profile/version or invalid configuration.", nameof(envelope));
         if (envelope.Payload.Profile.Id == AnalysisCatalog.ReferenceId) ReferenceWireValidation.Request(envelope.Payload);
+        if (AnalysisCatalog.IsThesis(new(envelope.Payload.Profile.Id, envelope.Payload.Profile.Version))) ThesisWireValidation.Request(envelope);
         return JsonSerializer.Serialize(envelope, Options);
     }
 
@@ -141,7 +142,9 @@ public static class AnalysisJson
         if (!AnalysisCatalog.IsKnown(profile.Id, profile.Version)) throw new JsonException("Unknown profile/version.");
         bool knu = profile.Id == AnalysisCatalog.KnuId;
         bool references = profile.Id == AnalysisCatalog.ReferenceId;
-        if (!references && p.TryGetProperty("referenceConfiguration", out _)) throw new JsonException("Foreign reference configuration.");
+        bool thesis = AnalysisCatalog.IsThesis(new(profile.Id, profile.Version));
+        if (!references && !thesis && p.TryGetProperty("referenceConfiguration", out _)) throw new JsonException("Foreign reference configuration.");
+        if (!thesis && p.TryGetProperty("thesis", out _)) throw new JsonException("Foreign thesis observations.");
         if (references) ReferenceWireValidation.Shape(root);
         if (knu) KnuWireValidation.Shape(root);
         else if (p.TryGetProperty("configuration", out _) || p.TryGetProperty("knu", out _))
@@ -495,6 +498,7 @@ public static class AnalysisRequestPacker
         }
 
         if (snapshot.Profile.Id == AnalysisCatalog.ReferenceId) ReferenceWireValidation.ValidateCapture(snapshot);
+        if (AnalysisCatalog.IsThesis(snapshot.Profile)) ThesisWireValidation.ValidateCapture(snapshot);
 
         // ---- all valid: allocate ONE exactly sized owned buffer and fill ----
         var packed = new byte[totalActual];

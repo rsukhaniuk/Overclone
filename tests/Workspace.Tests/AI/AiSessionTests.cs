@@ -203,13 +203,19 @@ public class AiSessionTests
         var chapter = h.F.Workspace.Files.Single(f => f.RelativePath == "chapter.tex");
         var gate = h.F.Hold(chapter.Id);
         var previewing = h.Session.PreviewProposalAsync(); await gate.WaitReached();
-        h.Session.Disconnect(); await previewing.WaitAsync(Bound);
+        h.Session.Disconnect();
+        // The repository deliberately ignores cancellation. The shared review
+        // keeps admission until that actual read settles, including on AI disconnect.
+        Assert.True(h.Review.State.Busy); Assert.False(previewing.IsCompleted);
         var w = h.F.Workspace; var file = w.ActiveFile!;
         var bytes = await w.GetFileBytesAsync(file, default);
         var set = TextChangeSet.Create(TextPatchOrigin.User, "Independent review", [new(file.Id, file.RelativePath,
             CompilationTestWorkspace.Hash(bytes), bytes.Length, [new(3, bytes.Length, bytes.AsMemory(3), Encoding.UTF8.GetBytes("user"))])]).ChangeSet!;
-        var other = (await h.Review.PreviewAsync(set, default)).Preview!;
+        var blocked = await h.Review.PreviewAsync(set, default);
+        Assert.Equal(ReviewCode.Busy, blocked.Failure?.Code); Assert.Null(blocked.Preview);
         gate.Release.TrySetResult(h.F.Repo.Content[gate.Hash]); await Task.WhenAll(h.F.Repo.PendingReadSettlements).WaitAsync(Bound);
+        await previewing.WaitAsync(Bound); Assert.False(h.Review.State.Busy);
+        var other = (await h.Review.PreviewAsync(set, default)).Preview!;
         Assert.Equal(other.Id, h.Review.State.Preview?.Id); Assert.Null(h.Session.Context); Assert.Null(h.Session.Answer);
         Assert.Equal(0, h.F.Repo.Commits);
     }

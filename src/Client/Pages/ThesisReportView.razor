@@ -1,0 +1,87 @@
+@using Client.Analysis
+@using System.Text.Json
+
+@if (Report?.Result.Thesis is { } thesis)
+{
+    var report = Report!;
+    <section aria-label="Cited thesis source review" data-testid="thesis-report" data-snapshot-id="@report.Snapshot.Id">
+        <h3>Cited thesis source observations — opt-in 1.5</h3>
+        <p>KNU Faculty of Computer Science and Cybernetics, 2025. This faculty profile is not a university-wide standard or DSTU certification.</p>
+        <p data-testid="thesis-scope"><strong>Incomplete standards coverage.</strong> Literal source observations only; effective TeX state, physical PDF layout and overall compliance are not assessed. No automatic fixes.</p>
+        <p data-testid="thesis-selection">Root: @FileName(report, thesis.RootFileId). Work type: @AnalysisPresentation.WorkType(thesis.WorkType).</p>
+        <p>Qualification-only title evidence: @thesis.WorkTypeDependentTitle. Bibliography: @thesis.BibliographyMode. Backend-generated numbering, style and order are not measured.</p>
+        @if (!IsCurrent) { <p role="status">This report is not actionable; analyze the current selection again.</p> }
+        <p data-testid="thesis-literal-coverage">Supported literal scan: @(thesis.CompleteLiteralScan ? "complete within the finite grammar, not full guideline coverage" : "uncertain or incomplete; known literal findings retained").</p>
+        <ul data-testid="thesis-limitations">@foreach (var limitation in thesis.Limitations) { <li>@limitation</li> }</ul>
+        <p>The following five selected-root observations are separate from the six base source-setting/title observations shown in the existing report.</p>
+        <label>Source rule <select value="@_rule" @onchange="FilterChanged"><option value="">All five</option>
+            @foreach (var id in ThesisCatalog.RuleIds) { <option value="@id">@id</option> }
+        </select></label>
+        @foreach (var rule in thesis.RuleResults.Where(r => _rule.Length == 0 || r.RuleId == _rule))
+        {
+            <section data-testid="thesis-rule" data-rule-id="@rule.RuleId" data-outcome="@rule.Outcome">
+                <h4><code>@rule.RuleId</code> — @rule.Outcome (partial support)</h4>
+                <p data-testid="thesis-citation">Guideline §@rule.Citation.Section; printed pages @string.Join(", ", rule.Citation.PrintedPages); PDF pages @string.Join(", ", rule.Citation.PdfPages).</p>
+                <p>@rule.Reason — method @rule.Method</p>
+                @if (rule.KnownCounterexample)
+                { <p data-testid="thesis-known-finding">Known literal counterexample retained. An indeterminate outcome does not establish executed or rendered failure.</p> }
+                @if (rule.Outcome == RuleOutcome.Unavailable)
+                { <p>No supported observation or required capability; this is not a Pass.</p> }
+            </section>
+        }
+        <details open>
+            <summary>Canonical source context evidence (@thesis.Events.Length entries; 50 per page)</summary>
+            <p>These are bounded literal context anchors, not precise error locations inferred from generic findings. A float is not one physical figure. Missing literal captions do not prove missing physical captions.</p>
+            @foreach (var index in Enumerable.Range(_page * PageSize, Math.Min(PageSize, Math.Max(0, thesis.Events.Length - _page * PageSize))))
+            {
+                var e = thesis.Events[index];
+                <div data-testid="thesis-evidence" data-event-index="@index">
+                    <p>@e.Kind — @FileName(report,e.FileId), UTF-8 bytes [@e.Span.StartByte, @e.Span.EndByte) @(e.Appendix ? "(appendix source context)" : "")</p>
+                    <pre>@e.Text</pre>
+                    <button disabled="@(!IsCurrent)" data-testid="thesis-source-link" @onclick="() => EvidenceSelected.InvokeAsync(new ThesisEvidenceRequest(report,index))">Open exact source anchor</button>
+                </div>
+            }
+            <button disabled="@(_page == 0)" @onclick="Previous">Previous source evidence</button>
+            <button disabled="@((_page + 1) * PageSize >= thesis.Events.Length)" @onclick="Next">Next source evidence</button>
+        </details>
+        <details>
+            <summary>First literal citation keys (@thesis.FirstLiteralCitationKeys.Length)</summary>
+            <p>This is literal source order, not compiled bibliography order.</p>
+            <ol>@foreach (var key in thesis.FirstLiteralCitationKeys) { <li><code>@key</code></li> }</ol>
+        </details>
+        <ul>@foreach (var cell in thesis.UnavailableCells) { <li>@cell.RuleId: @cell.Reason</li> }</ul>
+        <details data-testid="thesis-support-catalog">
+            <summary>Full cited support catalog — 31 cells; required unsupported cells remain open</summary>
+            <p>No PDF measurements are supplied by this source report. The partial length entry delegates only to the existing narrow extent/labelled-range observation; it does not certify structure or layout.</p>
+            @foreach (var row in ThesisCatalog.Rows)
+            {
+                var citation = row.GetProperty("citation");
+                <details data-testid="thesis-catalog-row" data-rule-id="@Value(row,"ruleId")">
+                    <summary>@Value(row,"ruleId") — @Value(row,"domain"): @Value(row,"supportState")</summary>
+                    <p>Rule @Value(row,"ruleVersion"); strength @Value(row,"requirementStrength"). Guideline §@Value(citation,"section"); printed/PDF pages @string.Join(", ", citation.GetProperty("pdfPages").EnumerateArray().Select(p=>p.GetInt32())).</p>
+                    @foreach (var field in new[]{"applicableWorkTypes","preconditions","requiredCapabilities","limitations"})
+                    { <p>@field:</p><ul>@foreach (var item in row.GetProperty(field).EnumerateArray()) { <li>@item.GetString()</li> }</ul> }
+                    <p>Supported syntax: @Value(row,"supportedSyntax"). Fix policy: @Value(row,"fixPolicy").</p>
+                    <pre>@row.GetProperty("predicates").GetRawText()</pre>
+                    <pre>@row.GetProperty("examples").GetRawText()</pre>
+                </details>
+            }
+        </details>
+    </section>
+}
+
+@code {
+    [Parameter] public AnalysisReport? Report { get; set; }
+    [Parameter] public bool IsCurrent { get; set; }
+    [Parameter] public EventCallback<ThesisEvidenceRequest> EvidenceSelected { get; set; }
+    private const int PageSize = 50;
+    private AnalysisReport? _shown;
+    private int _page;
+    private string _rule = "";
+    protected override void OnParametersSet() { if (!ReferenceEquals(_shown,Report)) { _shown=Report; _page=0; _rule=""; } }
+    private void FilterChanged(ChangeEventArgs e) { var s=e.Value?.ToString()??""; _rule=ThesisCatalog.RuleIds.Contains(s)?s:""; }
+    private void Previous() { if (_page>0) _page--; }
+    private void Next() { if ((_page+1)*PageSize<(Report?.Result.Thesis?.Events.Length??0)) _page++; }
+    private static string Value(JsonElement row,string key)=>row.GetProperty(key).GetString()??"";
+    private static string FileName(AnalysisReport report,string id)=>report.Snapshot.Files.FirstOrDefault(f=>f.FileId.ToString()==id)?.RelativePath??id;
+}

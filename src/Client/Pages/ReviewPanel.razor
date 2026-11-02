@@ -13,7 +13,7 @@
     { <p class="hint" data-testid="review-readonly">Read-only or recovery session: you may inspect a preview, but acceptance, save retry and undo require this session's writer lock.</p> }
     @if (State.Preview is { } preview)
     {
-        <section class="review-preview" aria-label="Proposed exact source edits" data-testid="review-preview" data-preview-id="@preview.Id">
+        <section class="review-preview" aria-label="Proposed exact source edits" data-testid="review-preview" data-preview-id="@preview.Id" data-proposal-id="@preview.Proposal.Id" data-origin="@preview.Proposal.Origin">
             <h3>Proposed change — not applied</h3>
             <p data-testid="review-explanation">@preview.Proposal.Explanation</p>
             @if (preview.Citation is { } cite)

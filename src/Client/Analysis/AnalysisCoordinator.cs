@@ -219,7 +219,8 @@ public sealed class AnalysisCoordinator : IAsyncDisposable
             {
                 // Keep the explicitly chosen reference profile visible even with
                 // no valid root; never silently fall back to another profile/root.
-                if (profile.Profile == new AnalysisProfile(AnalysisCatalog.ReferenceId, AnalysisCatalog.ReferenceVersion)) _profile = profile;
+                if (profile.Profile == new AnalysisProfile(AnalysisCatalog.ReferenceId, AnalysisCatalog.ReferenceVersion)
+                    || AnalysisCatalog.IsThesis(profile.Profile)) _profile = profile;
                 _selectionVersion++;
                 _intent++;
                 CancelDebounceLocked();
@@ -425,7 +426,7 @@ public sealed class AnalysisCoordinator : IAsyncDisposable
         {
             // ---- CAPTURE (reuses the factory; no live Files enumeration) ----
             CaptureResult cap;
-            try { cap = await _factory.CaptureSelectionAsync(profile, ct).ConfigureAwait(false); }
+            try { cap = await _factory.CaptureSelectionAsync(profile, ct, awaitActualReads: AnalysisCatalog.IsThesis(profile.Profile)).ConfigureAwait(false); }
             catch (OperationCanceledException)
             {
                 SetStateIfLatest(myIntent, new AnalysisState.Cancelled());
@@ -497,6 +498,11 @@ public sealed class AnalysisCoordinator : IAsyncDisposable
                 return;
             }
             if (!IsCurrentIntent(myIntent)) return;
+            if (AnalysisCatalog.IsThesis(snapshot.Profile) && (!SnapshotMatches(snapshot) || ct.IsCancellationRequested))
+            {
+                SetStateIfLatest(myIntent, new AnalysisState.Superseded());
+                return;
+            }
 
             // ---- PUBLISH ----
             switch (job)
@@ -505,6 +511,23 @@ public sealed class AnalysisCoordinator : IAsyncDisposable
                     await PublishCompletedAsync(myIntent, snapshot, completed, ct).ConfigureAwait(false);
                     break;
                 case AnalysisJobResult.Failed failed:
+                    if (AnalysisCatalog.IsThesis(snapshot.Profile) && (failed.WorkerEpoch is < 0 or > 9007199254740991
+                        || !AnalysisIdentity.IsValidOpaqueId(failed.RequestId, AnalysisLimits.MaxIdBytes)))
+                    {
+                        SetStateIfLatest(myIntent, new AnalysisState.Failed(new AnalysisErrorDto("InvalidResponse", "The source failure correlation was invalid.", false)));
+                        return;
+                    }
+                    if (AnalysisCatalog.IsThesis(snapshot.Profile) && failed.WorkerEpoch > 0)
+                    {
+                        var current = failed.WorkerEpoch <= 9007199254740991
+                            && await _analyzer.IsCurrentWorkerEpochAsync(failed.WorkerEpoch, CancellationToken.None).ConfigureAwait(false);
+                        if (!IsCurrentIntent(myIntent)) return;
+                        if (!current || !SnapshotMatches(snapshot) || ct.IsCancellationRequested)
+                        {
+                            SetStateIfLatest(myIntent, new AnalysisState.Superseded());
+                            return;
+                        }
+                    }
                     SetStateIfLatest(myIntent, new AnalysisState.Failed(failed.Error));
                     break;
                 case AnalysisJobResult.Cancelled:
@@ -568,11 +591,26 @@ public sealed class AnalysisCoordinator : IAsyncDisposable
             return;
         }
 
+        if (AnalysisCatalog.IsThesis(snapshot.Profile))
+        {
+            try
+            {
+                if (completed.WorkerEpoch is <= 0 or > 9007199254740991 || !AnalysisIdentity.IsValidOpaqueId(completed.RequestId, AnalysisLimits.MaxIdBytes))
+                    throw new System.Text.Json.JsonException("Invalid analysis correlation.");
+                ThesisValidation.ValidateCapturedResult(completed.Result, snapshot);
+            }
+            catch (System.Text.Json.JsonException)
+            {
+                SetStateIfLatest(myIntent, new AnalysisState.Failed(new AnalysisErrorDto("InvalidResponse", "The thesis source report did not match its capture.", false)));
+                return;
+            }
+        }
+
         // Awaited worker-epoch check. An edit/close/restore during this await
         // bumps the intent (the invalidator's handler took _lock after we
         // released it), so the post-await recheck below discards the result.
         bool epochCurrent;
-        try { epochCurrent = await _analyzer.IsCurrentWorkerEpochAsync(completed.WorkerEpoch, ct).ConfigureAwait(false); }
+        try { epochCurrent = await _analyzer.IsCurrentWorkerEpochAsync(completed.WorkerEpoch, AnalysisCatalog.IsThesis(snapshot.Profile) ? CancellationToken.None : ct).ConfigureAwait(false); }
         catch (OperationCanceledException)
         {
             // ct cancelled (e.g. worker reset) for the still-latest job: terminal

@@ -20,6 +20,7 @@ public readonly record struct AnalysisSelection(AnalysisProfile Profile, Analysi
     public static AnalysisSelection KnuWithMarginFixes(AnalysisWorkType workType) => new(new(AnalysisCatalog.KnuId, AnalysisCatalog.MarginFixVersion), new(workType));
     public static AnalysisSelection KnuWithGeometryPackage(AnalysisWorkType workType) => new(new(AnalysisCatalog.KnuId, AnalysisCatalog.GeometryPackageVersion), new(workType));
     public static AnalysisSelection KnuWithFormatting(AnalysisWorkType workType) => new(new(AnalysisCatalog.KnuId, AnalysisCatalog.FormattingVersion), new(workType));
+    public static AnalysisSelection KnuWithThesis(AnalysisWorkType workType, string? rootFileId) => new(new(AnalysisCatalog.KnuId, AnalysisCatalog.ThesisVersion), new(workType), rootFileId is null ? null : new(rootFileId));
     public bool IsValid => AnalysisCatalog.IsValid(Profile.Id, Profile.Version, Configuration, ReferenceConfiguration);
 }
 
@@ -38,6 +39,9 @@ public static class AnalysisCatalog
     public const string MarginRuleVersion = "1.1.0";
     public const string GeometryPackageVersion = "1.3.0";
     public const string FormattingVersion = "1.4.0";
+    public const string ThesisVersion = "1.5.0";
+    public static bool IsThesis(AnalysisProfile profile) => profile.Id == KnuId && profile.Version == ThesisVersion;
+    public static bool RequiresRoot(AnalysisProfile profile) => profile.Id == ReferenceId || IsThesis(profile);
     public const string Paper = "KNU-SRC-PAPER-001";
     public const string LineSpacing = "KNU-SRC-LINE-SPACING-001";
     public const string Caption = "KNU-SRC-CAPTION-DOT-001";
@@ -67,6 +71,7 @@ public static class AnalysisCatalog
     private static readonly Lazy<JsonElement> MarginFixMetadata = new(() => LoadMetadata("knu-profile-v1_2-metadata.json"));
     private static readonly Lazy<JsonElement> GeometryPackageMetadata = new(() => LoadMetadata("knu-profile-v1_3-metadata.json"));
     private static readonly Lazy<JsonElement> FormattingMetadata = new(() => LoadMetadata("knu-profile-v1_4-metadata.json"));
+    private static readonly Lazy<JsonElement> ThesisMetadata = new(() => LoadMetadata("knu-profile-v1_5-metadata.json"));
     private static JsonElement LoadMetadata(string name)
     {
         using var stream = typeof(AnalysisCatalog).Assembly.GetManifestResourceStream("Client.Analysis." + name)
@@ -82,6 +87,7 @@ public static class AnalysisCatalog
         MarginFixVersion => MarginFixMetadata.Value,
         GeometryPackageVersion => GeometryPackageMetadata.Value,
         FormattingVersion => FormattingMetadata.Value,
+        ThesisVersion => ThesisMetadata.Value,
         _ => throw new JsonException("Unknown KNU profile version."),
     };
     internal static ImmutableArray<string> SourceRulesFor(string version) => version switch
@@ -91,14 +97,18 @@ public static class AnalysisCatalog
         MarginFixVersion => LatestRules,
         GeometryPackageVersion => LatestRules,
         FormattingVersion => FormattingRules,
+        ThesisVersion => FormattingRules,
         _ => throw new JsonException("Unknown KNU profile version."),
     };
     public static bool IsKnown(string? id, string? version)
         => (id == "engine-structural" && version == "0") || (id == ReferenceId && version == ReferenceVersion)
-            || (id == KnuId && version is Version or LatestVersion or MarginFixVersion or GeometryPackageVersion or FormattingVersion);
+            || (id == KnuId && version is Version or LatestVersion or MarginFixVersion or GeometryPackageVersion or FormattingVersion or ThesisVersion);
     public static bool IsValid(string? id, string? version, AnalysisConfigurationDto? configuration,
         AnalysisReferenceConfigurationDto? referenceConfiguration = null)
-        => id == ReferenceId && version == ReferenceVersion
+        => id == KnuId && version == ThesisVersion
+            ? configuration is not null && Enum.IsDefined(configuration.WorkType) && referenceConfiguration is not null
+                && AnalysisIdentity.IsValidOpaqueId(referenceConfiguration.RootFileId, AnalysisLimits.MaxIdBytes)
+            : id == ReferenceId && version == ReferenceVersion
             ? configuration is null && referenceConfiguration is not null
                 && AnalysisIdentity.IsValidOpaqueId(referenceConfiguration.RootFileId, AnalysisLimits.MaxIdBytes)
             : referenceConfiguration is null && (id == "engine-structural" && version == "0" ? configuration is null

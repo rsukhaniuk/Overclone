@@ -118,6 +118,7 @@ public class ChangeReviewServiceTests
     {
         await using var h=await Harness.Open(stage=="epoch");var gate=new WorkspaceTextPatchTests.Barrier();
         if(stage=="read")h.F.Repo.ReadBarrier=gate;else h.Analyzer.EpochBarrier=gate;
+        if(stage=="epoch"&&change=="new-preview")h.Analyzer.IgnoreEpochCancellation=true;
         var pending=stage=="epoch"?h.Service.PreviewFixAsync(AnalysisCatalog.Fix,None):h.Service.PreviewAsync(await h.GenericBeforeGate(),None);
         await gate.Reached.Task.WaitAsync(TimeSpan.FromSeconds(5));
         ReviewPreview? newer=null;
@@ -127,12 +128,37 @@ public class ChangeReviewServiceTests
             case "work":h.Analysis.SetSelection(AnalysisSelection.Knu(AnalysisWorkType.Coursework));h.Analysis.SetSelection(AnalysisSelection.Knu(AnalysisWorkType.BachelorQualification));break;
             case "profile":h.Analysis.SetSelection(AnalysisSelection.EngineStructural());h.Analysis.SetSelection(AnalysisSelection.Knu(AnalysisWorkType.BachelorQualification));break;
             case "worker":h.Analyzer.Epoch++;break;case "dispose":await h.Service.DisposeAsync();break;
-            case "new-preview":h.F.Repo.ReadBarrier=null;h.Analyzer.EpochBarrier=null;newer=(await h.Service.PreviewAsync(await h.Generic(),None)).Preview;break;
+            case "new-preview":
+                h.Service.Cancel();h.F.Repo.ReadBarrier=null;h.Analyzer.EpochBarrier=null;
+                if(stage=="read")
+                {
+                    // This repository read cooperates with cancellation. Await
+                    // its ACTUAL settlement before admitting a fresh preview.
+                    Assert.Null((await pending.WaitAsync(TimeSpan.FromSeconds(5))).Preview);
+                    Assert.False(h.Service.State.Busy);
+                    newer=(await h.Service.PreviewAsync(await h.Generic(),None)).Preview;
+                    Assert.NotNull(newer);
+                }
+                else
+                {
+                    // The epoch probe deliberately ignores cancellation here.
+                    // Clearing the fixture hook does not settle that old call.
+                    Assert.True(h.Service.State.Busy);Assert.False(pending.IsCompleted);
+                    var replacement=await h.Service.PreviewAsync(await h.Generic(),None);
+                    Assert.Equal(ReviewCode.Busy,replacement.Failure?.Code);
+                }
+                break;
             default:h.Service.Cancel();break;
         }
         gate.Release.TrySetResult();var result=await pending.WaitAsync(TimeSpan.FromSeconds(5));
         // Generic proposals have no worker authority; a worker-only reset is irrelevant.
         if(stage=="read"&&change=="worker")Assert.NotNull(result.Preview);else Assert.Null(result.Preview);
+        if(change=="new-preview"&&stage=="epoch")
+        {
+            Assert.False(h.Service.State.Busy);
+            newer=(await h.Service.PreviewAsync(await h.Generic(),None)).Preview;
+            Assert.NotNull(newer);
+        }
         if(newer is not null)Assert.Same(newer,h.Service.State.Preview);
         Assert.Equal(0,h.F.Repo.Commits);
     }
@@ -423,13 +449,13 @@ public class ChangeReviewServiceTests
     }
     private sealed class Analyzer:ISourceAnalyzer
     {
-        internal long Epoch=7;internal WorkspaceTextPatchTests.Barrier? EpochBarrier;
+        internal long Epoch=7;internal WorkspaceTextPatchTests.Barrier? EpochBarrier;internal bool IgnoreEpochCancellation;
         private RustSourceAnalyzer? _native;private AnalysisSnapshot? _snapshot;
         internal Analyzer(bool native){if(native){var js=new KnuProtocolTests.FixtureJs((_,rid)=>{
             var snap=_snapshot!;var name=snap.Files[0].Bytes.AsSpan().SequenceEqual(KnuFixture.Load("negative").Bytes)?"negative":"review-after";return KnuFixture.Load(name).Reply(snap,rid);
         });_native=new(js);}}
         public Task<AnalysisJobResult> AnalyzeAsync(AnalysisSnapshot snapshot,CancellationToken ct){_snapshot=snapshot;return _native?.AnalyzeAsync(snapshot,ct)??Task.FromResult<AnalysisJobResult>(new AnalysisJobResult.Cancelled("synthetic-generic",Epoch));}
-        public async Task<bool> IsCurrentWorkerEpochAsync(long epoch,CancellationToken ct){if(EpochBarrier is{} gate)await gate.Wait(ct);return Epoch==epoch;}
+        public async Task<bool> IsCurrentWorkerEpochAsync(long epoch,CancellationToken ct){if(EpochBarrier is{} gate)await gate.Wait(IgnoreEpochCancellation?CancellationToken.None:ct);return Epoch==epoch;}
         public async ValueTask DisposeAsync(){if(_native is not null)await _native.DisposeAsync();}
     }
 }

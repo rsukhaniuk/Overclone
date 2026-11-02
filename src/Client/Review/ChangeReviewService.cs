@@ -103,7 +103,39 @@ public sealed class ChangeReviewService : IChangeReviewService
     private bool Authorized(ReviewPreview p)=>BaseCurrent(p.Binding)&&(p.Report is null||_navigator.IsStillCurrent(p.Report)
         &&p.Report.Result.Knu is{} k&&k.FixDescriptors.Any(f=>ReferenceEquals(f,p.Fix)));
 
-    public Task<ReviewResult> PreviewAsync(TextChangeSet changeSet,CancellationToken ct)=>PreviewCore(changeSet,null,null,null,ct);
+    public Task<ReviewResult> PreviewAsync(TextChangeSet changeSet,CancellationToken ct)
+        => changeSet?.Origin==TextPatchOrigin.Rule?Task.FromResult(Failure(ReviewCode.UnknownFix)):PreviewCore(changeSet!,null,null,null,ct);
+
+    public async Task<ReviewResult> PreviewSubsetAsync(Guid expectedPreviewId,ReviewSubsetSelection selection,CancellationToken ct)
+    {
+        ReviewPreview original;TextChangeSet candidate;
+        lock(_sync)
+        {
+            RefreshSession();RefreshPersistence();
+            if(_disposed)return Failure(ReviewCode.Disposed);if(_busy)return Failure(ReviewCode.Busy);
+            if(ct.IsCancellationRequested)return Failure(ReviewCode.Cancelled);
+            if(_workspace.IsReadOnly||_workspace.Recovery is not null)return Failure(ReviewCode.ReadOnly);
+            if(_preview is not{} p||p.Id!=expectedPreviewId||selection is null||selection.ProposalId!=p.Proposal.Id)return Failure(ReviewCode.Stale);
+            if(!Authorized(p))return Failure(ReviewCode.Stale);
+            if(!_workspace.IsCurrentTextPatchWriter(p.Binding.Workspace))return Failure(ReviewCode.ReadOnly);
+            // Even a full Rule selection must use PreviewFixAsync's canonical
+            // descriptor/report path. Never turn it into generic User/Ai/Rule.
+            if(p.Proposal.Origin==TextPatchOrigin.Rule)return Failure(ReviewCode.UnknownFix);
+            var creation=selection.CreateSubset(p.Proposal);
+            if(creation.ChangeSet is not{} set)return Failure(ReviewCode.InvalidInput);
+            original=p;candidate=set;
+        }
+        var result=await PreviewCore(candidate,original.Report,original.Fix,original.Citation,ct,original);
+        // PreviewCore's final idle notification is a reentrancy boundary too.
+        // Never return an old Ready result after an observer replaces/cancels it.
+        lock(_sync)
+        {
+            if(result.Preview is{} preview&&(_disposed||ct.IsCancellationRequested||!ReferenceEquals(_preview,preview)||!Authorized(preview)
+                ||!_workspace.IsCurrentTextPatchWriter(preview.Binding.Workspace)))
+                return new(_disposed?ReviewStatus.Disposed:_status,Failure:Error(_disposed?ReviewCode.Disposed:ct.IsCancellationRequested?ReviewCode.Cancelled:ReviewCode.Stale));
+        }
+        return result;
+    }
     public Task<ReviewResult> PreviewFixAsync(string descriptorId,CancellationToken ct)
     {
         lock(_sync){if(_disposed)return Task.FromResult(Failure(ReviewCode.Disposed));if(_busy)return Task.FromResult(Failure(ReviewCode.Busy));InvalidatePreview();}
@@ -113,38 +145,63 @@ public sealed class ChangeReviewService : IChangeReviewService
             return set is null?Task.FromResult(Failure(ReviewCode.UnknownFix)):PreviewCore(set,current.Report,fix,citation,ct);
         }catch(Exception e)when(e is System.Text.Json.JsonException or ArgumentException or InvalidOperationException){return Task.FromResult(Failure(ReviewCode.UnknownFix));}
     }
-    private async Task<ReviewResult> PreviewCore(TextChangeSet set,AnalysisReport? report,AnalysisFixDescriptorDto? fix,ReviewCitation? citation,CancellationToken ct)
+    private async Task<ReviewResult> PreviewCore(TextChangeSet set,AnalysisReport? report,AnalysisFixDescriptorDto? fix,ReviewCitation? citation,CancellationToken ct,ReviewPreview? original=null)
     {
         long intent;CancellationTokenSource cts;ReviewBinding binding;
         lock(_sync){
             if(_disposed)return Failure(ReviewCode.Disposed);if(_busy)return Failure(ReviewCode.Busy);
-            InvalidatePreview();
+            if(original is not null)
+            {
+                if(!ReferenceEquals(_preview,original)||!Authorized(original))return Failure(ReviewCode.Stale);
+                if(_workspace.IsReadOnly||_workspace.Recovery is not null)return Failure(ReviewCode.ReadOnly);
+                _previewIntent++;_previewCts?.Cancel(); // keep original identity until replacement commits
+            }
+            else InvalidatePreview();
             if(set is null||_workspace.CurrentTextPatchIdentity is null)return Failure(ReviewCode.InvalidInput);
             intent=_previewIntent;cts=CancellationTokenSource.CreateLinkedTokenSource(ct);_previewCts=cts;
-            binding=Binding(report);_status=ReviewStatus.Previewing;_notice=null;
+            binding=original?.Binding??Binding(report);_busy=true;_status=ReviewStatus.Previewing;_notice=null;
         }
         Notify();
-        bool Current(){lock(_sync)return !_disposed&&intent==_previewIntent&&!cts.IsCancellationRequested&&BaseCurrent(binding);}
+        bool Current(){lock(_sync)return !_disposed&&intent==_previewIntent&&!cts.IsCancellationRequested&&BaseCurrent(binding)
+            &&(original is null||ReferenceEquals(_preview,original)&&Authorized(original)&&_workspace.IsCurrentTextPatchWriter(binding.Workspace));}
         ReviewResult Reject(ReviewCode code)
         {
-            lock(_sync)return intent==_previewIntent&&!_disposed?Failure(code):new(_disposed?ReviewStatus.Disposed:_status,Failure:Error(code));
+            lock(_sync)
+            {
+                if(original is not null&&ReferenceEquals(_preview?.Proposal,set))_preview=null;
+                return intent==_previewIntent&&!_disposed?Failure(code):new(_disposed?ReviewStatus.Disposed:_status,Failure:Error(code));
+            }
         }
         try{
             if(!Current())return Reject(ReviewCode.Cancelled);
-            if(report is not null&&!(await _navigator.VerifyCurrentAsync(report,cts.Token).WaitAsync(cts.Token)).Ok)return Reject(ReviewCode.Stale);
-            var capture=await _capture.CaptureSelectionAsync(binding.Selection,cts.Token).WaitAsync(cts.Token);
+            if(original is not null&&(!await _workspace.VerifyTextPatchPreviewAuthorityAsync(binding.Workspace,cts.Token)||!Current()))return Reject(ReviewCode.Stale);
+            if(report is not null&&!(await _navigator.VerifyCurrentAsync(report,cts.Token)).Ok)return Reject(ReviewCode.Stale);
+            var capture=await _capture.CaptureSelectionAsync(binding.Selection,cts.Token,awaitActualReads:true);
             if(!Current())return Reject(cts.IsCancellationRequested?ReviewCode.Cancelled:ReviewCode.Stale);
             if(capture is not CaptureResult.Captured captured)return Reject(ReviewCode.Unavailable);
+            if(original is not null&&(!await _workspace.VerifyTextPatchPreviewAuthorityAsync(binding.Workspace,cts.Token)||!Current()))return Reject(ReviewCode.Stale);
             var prep=PreparedTextBatch.Prepare(binding.Workspace,set.Files.Select(f=>f.Input()).ToArray(),ReviewPreparation.Sources(_workspace,captured.Snapshot),set.Origin,set.Explanation);
             if(prep.Batch is null)return Reject(ReviewCode.InvalidInput);
             var preview=new ReviewPreview(set,prep.Batch,binding,report,fix,citation,ReviewPreparation.Diff(prep.Batch));
-            if(report is not null&&!(await _navigator.VerifyCurrentAsync(report,cts.Token).WaitAsync(cts.Token)).Ok)return Reject(ReviewCode.Stale);
+            if(report is not null&&!(await _navigator.VerifyCurrentAsync(report,cts.Token)).Ok)return Reject(ReviewCode.Stale);
             lock(_sync){if(!Current()||!Authorized(preview))return Reject(ReviewCode.Stale);_preview=preview;_status=ReviewStatus.Ready;}
-            Notify();return new(ReviewStatus.Ready,preview);
+            Notify();
+            if(original is not null)
+            {
+                bool PublishedCurrent(){lock(_sync)return !_disposed&&intent==_previewIntent&&!cts.IsCancellationRequested
+                    &&ReferenceEquals(_preview,preview)&&Authorized(preview)&&_workspace.IsCurrentTextPatchWriter(binding.Workspace);}
+                if(!PublishedCurrent()||!await _workspace.VerifyTextPatchPreviewAuthorityAsync(binding.Workspace,cts.Token)||!PublishedCurrent())
+                {
+                    lock(_sync){if(ReferenceEquals(_preview,preview))InvalidatePreview();}
+                    return Reject(cts.IsCancellationRequested?ReviewCode.Cancelled:ReviewCode.Stale);
+                }
+            }
+            return new(ReviewStatus.Ready,preview);
         }
         catch(OperationCanceledException){return Reject(ReviewCode.Cancelled);}
-        catch(Exception){return Reject(ReviewCode.Unavailable);}
-        finally{lock(_sync){if(ReferenceEquals(_previewCts,cts)){_previewCts=null;if(_preview is null&&_status==ReviewStatus.Previewing)_status=_accepted is null?ReviewStatus.Idle:ReviewStatus.AppliedUnsaved;}}cts.Dispose();}
+        catch(Exception){return Reject(original is not null&&_disposed?ReviewCode.Disposed:
+            original is not null&&cts.IsCancellationRequested?ReviewCode.Cancelled:ReviewCode.Unavailable);}
+        finally{lock(_sync){if(ReferenceEquals(_previewCts,cts)){_previewCts=null;_busy=false;if(_preview is null&&_status==ReviewStatus.Previewing)_status=_accepted is null?ReviewStatus.Idle:ReviewStatus.AppliedUnsaved;}}cts.Dispose();if(!_disposed)Notify();}
     }
     public ReviewResult Decline(Guid id)
     {
@@ -179,7 +236,7 @@ public sealed class ChangeReviewService : IChangeReviewService
             if(inverse is null)return Failure(ReviewCode.InvalidInput);
             action=new(preview.Prepared,inverse); // owned recovery exists BEFORE the commit callback
             bool Eligible(){lock(_sync)return OperationCurrent(intent,cts.Token)&&ReferenceEquals(_preview,preview)&&Authorized(preview);}
-            async Task<bool> Verify(CancellationToken token)=>Eligible()&&(preview.Report is null||(await _navigator.VerifyCurrentAsync(preview.Report,token).WaitAsync(token)).Ok)&&Eligible();
+            async Task<bool> Verify(CancellationToken token)=>Eligible()&&(preview.Report is null||(await _navigator.VerifyCurrentAsync(preview.Report,token)).Ok)&&Eligible();
             void Committed(){lock(_sync){action.Committed=true;_accepted=action;_preview=null;_status=ReviewStatus.AppliedUnsaved;_notice=null;}}
             var result=await _workspace.ApplyTextBatchAsync(preview.Prepared,cts.Token,Eligible,Verify,Committed);
             if(!result.AppliedUnsaved)return Failure(Map(result.Failure?.Code));
@@ -227,7 +284,7 @@ public sealed class ChangeReviewService : IChangeReviewService
         var (intent,cts)=started.Value;Notify();var identity=_workspace.CurrentTextPatchIdentity;var epoch=_capture.CurrentWorkspaceEpoch;bool committed=false;
         bool Current(){lock(_sync)return OperationCurrent(intent,cts.Token)&&ReferenceEquals(_accepted,action)&&!action.Undone&&SameSession(action)&&_workspace.CurrentTextPatchIdentity==identity&&_capture.CurrentWorkspaceEpoch==epoch;}
         try{
-            var cap=await _capture.CaptureSelectionAsync(AnalysisSelection.EngineStructural(),cts.Token).WaitAsync(cts.Token);
+            var cap=await _capture.CaptureSelectionAsync(AnalysisSelection.EngineStructural(),cts.Token,awaitActualReads:true);
             if(!Current())return Failure(ReviewCode.Stale);
             if(cap is not CaptureResult.Captured captured)return Failure(ReviewCode.Unavailable);
             var prep=PreparedTextBatch.Prepare(identity!,action.Inverse.Files.Select(f=>f.Input()).ToArray(),ReviewPreparation.Sources(_workspace,captured.Snapshot),TextPatchOrigin.User,action.Inverse.Explanation);

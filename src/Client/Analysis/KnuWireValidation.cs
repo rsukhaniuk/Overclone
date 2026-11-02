@@ -57,6 +57,13 @@ internal static class KnuWireValidation
     }
     internal static void Shape(JsonElement root)
     {
+        if (root.GetProperty("payload").GetProperty("profile").GetProperty("version").GetString() == AnalysisCatalog.ThesisVersion)
+        {
+            ThesisWireValidation.Shape(root);
+            using var legacy = ThesisWireValidation.LegacyDocument(root);
+            Shape(legacy.RootElement); // Exact existing 1.4 validation; never broaden old versions.
+            return;
+        }
         Fields(root, "protocolVersion requestId status payload");
         var p = root.GetProperty("payload");
         Fields(p, "snapshotId profile facts diagnostics ruleResults aggregateOutcome coverage unavailableCapabilities configuration knu");
@@ -205,6 +212,12 @@ internal static class KnuWireValidation
 
     internal static void Validate(AnalysisResultDto r)
     {
+        if (AnalysisCatalog.IsThesis(new(r.Profile.Id, r.Profile.Version)))
+        {
+            ThesisWireValidation.Validate(r);
+            Validate(ThesisWireValidation.LegacyResult(r));
+            return;
+        }
         Require(AnalysisCatalog.IsValid(r.Profile.Id, r.Profile.Version, r.Configuration), "Unknown profile/configuration.");
         var k = r.Knu ?? throw new JsonException("Missing KNU data.");
         var sourceRules = AnalysisCatalog.SourceRulesFor(r.Profile.Version);
@@ -437,6 +450,7 @@ internal static class KnuWireValidation
         }
         foreach (var d in result.Diagnostics) { Require(files.TryGetValue(d.FileId, out var f), "Diagnostic reference mismatch."); if (d.Span is { } s) ScalarSpan(f!, s); }
         ReferenceWireValidation.Snapshot(result, snapshot);
+        if (AnalysisCatalog.IsThesis(snapshot.Profile)) ThesisWireValidation.Snapshot(result, snapshot);
         if (result.Knu is not { } k) return;
         Require(result.Facts.Files.Select(f => f.FileId).ToHashSet().SetEquals(files.Keys), "Captured file coverage mismatch.");
         Require(result.Facts.Files.Sum(f => (long)f.TokenCount) + k.Files.Sum(f => (long)f.ObservationCount) <= snapshot.Limits.MaxTokensPerProject, "Response exceeds requested shared emissions.");

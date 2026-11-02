@@ -1,0 +1,134 @@
+@using Client.Editing.Diagnostics
+@using Client.Analysis
+@using Client.Compilation.Presentation
+@using Client.Workspace
+@implements IDisposable
+@inject WorkspaceCoordinator Workspace
+@inject AnalysisCoordinator Analysis
+@inject SourceNavigator Navigator
+@inject CompileWorkspaceSession Compile
+
+@{
+    var view = CurrentSession.Snapshot();
+    bool working = _pending || view.Busy;
+}
+<section aria-label="Diagnostic filters and navigation" data-testid="diagnostic-list" data-busy="@working.ToString().ToLowerInvariant()">
+    <h3>Diagnostic filters</h3>
+    <p>View existing source, compiler and narrow rendered observations. Filtering does not analyze, compile, save or edit. No findings does not prove scholarly or formatting compliance. Detailed rule/context/fix panels remain available separately.</p>
+    <p>No UserUnit, glyph ink/style or physical-rule measurement is supplied here. Rendered rows cover only existing extent observations and author-labelled ranges.</p>
+    <fieldset>
+        <legend>Filter existing rows</legend>
+        <label>Origin <select value="@(view.Filter.Origin?.ToString() ?? "")" @onchange="OriginChanged" data-testid="diagnostic-filter-origin">
+            <option value="">All origins</option>@foreach (var origin in Enum.GetValues<DiagnosticOrigin>()) { <option value="@origin">@origin</option> }
+        </select></label>
+        <label>Severity <select value="@(view.Filter.Severity?.ToString() ?? "")" @onchange="SeverityChanged" data-testid="diagnostic-filter-severity">
+            <option value="">All severities</option>@foreach (var severity in Enum.GetValues<DiagnosticSeverity>()) { <option value="@severity">@severity</option> }
+        </select></label>
+        <label>Captured file <select value="@(view.Filter.File ?? "")" @onchange="FileChanged" data-testid="diagnostic-filter-file">
+            <option value="">All files</option><option value="none">No canonical source file</option>
+            @foreach (var file in view.Files) { <option value="@file.Value">@file.Label</option> }
+        </select></label>
+        <label>Rule/code <select value="@(view.Filter.Rule ?? "")" @onchange="RuleChanged" data-testid="diagnostic-filter-rule">
+            <option value="">All rules/codes</option>@foreach (var rule in view.Rules) { <option value="@rule">@rule</option> }
+        </select></label>
+        <label>Currentness <select value="@view.Filter.Currentness" @onchange="CurrentnessChanged" data-testid="diagnostic-filter-currentness">
+            @foreach (var currentness in Enum.GetValues<DiagnosticCurrentness>()) { <option value="@currentness">@currentness</option> }
+        </select></label>
+        <button type="button" @onclick="CurrentSession.ResetFilters" data-testid="diagnostic-filter-reset">Reset filters</button>
+    </fieldset>
+    <p role="status" aria-live="polite" data-testid="diagnostic-filter-count">@view.FilteredCount matching / @view.ProjectedCount projected rows; @view.Rows.Length shown, @view.PageSize per page. A check-status row is not a diagnostic occurrence.</p>
+    <ul aria-label="Report availability and coverage" data-testid="diagnostic-origin-status">
+        @foreach (var origin in view.Origins)
+        {
+            <li data-origin="@origin.Origin" data-has-report="@origin.HasReport.ToString().ToLowerInvariant()">
+                <strong>@origin.Origin: @(origin.HasReport ? origin.IsCurrent ? "current identity" : "retained stale report" : "no report")</strong>
+                <span> @origin.FindingOccurrences diagnostic occurrence(s); @origin.RetainedRows / @origin.AvailableRows rows retained.</span>
+                <p>@origin.Notice</p>
+                @if (origin.Incomplete) { <p>Coverage/completeness is limited or unknown; do not interpret this as a complete clean result.</p> }
+                @if (origin.HasReport && origin.FindingOccurrences == 0) { <p>No diagnostic occurrences supplied by this report; statuses/unavailable checks may still be listed.</p> }
+            </li>
+        }
+    </ul>
+    @if (view.ProjectedCount == 0)
+    { <p data-testid="diagnostic-no-data">No projected report rows. Check report availability above; nothing is implicitly run.</p> }
+    else if (view.FilteredCount == 0)
+    { <p data-testid="diagnostic-empty-filter">No retained rows match these filters. Reset filters to inspect the existing reports.</p> }
+    <ol aria-label="Filtered diagnostic rows" data-testid="diagnostic-rows">
+        @foreach (var row in view.Rows)
+        {
+            <li @key="row.Id" data-testid="diagnostic-row" data-row-id="@row.Id" data-origin="@row.Origin" data-current="@row.IsCurrent.ToString().ToLowerInvariant()" data-rule-id="@row.RuleId">
+                <p><strong>@row.Origin · @row.Kind · @row.SeverityText · @row.RuleId</strong> — @(row.IsCurrent ? "current identity" : "STALE — not navigable")</p>
+                @if (row.RelativePath is { } path) { <p>@path (captured path)</p> }
+                @if (row.PageIndex is { } page) { <p>Captured author-labelled start page @(page + 1); not a verified structural role.</p> }
+                @if (row.Outcome is { } outcome) { <p>Existing check status: @outcome</p> }
+                <p data-testid="diagnostic-message">@row.Message</p>
+                @if (row.Citation is { } citation) { <p data-testid="diagnostic-citation">@citation</p> }
+                <p>@row.NavigationReason</p>
+                @if (row.HasSourceAction && row.Origin == DiagnosticOrigin.Source)
+                { <button type="button" disabled="@(working || !SourceRequested.HasDelegate)" @onclick="() => Source(row)" data-testid="diagnostic-source">Inspect canonical source</button> }
+                @if (row.HasSourceAction && row.Origin == DiagnosticOrigin.Compiler)
+                { <button type="button" disabled="@(working || !CompilerRequested.HasDelegate)" @onclick="() => Compiler(row)" data-testid="diagnostic-compiler">Open captured compiler line</button> }
+                @if (row.HasPageAction)
+                { <button type="button" disabled="@(working || !PageRequested.HasDelegate)" @onclick="() => Page(row)" data-testid="diagnostic-page">Open author-labelled PDF page</button> }
+            </li>
+        }
+    </ol>
+    <button type="button" disabled="@(!view.HasPrevious)" @onclick="CurrentSession.Previous" data-testid="diagnostic-previous">Previous rows</button>
+    <span> Page @(view.PageIndex + 1) </span>
+    <button type="button" disabled="@(!view.HasNext)" @onclick="CurrentSession.Next" data-testid="diagnostic-next">Continue rows</button>
+    <button type="button" disabled="@(!working)" @onclick="CurrentSession.Cancel" data-testid="diagnostic-cancel">Cancel diagnostic navigation</button>
+    <p role="status">@view.Notice</p>
+    @if (_actionNotice is not null) { <p role="status" data-testid="diagnostic-action-status">@_actionNotice</p> }
+</section>
+
+@code {
+    [Parameter] public DiagnosticListSession? Session { get; set; }
+    [Parameter] public EventCallback<DiagnosticSourceRequest> SourceRequested { get; set; }
+    [Parameter] public EventCallback<DiagnosticCompilerRequest> CompilerRequested { get; set; }
+    [Parameter] public EventCallback<DiagnosticPageRequest> PageRequested { get; set; }
+    private DiagnosticListSession? _session, _initial;
+    private bool _owns, _disposed, _pending;
+    private string? _actionNotice;
+    private Task? _render;
+    private readonly CancellationTokenSource _lifetime = new();
+    private DiagnosticListSession CurrentSession => _session!;
+    protected override void OnParametersSet()
+    {
+        if (_session is not null) { if (!ReferenceEquals(_initial, Session)) throw new InvalidOperationException("Diagnostic session is fixed for this panel lifetime."); return; }
+        _initial = Session; _owns = Session is null;
+        _session = Session ?? new(Workspace, Analysis, Navigator, Compile, dispatch: action => InvokeAsync(action));
+        _session.Changed += Changed;
+    }
+    private void OriginChanged(ChangeEventArgs e) => CurrentSession.SetFilter(CurrentSession.Snapshot().Filter with { Origin = Enum.TryParse<DiagnosticOrigin>(e.Value?.ToString(), out var value) ? value : null });
+    private void SeverityChanged(ChangeEventArgs e) => CurrentSession.SetFilter(CurrentSession.Snapshot().Filter with { Severity = Enum.TryParse<DiagnosticSeverity>(e.Value?.ToString(), out var value) ? value : null });
+    private void FileChanged(ChangeEventArgs e) => CurrentSession.SetFilter(CurrentSession.Snapshot().Filter with { File = Empty(e.Value) });
+    private void RuleChanged(ChangeEventArgs e) => CurrentSession.SetFilter(CurrentSession.Snapshot().Filter with { Rule = Empty(e.Value) });
+    private void CurrentnessChanged(ChangeEventArgs e) { if (Enum.TryParse<DiagnosticCurrentness>(e.Value?.ToString(), out var value)) CurrentSession.SetFilter(CurrentSession.Snapshot().Filter with { Currentness = value }); }
+    private static string? Empty(object? value)
+    { var text = value?.ToString(); return string.IsNullOrEmpty(text) ? null : text; }
+    private Task Source(DiagnosticRow row) => Run(() => CurrentSession.OpenSourceAsync(row, r => SourceRequested.InvokeAsync(r), _lifetime.Token));
+    private Task Compiler(DiagnosticRow row) => Run(() => CurrentSession.OpenCompilerAsync(row, r => CompilerRequested.InvokeAsync(r), _lifetime.Token));
+    private Task Page(DiagnosticRow row) => Run(() => CurrentSession.OpenPageAsync(row, r => PageRequested.InvokeAsync(r), _lifetime.Token));
+    private async Task Run(Func<Task<DiagnosticActionResult>> operation)
+    {
+        if (_disposed || _pending) return; _pending = true;
+        try { var result = await operation(); if (!_disposed) _actionNotice = result.Notice; }
+        finally { if (_render is { } actual) await actual; _pending = false; }
+    }
+    private void Changed() { if (!_disposed && _render is not { IsCompleted: false }) _render = Render(); }
+    private async Task Render()
+    {
+        try { await InvokeAsync(() => { if (!_disposed) StateHasChanged(); }); }
+        catch (ObjectDisposedException) { }
+        catch (InvalidOperationException) when (_disposed) { }
+        catch (Exception error) when (error is not OutOfMemoryException)
+        { if (!_disposed) _actionNotice = "Diagnostic view refresh could not finish. Existing report/navigation authorities are unchanged."; }
+    }
+    public void Dispose()
+    {
+        if (_disposed) return; _disposed = true;
+        if (_session is not null) { _session.Changed -= Changed; _lifetime.Cancel(); if (_owns) _session.Dispose(); }
+        // Do not cancel/dispose another panel's borrowed session or any owner.
+        _lifetime.Dispose();
+    }
+}

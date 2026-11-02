@@ -1,0 +1,127 @@
+@using Client.Review
+@using Client.Workspace.Domain
+@using Client.Workspace.History
+
+<section class="history-comparison" aria-label="Saved source comparison" data-testid="history-comparison">
+    <h3>Compare saved source</h3>
+    <p>Comparison never saves or changes files. Direction: left → right. Saved PDF history is separate; historical PDFs do not grant live analysis or source navigation.</p>
+    <label>Left saved revision
+        <select @bind="_left" disabled="@Session.Busy" data-testid="history-left">
+            <option value="">Choose a revision</option>
+            @foreach (var checkpoint in Revisions.DistinctBy(c => c.RevisionId))
+            {
+                <option value="@checkpoint.RevisionId.ToString()">@checkpoint.CreatedAt.ToString("u") · @checkpoint.Reason · @checkpoint.RevisionId</option>
+            }
+        </select>
+    </label>
+    <label><input type="checkbox" @bind="_working" disabled="@Session.Busy" /> Right: current working bytes (including unsaved changes)</label>
+    @if (!_working)
+    {
+        <label>Right saved revision
+            <select @bind="_right" disabled="@Session.Busy" data-testid="history-right">
+                <option value="">Choose a revision</option>
+                @foreach (var checkpoint in Revisions.DistinctBy(c => c.RevisionId))
+                {
+                    <option value="@checkpoint.RevisionId.ToString()">@checkpoint.CreatedAt.ToString("u") · @checkpoint.Reason · @checkpoint.RevisionId</option>
+                }
+            </select>
+        </label>
+    }
+    <button type="button" @onclick="Compare" disabled="@(Session.Busy || !ValidChoice)" data-testid="history-compare">Compare left → right</button>
+    <button type="button" @onclick="Cancel" disabled="@(!Session.Busy && Session.Comparison is null)" data-testid="history-compare-cancel">Cancel / invalidate</button>
+    @if (Session.Busy) { <p role="status">Reading comparison… Cancellation keeps this operation admitted until its reads finish.</p> }
+    @if (_notice is not null) { <p role="status" data-testid="history-comparison-notice">@_notice</p> }
+    @if (Session.Comparison is { } comparison)
+    {
+        <p data-testid="history-direction">@comparison.Binding.Left → @(comparison.Binding.RightIsWorking ? "working copy" : comparison.Binding.Right?.ToString())</p>
+        @if (Session.IsStale) { <p role="alert" data-testid="history-comparison-stale">This comparison is stale. Compare again before proposing a restore.</p> }
+        <label>File/path filter <input @bind="_path" @bind:event="oninput" data-testid="history-path-filter" /></label>
+        <label>Change status
+            <select @bind="_kind" data-testid="history-status-filter">
+                <option value="">All changes</option>
+                @foreach (var kind in Enum.GetValues<FileChangeKind>()) { <option value="@kind.ToString()">@kind</option> }
+            </select>
+        </label>
+        <p>Detailed diffs normalize line endings and omit the BOM for display only. Exact lengths and SHA-256 hashes below include all original bytes. A summary-only file can still be selected for a fresh, exact text review within review limits.</p>
+        @if (comparison.Summary.DiffBudgetExceeded) { <p role="status">Some files have summary-only comparisons because the detailed diff budget was reached.</p> }
+        <ul data-testid="history-comparison-files">
+        @foreach (var file in comparison.Filter(_path, Kind))
+        {
+            <li @key="file.FileId">
+                @if (file.FileId is { } id && comparison.CanSelectTextRestore(id))
+                {
+                    <label><input type="checkbox" checked="@_selected.Contains(id)" @onchange="e => Select(id, e.Value is true)"
+                        disabled="@(!CanRestore)" /> Select text restore</label>
+                }
+                <strong>@file.Kind: @(file.OldPath is null ? file.Path : file.OldPath + " → " + file.Path)</strong>
+                <div>Left: @file.OldLength bytes · @(file.OldHash?.Hex ?? "absent")</div>
+                <div>Right: @file.NewLength bytes · @(file.NewHash?.Hex ?? "absent")</div>
+                @if (file.Note is not null) { <p>@file.Note</p> }
+                @if (file.Diff is not null && file.FileId is { } detailed)
+                { <button type="button" @onclick="() => _detail = detailed" data-testid="history-show-diff">Show this detailed diff</button> }
+                else if (file.Kind != FileChangeKind.Unchanged) { <p>No detailed line diff for this file. Structural, binary, renamed or BOM-changing restores require the whole-project restore preview or explicit asset replacement.</p> }
+            </li>
+        }
+        </ul>
+        @if (_detail is { } detail && comparison.DetailedFile(detail) is { } shown && comparison.Filter(_path, Kind).Any(f => f.FileId == detail))
+        {
+            <h4>@(shown.OldPath is null ? shown.Path : shown.OldPath + " → " + shown.Path)</h4>
+            <pre data-testid="history-detailed-diff">@foreach (var line in shown.Diff!) { <span>@(line.Op == DiffOp.Insert ? "+ " : line.Op == DiffOp.Delete ? "- " : "  ")@line.Text@("\n")</span> }</pre>
+        }
+        else { <p>Select “Show this detailed diff” on an available file. No arbitrary file is selected automatically.</p> }
+        <p>@_selected.Count text file(s) selected. Filters do not change your selection. A fresh preview restores each selected file's complete historical text, not just the displayed lines.</p>
+        <button type="button" @onclick="PreviewSelected" disabled="@(!CanRestore || _selected.Count == 0)" data-testid="history-text-restore-preview">Preview selected text restore</button>
+        @if (!comparison.Binding.RightIsWorking) { <p>To restore selected text, first compare the desired left revision against the working copy.</p> }
+        <button type="button" @onclick="() => WholeProjectRequested.InvokeAsync(comparison.Binding.Left)"
+            disabled="@(!Writable || Session.Busy || Session.IsStale || Review.State.Action is { Persisted: false } || Review.State.Preview is not null || !WholeProjectRequested.HasDelegate)" data-testid="history-whole-restore-preview">Open whole-project restore preview…</button>
+        <p>Whole-project restore may first save pending work. Its separate explicit confirmation creates a new child checkpoint, never rewinds history. The prior checkpoint remains available for reversal. Resolve any unsaved reviewed action with retry, Undo or export before replacing it.</p>
+    }
+</section>
+
+@code {
+    [Parameter, EditorRequired] public HistoryComparisonSession Session { get; set; } = null!;
+    [Parameter, EditorRequired] public IChangeReviewService Review { get; set; } = null!;
+    [Parameter] public IReadOnlyList<HistoryCheckpoint> Revisions { get; set; } = Array.Empty<HistoryCheckpoint>();
+    [Parameter] public bool Writable { get; set; }
+    [Parameter] public EventCallback<RevisionId> WholeProjectRequested { get; set; }
+    [Parameter] public EventCallback<ReviewPreview> ReviewPrepared { get; set; }
+    private string _left = "", _right = "", _path = "", _kind = "";
+    private bool _working = true;
+    private FileId? _detail;
+    private readonly HashSet<FileId> _selected = new();
+    private string? _notice;
+    private bool ValidChoice => Guid.TryParse(_left, out _) && (_working || Guid.TryParse(_right, out _));
+    private FileChangeKind? Kind => Enum.TryParse<FileChangeKind>(_kind, out var kind) ? kind : null;
+    private bool CanRestore => Writable && !Session.Busy && !Session.IsStale && Session.Comparison?.Binding.RightIsWorking == true;
+    private void Select(FileId id, bool value) { if (value) _selected.Add(id); else _selected.Remove(id); }
+    private async Task Compare()
+    {
+        if (!ValidChoice) return;
+        _selected.Clear(); _detail = null;
+        var result = _working ? await Session.CompareWorkingAsync(new(Guid.Parse(_left)), default)
+            : await Session.CompareSavedAsync(new(Guid.Parse(_left)), new(Guid.Parse(_right)), default);
+        _notice = Message(result.Code);
+    }
+    private void Cancel() { Session.Cancel(); _notice = Message(HistoryComparisonCode.Cancelled); }
+    private async Task PreviewSelected()
+    {
+        if (!CanRestore) return;
+        var created = await HistoryTextRestoreProposal.CreateAsync(Session, _selected, default);
+        if (created.Proposal is null) { _notice = Message(created.Code); return; }
+        var preview = await created.Proposal.PreviewAsync(Review, default, exact => ReviewPrepared.InvokeAsync(exact));
+        _notice = Message(preview.Code);
+    }
+    private static string Message(HistoryComparisonCode code) => code switch
+    {
+        HistoryComparisonCode.Ready => "Ready. No files have been changed. Accept only in the separate exact review preview.",
+        HistoryComparisonCode.Cancelled => "Cancelled. Any started reads must finish before another operation can begin.",
+        HistoryComparisonCode.Stale => "The workspace changed. Compare again; old selections cannot be rebased.",
+        HistoryComparisonCode.CorruptContent => "Comparison is unavailable because required saved content is damaged. No partial result is shown.",
+        HistoryComparisonCode.WholeProjectRequired => "This selection needs whole-project restore or explicit asset replacement, not text review.",
+        HistoryComparisonCode.PendingReview => "Resolve the existing preview or unsaved reviewed action first. Its recovery has been retained.",
+        HistoryComparisonCode.NoSelection => "Select changed text files before requesting a fresh review.",
+        HistoryComparisonCode.Busy => "The previous operation has not finished yet.",
+        HistoryComparisonCode.LimitExceeded => "The comparison or text restore exceeds the bounded project limits.",
+        _ => "Comparison or restore preview is unavailable. Local files have not been changed."
+    };
+}

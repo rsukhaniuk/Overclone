@@ -29,7 +29,7 @@ public sealed partial class WorkspaceCoordinator
             bool Current() => Project?.Id == projectId && SessionId == session && CanEdit() && LockId is not null;
             if (!Current()) return CommitResult.Unavailable("The review session is no longer writable.");
             var id = LockId!;
-            if (!await _locks.OwnsAsync(id, LockName(projectId), ct).WaitAsync(ct)
+            if (!await _locks.OwnsAsync(id, LockName(projectId), ct)
                 || !Current() || LockId != id || !_locks.IsOwnedLocally(id, LockName(projectId)))
                 return CommitResult.Unavailable("The review session no longer owns the writer lock.");
             ct.ThrowIfCancellationRequested();

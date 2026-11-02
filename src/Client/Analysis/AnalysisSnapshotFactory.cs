@@ -69,7 +69,7 @@ public sealed class AnalysisSnapshotFactory : IAsyncDisposable
         => CaptureSelectionAsync(new(profile ?? AnalysisProfile.EngineStructural(), null), ct, requestLimits);
 
     public async Task<CaptureResult> CaptureSelectionAsync(
-        AnalysisSelection selection, CancellationToken ct, AnalysisLimitsDto? requestLimits = null)
+        AnalysisSelection selection, CancellationToken ct, AnalysisLimitsDto? requestLimits = null, bool awaitActualReads = false)
     {
         // Selection is an immutable value captured BEFORE the first await.
         // ---- synchronous, BEFORE the first await ----
@@ -84,6 +84,8 @@ public sealed class AnalysisSnapshotFactory : IAsyncDisposable
         if (!selection.IsValid)
             return new CaptureResult.InvalidInput(
                 "profile id/version must be nonempty strict-UTF-8 <=128 bytes", Array.Empty<ExcludedFile>());
+        if (AnalysisCatalog.IsThesis(profileVal) && !ThesisWireValidation.ValidLimits(requestLimits))
+            return new CaptureResult.InvalidInput("Thesis source limits must be positive and within the hard bounds.", Array.Empty<ExcludedFile>());
         if (!LimitsAreNonnegative(requestLimits))
             return new CaptureResult.InvalidInput(
                 "limits must be nonnegative", Array.Empty<ExcludedFile>());
@@ -93,6 +95,8 @@ public sealed class AnalysisSnapshotFactory : IAsyncDisposable
         Guid sessionAtCapture = _coordinator.SessionId;
         var projectId = project.Id;
         long generationAtCapture = _coordinator.WorkingGeneration;
+        if (AnalysisCatalog.IsThesis(profileVal) && generationAtCapture is < 0 or > 9007199254740991)
+            return new CaptureResult.InvalidInput("Thesis source generation is outside the supported range.", Array.Empty<ExcludedFile>());
         var baseHead = _coordinator.CurrentRevision?.Id;
         long selectionVersion = _selectionVersion?.Invoke() ?? 0;
         WorkingFile? rootAtCapture = null;
@@ -101,10 +105,10 @@ public sealed class AnalysisSnapshotFactory : IAsyncDisposable
             || _coordinator.CurrentRevision?.Id != baseHead
             || (_currentSelection is not null && _currentSelection() != selection)
             || (_selectionVersion is not null && _selectionVersion() != selectionVersion)
-            || (profileVal.Id == AnalysisCatalog.ReferenceId && (rootAtCapture is null || rootAtCapture.Deleted
+            || (AnalysisCatalog.RequiresRoot(profileVal) && (rootAtCapture is null || rootAtCapture.Deleted
                 || rootAtCapture.MediaKind != "text" || rootAtCapture.RelativePath != rootPath));
 
-        if (profileVal.Id == AnalysisCatalog.ReferenceId)
+        if (AnalysisCatalog.RequiresRoot(profileVal))
         {
             if (_coordinator.Files.Count(f => !f.Deleted) > limits.MaxFiles)
                 return new CaptureResult.QuotaExceeded("file count exceeded the project file limit", Array.Empty<ExcludedFile>());
@@ -193,11 +197,11 @@ public sealed class AnalysisSnapshotFactory : IAsyncDisposable
             try
             {
                 ct.ThrowIfCancellationRequested();
-                // WaitAsync(ct) lets cancellation finish WITHOUT waiting for a
-                // non-cooperative storage read that ignores the token: the
-                // underlying read may complete later but it can no longer
-                // publish anything.
-                bytes = await _coordinator.GetFileBytesAsync(ft.Source, ct).WaitAsync(ct);
+                // Review owns an admitted mutation/recovery workflow and must
+                // retain admission through the actual read. Opt-in thesis1.5
+                // does too; older ordinary analysis keeps its default semantics.
+                var read = _coordinator.GetFileBytesAsync(ft.Source, ct);
+                bytes = awaitActualReads || AnalysisCatalog.IsThesis(profileVal) ? await read : await read.WaitAsync(ct);
                 ct.ThrowIfCancellationRequested();
             }
             catch (OperationCanceledException)

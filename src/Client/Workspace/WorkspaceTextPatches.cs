@@ -45,22 +45,22 @@ public sealed partial class WorkspaceCoordinator
                 if (live is null || live.MediaKind != "text" || live.RelativePath != patch.RelativePath) return Fail(TextPatchError.PreimageMismatch);
                 // Frozen clone, not a live file used after an await. Pending exact
                 // bytes are immutable; imported arrays are compared again below.
-                var bytes = await GetFileBytesAsync(live.Clone(), ct).WaitAsync(ct);
+                var bytes = await GetFileBytesAsync(live.Clone(), ct);
                 if (Check() is { } read) return Fail(read);
                 if (bytes.LongLength > batch.Limits.FileBytes || !patch.Before.Span.SequenceEqual(bytes)) return Fail(TextPatchError.PreimageMismatch);
                 targets.Add((live, patch));
             }
             // Query the actual browser writer lock as well as this instance's
             // lock-ID table. Another tab holding the name is not ownership.
-            var owns = await _locks.OwnsAsync(lockId, LockName(batch.Identity.ProjectId), ct).WaitAsync(ct);
+            var owns = await _locks.OwnsAsync(lockId, LockName(batch.Identity.ProjectId), ct);
             if (Check() is { } ownership) return Fail(ownership);
             if (!owns) return Fail(TextPatchError.LockLost);
-            var headOk = await _repo.VerifyHeadAsync(batch.Identity.ProjectId, batch.Identity.ExpectedHead, ct).WaitAsync(ct);
+            var headOk = await _repo.VerifyHeadAsync(batch.Identity.ProjectId, batch.Identity.ExpectedHead, ct);
             if (Check() is { } head) return Fail(head);
             if (!headOk) return Fail(TextPatchError.RevisionConflict);
             // Head verification may await many object checks. Recheck browser
             // ownership too; a lost/stolen lease cannot authorize the swap.
-            owns = await _locks.OwnsAsync(lockId, LockName(batch.Identity.ProjectId), ct).WaitAsync(ct);
+            owns = await _locks.OwnsAsync(lockId, LockName(batch.Identity.ProjectId), ct);
             if (Check() is { } rechecked) return Fail(rechecked);
             if (!owns) return Fail(TextPatchError.LockLost);
 
@@ -69,7 +69,7 @@ public sealed partial class WorkspaceCoordinator
             if (finalAsyncEligibility is not null)
             {
                 bool eligible;
-                try { eligible = await finalAsyncEligibility(ct).WaitAsync(ct); }
+                try { eligible = await finalAsyncEligibility(ct); }
                 catch (OperationCanceledException) { return Fail(TextPatchError.Cancelled); }
                 catch (Exception) { return Fail(TextPatchError.Ineligible); }
                 if (Check() is { } asyncCheck) return Fail(asyncCheck);

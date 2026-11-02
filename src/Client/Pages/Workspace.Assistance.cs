@@ -40,9 +40,13 @@ public partial class Workspace
     }
     private void AssistanceEditorIntentChanged()
     {
-        _sourceIntent++;
-        _assistance?.Invalidate();
-        ObserveAssistanceSynchronously(false); // Acknowledge observed DOM epoch, not source/selection authority.
+        // A delayed managed event may describe a native epoch already captured
+        // by a newer command. Only a fresh epoch invalidates that command.
+        if (ObserveAssistanceSynchronously() is null)
+        {
+            _sourceIntent++;
+            _assistance?.Invalidate();
+        }
     }
     private AssistanceObservation? ObserveAssistanceSynchronously(bool invalidateOnChange = true)
     {
@@ -110,6 +114,7 @@ public partial class Workspace
         public bool BeginRequest()
         {
             if (page._pageDisposed || page._sourceOperation is not null || page._completionOperation is not null) return false;
+            page.ObserveAssistanceSynchronously(); // Acknowledge native caret events before the new request can be invalidated.
             page.NavCancelAndStart(); // Competing navigation cancelled BEFORE the session captures intent/root/source.
             return true;
         }
@@ -140,7 +145,7 @@ public partial class Workspace
             // No coordinator bypass, no await, no source rewrite, one file only.
             var owner = new object(); var ct = page._navCts?.Token ?? CancellationToken.None;
             page._sourceOperation = owner;
-            try { return page.ApplyOrdinarySourceEdit(owner, insertion.Before, insertion.Edit, ct); }
+            try { return page.ApplyOrdinarySourceEdit(owner, insertion.Before, insertion.Edit, ct, "completion"); }
             finally { if (page._sourceSelection is not { } selection || !ReferenceEquals(selection.Owner, owner)) page.FinishSourceOperation(owner); }
         }
         public async Task<bool> NavigateAsync(AuthoringAssistNavigation navigation)
@@ -152,9 +157,11 @@ public partial class Workspace
             page._assistPendingNavigation = (navigation, completion);
             // Owned target switch is read-only. Do NOT invoke the unrelated-tree
             // SelectFile handler: it intentionally invalidates all navigation.
-            if (!navigation.IsCurrent() || !page.Coordinator.SelectFile(navigation.File.FileId))
+            bool replacesEditor = page.Coordinator.ActiveFileId != navigation.File.FileId;
+            if (!navigation.IsCurrent() || !page.JournalSelectFile(navigation.File.FileId))
             { page._assistPendingNavigation = null; return false; }
             page._assistObservedFile = navigation.File.FileId; // Preserve own intent while the target renders.
+            if (replacesEditor) page._assistSequence = 0; // New keyed editor starts with an unmodified native observer.
             page.StateHasChanged();
             bool selected = await completion.Task; // Actual after-render selection lease.
             return !page._pageDisposed && selected && navigation.IsCurrent();

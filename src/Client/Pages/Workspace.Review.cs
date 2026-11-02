@@ -32,25 +32,31 @@ public partial class Workspace
         _seenPreview=current.Preview?.Id;_seenAction=current.Action?.Id;
         StateHasChanged();
     }
+    private Task PreviewProjectReplaceAsync(Client.Editing.Search.ProjectReplaceRequest request)
+        => RunReviewAsync(ct => request.PreviewAsync(ReviewService, ct));
     private Task PreviewFixAsync(string id)=>RunReviewAsync(ct=>ReviewService.PreviewFixAsync(id,ct));
+    private Task PreviewReviewSubsetAsync(ReviewSubsetRequest request)
+        => RunReviewAsync(ct => ReviewService.PreviewSubsetAsync(request.ExpectedPreviewId, request.Selection, ct));
     private Task AcceptReviewAsync(Guid id)=>RunReviewAsync(ct=>ReviewService.AcceptAsync(id,ct));
     private Task RetryReviewAsync(Guid id)=>RunReviewAsync(ct=>ReviewService.RetrySaveAsync(id,ct));
     private Task UndoReviewAsync(Guid id)=>RunReviewAsync(ct=>ReviewService.UndoAsync(id,ct));
     private void DeclineReview(Guid id)
     {
-        if(_pageDisposed||_reviewPending||CurrentReview.Busy)return;
+        if(_pageDisposed||_reviewPending||CurrentReview.Busy||HistoryComparisons.Busy||_historyWholeBusy)return;
         var result=ReviewService.Decline(id);_reviewNotice=result.Failure?.SafeMessage;
         _seenPreview=null;RenderReviewState();
     }
     private void CancelReview()
     {
-        _reviewCts?.Cancel();ReviewService.Cancel();
+        _reviewCts?.Cancel();HistoryComparisons.Cancel();
+        if(_historyWholeCts is not null)CancelHistoryWholePreview();
+        ReviewService.Cancel();
         _reviewNotice="Pending review work cancelled. Already-applied working edits and recovery, if any, are retained below.";
         _seenPreview=null;RenderReviewState();
     }
     private async Task RunReviewAsync(Func<CancellationToken,Task<ReviewResult>> operation)
     {
-        if(_pageDisposed||_reviewPending||CurrentReview.Busy)return;
+        if(_pageDisposed||_reviewPending||CurrentReview.Busy||HistoryComparisons.Busy||_historyWholeBusy)return;
         var intent=++_reviewIntent;var session=Coordinator.SessionId;_reviewSession=session;
         var cts=new CancellationTokenSource();_reviewCts=cts;_reviewPending=true;_reviewNotice=null;
         // Review never cancels an editor's pending ordinary autosave. A real

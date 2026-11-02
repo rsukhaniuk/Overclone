@@ -96,7 +96,7 @@ public sealed class RustSourceAnalyzer : ISourceAnalyzer
         IJSObjectReference bridge;
         try
         {
-            bridge = await GetBridgeAsync(linked).ConfigureAwait(false);
+            bridge = await GetBridgeAsync(AnalysisCatalog.IsThesis(snapshot.Profile) ? CancellationToken.None : linked).ConfigureAwait(false);
         }
         catch (OperationCanceledException) { return CancelledOrDisposed(requestId); }
         catch (JSException) { return FailedSafe(requestId, "WorkerCrashed", "The analysis worker could not be reached."); }
@@ -111,9 +111,10 @@ public sealed class RustSourceAnalyzer : ISourceAnalyzer
         // arrives while JS ready/init is pending cannot be lost, and recheck after
         // registering (a pre-registered cancellation runs immediately).
         CancellationTokenRegistration reg = default;
-        if (ct.CanBeCanceled)
+        var cancelSignal = AnalysisCatalog.IsThesis(snapshot.Profile) ? linked : ct;
+        if (cancelSignal.CanBeCanceled)
         {
-            reg = ct.Register(() => _ = SafeCancelAsync(bridge, requestId));
+            reg = cancelSignal.Register(() => _ = SafeCancelAsync(bridge, requestId));
         }
         try
         {
@@ -122,7 +123,7 @@ public sealed class RustSourceAnalyzer : ISourceAnalyzer
             AnalysisBridgeResponse resp;
             try
             {
-                resp = await bridge.InvokeAsync<AnalysisBridgeResponse>("analyzeSource", linked, metadataJson, packedBytes)
+                resp = await bridge.InvokeAsync<AnalysisBridgeResponse>("analyzeSource", AnalysisCatalog.IsThesis(snapshot.Profile) ? CancellationToken.None : linked, metadataJson, packedBytes)
                     .ConfigureAwait(false);
             }
             catch (OperationCanceledException) { return CancelledOrDisposed(requestId); }
@@ -297,7 +298,7 @@ public sealed class RustSourceAnalyzer : ISourceAnalyzer
                     if (Encoding.UTF8.GetByteCount(json) > snapshot.Limits.MaxResultBytes)
                         return FailedSafeWithEpoch(requestId, workerEpoch, "InvalidInput", "The completed analysis exceeded the requested result limit.");
                     AnalysisResponse.Completed c;
-                    try { c = (AnalysisResponse.Completed)AnalysisJson.ParseResponse(json); }
+                    try { c = (AnalysisResponse.Completed)(AnalysisCatalog.IsThesis(snapshot.Profile) ? ThesisValidation.ParseResponse(json, snapshot, requestId) : AnalysisJson.ParseResponse(json)); }
                     catch (JsonException) { return FailedSafeWithEpoch(requestId, workerEpoch, "InvalidInput", "The analysis worker returned a malformed completed response."); }
                     catch (InvalidOperationException) { return FailedSafeWithEpoch(requestId, workerEpoch, "InvalidInput", "The analysis worker returned a malformed completed response."); }
                     if (!string.Equals(c.RequestId, requestId, StringComparison.Ordinal))
@@ -314,7 +315,7 @@ public sealed class RustSourceAnalyzer : ISourceAnalyzer
             case "failed":
                 {
                     AnalysisResponse.Failed f;
-                    try { f = (AnalysisResponse.Failed)AnalysisJson.ParseResponse(json); }
+                    try { f = (AnalysisResponse.Failed)(AnalysisCatalog.IsThesis(snapshot.Profile) ? ThesisValidation.ParseResponse(json, snapshot, requestId) : AnalysisJson.ParseResponse(json)); }
                     catch (JsonException) { return FailedSafeWithEpoch(requestId, workerEpoch, "InvalidInput", "The analysis worker returned a malformed failed response."); }
                     catch (InvalidOperationException) { return FailedSafeWithEpoch(requestId, workerEpoch, "InvalidInput", "The analysis worker returned a malformed failed response."); }
                     // A failed envelope may legitimately carry no trusted requestId
