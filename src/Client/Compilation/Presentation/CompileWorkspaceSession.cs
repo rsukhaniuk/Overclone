@@ -53,9 +53,13 @@ public sealed class CompileWorkspaceSession(WorkspaceCoordinator workspace, ICom
     public CompileOwnerContext? Owner => _owner;
     public string PdfLabel => State is { LastSuccessful: not null } s && s.LastSuccessful.SnapshotIdentity.ProjectId == workspace.Project?.Id
         ? s.IsCurrent ? "PDF up to date" : "Last successful PDF — out of date" : "No compiled PDF";
+    // Configured port options only. Actual runtime/engine admission stays in the factory.
+    private static bool SuiteOptions(IEnumerable<CompilationOption> options) => NativeCompilerSuiteContract.MatchesOptions(options)
+        || NativeCompilerSuiteContract.MatchesOptions(options, NativeNavigationContract.Profile)
+        || NativeCompilerSuiteContract.MatchesOptions(options, NativeXeNavigationContract.Profile);
     private CompileLifecycleOptions Options => new(new(64, 1048576, 8388608, 131072),
         new(8388608, 2097152, 64, 128, 4096, 1048576), 65536,
-        _ports?.SelectionOptions is { } options && NativeCompilerSuiteContract.MatchesOptions(options)
+        _ports?.SelectionOptions is { } options && SuiteOptions(options)
             ? NativeCompilerSuiteContract.LifecycleDeadline : TimeSpan.FromSeconds(30), NativeRuntimePackage.Pdf,
         _ports?.OutputAdapter ?? NativeRuntimePackage.Adapter);
     private static CompileAttemptPresentationBudget LogBudget => new(1048576, 2097152,
@@ -129,7 +133,7 @@ public sealed class CompileWorkspaceSession(WorkspaceCoordinator workspace, ICom
         var main = workspace.Files.FirstOrDefault(f => !f.Deleted && f.MediaKind == "text" && f.Id == MainFile);
         bool selectedEntry = _ports?.SelectionOptions is { } options
             && (NativeSelectedEntryContract.MatchesOptions(options) || NativeSyncTeXContract.MatchesOptions(options)
-                || NativeLatexDviContract.MatchesOptions(options) || NativeCompilerSuiteContract.MatchesOptions(options));
+                || NativeLatexDviContract.MatchesOptions(options) || SuiteOptions(options));
         var entryError = main is null ? null : selectedEntry ? NativeSelectedEntryContract.ValidateEntry(main.RelativePath)
             : main.RelativePath == "main.tex" ? null : "legacy-main-entry";
         if (_ports is { } ports && Readiness.Ready && EngineChoice == ports.CapabilityId && main is not null && entryError is null
@@ -160,6 +164,17 @@ public sealed class CompileWorkspaceSession(WorkspaceCoordinator workspace, ICom
         if (_disposed) return;
         if (session != workspace.SessionId || generation != workspace.WorkingGeneration || stamp.Version != _selection.Current.Version)
         { Notice = "Source or selection changed while checking tools. Compile again."; Refresh(); return; }
+        // Choices made while tools were unavailable remain explicit user
+        // choices. Materialize them after readiness recovers, only after the
+        // original session/generation/selection guard above has passed.
+        if (Readiness.Ready && _ports is not null && _selection.Current.Selection is null)
+        {
+            var recoveredVersion = _selection.Current.Version + 1;
+            ApplySelection();
+            if (session != workspace.SessionId || generation != workspace.WorkingGeneration
+                || recoveredVersion != _selection.Current.Version)
+            { Notice = "Source or selection changed while checking tools. Compile again."; Refresh(); return; }
+        }
         if (!Readiness.Ready || _ports is null || _selection.Current.Selection is null)
         { Notice = Readiness.Ready ? "Select a supported main file and engine." : Readiness.Message; Refresh(); return; }
         if (_owner!.PendingOwned >= 16) { Notice = "Compile work is still finishing. Try again when idle."; Refresh(); return; }
@@ -214,7 +229,10 @@ public sealed class CompileWorkspaceSession(WorkspaceCoordinator workspace, ICom
         finally { _refreshing = false; }
         Changed?.Invoke();
     }
-    private void PreviewChanged() { if (!_disposed) Changed?.Invoke(); }
+    private void PreviewChanged() => _owner?.ForwardWorkspaceEvent(() =>
+    {
+        if (!_disposed) Changed?.Invoke();
+    });
     private void Run(Action action) { if (!_disposed && _owner is not null) _owner.Run(action); }
     public ValueTask DisposeAsync()
     {

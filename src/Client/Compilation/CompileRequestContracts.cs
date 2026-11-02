@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using Client.Workspace.Domain;
+using Client.Compilation.SyncTeX;
 
 namespace Client.Compilation;
 
@@ -32,7 +33,8 @@ public enum CompileOutputIssue
     OverPayloadBudget, OverMetadataBudget, OverDiagnosticCount,
     RequestMismatch, SnapshotMismatch, DigestMismatch, EpochMismatch,
     FormatMismatch, AdapterMismatch, MappingMismatch,
-    OverSourceMapPayloadBudget, SourceMapLengthMismatch, SourceMapHashMismatch
+    OverSourceMapPayloadBudget, SourceMapLengthMismatch, SourceMapHashMismatch,
+    OverSourceMapGeometryBudget, SourceMapGeometryMismatch, InvalidSourceMapGeometry
 }
 
 /// <summary>Untrusted diagnostic/log metadata: plain data only. Never executable
@@ -48,11 +50,17 @@ public sealed record CompileSourceMappingIdentity(SHA256 Hash, long ByteLength);
 /// session/worker freshness. The digest is SHA-256 of the
 /// <c>overclone-compilation-artifact-v1</c> encoding of the complete input content
 /// digest, output length/hash and any explicit format/adapter/mapping metadata
-/// actually modeled. Equal content may share identity with distinct request ids.</summary>
+/// actually modeled. Geometry selects the explicit v2 domain and length/hash
+/// suffix; v1 bytes never acquire null/presence fields. Equal content may share
+/// identity with distinct request ids. Version2 requires geometry; version1 forbids it.</summary>
 public sealed record CompileArtifactContentIdentity(
     SHA256 Digest, SHA256 InputContentDigest, long OutputLength, SHA256 OutputHash,
     CompileOutputDescriptor? OutputFormat, CompileOutputDescriptor? OutputAdapter,
-    CompileSourceMappingIdentity? SourceMapping);
+    CompileSourceMappingIdentity? SourceMapping)
+{
+    public int ArtifactVersion { get; init; } = 1;
+    public SourceMapGeometryIdentity? SourceMapGeometry { get; init; }
+}
 
 /// <summary>Explicit caller limits for accepting an untrusted output envelope.
 /// Zero is never unlimited. All fields must be positive and within Array.MaxLength;
@@ -61,12 +69,15 @@ public sealed record CompileOutputBudget(int MaxPayloadBytes, int MaxMetadataByt
     int MaxDiagnostics, int MaxDiagnosticCodeBytes, int MaxDiagnosticMessageBytes, int MaxLogBytes)
 {
     public const int SourceMapPayloadByteLimit = 1_048_575;
+    public const int SourceMapGeometryByteLimit = 131_072;
+    public int MaxSourceMapGeometryBytes { get; init; } = SourceMapGeometryByteLimit;
     /// <summary>Independent byte cap for optional opaque uncompressed SyncTeX v1
     /// output. Does not enlarge the PDF or metadata budgets. May only be reduced
     /// from the fixed producer limit; zero is not an unlimited/disabled sentinel.</summary>
     public int MaxSourceMapPayloadBytes { get; init; } = SourceMapPayloadByteLimit;
 
-    public bool IsValid => MaxSourceMapPayloadBytes > 0 && MaxSourceMapPayloadBytes <= SourceMapPayloadByteLimit
+    public bool IsValid => MaxSourceMapGeometryBytes > 0 && MaxSourceMapGeometryBytes <= SourceMapGeometryByteLimit
+        && MaxSourceMapPayloadBytes > 0 && MaxSourceMapPayloadBytes <= SourceMapPayloadByteLimit
         && MaxPayloadBytes > 0 && MaxPayloadBytes <= Array.MaxLength
         && MaxMetadataBytes > 0 && MaxMetadataBytes <= Array.MaxLength
         && MaxDiagnostics > 0 && MaxDiagnostics <= Array.MaxLength
@@ -96,6 +107,11 @@ public sealed record CompileOutputEnvelopeInput
     /// bytes must match SourceMapping exactly; null/empty on success means no
     /// owned map. Any non-null value on non-success is refused.</summary>
     public byte[]? SourceMapPayload { get; init; }
+    /// <summary>Optional schema1 wrapper DATA, not a live geometry ticket.
+    /// Presence requires owned nonempty map/PDF and this exact byte identity.
+    /// Empty provided geometry is malformed; null is absence.</summary>
+    public byte[]? SourceMapGeometryPayload { get; init; }
+    public SourceMapGeometryIdentity? SourceMapGeometry { get; init; }
     public IReadOnlyList<CompileDiagnosticEntry>? Diagnostics { get; init; }
     public string? LogText { get; init; }
 }

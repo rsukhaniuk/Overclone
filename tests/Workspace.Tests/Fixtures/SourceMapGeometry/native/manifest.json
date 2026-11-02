@@ -1,0 +1,37 @@
+{
+  "provenance": "actual copied outputs from root independent native fixture batches; synthetic TeX fixture content, genuine engine/converter execution; no physical/native browser claim",
+  "examples": {
+    "lualatex": {
+      "geometry.json": {
+        "length": 347,
+        "sha256": "a72237e4208c32855339713cef17ada9203bfc73683ce7c2f9658442a08957c6"
+      },
+      "output.pdf": {
+        "length": 5968,
+        "sha256": "2a9d09dffd46dc65944ad03c4f577b5cddc062a14787a62291994e758c908e48"
+      },
+      "source.synctex": {
+        "length": 1066,
+        "sha256": "734a224f125c6e2b707d27e887f0ae47384d0df4cbbea0f1a83350913263327c"
+      }
+    },
+    "latex-dvi": {
+      "geometry.json": {
+        "length": 865,
+        "sha256": "f2292de5bd945b4c266765c7c2879cef39694b6b1efb03bcffa215418776b546"
+      },
+      "output.pdf": {
+        "length": 3900,
+        "sha256": "184926d638ad91a6dacd9c23e2c4a15e7a05989923b384676e33878bd46928a2"
+      },
+      "source.synctex": {
+        "length": 1254,
+        "sha256": "d8d135aa2c8a9562940c57eb719f78482f21f530ba7033779b3b95f0f332b666"
+      },
+      "intermediate.dvi": {
+        "length": 996,
+        "sha256": "d0c33e7df67eed9ea3c74e6accbcb0e2a7d572a491d767a49bc149c3fa7c70e1"
+      }
+    }
+  }
+}

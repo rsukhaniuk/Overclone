@@ -2,6 +2,7 @@ using System.Collections.Immutable;
 using Client.Compilation.Lifecycle;
 using Client.Compilation.Presentation;
 using Client.Editing;
+using Client.Pdf.Preview;
 using Client.Workspace;
 using Client.Workspace.Domain;
 using Client.Workspace.Transfer;
@@ -41,17 +42,51 @@ public sealed class SyncTeXNavigationPolicy(WorkspaceCoordinator workspace, Comp
         if (oneBasedPage is < 1 or > 512 || !Coordinate(h) || !Coordinate(v))
             return Task.FromResult<SyncTeXNavigationResult?>(null);
         var authority = Capture(SyncTeXDirection.Inverse, cancellationToken);
-        return authority is null ? Task.FromResult<SyncTeXNavigationResult?>(null)
+        return authority is null || authority.Geometry is not null && PageTransform(authority, oneBasedPage, cancellationToken) is null
+            ? Task.FromResult<SyncTeXNavigationResult?>(null)
             : QueryAsync(authority, new(authority.Output.ToSourceMapPayloadArray()!,
                 authority.Output.SourceMapping!.Hash.Hex, SyncTeXDirection.Inverse,
                 Page: oneBasedPage, H: h, V: v), cancellationToken);
     }
 
+    /// <summary>Capture the live map owner before converting the measured view
+    /// point. A historical wrapper or caller label cannot supply that authority.</summary>
+    public Task<SyncTeXNavigationResult?> InverseAsync(int oneBasedPage, PdfPreviewGeometry geometry,
+        double x, double y, CancellationToken cancellationToken = default)
+    {
+        if (oneBasedPage is < 1 or > 512) return Task.FromResult<SyncTeXNavigationResult?>(null);
+        var authority = Capture(SyncTeXDirection.Inverse, cancellationToken);
+        if (authority is null) return Task.FromResult<SyncTeXNavigationResult?>(null);
+        var location = authority.Geometry is null ? SyncTeXDisplayGeometry.Inverse(geometry, x, y)
+            : SyncTeXDisplayGeometry.Inverse(geometry, PageTransform(authority, oneBasedPage, cancellationToken), x, y);
+        return location is null || !Coordinate(location.H) || !Coordinate(location.V)
+            ? Task.FromResult<SyncTeXNavigationResult?>(null)
+            : QueryAsync(authority, new(authority.Output.ToSourceMapPayloadArray()!,
+                authority.Output.SourceMapping!.Hash.Hex, SyncTeXDirection.Inverse,
+                Page: oneBasedPage, H: location.H, V: location.V), cancellationToken);
+    }
+
+    public SourceMapPageTransform? PageTransform(SyncTeXNavigationResult result, int oneBasedPage,
+        CancellationToken cancellationToken = default) => IsCurrent(result, cancellationToken)
+        && result.Geometry is { } geometry && oneBasedPage >= 1 && oneBasedPage <= geometry.Pages.Count
+        && geometry.Pages[oneBasedPage - 1] is { Status: "available" } page ? page : null;
+
     private SyncTeXNavigationResult? Capture(SyncTeXDirection direction, CancellationToken token)
     {
         if (_disposed || token.IsCancellationRequested || session.DisplayedOutput is not { HasSourceMapPayload: true } output
             || session.LastTicket is not { } ticket) return null;
-        var result = new SyncTeXNavigationResult(this, output, ticket, direction, token);
+        var expectedEngine = output.Snapshot.Selection.Engine.Id switch
+        { "pdftex" or "pdflatex" => "pdflatex", "latex-dvi" => "latex-dvi", "xelatex" => "xelatex", "lualatex" => "lualatex", _ => null };
+        SourceMapGeometry? geometry = null;
+        if (output.HasSourceMapGeometry)
+        {
+            geometry = SourceMapGeometryCodec.ParseWrapper(output.ToSourceMapGeometryArray()).Artifact?.Geometry;
+            if (geometry is null || geometry.EngineId != expectedEngine) return null;
+        }
+        // These producers require an explicit native/converter transform. A
+        // copied map alone must never fall through to the pdfTeX writer flip.
+        if (expectedEngine is "latex-dvi" or "xelatex" or "lualatex" && geometry is null) return null;
+        var result = new SyncTeXNavigationResult(this, output, ticket, direction, token, geometry: geometry);
         return IsCurrent(result, token) ? result : null;
     }
 
@@ -97,13 +132,15 @@ public sealed class SyncTeXNavigationPolicy(WorkspaceCoordinator workspace, Comp
         {
             if (match is null || match.Line < 1 || match.Page is < 1 or > 512 || match.Tag < 1
                 || match.Column is <= 0 || match.Point is null || match.Box is null || !Geometry(match)) continue;
-            var file = Bind(authority.Snapshot, match.File);
+            if (authority.Geometry is { } geometry && (match.Page > geometry.Pages.Count
+                || geometry.Pages[match.Page - 1].Status != "available")) continue;
+            var file = Bind(authority.Snapshot, match.File, authority.Geometry?.EngineId == "lualatex");
             if (file is null || !TrySource(file, out var source) || LineRange(source, match.Line) is not { } range) continue;
             matches.Add(new(match, file, range));
         }
         if (matches.Count == 0 || !IsCurrent(authority, token)) return null;
         return new(this, authority.Output, authority.Ticket, authority.Direction, authority.Cancellation,
-            matches.ToImmutable(), outcome.Truncated);
+            matches.ToImmutable(), outcome.Truncated, authority.Geometry);
     }
 
     private static bool Coordinate(double value) => double.IsFinite(value) && value is >= -1000000 and <= 1000000;
@@ -125,12 +162,13 @@ public sealed class SyncTeXNavigationPolicy(WorkspaceCoordinator workspace, Comp
 
     // Exact spellings only. No filesystem operations, basename fallback, URI
     // processing, case folding, Unicode normalization or traversal resolution.
-    private static CompilationInputFile? Bind(CompilationInputSnapshot snapshot, string? name)
+    private static CompilationInputFile? Bind(CompilationInputSnapshot snapshot, string? name, bool lua)
     {
         if (name is null) return null;
         CompilationInputFile? found = null;
         foreach (var file in snapshot.Files)
-            if (name == file.RelativePath || name == "./" + file.RelativePath || name == "/work/" + file.RelativePath)
+            if (name == file.RelativePath || name == "./" + file.RelativePath || name == "/work/" + file.RelativePath
+                || lua && (name == "/work/project/" + file.RelativePath || name == "/work/project/./" + file.RelativePath))
             {
                 if (found is not null) return null;
                 found = file;
@@ -221,10 +259,10 @@ public sealed class SyncTeXNavigationResult
 {
     internal SyncTeXNavigationResult(SyncTeXNavigationPolicy owner, AcceptedCompileOutput output,
         CompileLifecycleTicket ticket, SyncTeXDirection direction, CancellationToken cancellation,
-        ImmutableArray<SyncTeXNavigationMatch> matches = default, bool truncated = false)
+        ImmutableArray<SyncTeXNavigationMatch> matches = default, bool truncated = false, SourceMapGeometry? geometry = null)
     {
         Owner = owner; Output = output; Ticket = ticket; Direction = direction; Cancellation = cancellation;
-        Matches = matches.IsDefault ? [] : matches; Truncated = truncated;
+        Matches = matches.IsDefault ? [] : matches; Truncated = truncated; Geometry = geometry;
     }
     internal SyncTeXNavigationPolicy Owner { get; }
     internal CompileLifecycleTicket Ticket { get; }
@@ -234,6 +272,9 @@ public sealed class SyncTeXNavigationResult
     public SyncTeXDirection Direction { get; }
     public ImmutableArray<SyncTeXNavigationMatch> Matches { get; }
     public bool Truncated { get; }
+    /// <summary>Owned immutable data; use this policy's currentness checks before
+    /// displaying it. The value alone never grants navigation authority.</summary>
+    public SourceMapGeometry? Geometry { get; }
 }
 
 public sealed class SyncTeXNavigationMatch

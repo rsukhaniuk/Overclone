@@ -57,7 +57,7 @@
     <p class="hint">Settings apply to this session. Unsupported engines and packages are not substituted.</p>
     <details><summary>Runtime availability &amp; compatibility</summary>
         <p>@Session.Readiness.Status: @Session.Readiness.Message</p>
-        <p>Select a .tex root, including a nested path, and a verified local engine with optional BibTeX. Includes resolve from project CWD. Internal ASCII spaces in directory and base names are supported; leading/trailing basename spaces and TeX command syntax are unsupported. Source/PDF navigation is available with supported pdfLaTeX source-map resources. LaTeX/DVI output has no source map.</p>
+        <p>Select a .tex root, including a nested path, and a verified local engine with optional BibTeX. Includes resolve from project CWD. Internal ASCII spaces in directory and base names are supported; leading/trailing basename spaces and TeX command syntax are unsupported. Source/PDF navigation requires native maps and supported page geometry. Unsupported graphics transforms can leave navigation unavailable while the compiled PDF remains usable.</p>
         <p data-testid="renderer-readiness">@(Session.ConfiguredPorts?.Inspector is null ? "Preview unavailable — no renderer configured." : "Preview checks its supported local renderer on each request; actual availability is reported in the preview.")</p>
     </details>
     @if (Session.UsesBundledResources)
@@ -115,18 +115,22 @@
     }
     <PdfPreviewPane Controller="@Session.Preview" OwnsController="false" SourceMappingAvailable="@SourceMappingAvailable"
         SourcePointRequested="@SourcePointRequested" SourceNavigationNotice="@MapNavigationStatus"
-        SourceMatch="@SourceMatch" SourceMatchPdfHash="@SourceMatchPdfHash" />
-    <RenderedExtentPanel />
+        SourceMatch="@SourceMatch" SourceMatchPdfHash="@SourceMatchPdfHash"
+        SourceMatchTransform="@SourceMatchTransform" SourceMatchUsesNativeTransform="@SourceMatchUsesNativeTransform" />
+    <RenderedExtentPanel ControllerAvailable="RenderedExtentAvailable" />
     <CompileHistoryPanel Session="@History" />
 </aside>
 @code {
     [Parameter] public EventCallback<CompilerSourceNavigationRequest> SourceLineRequested { get; set; }
+    [Parameter] public Action<Client.Analysis.RenderedExtent.RenderedExtentController?>? RenderedExtentAvailable { get; set; }
     [Parameter] public string? SourceNavigationStatus { get; set; }
     [Parameter] public bool SourceMappingAvailable { get; set; }
     [Parameter] public EventCallback<PdfPreviewPointer> SourcePointRequested { get; set; }
     [Parameter] public string? MapNavigationStatus { get; set; }
     [Parameter] public SyncTeXMatch? SourceMatch { get; set; }
     [Parameter] public string? SourceMatchPdfHash { get; set; }
+    [Parameter] public SourceMapPageTransform? SourceMatchTransform { get; set; }
+    [Parameter] public bool SourceMatchUsesNativeTransform { get; set; }
     private string? _lineNotice;
     private bool _disposed;
     private PdfDownloadCoordinator? _download;

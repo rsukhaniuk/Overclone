@@ -11,7 +11,11 @@ public sealed record NativePhaseRequest(NativePhaseTag Tag, string MainEntry, Na
     string[] Outputs, byte[] Loader, byte[] Wasm, int MaxLogBytes, int MaxOutputBytes, string? SelectedRoot = null, string[]? RuntimeResourceNames = null, string[]? GeneratedInputNames = null);
 public sealed record NativePhaseReply(NativePhaseTag Tag, string Outcome, int? NativeReturn, bool Entered,
     string Log, NativeFileTransfer[] Files, NativeInputFact[] Inputs, double? ElapsedMs = null, int? HeapBytes = null,
-    string? WasmSha256 = null, string? LoaderSha256 = null, byte[]? SourceMapPayload = null);
+    string? WasmSha256 = null, string? LoaderSha256 = null, byte[]? SourceMapPayload = null)
+{
+    // Raw native schema1 sidecar only, not the correlated output wrapper.
+    public byte[]? SourceMapGeometryPayload { get; init; }
+}
 
 /// <summary>Prompt asynchronous byte/FFI port. Not a second lifecycle. A completed
 /// wait is not proof the foreign task completed. Terminate is prompt, idempotent,
@@ -28,11 +32,11 @@ public sealed record NativeCompilePlan(bool BibtexRequired, int MaxLatexPasses, 
     public bool IsValid => MaxLatexPasses is >= 1 and <= 6 && JobDeadline > TimeSpan.Zero && JobDeadline <= TimeSpan.FromMinutes(2)
         && NativeRuntimeProfiles.Known(Profile)
         && (NativeRuntimeProfiles.IsSuite(Profile)
-            ? NativeCompilerSuiteContract.Phase(Engine) != 0 && EffectivePhaseVersion == NativeCompilerSuiteContract.Phase(Engine)
+            ? NativeCompilerSuiteContract.Phase(Profile, Engine) != 0 && EffectivePhaseVersion == NativeCompilerSuiteContract.Phase(Profile, Engine)
             : Engine == NativeCompilerEngine.PdfLaTeX && (PhaseProtocolVersion is null || PhaseProtocolVersion == NativeRuntimeProfiles.ProtocolVersion(Profile)
                 || PhaseProtocolVersion is 4 or 5 && Profile == NativeRuntimeProfile.LocalLatex2023Authoring
                 || PhaseProtocolVersion == 7 && Profile == NativeRuntimeProfile.LocalLatex2023Dvi && DviOutput))
-        && (DviOutput == (EffectivePhaseVersion == 7))
+        && (DviOutput == (EffectivePhaseVersion == 7 || NativeNavigationContract.IsNavigationProfile(Profile) && EffectivePhaseVersion == NativeNavigationContract.DviPhase))
         && MaxPhaseFiles >= 1 && MaxPhaseFiles <= (NativeRuntimeProfiles.IsSuite(Profile) ? NativeCompilerSuiteContract.Files + 192
             : EffectivePhaseVersion is 4 or 5 or 6 or 7 ? NativeAuthoringV4Contract.PhaseFiles : 512)
         && MaxInputBytes > 0 && MaxInputBytes <= NativeRuntimeProfiles.MaxTotalBytes(Profile)

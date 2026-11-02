@@ -12,6 +12,8 @@ public static class NativeCompilerComponents
     public static NativeCompilerComponent For(NativeRuntimeProfile profile, NativeCompilerEngine engine)
     {
         if (!NativeRuntimeProfiles.IsSuite(profile)) throw new ArgumentOutOfRangeException(nameof(profile));
+        if (profile == NativeXeNavigationContract.Profile) return NativeXeNavigationContract.Component(engine);
+        if (profile == NativeNavigationContract.Profile) return NativeNavigationContract.Component(engine);
         bool expanded = profile is NativeRuntimeProfile.LocalCompilerCompatibility or NativeRuntimeProfile.LocalCompilerBibliography;
         bool bibliography = profile == NativeRuntimeProfile.LocalCompilerBibliography;
         var converter = new Client.Workspace.Domain.SHA256(NativeCompilerSuitePins.ConverterWasmHash);

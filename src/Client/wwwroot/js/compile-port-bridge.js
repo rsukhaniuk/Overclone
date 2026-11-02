@@ -71,8 +71,8 @@ function transportFrame(frame){
  if(s!=null&&(!opaque(s.captureId)||!opaque(s.serviceId)||!opaque(s.sessionId)||!opaque(s.projectId?.value)
   ||s.baseHeadRevisionId!=null&&!opaque(s.baseHeadRevisionId.value)
   ||['workingGeneration','localWorkspaceEpoch','selectionVersion'].some(k=>!Number.isSafeInteger(s[k])||s[k]<0)))return false;
- const suite=[5,6,7].includes(t.profile),conversion=t.tool==='dvipdfmx',modern=t.version!==1;
- if(conversion&&!(t.version===7&&t.engineId==='latex-dvi'||t.version===8&&t.engineId==='xelatex'))return false;
+ const suite=[5,6,7,8,9].includes(t.profile),conversion=t.tool==='dvipdfmx',modern=t.version!==1;
+ if(conversion&&!(t.version===7&&t.engineId==='latex-dvi'||[8,9].includes(t.profile)&&t.version===12&&t.engineId==='latex-dvi'||t.version===8&&t.engineId==='xelatex'||t.profile===9&&t.version===13&&t.engineId==='xelatex'))return false;
  if(frame.files.length>(conversion?4096:suite?8384:t.version>=4?768:512)
   ||transferLength(frame.loader,1048576)<1||transferLength(frame.wasm,16777216)<1)return false;
  const resources=frame.runtimeResourceNames??[],generated=frame.generatedInputNames??[];
@@ -91,10 +91,10 @@ function transportFrame(frame){
   }
  }
  if((suite||conversion)&&(captured>(conversion?65:64)||work>(conversion?8388608:33554432)
-  ||runtime>(conversion||t.version===9&&t.tool==='latex'?100663296:167772160)
+  ||runtime>(conversion||[9,14].includes(t.version)&&t.tool==='latex'?100663296:167772160)
   ||resources.some(n=>suite&&!n.startsWith(prefix)||names.get(nativeAlias(n))!==n||conversion&&(suite?n.slice(prefix.length):n).includes('/'))
   ||generated.some(n=>names.get(nativeAlias(n))!==n)||g.has(frame.selectedRoot)||r.has(frame.selectedRoot)))return false;
- if(suite&&!conversion&&(t.version===6||t.version===7||t.tool==='bibtex')&&total>167772160)return false;
+ if(suite&&!conversion&&(t.version===6||t.version===7||t.version===12||t.tool==='bibtex')&&total>167772160)return false;
  for(const n of frame.outputs){
   if(!nativePath(n)||outputs.has(nativeAlias(n))||r.has(n))return false;
   const input=names.get(nativeAlias(n));
@@ -135,7 +135,19 @@ function boundedNativeReply(reply,tag,caps){
   const n=transferLength(f.bytes,caps.output);if(n<0||n>2*caps.output-total)return null;total+=n;names.add(f.name);
  }
  for(const f of inputs)if(!f||!nativePath(f.name)||!Number.isSafeInteger(f.length)||f.length<0||f.length>67108864||typeof f.sha256!=='string'||!/^[0-9a-f]{64}$/.test(f.sha256))return null;
- if(reply.sourceMapPayload!=null&&(tag.version!==6||tag.tool!=='latex'||reply.outcome!=='native-return'||reply.nativeReturn!==0||transferLength(reply.sourceMapPayload,1048575)<1))return null;
+ const navigation=[8,9].includes(tag.profile),xeMap=tag.profile===9&&tag.version===13&&tag.engineId==='xelatex',success=reply.outcome==='native-return'&&reply.nativeReturn===0;
+ const mapCell=navigation&&tag.tool==='latex'&&(tag.version===12&&tag.engineId==='latex-dvi'||tag.version===14&&tag.engineId==='lualatex'||xeMap);
+ const geometryCell=navigation&&((tag.version===12&&tag.engineId==='latex-dvi'||xeMap)&&tag.tool==='dvipdfmx'||tag.version===14&&tag.engineId==='lualatex'&&tag.tool==='latex');
+ let sourceMapPayload=reply.sourceMapPayload,sourceMapGeometryPayload=reply.sourceMapGeometryPayload;
+ if(sourceMapPayload!=null){
+  if(mapCell&&success)sourceMapPayload=transferLength(sourceMapPayload,1048575)>0?bytes(sourceMapPayload).slice():null;
+  else if(tag.version!==6||tag.tool!=='latex'||!success||transferLength(sourceMapPayload,1048575)<1)return null;
+ }
+ if(sourceMapGeometryPayload!=null){
+  if(!geometryCell||!success)return null;
+  sourceMapGeometryPayload=transferLength(sourceMapGeometryPayload,131072)>0?bytes(sourceMapGeometryPayload).slice():null;
+ }
+ if(mapCell&&!sourceMapPayload)sourceMapGeometryPayload=null;
  if(reply.entered!==undefined&&typeof reply.entered!=='boolean'
   ||reply.elapsedMs!=null&&(typeof reply.elapsedMs!=='number'||!Number.isFinite(reply.elapsedMs)||reply.elapsedMs<0)
   ||reply.heapBytes!=null&&(!Number.isSafeInteger(reply.heapBytes)||reply.heapBytes<0||reply.heapBytes>2147483648)
@@ -144,7 +156,7 @@ function boundedNativeReply(reply,tag,caps){
  // an unbounded .NET interop serialization. C# still checks exact hashes/facts.
  return {tag,outcome:reply.outcome,nativeReturn:reply.nativeReturn,entered:reply.entered,log,
   files:files.map(f=>({name:f.name,bytes:f.bytes})),inputs:inputs.map(f=>({name:f.name,length:f.length,sha256:f.sha256})),
-  elapsedMs:reply.elapsedMs,heapBytes:reply.heapBytes,wasmSha256:reply.wasmSha256,loaderSha256:reply.loaderSha256,sourceMapPayload:reply.sourceMapPayload};
+  elapsedMs:reply.elapsedMs,heapBytes:reply.heapBytes,wasmSha256:reply.wasmSha256,loaderSha256:reply.loaderSha256,sourceMapPayload,sourceMapGeometryPayload};
 }
 export function execute(frame){
  if(!transportFrame(frame))throw new Error('invalid bounded native transport frame');
@@ -155,10 +167,10 @@ export function execute(frame){
  const authoring4=[4,5].includes(frame.tag.version)&&frame.tag.profile===2&&typeof frame.tag.runtimeIdentity==='string'&&/^[0-9a-f]{64}$/.test(frame.tag.runtimeIdentity);
  const identity=typeof frame.tag.runtimeIdentity==='string'&&/^[0-9a-f]{64}$/.test(frame.tag.runtimeIdentity);
  const mapped=frame.tag.version===6&&([3,4].includes(frame.tag.profile)&&frame.tag.engineId==null
-  ||[5,6,7].includes(frame.tag.profile)&&frame.tag.engineId==='pdftex')&&identity;
- const dviPhase=frame.tag.version===7&&[4,5,6,7].includes(frame.tag.profile)&&frame.tag.engineId==='latex-dvi'&&identity;
- const xe=frame.tag.version===8&&[5,6,7].includes(frame.tag.profile)&&frame.tag.engineId==='xelatex'&&identity;
- const lua=frame.tag.version===9&&[5,6,7].includes(frame.tag.profile)&&frame.tag.engineId==='lualatex'&&identity;
+  ||[5,6,7,8,9].includes(frame.tag.profile)&&frame.tag.engineId==='pdftex')&&identity;
+ const dviPhase=(frame.tag.version===7&&[4,5,6,7].includes(frame.tag.profile)||frame.tag.version===12&&[8,9].includes(frame.tag.profile))&&frame.tag.engineId==='latex-dvi'&&identity;
+ const xe=(frame.tag.version===8&&[5,6,7,8].includes(frame.tag.profile)||frame.tag.version===13&&frame.tag.profile===9)&&frame.tag.engineId==='xelatex'&&identity;
+ const lua=(frame.tag.version===9&&[5,6,7].includes(frame.tag.profile)||frame.tag.version===14&&[8,9].includes(frame.tag.profile))&&frame.tag.engineId==='lualatex'&&identity;
  const converter=(dviPhase||xe)&&frame.tag.tool==='dvipdfmx';
  const kind=converter?'dvi':frame.tag.tool==='latex'?(xe?'xetex':lua?'luatex':'compile'):'compile';
  const binding=roles.get(kind).admission;

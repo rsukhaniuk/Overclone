@@ -1,5 +1,6 @@
 using System.Text;
 using Client.Compilation.Lifecycle;
+using Client.Compilation.SyncTeX;
 
 namespace Client.Compilation.Native;
 
@@ -63,7 +64,8 @@ public sealed class NativeCompilationWorkerFactory : ICompilationWorkerFactory
             if (context is null || limits is null || !limits.IsValid || jobId != id || context.WorkerEpoch != epoch
                 || Interlocked.Exchange(ref _started, 1) != 0) return null;
             var log = new StringBuilder();
-            CompileOutputEnvelopeInput Finish(CompileOutputStatus status, string code, byte[]? payload = null, byte[]? map = null) => new()
+            CompileOutputEnvelopeInput Finish(CompileOutputStatus status, string code, byte[]? payload = null, byte[]? map = null,
+                SourceMapGeometryArtifact? geometry = null, bool navigationLimited = false) => new()
             {
                 RequestId = context.RequestId,
                 SnapshotIdentity = context.SnapshotIdentity,
@@ -75,10 +77,14 @@ public sealed class NativeCompilationWorkerFactory : ICompilationWorkerFactory
                 ClaimedHash = payload is null ? null : NativeRuntimePackage.Digest(payload),
                 SourceMapPayload = map,
                 SourceMapping = map is null ? null : new(NativeRuntimePackage.Digest(map), map.Length),
+                SourceMapGeometryPayload = geometry?.ToArray(),
+                SourceMapGeometry = geometry?.Identity,
                 OutputFormat = context.OutputFormat,
                 OutputAdapter = context.OutputAdapter,
                 LogText = log.ToString(),
-                Diagnostics = [new(code, code == "converged" ? "Native passes reached the declared convergence checks." : "No new native artifact is available.")]
+                Diagnostics = navigationLimited
+                    ? [new(code, "Native passes reached the declared convergence checks."), new(NativeNavigationContract.LimitationCode, NativeNavigationContract.LimitationMessage)]
+                    : [new(code, code == "converged" ? "Native passes reached the declared convergence checks." : "No new native artifact is available.")]
             };
             using var timeout = new CancellationTokenSource(factory._plan.JobDeadline);
             using var linked = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _stop.Token, timeout.Token);
@@ -94,10 +100,11 @@ public sealed class NativeCompilationWorkerFactory : ICompilationWorkerFactory
                 bool lua = suite && engine == NativeCompilerEngine.LuaLaTeX;
                 bool dviOutput = factory._plan.DviOutput;
                 bool convertingOutput = dviOutput || xe;
-                bool sourceMapping = factory._plan.EffectivePhaseVersion == NativeSyncTeXContract.Version;
+                bool measuredMapping = NativeNavigationContract.IsMapped(factory._plan.Profile, factory._plan.EffectivePhaseVersion, engine);
+                bool sourceMapping = measuredMapping || factory._plan.EffectivePhaseVersion == NativeSyncTeXContract.Version;
                 bool selectedEntry = suite || dviOutput || sourceMapping || factory._plan.EffectivePhaseVersion == NativeSelectedEntryContract.Version;
                 bool v4 = selectedEntry || factory._plan.EffectivePhaseVersion == NativeAuthoringV4Contract.Version;
-                if (v4 && !(suite ? NativeCompilerSuiteContract.MatchesOptions(context.Snapshot.Selection.Options, engine)
+                if (v4 && !(suite ? NativeCompilerSuiteContract.MatchesOptions(context.Snapshot.Selection.Options, factory._plan.Profile, engine)
                     : dviOutput ? NativeLatexDviContract.MatchesOptions(context.Snapshot.Selection.Options)
                     : sourceMapping ? NativeSyncTeXContract.MatchesOptions(context.Snapshot.Selection.Options)
                     : selectedEntry ? NativeSelectedEntryContract.MatchesOptions(context.Snapshot.Selection.Options)
@@ -240,17 +247,27 @@ public sealed class NativeCompilationWorkerFactory : ICompilationWorkerFactory
                             if (!conversion.Value.Files.TryGetValue(pdfName, out var converted) || converted.Length < 5
                                 || !converted.AsSpan(0, 5).SequenceEqual("%PDF-"u8))
                                 return Finish(CompileOutputStatus.Failed, "missing-converted-pdf");
-                            return Finish(CompileOutputStatus.Succeeded, "converged", converted.ToArray());
+                            return Complete(latex.Value.Reply, converted.ToArray(), conversion.Value.Reply.SourceMapGeometryPayload, dvi);
                         }
                         if (!files.TryGetValue(pdfName, out var pdf) || pdf.Length < 5 || !pdf.AsSpan(0, 5).SequenceEqual("%PDF-"u8)) continue;
                         // Retain only this final LaTeX reply's map. Earlier maps
                         // never enter carried state or survive a failed pass.
-                        var map = latex.Value.Reply.SourceMapPayload;
-                        return Finish(CompileOutputStatus.Succeeded, "converged", pdf.ToArray(), map?.ToArray());
+                        return Complete(latex.Value.Reply, pdf.ToArray(), latex.Value.Reply.SourceMapGeometryPayload, null);
                     }
                 }
                 return Finish(CompileOutputStatus.Failed, "pass-limit-unknown");
 
+                CompileOutputEnvelopeInput Complete(NativePhaseReply finalLatex, byte[] pdf, byte[]? sidecar, byte[]? intermediate)
+                {
+                    var map = finalLatex.SourceMapPayload?.ToArray();
+                    if (!measuredMapping) return Finish(CompileOutputStatus.Succeeded, "converged", pdf, map);
+                    var assembled = NativeNavigationContract.Assemble(engine, finalLatex.Tag, sidecar, map, pdf, intermediate, limits);
+                    // Never let optional native data invalidate a usable PDF, or
+                    // allow measured engines to fall back to guessed zero origins.
+                    return assembled.Artifact is { } geometry
+                        ? Finish(CompileOutputStatus.Succeeded, "converged", pdf, map, geometry)
+                        : Finish(CompileOutputStatus.Succeeded, "converged", pdf, navigationLimited: true);
+                }
                 void ValidateState(IEnumerable<(string Name, int Length)> state)
                 {
                     var entries = state.ToArray();
@@ -355,12 +372,13 @@ public sealed class NativeCompilationWorkerFactory : ICompilationWorkerFactory
                         runtime.Profile == NativeRuntimeProfile.Legacy ? null : runtime.Identity.Hex,
                         suite ? NativeCompilerSuiteContract.EngineId(engine) : dviOutput ? "latex-dvi" : null);
                     var sent = all.OrderBy(x => x.Key, StringComparer.Ordinal).Select(x => new NativeInputFact(x.Key, x.Value.Length, NativeRuntimePackage.Digest(x.Value).Hex)).ToArray();
-                    string component = converting ? "dvi-converter" : suite && tool == "latex" && xe ? "xetex" : suite && tool == "latex" && lua ? "luatex" : "engine";
+                    string component = converting ? runtime.ConverterStemFor(engine) : suite && tool == "latex" && xe ? "xetex" : suite && tool == "latex" && lua ? "luatex" : "engine";
                     var selectedComponent = suite && !converting
-                        ? NativeCompilerComponents.For(runtime.Profile, tool == "bibtex" ? NativeCompilerEngine.PdfLaTeX : engine) : null;
-                    string loaderHash = converting ? runtime.ConverterLoaderHash
+                        ? runtime.ComponentFor(tool == "bibtex" ? NativeCompilerEngine.PdfLaTeX : engine) : null;
+                    if (selectedComponent is not null) component = Path.GetFileNameWithoutExtension(selectedComponent.LoaderName);
+                    string loaderHash = converting ? runtime.ConverterLoaderHashFor(engine)
                         : selectedComponent?.LoaderHash ?? NativeRuntimeProfiles.CompilerLoaderHash(runtime.Profile);
-                    string wasmHash = converting ? runtime.ConverterWasmHash
+                    string wasmHash = converting ? runtime.ConverterWasmHashFor(engine)
                         : selectedComponent?.WasmHash ?? NativeRuntimeProfiles.CompilerWasmHash(runtime.Profile);
                     var toolEntry = converting ? entry!.JobName + (xe ? ".xdv" : ".dvi") : entry is null ? "main.tex" : tool == "latex" ? entry.LatexEntry : entry.BibtexEntry;
                     var request = new NativePhaseRequest(tag, toolEntry, all.Select(x => new NativeFileTransfer(x.Key, x.Value)).ToArray(),
@@ -369,7 +387,7 @@ public sealed class NativeCompilationWorkerFactory : ICompilationWorkerFactory
                         entry?.SelectedPath, resourceNames, generatedNames);
                     var reply = await factory.Operations.RunAsync(() => { lock (_dispatch) { Check(); return factory._transport.ExecuteAsync(request); } }, token).ConfigureAwait(false);
                     Check();
-                    if (reply is { Outcome: "transport-timeout", NativeReturn: null, Files.Length: 0 } && reply.Tag == tag)
+                    if (reply is { Outcome: "transport-timeout", NativeReturn: null, Files.Length: 0, SourceMapPayload: null, SourceMapGeometryPayload: null } && reply.Tag == tag)
                     {
                         factory.Observe(new(tag, sent, reply)); return (reply, new Dictionary<string, byte[]>(StringComparer.Ordinal));
                     }
@@ -379,9 +397,15 @@ public sealed class NativeCompilationWorkerFactory : ICompilationWorkerFactory
                         || reply.Log.Length > request.MaxLogBytes || Encoding.UTF8.GetByteCount(reply.Log) > request.MaxLogBytes) return null;
                     if (reply.Outcome == "native-return" && (!reply.Entered || reply.NativeReturn is null)
                         || reply.Outcome == "wasm-abort" && (!reply.Entered || reply.NativeReturn is not null)) return null;
-                    if (reply.SourceMapPayload is { } mapPayload
-                        && (!sourceMapping || tool != "latex" || reply.Outcome != "native-return" || reply.NativeReturn != 0
-                            || mapPayload.Length is < 1 or > NativeSyncTeXContract.MaxMapBytes)) return null;
+                    bool successful = reply.Outcome == "native-return" && reply.NativeReturn == 0;
+                    bool mapCell = sourceMapping && tool == "latex";
+                    bool geometryCell = measuredMapping && (lua && tool == "latex" || (dviOutput || xe) && converting);
+                    // Unexpected fields are a malformed transport frame. Within
+                    // the new optional cells, bounded bad data is omitted below.
+                    if (reply.SourceMapPayload is not null && (!mapCell || !successful)
+                        || reply.SourceMapGeometryPayload is not null && (!geometryCell || !successful)) return null;
+                    if (!measuredMapping && reply.SourceMapPayload is { } oldMap
+                        && oldMap.Length is < 1 or > NativeSyncTeXContract.MaxMapBytes) return null;
                     long total = 0; var names = new HashSet<string>(StringComparer.Ordinal);
                     foreach (var f in reply.Files)
                     {
@@ -394,9 +418,13 @@ public sealed class NativeCompilationWorkerFactory : ICompilationWorkerFactory
                     var owned = reply.Files.ToDictionary(f => f.Name, f => f.Bytes.ToArray(), StringComparer.Ordinal);
                     if (Encoding.UTF8.GetByteCount(log.ToString()) + Encoding.UTF8.GetByteCount(reply.Log) > limits.MaxLogBytes) throw new NativeResourceLimitException();
                     log.Append(reply.Log);
-                    reply = reply with { SourceMapPayload = reply.SourceMapPayload?.ToArray() };
+                    reply = reply with
+                    {
+                        SourceMapPayload = reply.SourceMapPayload is { Length: > 0 and <= NativeSyncTeXContract.MaxMapBytes } validMap ? validMap.ToArray() : null,
+                        SourceMapGeometryPayload = reply.SourceMapGeometryPayload is { Length: > 0 and <= SourceMapGeometryCodec.MaxBytes } validGeometry ? validGeometry.ToArray() : null
+                    };
                     var observation = reply with { Files = owned.Select(x => new NativeFileTransfer(x.Key, x.Value.ToArray())).ToArray(), Inputs = reply.Inputs.ToArray(),
-                        SourceMapPayload = reply.SourceMapPayload?.ToArray() };
+                        SourceMapPayload = reply.SourceMapPayload?.ToArray(), SourceMapGeometryPayload = reply.SourceMapGeometryPayload?.ToArray() };
                     factory.Observe(new(tag, sent, observation));
                     return (reply, owned);
                 }

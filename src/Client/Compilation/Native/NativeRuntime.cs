@@ -45,13 +45,18 @@ public sealed class NativeRuntimePackage
         NativeRuntimeProfile.LocalCompilerSuite => new("local-compiler-suite", "1", Identity),
         NativeRuntimeProfile.LocalCompilerCompatibility => new("local-compiler-suite", "2", Identity),
         NativeRuntimeProfile.LocalCompilerBibliography => new("local-compiler-suite", "3", Identity),
+        NativeRuntimeProfile.LocalCompilerNavigation => new("local-compiler-navigation", "1", Identity),
+        NativeRuntimeProfile.LocalCompilerXeNavigation => new("local-compiler-xe-navigation", "1", Identity),
         _ => throw new InvalidOperationException("Unknown trusted runtime profile.")
     };
     public CompilationDescriptor Bibtex => new("bibtex", "0.99d", new(NativeRuntimeProfiles.CompilerWasmHash(Profile)));
     public static CompileOutputDescriptor Pdf => new("pdf", "1", null);
     public static CompileOutputDescriptor Adapter => new("native-pdftex", "n11-v1", new(WasmHash));
-    public CompilationDescriptor DviEngine => new("latex-dvi", EngineVersion, new(NativeRuntimeProfiles.CompilerWasmHash(Profile)));
-    public CompileOutputDescriptor DviOutputAdapter => NativeRuntimeProfiles.IsSuite(Profile)
+    public CompilationDescriptor DviEngine => NativeNavigationContract.IsNavigationProfile(Profile)
+        ? new("latex-dvi", "dvi-maps-abi1", new(NativeCompilerNavigationPins.DviWasmHash))
+        : new("latex-dvi", EngineVersion, new(NativeRuntimeProfiles.CompilerWasmHash(Profile)));
+    public CompileOutputDescriptor DviOutputAdapter => NativeNavigationContract.IsNavigationProfile(Profile)
+        ? NativeNavigationContract.Component(NativeCompilerEngine.LaTeXDvi).OutputAdapter : NativeRuntimeProfiles.IsSuite(Profile)
         ? NativeCompilerSuiteContract.DviOutputAdapter : NativeLatexDviContract.OutputAdapter;
     internal string ConverterLoaderHash => NativeRuntimeProfiles.IsSuite(Profile)
         ? NativeCompilerSuitePins.ConverterLoaderHash : NativeRuntimeProfiles.DviConverterLoaderHash;
@@ -79,18 +84,29 @@ public sealed class NativeRuntimePackage
     internal NativeFileTransfer[] CopyConverterResources() => _bytes.Where(x => ConverterResource(x.Key))
         .OrderBy(x => x.Key, StringComparer.Ordinal).Select(x => new NativeFileTransfer(x.Key, x.Value.ToArray())).ToArray();
 
+    internal NativeCompilerComponent ComponentFor(NativeCompilerEngine engine) => Profile == NativeXeNavigationContract.Profile
+        ? NativeXeNavigationContract.Component(engine) : Profile == NativeNavigationContract.Profile
+        ? NativeNavigationContract.Component(engine) : NativeCompilerComponents.For(Profile, engine);
+    internal string ConverterStemFor(NativeCompilerEngine engine) => Profile == NativeXeNavigationContract.Profile && engine == NativeCompilerEngine.XeLaTeX
+        ? "xdv-map-converter" : NativeNavigationContract.IsNavigationProfile(Profile) && engine == NativeCompilerEngine.LaTeXDvi ? "dvi-map-converter" : "dvi-converter";
+    internal string ConverterLoaderHashFor(NativeCompilerEngine engine) => Profile == NativeXeNavigationContract.Profile && engine == NativeCompilerEngine.XeLaTeX
+        ? NativeCompilerXeNavigationPins.ConverterLoaderHash : NativeNavigationContract.IsNavigationProfile(Profile) && engine == NativeCompilerEngine.LaTeXDvi ? NativeCompilerNavigationPins.ConverterLoaderHash : ConverterLoaderHash;
+    internal string ConverterWasmHashFor(NativeCompilerEngine engine) => Profile == NativeXeNavigationContract.Profile && engine == NativeCompilerEngine.XeLaTeX
+        ? NativeCompilerXeNavigationPins.ConverterWasmHash : NativeNavigationContract.IsNavigationProfile(Profile) && engine == NativeCompilerEngine.LaTeXDvi ? NativeCompilerNavigationPins.ConverterWasmHash : ConverterWasmHash;
     public CompilationDescriptor EngineFor(NativeCompilerEngine engine) => engine switch
     {
         NativeCompilerEngine.PdfLaTeX => Engine, NativeCompilerEngine.LaTeXDvi => DviEngine,
-        NativeCompilerEngine.XeLaTeX => new("xelatex", "native-v1", new(NativeCompilerSuitePins.XeWasmHash)),
-        NativeCompilerEngine.LuaLaTeX => new("lualatex", NativeCompilerComponents.For(Profile, engine).EngineVersion, new(NativeCompilerComponents.For(Profile, engine).WasmHash)),
+        NativeCompilerEngine.XeLaTeX => Profile == NativeXeNavigationContract.Profile
+            ? new("xelatex", ComponentFor(engine).EngineVersion, new(ComponentFor(engine).WasmHash))
+            : new("xelatex", "native-v1", new(NativeCompilerSuitePins.XeWasmHash)),
+        NativeCompilerEngine.LuaLaTeX => new("lualatex", ComponentFor(engine).EngineVersion, new(ComponentFor(engine).WasmHash)),
         _ => throw new ArgumentOutOfRangeException(nameof(engine))
     };
     public CompileOutputDescriptor AdapterFor(NativeCompilerEngine engine) => engine switch
     {
         NativeCompilerEngine.PdfLaTeX => OutputAdapter, NativeCompilerEngine.LaTeXDvi => DviOutputAdapter,
-        NativeCompilerEngine.XeLaTeX => NativeCompilerSuiteContract.XeOutputAdapter,
-        NativeCompilerEngine.LuaLaTeX => NativeCompilerComponents.For(Profile, engine).OutputAdapter,
+        NativeCompilerEngine.XeLaTeX => Profile == NativeXeNavigationContract.Profile ? ComponentFor(engine).OutputAdapter : NativeCompilerSuiteContract.XeOutputAdapter,
+        NativeCompilerEngine.LuaLaTeX => ComponentFor(engine).OutputAdapter,
         _ => throw new ArgumentOutOfRangeException(nameof(engine))
     };
     private IEnumerable<KeyValuePair<string, byte[]>> SuiteFiles(NativeCompilerEngine engine)

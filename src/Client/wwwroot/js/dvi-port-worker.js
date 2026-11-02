@@ -2,7 +2,7 @@
 // convergence and revision authority; the native converter owns its virtual IO.
 (() => {
     const emit = self.postMessage.bind(self), encoder = new TextEncoder();
-    let state = 'boot', module = null, loaderSha256 = null, wasmSha256 = null;
+    let state = 'boot', module = null, loaderSha256 = null, wasmSha256 = null, nativeAbi;
     const hash = async bytes => [...new Uint8Array(await crypto.subtle.digest('SHA-256', bytes))]
         .map(value => value.toString(16).padStart(2, '0')).join('');
     const path = name => typeof name === 'string' && name.length > 0 && name.isWellFormed()
@@ -42,7 +42,8 @@
                     })).then(resolve, reject);
                 } catch (error) { reject(error); }
             });
-            if (module._oc_dvi_abi_version() !== 1) throw 0;
+            nativeAbi = module._oc_dvi_abi_version();
+            if (![1, 2, 3].includes(nativeAbi)) throw 0;
             state = 'ready'; self.onmessage = execute; emit({ kind: 'ready' });
         } catch { state = 'done'; emit({ kind: 'boot-error', error: 'ConverterInit' }); }
     };
@@ -50,12 +51,23 @@
         if (state !== 'ready') return;
         state = 'running';
         let entered = false, nativeReturn = null, elapsedMs = null, log = '', inputs = [], files = [], outcome = 'setup-failure';
+        let sourceMapGeometryPayload = null;
         try {
             const tag = frame.tag, resources = frame.runtimeResourceNames;
-            const suite = [5, 6, 7].includes(tag?.profile), xe = suite && tag.version === 8 && tag.engineId === 'xelatex';
-            const dvi = tag?.version === 7 && [4, 5, 6, 7].includes(tag.profile) && tag.engineId === 'latex-dvi';
+            const xeNavigation = tag?.profile === 9 && tag.version === 13 && tag.engineId === 'xelatex';
+            const dviNavigation = [8, 9].includes(tag?.profile) && tag.version === 12 && tag.engineId === 'latex-dvi';
+            const navigation = xeNavigation || dviNavigation;
+            const suite = [5, 6, 7, 8, 9].includes(tag?.profile), xe = xeNavigation || [5, 6, 7, 8].includes(tag?.profile) && tag.version === 8 && tag.engineId === 'xelatex';
+            const dvi = dviNavigation || tag?.version === 7 && [4, 5, 6, 7].includes(tag.profile) && tag.engineId === 'latex-dvi';
             const prefix = '__oop_runtime__/', resourceName = name => suite ? name.slice(prefix.length) : name;
-            if (!(dvi || xe) || tag.tool !== 'dvipdfmx'
+            if (!(dvi || xe) || tag.tool !== 'dvipdfmx' || nativeAbi !== (xeNavigation ? 3 : navigation ? 2 : 1)
+                || [8, 9].includes(tag.profile) && !navigation && (loaderSha256 !== 'dc31543194583c105228dc791040c2f09afd7aa64311ce254b215c9fcd24e54a'
+                    || wasmSha256 !== '52085c656ec2680150519d39ecd8588326e123652d72294e7e19eedd0ec0171c')
+                || navigation && (loaderSha256 !== 'd79dca5dd87ab27ecb7dcc63cc96171092ea6a57c43054e4cabcf39a0f5c8c72'
+                    || wasmSha256 !== (xeNavigation ? '10031d2748be3f6fa6ba5bc99fd4ef597f06f66208c5b9a5aeba60d5dc3aecac' : 'fb6d4da9ee438d66d89a7a0ec36ab7dd243ea2a5c32c4a426179b935e383ca84')
+                    || !Number.isSafeInteger(tag.ordinal) || tag.ordinal < 1 || tag.ordinal > 4294967295
+                    || ['_oc_dvi_geometry_configure','_oc_dvi_geometry_length','_oc_dvi_geometry_copy','_oc_dvi_geometry_data','_oc_dvi_geometry_size']
+                        .some(n => typeof module[n] !== 'function'))
                 || frame.operation !== 'dvipdfmx' || !/^[0-9a-f]{64}$/.test(tag.runtimeIdentity)
                 || !path(frame.mainEntry) || !path(frame.selectedRoot) || !/\.tex$/i.test(frame.selectedRoot)
                 || !Array.isArray(frame.files) || frame.files.length < 1 || frame.files.length > 4096
@@ -89,6 +101,7 @@
                     inputs.push({ name: file.name, length: file.bytes.length, sha256: await hash(file.bytes) });
                 } finally { if (bytes) module._free(bytes); module._free(name); }
             }
+            if (navigation && module._oc_dvi_geometry_configure(1, tag.ordinal) !== 1) throw 0;
             const entry = string(frame.mainEntry);
             let status;
             try {
@@ -109,10 +122,24 @@
                 const pdf = copy(module._oc_dvi_pdf_data(), module._oc_dvi_pdf_size(), frame.maxOutputBytes);
                 if (pdf.length < 5 || new TextDecoder().decode(pdf.subarray(0, 5)) !== '%PDF-') throw 0;
                 files = [{ name: frame.outputs[0], bytes: pdf }];
+                if (navigation) {
+                    let pointer = 0;
+                    try {
+                        const n = module._oc_dvi_geometry_length(tag.ordinal);
+                        if (Number.isSafeInteger(n) && n > 0 && n <= 131072) {
+                            pointer = module._malloc(n);
+                            if (Number.isSafeInteger(pointer) && pointer > 0 && pointer <= module.HEAPU8.length - n
+                                && module._oc_dvi_geometry_copy(tag.ordinal, pointer, n) === n
+                                && pointer <= module.HEAPU8.length - n)
+                                sourceMapGeometryPayload = module.HEAPU8.slice(pointer, pointer + n);
+                        }
+                    } catch { sourceMapGeometryPayload = null; }
+                    finally { if (Number.isSafeInteger(pointer) && pointer > 0 && pointer < module.HEAPU8.length) module._free(pointer); }
+                }
             }
-        } catch (error) { files = []; outcome = error instanceof WebAssembly.RuntimeError ? 'wasm-abort' : entered ? 'protocol-failure' : 'setup-failure'; }
+        } catch (error) { files = []; sourceMapGeometryPayload = null; outcome = error instanceof WebAssembly.RuntimeError ? 'wasm-abort' : entered ? 'protocol-failure' : 'setup-failure'; }
         state = 'done';
         emit({ kind: 'done', reply: { tag: frame.tag, outcome, nativeReturn, entered, log, files, inputs, elapsedMs,
-            heapBytes: module?.HEAPU8?.byteLength ?? null, wasmSha256, loaderSha256, sourceMapPayload: null } });
+            heapBytes: module?.HEAPU8?.byteLength ?? null, wasmSha256, loaderSha256, sourceMapPayload: null, sourceMapGeometryPayload } });
     }
 })();

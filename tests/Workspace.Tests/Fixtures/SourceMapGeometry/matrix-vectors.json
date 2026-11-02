@@ -1,0 +1,150 @@
+{
+  "schemaVersion": 1,
+  "vectors": [
+    {
+      "name": "identity",
+      "synthetic": true,
+      "sidecar": {
+        "schemaVersion": 1,
+        "pages": [
+          {
+            "page": 1,
+            "status": "available",
+            "reason": "none",
+            "writerToPdfRaw": [
+              1,
+              0,
+              0,
+              1,
+              0,
+              0
+            ],
+            "writerPageBoxBp": [
+              -60,
+              -20,
+              300,
+              240
+            ]
+          }
+        ]
+      },
+      "scope": "Codec signs/finite inverse/negative coordinates only; no crop/rotation/native renderer correctness claim"
+    },
+    {
+      "name": "quarter",
+      "synthetic": true,
+      "sidecar": {
+        "schemaVersion": 1,
+        "pages": [
+          {
+            "page": 1,
+            "status": "available",
+            "reason": "none",
+            "writerToPdfRaw": [
+              0,
+              1,
+              -1,
+              0,
+              -22,
+              81
+            ],
+            "writerPageBoxBp": [
+              -60,
+              -20,
+              300,
+              240
+            ]
+          }
+        ]
+      },
+      "scope": "Codec signs/finite inverse/negative coordinates only; no crop/rotation/native renderer correctness claim"
+    },
+    {
+      "name": "half",
+      "synthetic": true,
+      "sidecar": {
+        "schemaVersion": 1,
+        "pages": [
+          {
+            "page": 1,
+            "status": "available",
+            "reason": "none",
+            "writerToPdfRaw": [
+              -1,
+              0,
+              0,
+              -1,
+              301,
+              -40
+            ],
+            "writerPageBoxBp": [
+              -60,
+              -20,
+              300,
+              240
+            ]
+          }
+        ]
+      },
+      "scope": "Codec signs/finite inverse/negative coordinates only; no crop/rotation/native renderer correctness claim"
+    },
+    {
+      "name": "three-quarter",
+      "synthetic": true,
+      "sidecar": {
+        "schemaVersion": 1,
+        "pages": [
+          {
+            "page": 1,
+            "status": "available",
+            "reason": "none",
+            "writerToPdfRaw": [
+              0,
+              -1,
+              1,
+              0,
+              30,
+              22
+            ],
+            "writerPageBoxBp": [
+              -60,
+              -20,
+              300,
+              240
+            ]
+          }
+        ]
+      },
+      "scope": "Codec signs/finite inverse/negative coordinates only; no crop/rotation/native renderer correctness claim"
+    },
+    {
+      "name": "skew-scale",
+      "synthetic": true,
+      "sidecar": {
+        "schemaVersion": 1,
+        "pages": [
+          {
+            "page": 1,
+            "status": "available",
+            "reason": "none",
+            "writerToPdfRaw": [
+              -2,
+              0.5,
+              1,
+              3,
+              -200,
+              100
+            ],
+            "writerPageBoxBp": [
+              -60,
+              -20,
+              300,
+              240
+            ]
+          }
+        ]
+      },
+      "scope": "Codec signs/finite inverse/negative coordinates only; no crop/rotation/native renderer correctness claim"
+    }
+  ]
+}

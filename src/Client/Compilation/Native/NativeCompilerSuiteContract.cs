@@ -15,13 +15,25 @@ public static class NativeCompilerSuiteContract
     { NativeCompilerEngine.PdfLaTeX => 6, NativeCompilerEngine.LaTeXDvi => 7, NativeCompilerEngine.XeLaTeX => 8, NativeCompilerEngine.LuaLaTeX => 9, _ => 0 };
     public static string EngineId(NativeCompilerEngine engine) => engine switch
     { NativeCompilerEngine.PdfLaTeX => "pdftex", NativeCompilerEngine.LaTeXDvi => "latex-dvi", NativeCompilerEngine.XeLaTeX => "xelatex", NativeCompilerEngine.LuaLaTeX => "lualatex", _ => "" };
+    public static int Phase(NativeRuntimeProfile profile, NativeCompilerEngine engine) => !NativeRuntimeProfiles.IsSuite(profile) ? 0
+        : profile == NativeXeNavigationContract.Profile ? engine switch
+        { NativeCompilerEngine.PdfLaTeX => 6, NativeCompilerEngine.LaTeXDvi => 12, NativeCompilerEngine.XeLaTeX => 13, NativeCompilerEngine.LuaLaTeX => 14, _ => 0 }
+        : profile == NativeNavigationContract.Profile ? engine switch
+        { NativeCompilerEngine.PdfLaTeX => 6, NativeCompilerEngine.LaTeXDvi => 12, NativeCompilerEngine.XeLaTeX => 8, NativeCompilerEngine.LuaLaTeX => 14, _ => 0 }
+        : Phase(engine);
+    public static CompilationOption[] SelectionOptions(NativeRuntimeProfile profile, NativeCompilerEngine engine) =>
+        [new("overclone-native-phase-contract", Phase(profile, engine).ToString(System.Globalization.CultureInfo.InvariantCulture))];
+    public static bool MatchesOptions(IEnumerable<CompilationOption> options, NativeRuntimeProfile profile, NativeCompilerEngine engine) =>
+        Phase(profile, engine) != 0 && options.SequenceEqual(SelectionOptions(profile, engine));
+    public static bool MatchesOptions(IEnumerable<CompilationOption> options, NativeRuntimeProfile profile) =>
+        Enum.GetValues<NativeCompilerEngine>().Any(engine => MatchesOptions(options, profile, engine));
     public static CompilationOption[] SelectionOptions(NativeCompilerEngine engine) => [new("overclone-native-phase-contract", Phase(engine).ToString(System.Globalization.CultureInfo.InvariantCulture))];
     public static bool MatchesOptions(IEnumerable<CompilationOption> options, NativeCompilerEngine engine) => Phase(engine) != 0 && options.SequenceEqual(SelectionOptions(engine));
     public static bool MatchesOptions(IEnumerable<CompilationOption> options) => Enum.GetValues<NativeCompilerEngine>().Any(e => MatchesOptions(options, e));
     public static NativeCompilePlan CreatePlan(NativeCompilerEngine engine, int maxLatexPasses = 6, TimeSpan? deadline = null,
         NativeRuntimeProfile profile = NativeRuntimeProfile.LocalCompilerSuite) => new(false,
         maxLatexPasses, deadline ?? JobDeadline, Files + 192, TotalBytes, FileBytes,
-        UseSelectionTools: true, Profile: profile, PhaseProtocolVersion: Phase(engine),
+        UseSelectionTools: true, Profile: profile, PhaseProtocolVersion: Phase(profile, engine),
         DviOutput: engine == NativeCompilerEngine.LaTeXDvi, Engine: engine);
     public static CompileOutputDescriptor DviOutputAdapter => new("native-latex-dvi", "dvi-v1", new(NativeCompilerSuitePins.ConverterWasmHash));
     public static CompileOutputDescriptor XeOutputAdapter => new("native-xetex", "xdv-v1", new(NativeCompilerSuitePins.ConverterWasmHash));

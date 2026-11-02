@@ -5,6 +5,7 @@ using System.Text.Json.Serialization;
 using Client.Workspace.Domain;
 using Client.Workspace.Transfer;
 using Client.RuntimeAssets;
+using Client.Compilation.SyncTeX;
 using Hash = Client.Workspace.Domain.SHA256;
 
 namespace Client.Compilation.History;
@@ -17,28 +18,40 @@ internal static class HistoricalArtifactCodec
         CompilationSnapshotIdentity OriginalSnapshot, long OriginalWorkerEpoch, Hash InputDigest,
         CompilationSelectionInput Selection, ProjectFile[] Files, long PdfLength, Hash PdfHash,
         CompileOutputDescriptor Format, CompileOutputDescriptor Adapter, CompileSourceMappingIdentity? Mapping,
-        Hash ContentDigest, RevisionId? OriginalRequestedRevision);
+        Hash ContentDigest, RevisionId? OriginalRequestedRevision)
+    {
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public int? ArtifactVersion { get; init; }
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public SourceMapGeometryIdentity? SourceMapGeometry { get; init; }
+    }
     internal sealed record Validated(Metadata Metadata, CompilationSelection Selection, ImmutableArray<ProjectFile> Files, CompileArtifactContentIdentity Identity);
-    internal static Metadata FromAccepted(AcceptedCompileOutput accepted, RevisionId? target) => new(1, "HistoricalOnly", accepted.SnapshotIdentity.ProjectId,
+    internal static Metadata FromAccepted(AcceptedCompileOutput accepted, RevisionId? target) => new(accepted.ContentIdentity!.ArtifactVersion, "HistoricalOnly", accepted.SnapshotIdentity.ProjectId,
         accepted.RequestId, accepted.SnapshotIdentity, accepted.WorkerEpoch, accepted.InputContentDigest,
         new(accepted.Snapshot.Selection.MainFileId, accepted.Snapshot.Selection.Engine, accepted.Snapshot.Selection.Bundles,
             accepted.Snapshot.Selection.Tools, accepted.Snapshot.Selection.Options),
         accepted.Snapshot.Files.Select(f => new ProjectFile(f.FileId, f.RelativePath, f.MediaKind, f.Hash, f.ByteLength, f.HasBom)).ToArray(),
-        accepted.OutputLength, accepted.OutputHash!.Value, accepted.OutputFormat!, accepted.OutputAdapter!, accepted.SourceMapping, accepted.ContentIdentity!.Digest, target);
+        accepted.OutputLength, accepted.OutputHash!.Value, accepted.OutputFormat!, accepted.OutputAdapter!, accepted.SourceMapping, accepted.ContentIdentity!.Digest, target)
+        { ArtifactVersion = accepted.ContentIdentity!.ArtifactVersion == 2 ? 2 : null, SourceMapGeometry = accepted.SourceMapGeometry };
     internal static Validated Validate(Metadata value, ProjectId expectedProject, CompileOutputDescriptor format, CompileOutputDescriptor adapter, ArtifactHistoryBudget budget,
         IReadOnlyCollection<CompileOutputDescriptor>? additionalAdapters = null)
     {
         void Check([DoesNotReturnIf(false)] bool ok) { if (!ok) throw new RuntimeAssetIoException(RuntimeAssetStatus.Corrupt); }
-        Check(value is not null && value.Version == 1 && value.Classification == "HistoricalOnly" && value.ProjectId == expectedProject && expectedProject.Value != Guid.Empty);
-        var s = value!.OriginalSnapshot;
+        Check(value is not null && value.Version is 1 or 2 && value.Classification == "HistoricalOnly" && value.ProjectId == expectedProject && expectedProject.Value != Guid.Empty);
+        Check(value!.Version == 1 ? value.ArtifactVersion is null && value.SourceMapGeometry is null
+            : value.ArtifactVersion == 2 && SourceMapGeometryCodec.IsValidIdentity(value.SourceMapGeometry)
+                && value.Mapping is { ByteLength: > 0 and <= CompileOutputBudget.SourceMapPayloadByteLimit }
+                && value.PdfLength > 0);
+        var s = value.OriginalSnapshot;
         Check(s is not null && s.ProjectId == expectedProject && s.CaptureId != Guid.Empty && s.ServiceId != Guid.Empty && s.SessionId != Guid.Empty
             && s.WorkingGeneration >= 0 && s.LocalWorkspaceEpoch >= 0 && s.SelectionVersion >= 0 && (s.BaseHeadRevisionId is null || s.BaseHeadRevisionId.Value.Value != Guid.Empty));
         Check(value.OriginalRequest.Value != Guid.Empty && value.OriginalWorkerEpoch > 0 && value.PdfLength >= 0 && value.PdfLength <= budget.MaxPdfBytes
             && CompilationCanonical.ValidHash(value.InputDigest) && CompilationCanonical.ValidHash(value.PdfHash) && CompilationCanonical.ValidHash(value.ContentDigest)
             && value.Format == format && (value.Adapter == adapter || additionalAdapters?.Contains(value.Adapter) == true)
             && (value.OriginalRequestedRevision is null || value.OriginalRequestedRevision.Value.Value != Guid.Empty));
-        using (var descriptors = new CompileArtifactCanonical(CompileArtifactCanonical.MetadataDomain, budget.MaxMetadataBytes))
-        { descriptors.Text(descriptors.Domain); descriptors.Descriptor(value.Format); descriptors.Descriptor(value.Adapter); descriptors.Mapping(value.Mapping); }
+        using (var descriptors = new CompileArtifactCanonical(value.Version == 2 ? CompileArtifactCanonical.MetadataDomainV2 : CompileArtifactCanonical.MetadataDomain, budget.MaxMetadataBytes))
+        {
+            descriptors.Text(descriptors.Domain); descriptors.Descriptor(value.Format); descriptors.Descriptor(value.Adapter); descriptors.Mapping(value.Mapping);
+            if (value.SourceMapGeometry is not null) descriptors.Geometry(value.SourceMapGeometry);
+        }
         var selection = CompilationSelection.Create(value.Selection, budget.Input.MaxMetadataBytes).Selection; Check(selection is not null);
         Check(value.Files is not null && value.Files.Length > 0 && value.Files.Length <= budget.Input.MaxFiles);
         long total = 0; var ids = new HashSet<FileId>();
@@ -66,7 +79,7 @@ internal static class HistoricalArtifactCodec
             digest = canonical.Finish();
         }
         Check(digest == value.InputDigest);
-        var identity = CompileOutputEnvelope.ComputeIdentity(digest, value.PdfLength, value.PdfHash, value.Format, value.Adapter, value.Mapping);
+        var identity = CompileOutputEnvelope.ComputeIdentity(digest, value.PdfLength, value.PdfHash, value.Format, value.Adapter, value.Mapping, value.SourceMapGeometry);
         Check(identity.Digest == value.ContentDigest);
         return new(value, selection!, ordered, identity);
     }

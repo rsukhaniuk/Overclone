@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 using System.Security.Cryptography;
 using Client.Workspace.Domain;
+using Client.Compilation.SyncTeX;
 using ContentHash = Client.Workspace.Domain.SHA256;
 
 namespace Client.Compilation;
@@ -22,18 +23,19 @@ public sealed class CompileOutputEnvelope
 {
     private readonly byte[]? _payload; // Owned. Null for non-success. Never exposed as an array.
     private readonly byte[]? _sourceMapPayload; // Optional opaque owned bytes; never public on an envelope.
+    private readonly SourceMapGeometryArtifact? _geometry; // privately copied/validated wrapper, never live authority
 
     private CompileOutputEnvelope(CompileRequestId echoedRequestId, CompilationSnapshotIdentity echoedSnapshotIdentity,
         ContentHash echoedInputDigest, long echoedWorkerEpoch, CompileOutputStatus status,
         CompileOutputDescriptor? outputFormat, CompileOutputDescriptor? outputAdapter,
         CompileSourceMappingIdentity? sourceMapping, ImmutableArray<CompileDiagnosticEntry> diagnostics,
-        string logText, byte[]? payload, byte[]? sourceMapPayload, long outputLength, ContentHash? outputHash,
+        string logText, byte[]? payload, byte[]? sourceMapPayload, SourceMapGeometryArtifact? geometry, long outputLength, ContentHash? outputHash,
         CompileArtifactContentIdentity? contentIdentity, long metadataByteLength)
     {
         EchoedRequestId = echoedRequestId; EchoedSnapshotIdentity = echoedSnapshotIdentity; EchoedInputContentDigest = echoedInputDigest;
         EchoedWorkerEpoch = echoedWorkerEpoch; Status = status; OutputFormat = outputFormat; OutputAdapter = outputAdapter;
         SourceMapping = sourceMapping; Diagnostics = diagnostics; LogText = logText; _payload = payload;
-        _sourceMapPayload = sourceMapPayload;
+        _sourceMapPayload = sourceMapPayload; _geometry = geometry;
         OutputLength = outputLength; OutputHash = outputHash; ContentIdentity = contentIdentity; MetadataByteLength = metadataByteLength;
     }
 
@@ -45,6 +47,7 @@ public sealed class CompileOutputEnvelope
     public CompileOutputDescriptor? OutputFormat { get; }
     public CompileOutputDescriptor? OutputAdapter { get; }
     public CompileSourceMappingIdentity? SourceMapping { get; }
+    public SourceMapGeometryIdentity? SourceMapGeometry => _geometry?.Identity;
     public ImmutableArray<CompileDiagnosticEntry> Diagnostics { get; }
     public string LogText { get; }
     public long OutputLength { get; }
@@ -68,6 +71,9 @@ public sealed class CompileOutputEnvelope
         var payload = input.Payload;
         var sourceMapPayload = input.SourceMapPayload;
         var mapping = input.SourceMapping;
+        var geometryPayload = input.SourceMapGeometryPayload;
+        var geometryClaim = input.SourceMapGeometry;
+        bool geometryPresent = geometryPayload is not null || geometryClaim is not null;
         if (input.RequestId.Value == Guid.Empty) return new(null, CompileOutputIssue.RequestMismatch);
         if (input.WorkerEpoch <= 0) return new(null, CompileOutputIssue.EpochMismatch);
         if (!CompilationCanonical.ValidHash(input.InputContentDigest)) return new(null, CompileOutputIssue.DigestMismatch);
@@ -107,6 +113,21 @@ public sealed class CompileOutputEnvelope
             if (!CompilationCanonical.ValidHash(mapping.Hash)) return new(null, CompileOutputIssue.InvalidHash);
         }
 
+        // Geometry presence is not an identity-only or empty-payload shortcut.
+        // Independent caps win before metadata enumeration, copying or hashing.
+        if (status != CompileOutputStatus.Succeeded && geometryPresent)
+            return new(null, CompileOutputIssue.PayloadOnNonSuccess);
+        if (geometryPayload is not null && geometryPayload.Length > budget.MaxSourceMapGeometryBytes)
+            return new(null, CompileOutputIssue.OverSourceMapGeometryBudget);
+        if (geometryPresent)
+        {
+            if (geometryPayload is not { Length: > 0 } || payload is not { Length: > 0 }
+                || sourceMapPayload is not { Length: > 0 } || mapping is null)
+                return new(null, CompileOutputIssue.InvalidSourceMapGeometry);
+            if (!SourceMapGeometryCodec.IsValidIdentity(geometryClaim) || geometryClaim!.ByteLength != geometryPayload.LongLength)
+                return new(null, CompileOutputIssue.SourceMapGeometryMismatch);
+        }
+
         // Phase B: expensive validation/ownership. Descriptors, mapping, diagnostics
         // and log are validated+owned under the aggregate metadata budget; per-field
         // byte budgets are enforced before the byte scan. Payload is copied before
@@ -117,17 +138,19 @@ public sealed class CompileOutputEnvelope
         ContentHash? outputHash = null;
         byte[]? owned = null;
         byte[]? ownedSourceMap = null;
+        SourceMapGeometryArtifact? ownedGeometry = null;
         CompileArtifactContentIdentity? identity = null;
         ImmutableArray<CompileDiagnosticEntry> diagnostics;
         string logText;
         long metadataLength;
         try
         {
-            using var measure = new CompileArtifactCanonical(CompileArtifactCanonical.MetadataDomain, budget.MaxMetadataBytes);
+            using var measure = new CompileArtifactCanonical(geometryPresent ? CompileArtifactCanonical.MetadataDomainV2 : CompileArtifactCanonical.MetadataDomain, budget.MaxMetadataBytes);
             measure.Text(measure.Domain); // domain is part of the metadata encoding
             measure.Descriptor(format); measure.Descriptor(adapter); measure.Mapping(mapping);
             diagnostics = measure.Diagnostics(input.Diagnostics, budget.MaxDiagnostics, budget.MaxDiagnosticCodeBytes, budget.MaxDiagnosticMessageBytes);
             measure.LogText(input.LogText ?? "", budget.MaxLogBytes);
+            if (geometryPresent) measure.Geometry(geometryClaim!); // exact V2 suffix, no V1 presence flag
             metadataLength = measure.Length;
             logText = input.LogText ?? "";
 
@@ -143,9 +166,18 @@ public sealed class CompileOutputEnvelope
                     var mapHash = ContentHash.FromBytes(System.Security.Cryptography.SHA256.HashData(ownedSourceMap));
                     if (mapHash != mapping!.Hash) return new(null, CompileOutputIssue.SourceMapHashMismatch);
                 }
-                // Existing mapping identity already binds these bytes into content
-                // identity. Do NOT encode presence again or change legacy goldens.
-                identity = ComputeIdentity(input.InputContentDigest, outputLength, outputHash.Value, format, adapter, mapping);
+                if (geometryPresent)
+                {
+                    var parsed = SourceMapGeometryCodec.ParseWrapper(geometryPayload);
+                    if (parsed.Artifact is not { } artifact) return new(null, CompileOutputIssue.InvalidSourceMapGeometry);
+                    if (artifact.Identity != geometryClaim || artifact.Geometry.PdfSha256 != outputHash.Value.Hex
+                        || artifact.Geometry.MapSha256 != mapping!.Hash.Hex)
+                        return new(null, CompileOutputIssue.SourceMapGeometryMismatch);
+                    ownedGeometry = artifact; // parser owns independent bytes before validate/hash
+                }
+                // Mapping presence is never encoded again. Geometry adds only
+                // the versioned domain and explicit length/hash suffix.
+                identity = ComputeIdentity(input.InputContentDigest, outputLength, outputHash.Value, format, adapter, mapping, ownedGeometry?.Identity);
             }
             else
             {
@@ -156,7 +188,7 @@ public sealed class CompileOutputEnvelope
         catch (OutOfMemoryException) { throw; }
 
         return new(new(input.RequestId, input.SnapshotIdentity, input.InputContentDigest, input.WorkerEpoch, status,
-            format, adapter, mapping, diagnostics, logText, owned, ownedSourceMap, outputLength, outputHash, identity, metadataLength), null);
+            format, adapter, mapping, diagnostics, logText, owned, ownedSourceMap, ownedGeometry, outputLength, outputHash, identity, metadataLength), null);
     }
 
     /// <summary>Read-only view of the privately owned payload. The backing array
@@ -168,6 +200,9 @@ public sealed class CompileOutputEnvelope
     internal bool HasSourceMapPayload => _sourceMapPayload is not null;
     internal ReadOnlySpan<byte> SourceMapPayloadSpan => _sourceMapPayload;
     internal byte[]? SourceMapPayloadArray => _sourceMapPayload?.ToArray();
+    internal bool HasSourceMapGeometry => _geometry is not null;
+    internal ReadOnlySpan<byte> SourceMapGeometrySpan => _geometry is { } g ? g.BytesSpan : ReadOnlySpan<byte>.Empty;
+    internal byte[]? SourceMapGeometryArray => _geometry?.ToArray();
 
     public CompileOutputAcceptance TryAccept(CompileRequestContext expected)
     {
@@ -184,9 +219,10 @@ public sealed class CompileOutputEnvelope
     }
 
     internal static CompileArtifactContentIdentity ComputeIdentity(ContentHash inputDigest, long outputLength,
-        ContentHash outputHash, CompileOutputDescriptor? format, CompileOutputDescriptor? adapter, CompileSourceMappingIdentity? mapping)
+        ContentHash outputHash, CompileOutputDescriptor? format, CompileOutputDescriptor? adapter, CompileSourceMappingIdentity? mapping,
+        SourceMapGeometryIdentity? geometry = null)
     {
-        using var canonical = new CompileArtifactCanonical(CompileArtifactCanonical.ArtifactDomain, Array.MaxLength, hash: true);
+        using var canonical = new CompileArtifactCanonical(geometry is null ? CompileArtifactCanonical.ArtifactDomain : CompileArtifactCanonical.ArtifactDomainV2, Array.MaxLength, hash: true);
         canonical.Text(canonical.Domain);
         canonical.Text(inputDigest.Hex);
         canonical.Int64(outputLength);
@@ -194,7 +230,9 @@ public sealed class CompileOutputEnvelope
         canonical.Descriptor(format);
         canonical.Descriptor(adapter);
         canonical.Mapping(mapping);
-        return new(canonical.Finish(), inputDigest, outputLength, outputHash, format, adapter, mapping);
+        if (geometry is not null) canonical.Geometry(geometry);
+        return new(canonical.Finish(), inputDigest, outputLength, outputHash, format, adapter, mapping)
+            { ArtifactVersion = geometry is null ? 1 : 2, SourceMapGeometry = geometry };
     }
 
     private static bool ValidateSnapshotIdentity(CompilationSnapshotIdentity identity)
@@ -235,6 +273,11 @@ public sealed class AcceptedCompileOutput
     public CompileOutputDescriptor? OutputFormat => _envelope.OutputFormat;
     public CompileOutputDescriptor? OutputAdapter => _envelope.OutputAdapter;
     public CompileSourceMappingIdentity? SourceMapping => _envelope.SourceMapping;
+    /// <summary>Owned wrapper DATA identity only; not a current geometry/query ticket.</summary>
+    public SourceMapGeometryIdentity? SourceMapGeometry => _envelope.SourceMapGeometry;
+    public bool HasSourceMapGeometry => _envelope.HasSourceMapGeometry;
+    public ReadOnlySpan<byte> SourceMapGeometryBytes => _envelope.SourceMapGeometrySpan;
+    public byte[]? ToSourceMapGeometryArray() => _envelope.SourceMapGeometryArray;
     public ImmutableArray<CompileDiagnosticEntry> Diagnostics => _envelope.Diagnostics;
     public string LogText => _envelope.LogText;
     public long MetadataByteLength => _envelope.MetadataByteLength;

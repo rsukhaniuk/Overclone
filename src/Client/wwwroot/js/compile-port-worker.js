@@ -1,6 +1,7 @@
 // Pinned loader/VFS/public entry-ABI glue; no vendor engine patch.
 /* global FS, MEMFS, PATH, HEAPU8, HEAPU32, doWritev, cwrap, prepareExecutionContext, _compileLaTeX, _compileBibtex */
 const emit=self.postMessage.bind(self);let phase='boot',lookups=[],wasmSha256=null,loaderSha256=null;
+let dviModule=null,dviWriteGuard=null;
 const sha=async bytes=>[...new Uint8Array(await crypto.subtle.digest('SHA-256',bytes))].map(v=>v.toString(16).padStart(2,'0')).join('');
 self.postMessage=m=>{if(!m.cmd&&m.result==='ok')emit({kind:'ready'});};
 self.onmessage=async({data:d})=>{
@@ -8,13 +9,29 @@ self.onmessage=async({data:d})=>{
   if(d.operation!=='boot')throw new Error('boot');
   wasmSha256=await sha(d.wasm);loaderSha256=await sha(d.loader);
   self.fetch=async url=>{if(phase==='boot'&&String(url).endsWith('swiftlatexpdftex.wasm'))return new Response(d.wasm,{headers:{'Content-Type':'application/wasm'}});throw new Error('no loader request available');};
-  // Existing accepted local missing-response pattern, never a network retry.
   self.XMLHttpRequest=class{constructor(){this.status=301;this.response=null;}open(_method,url){this.url=String(url);}send(){if(lookups.length>=128)throw new Error('lookup log cap');lookups.push(this.url);}getResponseHeader(){return null;}};
-  importScripts(d.loaderUrl);console.log=()=>{};console.error=()=>{};self.onmessage=execute;
+  importScripts(d.loaderUrl);console.log=()=>{};console.error=()=>{};
+  if(typeof self.createDviMaps==='function'){
+   if(loaderSha256!=='980bcf858794dc4679124df6fbf76a503d3020d96a7081537e9d1a4a5e7bb6f1'
+    ||wasmSha256!=='6ad6db6625d28bdfaf83eba48b44a4202582fd84118c1e8ece3857535722a1b9')throw new Error('DVI module identity');
+   self.fetch=()=>Promise.reject(new Error('Compiler network unavailable'));
+   dviModule=await new Promise((resolve,reject)=>{
+    Promise.resolve(self.createDviMaps({noInitialRun:true,print:captureDviLog,printErr:captureDviLog,
+     instantiateWasm(imports,receive){
+      const seen=new Set();for(const values of Object.values(imports))if(values&&typeof values.fd_write==='function'&&!seen.has(values)){
+       seen.add(values);const original=values.fd_write;
+       values.fd_write=(fd,iov,count,pnum)=>dviWriteGuard?dviWriteGuard(fd,iov,count,pnum,original):original(fd,iov,count,pnum);
+      }
+      WebAssembly.instantiate(d.wasm,imports).then(r=>receive(r.instance)).catch(reject);return {};
+     }})).then(resolve,reject);
+   });
+   if(dviModule._oc_dvi_maps_abi()!==1||dviModule._oc_synctex_abi()!==65536
+    ||['_oc_mem_configure','_oc_synctex_length','_oc_synctex_copy','_oc_synctex_status'].some(n=>typeof dviModule[n]!=='function'))throw new Error('DVI ABI');
+   self.onmessage=executeDvi;emit({kind:'ready'});
+  }else self.onmessage=execute;
  }catch(e){emit({kind:'boot-error',error:String(e)});}
 };
-// SHA-256 of exact Function#toString literals in the unchanged pinned loader.
-// Validate first, then patch shared tables IN PLACE (not just MEMFS.stream_ops).
+// Pin function bytes before patching shared VFS tables in place.
 const nativeVfsShapes={
  'createNode':'27d22ff56cb97aef4c0876f468311a58b78c56dde6c39ba46740d63ca2d6579b',
  'getFileDataAsTypedArray':'5db9a9766e823a9bab37c1224476bccf9836bd1ddd2a359b7294dd046036804e',
@@ -50,7 +67,7 @@ const nativeVfsShapes={
  'FS.createDataFile':'0aa3bd705398912b818dc1d64ab4585265b7827072bd2b66c0db99715a3eb11b',
  'FS.createLazyFile':'e03412f5831199bccd5931a12195045461b6ae4c20982974092ca99d00a88387'
 };
-async function installNativeVfsBudget(fs,mem,maximum,maximumLog=65536,nodeLimit=64){
+async function installNativeVfsBudget(fs,mem,maximum,maximumLog=65536,nodeLimit=64,adapter=null){
  const shape=(name='')=>{throw new Error('unsupported pinned VFS shape'+(name?': '+name:''));};
  const isBytes=value=>value instanceof Uint8Array||value instanceof Int8Array;
  if(!Number.isSafeInteger(maximum)||maximum<1||maximum>8388608||!Number.isSafeInteger(maximumLog)||maximumLog<0||maximumLog>8388608||![64,128].includes(nodeLimit))shape();
@@ -58,16 +75,19 @@ async function installNativeVfsBudget(fs,mem,maximum,maximumLog=65536,nodeLimit=
  const original={},root=fs?.root,ops=mem?.ops_table;
  if(!root||!ops||!fs.streams||fs.streams.length>4096||fs.allocate!==undefined)shape();
  for(const key of ['lookupPath','isFile','isDir','isLink','isChrdev','write','open','doSetAttr','doTruncate','mknod','rename','unlink','rmdir','mmap','msync'])if(typeof fs[key]!=='function')shape();
- if(typeof doWritev!=='function'||await sha(new TextEncoder().encode(Function.prototype.toString.call(doWritev)))!=='4adb7d836259f016e678f24ae02e9f10428ed78ff985401a4938f1ad5bc7b447')shape();
- const originalWritev=doWritev;
+ if(!adapter&&(typeof doWritev!=='function'||await sha(new TextEncoder().encode(Function.prototype.toString.call(doWritev)))!=='4adb7d836259f016e678f24ae02e9f10428ed78ff985401a4938f1ad5bc7b447'))shape();
+ const originalWritev=adapter?null:doWritev,shapes=[];
+ const heap=()=>adapter?adapter.heap():HEAPU8;
  for(const [path,digest] of Object.entries(nativeVfsShapes)){
   const keys=path.split('.');let object=path.startsWith('FS.')?fs:mem;
   if(keys[0]==='FS')keys.shift();
   for(const key of keys.slice(0,-1))object=object?.[key];
   const fn=object?.[keys.at(-1)];if(typeof fn!=='function')shape();
-  const text=Function.prototype.toString.call(fn);if(text.length>8192||await sha(new TextEncoder().encode(text))!==digest)shape(path);
-  original[path]=fn;
+  const text=Function.prototype.toString.call(fn),actual=await sha(new TextEncoder().encode(text));
+  if(text.length>8192||!adapter&&actual!==digest)shape(path);
+  shapes.push(path+'\t'+actual);original[path]=fn;
  }
+ if(adapter&&await sha(new TextEncoder().encode(shapes.join('\n')))!=='715ac9c688cf689885e12bec948aafb8d10dd2cad9f1762125d5392aaf721774')shape('DVI aggregate');
  const remember=(table,keys,source)=>{
   if(!table||Object.keys(table).length!==keys.length)shape();
   for(const key of keys)if(table[key]!==source[key]||!Object.getOwnPropertyDescriptor(table,key)?.writable)shape();
@@ -151,7 +171,7 @@ async function installNativeVfsBudget(fs,mem,maximum,maximumLog=65536,nodeLimit=
    const node=stream.node;regular(node);bytesOnly(buffer);uint(offset);uint(length);uint(position);
    if(add(offset,length)>buffer.length)fail('byte range');
    if(!length)return original['stream_ops.write'](stream,buffer,offset,length,position,canOwn);
-   const own=!!canOwn&&buffer.buffer!==HEAPU8.buffer,end=add(position,length);
+   const own=!!canOwn&&buffer.buffer!==heap().buffer,end=add(position,length);
    const direct=own||(!node.usedBytes&&!position),size=direct?length:Math.max(node.usedBytes,end);
    const p=plan(node,size),bytes=own?buffer.buffer.byteLength:direct?length:expanded(node,end);
    capacity(bytes);commit(p);
@@ -184,7 +204,7 @@ async function installNativeVfsBudget(fs,mem,maximum,maximumLog=65536,nodeLimit=
   const node=fs.lookupPath(path,{follow:!(flags&131072),noent_okay:true}).node;
   if(node)regular(node);else{project(fs.lookupPath(path,{parent:true}).node);if(newNodes>=nodeLimit)fail('node count');}
   const used=node&&!(flags&512)?node.usedBytes:0,position=flags&1024?used:0,length=data.length;
-  const own=!!options.canOwn&&data.buffer!==HEAPU8.buffer,direct=own||(!used&&!position);
+  const own=!!options.canOwn&&data.buffer!==heap().buffer,direct=own||(!used&&!position);
   const size=direct?length:Math.max(used,add(position,length));
   if(node)plan(node,size);else logicalPlan({base:0,high:0},size);
   capacity(!length?0:own?data.buffer.byteLength:direct?length:expanded(node,add(position,length)));
@@ -199,7 +219,8 @@ async function installNativeVfsBudget(fs,mem,maximum,maximumLog=65536,nodeLimit=
  fs.createLazyFile=()=>fail('lazy file unsupported after initialization');
  // The pinned fd_write import calls this binding dynamically. For >1 vector it
  // allocates a staging buffer BEFORE FS.write, so MEMFS-only hooks are insufficient.
- doWritev=(stream,iov,count,offset)=>{
+ const guardedWritev=(stream,iov,count,offset,invoke)=>{
+  const HEAPU8=heap(),HEAPU32=new Uint32Array(HEAPU8.buffer);
   uint(iov);uint(count);if(count>1024||iov%4||add(iov,8*count)>HEAPU32.byteLength)fail('vector table');
   let total=0;
   for(let i=0;i<count;i++){
@@ -217,24 +238,90 @@ async function installNativeVfsBudget(fs,mem,maximum,maximumLog=65536,nodeLimit=
     deviceCopyBytes+=total;
    }
   }
-  return originalWritev(stream,iov,count,offset);
+  return invoke?invoke():originalWritev(stream,iov,count,offset);
  };
+ if(adapter)adapter.install(guardedWritev);else doWritev=guardedWritev;
  return{get failed(){return failed;},snapshot:()=>({maximum,nodeLimit,baselineBytes,baselineCapacity,growthBytes,backingBytes,copyBytes,deviceCopyBytes,newNodes,nodeCount:records.size,failed})};
+}
+// Modular DVI reuses pinned VFS and pre-allocation writev accounting.
+let dviLog='',dviLogBytes=0,dviMaxLog=0,dviLogLimited=false;
+function captureDviLog(value){
+ const text=String(value)+'\n',n=new TextEncoder().encode(text).length;
+ if(n>dviMaxLog-dviLogBytes){dviLogLimited=true;throw new Error('DVI log quota');}
+ dviLog+=text;dviLogBytes+=n;
+}
+async function executeDvi({data:d}){
+ if(phase!=='boot')return;phase='running';
+ const m=dviModule,F=m.FS;let entered=false,nativeReturn=null,elapsedMs=null,budget=null,sourceMapPayload=null;
+ let files=[],inputs=[],outcome='setup-failure';
+ try{
+  const t=d.tag;
+  if(![8,9].includes(t?.profile)||t.version!==12||t.engineId!=='latex-dvi'||t.tool!=='latex'||d.operation!=='latex'
+   ||!Number.isSafeInteger(t.ordinal)||t.ordinal<1||t.ordinal>4294967295
+   ||!(/^[0-9a-f]{64}$/.test(t.runtimeIdentity)))throw new Error('DVI frame');
+  validateAuthoringV4Frame(d);
+  if(!Array.isArray(d.runtimeResourceNames)||!Array.isArray(d.generatedInputNames)
+   ||d.runtimeResourceNames.length>8192||d.generatedInputNames.length>128)throw new Error('DVI resources');
+  const resources=new Set(d.runtimeResourceNames),generated=new Set(d.generatedInputNames),prefix='__oop_runtime__/';
+  if(resources.size!==d.runtimeResourceNames.length||generated.size!==d.generatedInputNames.length
+   ||[...resources].some(n=>!n.startsWith(prefix)||!d.files.some(f=>f.name===n))
+   ||[...generated].some(n=>resources.has(n)||!d.files.some(f=>f.name===n))||resources.has(d.selectedRoot)||generated.has(d.selectedRoot))throw new Error('DVI projection');
+  let resourceBytes=0,workBytes=0,captured=0;
+  for(const f of d.files){
+   if(resources.has(f.name)){if(f.bytes.length>67108864)throw 0;resourceBytes+=f.bytes.length;}
+   else{if(f.name.startsWith(prefix)||f.bytes.length>8388608)throw 0;workBytes+=f.bytes.length;if(!generated.has(f.name))captured++;}
+  }
+  if(resourceBytes>167772160||workBytes>33554432||resourceBytes+workBytes>167772160||captured>64)throw new Error('DVI input quota');
+  dviLog='';dviLogBytes=0;dviMaxLog=d.maxLogBytes;dviLogLimited=false;
+  F.mkdir('/tex');F.mkdir('/work');F.chdir('/work');
+  for(const f of d.files){
+   const target=resources.has(f.name)?'/tex/'+f.name.slice(prefix.length):'/work/'+f.name;
+   F.mkdirTree(target.slice(0,target.lastIndexOf('/')));F.writeFile(target,f.bytes);
+   inputs.push({name:f.name,length:f.bytes.length,sha256:await sha(f.bytes)});
+  }
+  budget=await installNativeVfsBudget(F,m.MEMFS,d.maxOutputBytes,d.maxLogBytes,128,{
+   heap:()=>m.HEAPU8,
+   install:guard=>{dviWriteGuard=(fd,iov,count,pnum,original)=>guard(F.getStreamChecked(fd),iov,count,undefined,()=>original(fd,iov,count,pnum));}
+  });
+  if(m._oc_mem_configure(1,1048575,t.ordinal)!==1||m.ccall('setMainEntry','number',['string'],[d.mainEntry])!==0)throw new Error('DVI configuration');
+  emit({kind:'entered'});entered=true;const start=performance.now();nativeReturn=m._compileLaTeX();elapsedMs=performance.now()-start;
+  if(!Number.isInteger(nativeReturn)||budget.failed||dviLogLimited)throw new Error('DVI native/quota');
+  let total=0;
+  for(const name of d.outputs){const p='/work/'+name;if(!F.analyzePath(p).exists)continue;const s=F.stat(p);
+   if(!F.isFile(s.mode)||s.size>d.maxOutputBytes||s.size>2*d.maxOutputBytes-total)throw new Error('DVI output quota');
+   total+=s.size;files.push({name,bytes:F.readFile(p)});
+  }
+  if(nativeReturn===0&&files.some(f=>f.name.endsWith('.dvi')&&f.bytes.length>0)){
+   let pointer=0;
+   try{
+    const n=m._oc_synctex_length(t.ordinal);
+    if(Number.isSafeInteger(n)&&n>0&&n<=1048575){
+     pointer=m._malloc(n);
+     if(Number.isSafeInteger(pointer)&&pointer>0&&pointer<=m.HEAPU8.length-n
+      &&m._oc_synctex_copy(t.ordinal,pointer,n)===n&&pointer<=m.HEAPU8.length-n)sourceMapPayload=m.HEAPU8.slice(pointer,pointer+n);
+    }
+   }catch{sourceMapPayload=null;}finally{if(Number.isSafeInteger(pointer)&&pointer>0&&pointer<m.HEAPU8.length)m._free(pointer);}
+  }
+  outcome='native-return';
+ }catch(error){files=[];sourceMapPayload=null;outcome=budget?.failed||dviLogLimited?'resource-limit':error instanceof WebAssembly.RuntimeError?'wasm-abort':entered?'protocol-failure':'setup-failure';}
+ phase='done';
+ emit({kind:'done',reply:{tag:d.tag,outcome,nativeReturn,entered,log:dviLog,files,inputs,elapsedMs,
+  heapBytes:m.HEAPU8.byteLength,wasmSha256,loaderSha256,sourceMapPayload}});
 }
 // Defensive FFI only: C# owns declared selection/state, passes and convergence.
 function validateAuthoringV4Frame(d){
  const bad=()=>{throw new Error('v4 FFI namespace/frame');};
  const key=n=>d.tag.version>=5?n.normalize('NFC').toUpperCase():n.normalize('NFC').replace(/[a-z]/g,c=>c.toUpperCase());
- const suite=[5,6,7].includes(d.tag.profile),lua=suite&&d.tag.version===9;
+ const suite=[5,6,7,8,9].includes(d.tag.profile),lua=suite&&[9,14].includes(d.tag.version);
  const selected=d.tag.version>=5,root=selected?d.selectedRoot:'main.tex';
  // Finite FFI consistency check only, not pass/tool orchestration. C# supplies both entries.
  if(typeof root!=='string')bad();
  const leaf=root.slice(root.lastIndexOf('/')+1),job=lua?'result':leaf.slice(0,-4);
  if(selected&&(!/^[\p{L}\p{Nd}\p{Mn}\p{Mc}._/ -]+$/u.test(root)||!/^.+\.tex$/i.test(leaf)||/^[.-]/.test(leaf)||leaf.startsWith(' ')||job.endsWith(' ')))bad();
  const latexEntry=selected&&root.includes(' ')?'"'+root+'"':root;
- const bibliography=d.tag.profile===7,blx=job.replaceAll(' ','_')+'-blx.bib';
+ const bibliography=[7,8,9].includes(d.tag.profile),blx=job.replaceAll(' ','_')+'-blx.bib';
  const state=n=>n.endsWith('.aux')||['.bbl','.toc','.lof','.lot','.out'].some(ext=>n===job+ext)||bibliography&&n===blx;
- const fixed=['.pdf','.aux','.bbl','.blg','.log','.toc','.lof','.lot','.out',...(d.tag.version===7?['.dvi']:[]),...(d.tag.version===8?['.xdv']:[])].map(ext=>job+ext).concat(bibliography?[blx]:[]);
+ const fixed=['.pdf','.aux','.bbl','.blg','.log','.toc','.lof','.lot','.out',...([7,12].includes(d.tag.version)?['.dvi']:[]),...([8,13].includes(d.tag.version)?['.xdv']:[])].map(ext=>job+ext).concat(bibliography?[blx]:[]);
  const valid=n=>typeof n==='string'&&n.length>0&&n===n.trim()&&new TextEncoder().encode(n).length<=249
   &&!/[\u0000-\u001f\u007f-\u009f<>:"|?*\\\\]/.test(n)&&!Array.from(n).some(c=>c.length===1&&c.charCodeAt(0)>=55296&&c.charCodeAt(0)<=57343)
   &&n.split('/').length<=32&&n.split('/').every(s=>s&&s!=='.'&&s!=='..'&&!/[. ]$/.test(s)
@@ -264,13 +351,17 @@ async function execute({data:d}){
   const legacy=d.tag.version===1&&(d.tag.profile===undefined||d.tag.profile===0)&&d.tag.runtimeIdentity==null;
   const modern=d.tag.version===2&&d.tag.profile===1&&typeof d.tag.runtimeIdentity==='string'&&/^[0-9a-f]{64}$/.test(d.tag.runtimeIdentity);
   const authoring=d.tag.version===3&&d.tag.profile===2&&typeof d.tag.runtimeIdentity==='string'&&/^[0-9a-f]{64}$/.test(d.tag.runtimeIdentity);
-  const identity=typeof d.tag.runtimeIdentity==='string'&&/^[0-9a-f]{64}$/.test(d.tag.runtimeIdentity),suite=[5,6,7].includes(d.tag.profile);
+  const identity=typeof d.tag.runtimeIdentity==='string'&&/^[0-9a-f]{64}$/.test(d.tag.runtimeIdentity),suite=[5,6,7,8,9].includes(d.tag.profile);
   const mapped=d.tag.version===6&&([3,4].includes(d.tag.profile)&&d.tag.engineId==null
     ||suite&&d.tag.engineId==='pdftex')&&identity;
   const dvi=d.tag.version===7&&[4,5,6,7].includes(d.tag.profile)&&d.tag.engineId==='latex-dvi'&&identity;
-  const unicodeBibtex=suite&&d.operation==='bibtex'&&(d.tag.version===8&&d.tag.engineId==='xelatex'||d.tag.version===9&&d.tag.engineId==='lualatex')&&identity;
-  const v4=mapped||dvi||unicodeBibtex||[4,5].includes(d.tag.version)&&d.tag.profile===2&&identity;
+  const unicodeBibtex=suite&&d.operation==='bibtex'&&((d.tag.version===8&&[5,6,7,8].includes(d.tag.profile)||d.tag.version===13&&d.tag.profile===9)&&d.tag.engineId==='xelatex'||(d.tag.version===9&&[5,6,7].includes(d.tag.profile)||d.tag.version===14&&[8,9].includes(d.tag.profile))&&d.tag.engineId==='lualatex')&&identity;
+  const navigationBibtex=[8,9].includes(d.tag.profile)&&d.tag.version===12&&d.tag.engineId==='latex-dvi'&&d.operation==='bibtex'&&identity;
+  const v4=mapped||dvi||unicodeBibtex||navigationBibtex||[4,5].includes(d.tag.version)&&d.tag.profile===2&&identity;
   if((!legacy&&!modern&&!authoring&&!v4)||!['latex','bibtex'].includes(d.operation)||d.files.length>(suite?8384:v4?768:512)||d.outputs.length>(v4?128:64))throw new Error('FFI frame');
+  if([8,9].includes(d.tag.profile)&&(loaderSha256!=='b514d2b72aa44ec47923735f8f1be43a93351931beb183d57a7429b73e74a9a9'
+   ||wasmSha256!=='70008f66d8acb88ee40e8c17b5a48dc81003852e569833444dd3cda7539ce235'
+   ||cwrap('oc_synctex_abi','number',[])()!==65536))throw new Error('P8 legacy component identity');
   if(v4)validateAuthoringV4Frame(d);
   const maxTotal=suite?167772160:modern||authoring||v4?67108864:16777216,maxFile=suite?67108864:modern||authoring||v4?33554432:8388608;
   let total=0;for(const f of d.files){total+=f.bytes.byteLength;if(total>maxTotal||f.bytes.byteLength>maxFile)throw new Error('VFS transport bound');}
@@ -285,9 +376,7 @@ async function execute({data:d}){
     ||d.files.some(f=>!resourceNames.has(f.name)&&f.name.startsWith(prefix))))throw new Error('resource projection');
   const destination=f=>resourceNames.has(f.name)?'/tex/'+f.name.slice(prefix.length):'/work/'+f.name;
   for(const f of d.files){const p=destination(f);const slash=p.lastIndexOf('/');FS.mkdirTree(p.slice(0,slash));FS.writeFile(p,f.bytes);}
-  // The retained native resolver searches the project CWD before its disabled
-  // network fallback. Read-only MEMFS aliases retain that ABI without copying
-  // resources into captured project files or replacing local package overrides.
+  // Legacy cache-only resource aliases preserve project-local overrides.
   if(suite)for(const f of d.files)if(resourceNames.has(f.name)){
    const alias='/work/'+f.name.slice(prefix.length);
    if(!FS.analyzePath(alias).exists){
@@ -301,9 +390,7 @@ async function execute({data:d}){
   prepareExecutionContext();phase=d.operation;
   for(const f of d.files){const b=FS.readFile(destination(f)),hash=new Uint8Array(await crypto.subtle.digest('SHA-256',b));inputs.push({name:f.name,length:b.length,sha256:[...hash].map(v=>v.toString(16).padStart(2,'0')).join('')});}
   budget=await installNativeVfsBudget(FS,MEMFS,d.maxOutputBytes,d.maxLogBytes,v4?128:64);
-  // The only new product logic here is FFI: one fresh module/pass, native
-  // configuration after heap restoration, and copying its sealed raw bytes.
-  // C# still selects passes, convergence and the accepted PDF/map pair.
+  // Configure after legacy heap restoration, before native entry.
   if((mapped||dvi)&&d.operation==='latex'){
    if(!Number.isSafeInteger(d.tag.ordinal)||d.tag.ordinal<1||d.tag.ordinal>4294967295
     ||cwrap('oc_synctex_abi','number',[])()!==65536

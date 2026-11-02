@@ -24,9 +24,10 @@ internal sealed class NavigationFixture : IAsyncDisposable
     internal WorkspaceCoordinator Workspace => Storage.Workspace;
     internal FileId Main => Storage.Main;
 
-    internal static async Task<NavigationFixture> Open(bool readOnly = false)
+    internal static async Task<NavigationFixture> Open(bool readOnly = false, string engine = "synthetic-engine")
     {
         var f = new NavigationFixture { Storage = await CompilationTestWorkspace.Open(readOnly: readOnly) };
+        f.Config.Engine = engine;
         if (readOnly)
         {
             var revision = f.Storage.Repo.Revision!;
@@ -51,7 +52,8 @@ internal sealed class NavigationFixture : IAsyncDisposable
         return f;
     }
 
-    internal async Task<AcceptedCompileOutput> Compile(bool mapBytes = true, bool mapIdentity = true)
+    internal async Task<AcceptedCompileOutput> Compile(bool mapBytes = true, bool mapIdentity = true, byte[]? nativeGeometry = null,
+        string? geometryEngine = null)
     {
         var previous = Session.DisplayedOutput;
         var shown = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -61,10 +63,16 @@ internal sealed class NavigationFixture : IAsyncDisposable
         {
             await Session.CompileAsync();
             var worker = await Config.Workers.Next();
-            worker.Reply.TrySetResult(worker.Output() with
+            var output = worker.Output();
+            var geometry = nativeGeometry is null ? null : SourceMapGeometryCodec.AssembleData(geometryEngine ?? Config.Engine, 1,
+                nativeGeometry, Map, output.Payload, (geometryEngine ?? Config.Engine) is "latex-dvi" or "xelatex" ? [9] : null,
+                new(1024 * 1024, 65536, 32, 128, 4096, 8192)).Artifact;
+            if (nativeGeometry is not null) Assert.NotNull(geometry);
+            worker.Reply.TrySetResult(output with
             {
                 SourceMapping = mapIdentity ? new(CompilationTestWorkspace.Hash(Map), Map.Length) : null,
-                SourceMapPayload = mapBytes ? Map : null
+                SourceMapPayload = mapBytes ? Map : null,
+                SourceMapGeometryPayload = geometry?.ToArray(), SourceMapGeometry = geometry?.Identity
             });
             Assert.Equal(CompileLifecycleReason.Succeeded, (await Session.LastTicket!.Completion.WaitAsync(Bound)).Reason);
             await shown.Task.WaitAsync(Bound);
@@ -120,10 +128,12 @@ internal sealed class NavigationFixture : IAsyncDisposable
 
     internal sealed class Configuration : ICompileWorkspaceConfiguration
     {
+        internal string Engine = "synthetic-engine";
+        internal bool Ready = true;
         internal readonly Workers Workers = new();
         public Task<CompileWorkspaceConfigurationResult> OpenAsync() => Task.FromResult(new CompileWorkspaceConfigurationResult(
-            new(true, "Ready", "Contract only"), new("contract", "Contract only", CompilationTestWorkspace.Descriptor(), [], [],
-                Workers, null, () => Task.FromResult(new CompileReadiness(true, "Ready", "Contract only")))));
+            new(Ready, "Ready", "Contract only"), new("contract", "Contract only", CompilationTestWorkspace.Descriptor(Engine), [], [],
+                Workers, null, () => Task.FromResult(new CompileReadiness(Ready, "Ready", "Contract only")))));
     }
 
     internal sealed class Queries : ISyncTeXQuery

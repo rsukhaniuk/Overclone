@@ -3,6 +3,7 @@ using System.Collections.Immutable;
 using System.Security.Cryptography;
 using System.Text;
 using Client.Workspace.Domain;
+using Client.Compilation.SyncTeX;
 using ContentHash = Client.Workspace.Domain.SHA256;
 
 namespace Client.Compilation;
@@ -22,6 +23,8 @@ internal sealed class CompileArtifactCanonical : IDisposable
 {
     internal const string ArtifactDomain = "overclone-compilation-artifact-v1";
     internal const string MetadataDomain = "overclone-compilation-output-metadata-v1";
+    internal const string ArtifactDomainV2 = "overclone-compilation-artifact-v2";
+    internal const string MetadataDomainV2 = "overclone-compilation-output-metadata-v2";
     private static readonly UTF8Encoding Utf8 = new(false, true);
     private readonly long _limit;
     private readonly IncrementalHash? _hash;
@@ -103,6 +106,12 @@ internal sealed class CompileArtifactCanonical : IDisposable
         if (mapping is null) return;
         if (mapping.ByteLength < 0) throw new CompileArtifactException(CompileOutputIssue.InvalidMetadata);
         Int64(mapping.ByteLength); Hash(mapping.Hash);
+    }
+    // V2 suffix only. No presence/version byte is added to v1 encodings.
+    internal void Geometry(SourceMapGeometryIdentity geometry)
+    {
+        if (!SourceMapGeometryCodec.IsValidIdentity(geometry)) throw new CompileArtifactException(CompileOutputIssue.InvalidSourceMapGeometry);
+        Int64(geometry.ByteLength); Hash(geometry.Hash);
     }
     private void Diagnostic(CompileDiagnosticEntry entry, int maxCodeBytes, int maxMessageBytes)
     {

@@ -20,14 +20,18 @@ public sealed class CompatibilityContractTests
         Assert.Equal(5, (int)NativeRuntimeProfile.LocalCompilerSuite);
         Assert.Equal(6, (int)Profile);
         foreach (var profile in Enum.GetValues<NativeRuntimeProfile>())
-            Assert.Equal((int)profile is 5 or 6 or 7, NativeRuntimeProfiles.IsSuite(profile));
+            Assert.Equal((int)profile is 5 or 6 or 7 or 8 or 9, NativeRuntimeProfiles.IsSuite(profile));
+        Assert.False(NativeRuntimeProfiles.IsSuite((NativeRuntimeProfile)10));
+        Assert.False(NativeRuntimeProfiles.Known((NativeRuntimeProfile)10));
         Assert.False(NativeRuntimeProfiles.IsSuite((NativeRuntimeProfile)int.MaxValue));
         Assert.False(NativeRuntimeProfiles.Known((NativeRuntimeProfile)int.MaxValue));
         Assert.True(NativeRuntimeProfiles.Known(Profile));
         Assert.True(NativeRuntimeProfiles.Modern(Profile));
         Assert.Equal("local-compiler-suite-v1", NativeRuntimeProfiles.IdentityName(NativeRuntimeProfile.LocalCompilerSuite));
         Assert.Equal("local-compiler-suite-v2", NativeRuntimeProfiles.IdentityName(Profile));
-        Assert.Equal(NativeCompilerBibliographyPins.Ready ? NativeRuntimeProfile.LocalCompilerBibliography
+        Assert.Equal(NativeCompilerXeNavigationPins.Ready ? NativeRuntimeProfile.LocalCompilerXeNavigation
+            : NativeCompilerNavigationPins.Ready ? NativeRuntimeProfile.LocalCompilerNavigation
+            : NativeCompilerBibliographyPins.Ready ? NativeRuntimeProfile.LocalCompilerBibliography
             : NativeCompilerCompatibilityPins.Ready ? Profile : NativeRuntimeProfile.LocalCompilerSuite, BundledRuntimeAssets.CompilerProfile);
     }
 

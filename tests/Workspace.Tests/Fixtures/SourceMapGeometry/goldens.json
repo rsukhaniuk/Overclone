@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "synthetic": true,
+  "scope": "Independent Python LE canonical encoding, NOT PDF/map validity",
+  "pdfHex": "010203",
+  "mapHex": "040506",
+  "inputDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "wrapperSha256": "6150e22826ea04054b60a70792742ce556216ba0b2a4d201af90eefee3b9317d",
+  "wrapperLength": 389,
+  "v1ArtifactDigest": "2160ed6292beb4d08e76f63bd6f937fde00f6e15652f4713ab37058185365d23",
+  "v2ArtifactDigest": "c8991659a445749e7fea7dba8b075b1a2be6a7a47fcfaed17d4ce5b889aabb5e",
+  "v1MetadataBytes": 131,
+  "v2MetadataBytes": 207
+}

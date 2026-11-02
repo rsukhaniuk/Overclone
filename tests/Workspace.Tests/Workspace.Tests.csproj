@@ -17,6 +17,8 @@
     <EmbeddedResource Include="Fixtures/GeometryPackage/*.json" />
     <EmbeddedResource Include="Fixtures/SourceReferences/*.json" />
     <EmbeddedResource Include="Fixtures/RenderedSections/*.json" />
+    <EmbeddedResource Include="Fixtures/ThesisSource/*.json" />
+    <EmbeddedResource Include="Fixtures/SourceMapGeometry/**/*" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\Client\Client.csproj" />

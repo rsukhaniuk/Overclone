@@ -11,7 +11,10 @@ namespace Workspace.Tests.CompilerSuite;
 
 public sealed class BundledRuntimeTests
 {
-    internal static string? FixtureDirectory => Environment.GetEnvironmentVariable(NativeCompilerBibliographyPins.Ready
+    internal static string? FixtureDirectory => Environment.GetEnvironmentVariable("BUNDLED_COMPILER_RUNTIME_DIR")
+        ?? Environment.GetEnvironmentVariable(NativeCompilerXeNavigationPins.Ready
+        ? "XE_NAVIGATION_RUNTIME_DIR" : NativeCompilerNavigationPins.Ready
+            ? "NAVIGATION_RUNTIME_DIR" : NativeCompilerBibliographyPins.Ready
         ? "COMPILER_BIBLIOGRAPHY_RUNTIME_DIR" : NativeCompilerCompatibilityPins.Ready
             ? "COMPILER_COMPATIBILITY_RUNTIME_DIR" : "COMPILER_SUITE_RUNTIME_DIR");
     private sealed class Handler(Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> respond) : HttpMessageHandler
@@ -93,7 +96,8 @@ public sealed class BundledRuntimeTests
         Assert.True(assets.Owns(package)); Assert.Equal(BundledRuntimeAssets.CompilerProfile, package.Profile);
         Assert.Single(handler.Paths);
         var wasm = package.Copy("xetex.wasm"); wasm[0] ^= 1;
-        Assert.Equal(NativeCompilerSuitePins.XeWasmHash, NativeRuntimePackage.Digest(package.Copy("xetex.wasm")).Hex);
+        Assert.Equal(NativeCompilerComponents.For(package.Profile, NativeCompilerEngine.XeLaTeX).WasmHash,
+            NativeRuntimePackage.Digest(package.Copy("xetex.wasm")).Hex);
         await assets.DisposeAsync();
         Assert.False(assets.Owns(package));
         Assert.Equal(RuntimeAssetStatus.Disposed, (await assets.ReadCompilerAsync()).Store.Status);

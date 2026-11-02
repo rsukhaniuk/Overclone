@@ -86,6 +86,8 @@
     [Parameter] public string? SourceNavigationNotice { get; set; }
     [Parameter] public SyncTeXMatch? SourceMatch { get; set; }
     [Parameter] public string? SourceMatchPdfHash { get; set; }
+    [Parameter] public SourceMapPageTransform? SourceMatchTransform { get; set; }
+    [Parameter] public bool SourceMatchUsesNativeTransform { get; set; }
     private PdfPreviewController _current = new();
     private bool _ownsCurrent = true, _disposed;
     private ElementReference _element;
@@ -93,7 +95,10 @@
     private PdfPreviewPointer? _point;
     private PdfPreviewRect? SourceBox => SourceMatch is { } match && match.Page == View.PageIndex + 1
         && SourceMatchPdfHash == View.DocumentSha256 && View.Status == PdfPreviewStatus.Available && View.PageGeometry is { } geometry
-        ? SyncTeXDisplayGeometry.Highlight(geometry, match.Box) : null;
+        ? SourceMatchUsesNativeTransform
+            ? SyncTeXDisplayGeometry.Highlight(geometry, SourceMatchTransform, match.Box)
+            : SyncTeXDisplayGeometry.Highlight(geometry, match.Box)
+        : null;
     private string _query = "", _lastSearchQuery = "";
     private string? _lastDocument;
     private long _submittedGeneration = -1;

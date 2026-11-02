@@ -87,6 +87,7 @@
     </div>
 </details>
 @code {
+    [Parameter] public Action<RenderedExtentController?>? ControllerAvailable { get; set; }
     private RenderedExtentController _controller = default!;
     private bool _disposed;
     private int? _introStart, _introEnd, _bodyStart, _bodyEnd, _conclusionsStart, _conclusionsEnd, _appendixStart;
@@ -95,6 +96,7 @@
     {
         _controller = new(Workspace, Compile, new RustRenderedExtentEvaluator(JS), action => InvokeAsync(action));
         _controller.Changed += Changed;
+        ControllerAvailable?.Invoke(_controller); // borrow only; this component retains ownership
     }
     private Task Check() => _controller.CheckAsync();
     private void Cancel() => _controller.Cancel();
@@ -152,5 +154,6 @@
     {
         if (_disposed) return;
         _disposed = true; _controller.Changed -= Changed; _controller.Dispose();
+        ControllerAvailable?.Invoke(null);
     }
 }
