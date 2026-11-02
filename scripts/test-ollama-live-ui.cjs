@@ -1,6 +1,8 @@
 // Explicit live local-service acceptance; never part of offline/default tests.
 // Run with the cached browser image on the host network, a read-only static
 // publication, OLLAMA_MODEL and RESULT_DIR. No response interception or keys.
+// Optional APP_URL verifies an existing canonical loopback origin instead of
+// starting a test server; its served manifest must match the supplied publication.
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
@@ -12,13 +14,23 @@ const { $, reveal } = H;
 const root = fs.realpathSync(process.env.PUBLISHED_WWWROOT);
 const output = process.env.RESULT_DIR;
 const model = process.env.OLLAMA_MODEL;
+const existingOrigin = process.env.APP_URL;
+if (existingOrigin) {
+  const u = new URL(existingOrigin);
+  assert.ok(["http:", "https:"].includes(u.protocol));
+  assert.equal(existingOrigin, u.origin, "APP_URL must be a canonical origin");
+  assert.ok(["localhost", "127.0.0.1", "[::1]"].includes(u.hostname), "This harness targets local preview only; use the deployed runner for HTTPS acceptance");
+}
 assert.ok(output && model, "Explicit result directory and installed local model required");
 fs.mkdirSync(output, { recursive: true });
 const sha = bytes => createHash("sha256").update(bytes).digest("hex");
 const source = "\\documentclass{article}\n\\begin{document}\nSynthetic ALPHA. Україна🙂\n\\end{document}\n";
 const expected = source.replace("ALPHA", "BETA");
 const receipt = { passed: false, syntheticContextOnly: true, model, started: new Date().toISOString(),
-  publishedIndexSha256: sha(fs.readFileSync(path.join(root, "index.html"))), phases: [], errors: [], externalRequests: [] };
+  publishedIndexSha256: sha(fs.readFileSync(path.join(root, "index.html"))),
+  manifestVersion: fs.readFileSync(path.join(root, 'service-worker-assets.js'), 'utf8').match(/"version":\s*"([^"\n]+)"/)?.[1],
+  harnessSha256: sha(fs.readFileSync(__filename)),
+  existingOrigin: !!existingOrigin, phases: [], errors: [], externalRequests: [] };
 const mime = { ".html": "text/html", ".js": "text/javascript", ".wasm": "application/wasm", ".css": "text/css", ".json": "application/json", ".svg": "image/svg+xml", ".woff2": "font/woff2", ".webmanifest": "application/manifest+json" };
 const server = http.createServer((request, response) => {
   let file;
@@ -37,8 +49,11 @@ async function phase(name, action) {
 }
 (async () => {
   try {
-    await new Promise(resolve => server.listen(0, "127.0.0.1", resolve));
-    receipt.origin = "http://localhost:" + server.address().port;
+    if (existingOrigin) receipt.origin = existingOrigin;
+    else {
+      await new Promise(resolve => server.listen(0, "127.0.0.1", resolve));
+      receipt.origin = "http://localhost:" + server.address().port;
+    }
     browser = await chromium.launch({ headless: true });
     const context = await browser.newContext(); const page = await context.newPage();
     const requests = [];
@@ -51,6 +66,8 @@ async function phase(name, action) {
         receipt.externalRequests.push(url.origin);
     });
     await page.goto(receipt.origin); await H.ready(page);
+    const servedManifest = await page.request.get(receipt.origin + '/service-worker-assets.js');
+    assert.equal(await servedManifest.text(), fs.readFileSync(path.join(root, 'service-worker-assets.js'), 'utf8'), 'actual origin serves the supplied immutable publication');
     const name = "Synthetic live Ollama review " + Date.now();
     await phase("save synthetic project", async () => {
       await reveal(page, page.locator("#new-project")); await page.locator("#new-project").fill(name);

@@ -15,14 +15,15 @@ internal sealed class SubsetHost : IAsyncDisposable
     internal HeldRepo Repo = null!;
     internal AnalysisCoordinator Analysis = null!;
     internal ChangeReviewService Service = null!;
+    internal ISourceAnalyzer Analyzer = null!;
     internal static readonly TimeSpan Bound = TimeSpan.FromSeconds(10);
-    internal static async Task<SubsetHost> Open()
+    internal static async Task<SubsetHost> Open(ISourceAnalyzer? sourceAnalyzer = null)
     {
         var h = new SubsetHost { F = await WorkspaceTextPatchTests.Fixture.Open() };
         await h.F.C.DisposeAsync(); h.Repo = new(h.F.Repo);
         h.F.C = new(h.Repo, h.F.Locks, new HistoryService(h.Repo)); await h.F.C.OpenAsync(h.F.Repo.Project.Id, default);
-        var analyzer = new Port(); h.Analysis = new(h.F.C, analyzer, delayAsync: (_, ct) => Task.Delay(Timeout.Infinite, ct));
-        h.Service = new(h.F.C, h.Analysis, new SourceNavigator(h.Analysis, h.F.C, analyzer)); return h;
+        h.Analyzer = sourceAnalyzer ?? new Port(); h.Analysis = new(h.F.C, h.Analyzer, delayAsync: (_, ct) => Task.Delay(Timeout.Infinite, ct));
+        h.Service = new(h.F.C, h.Analysis, new SourceNavigator(h.Analysis, h.F.C, h.Analyzer)); return h;
     }
     internal async Task<TextChangeSet> Proposal(TextPatchOrigin origin = TextPatchOrigin.User)
     {
@@ -43,7 +44,7 @@ internal sealed class SubsetHost : IAsyncDisposable
     internal static ReviewSubsetSelection Select(ReviewPreview p, params (int File, int Edit)[] keys)
         => new(p.Proposal.Id, keys.Select(k => new ReviewSelectedEdit(p.Proposal.Files[k.File].FileId, k.Edit)).ToArray());
     public async ValueTask DisposeAsync()
-    { Repo.Release.TrySetResult(); await Service.DisposeAsync(); await Analysis.DisposeAsync(); await F.DisposeAsync(); }
+    { Repo.Release.TrySetResult(); await Service.DisposeAsync(); await Analyzer.DisposeAsync(); await Analysis.DisposeAsync(); await F.DisposeAsync(); }
     internal sealed class Port : ISourceAnalyzer
     {
         public Task<AnalysisJobResult> AnalyzeAsync(AnalysisSnapshot s, CancellationToken ct) => Task.FromResult<AnalysisJobResult>(new AnalysisJobResult.Cancelled("synthetic-subset", 1));
@@ -55,9 +56,10 @@ internal sealed class SubsetHost : IAsyncDisposable
     internal sealed class HeldRepo(WorkspaceTextPatchTests.Repo inner) : IProjectRepository
     {
         internal bool Hold;
+        internal int HoldsRemaining = int.MaxValue;
         internal TaskCompletionSource Reached = new(TaskCreationOptions.RunContinuationsAsynchronously), Release = new(TaskCreationOptions.RunContinuationsAsynchronously);
         public async Task<byte[]> ReadContentAsync(SHA256 h, CancellationToken ct)
-        { if (Hold) { Reached.TrySetResult(); await Release.Task; } return await inner.ReadContentAsync(h, CancellationToken.None); }
+        { if (Hold && Interlocked.Decrement(ref HoldsRemaining) >= 0) { Reached.TrySetResult(); await Release.Task; } return await inner.ReadContentAsync(h, CancellationToken.None); }
         public Task<ProjectSnapshot> OpenAsync(ProjectId id, CancellationToken ct) => inner.OpenAsync(id, ct);
         public Task<bool> VerifyHeadAsync(ProjectId id, RevisionId? head, CancellationToken ct) => inner.VerifyHeadAsync(id, head, ct);
         public Task<CommitResult> CommitAsync(ProjectCommit b, RevisionId? h, CancellationToken ct) => inner.CommitAsync(b, h, ct);

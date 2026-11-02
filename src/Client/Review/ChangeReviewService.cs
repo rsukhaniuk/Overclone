@@ -16,6 +16,10 @@ public sealed class ChangeReviewService : IChangeReviewService
     private readonly AnalysisSnapshotFactory _capture;
     private readonly object _sync=new();
     private ReviewPreview? _preview;
+    // Exists from admission through actual capture/preparation settlement, even
+    // before a ReviewPreview can be published. Never infer this from _status.
+    private sealed record PendingPreview(ReviewBinding Binding,TextPatchOrigin Origin,AnalysisReport? Report);
+    private PendingPreview? _pendingPreview;
     private Accepted? _accepted;
     private long _previewIntent,_operationIntent,_notificationVersion;
     private CancellationTokenSource? _previewCts,_operationCts;
@@ -91,11 +95,27 @@ public sealed class ChangeReviewService : IChangeReviewService
     }
     private void InvalidatePreview()
     {
-        _previewIntent++;_previewCts?.Cancel();_preview=null;
+        _previewIntent++;_previewCts?.Cancel();_pendingPreview=null;_preview=null;
         if(!_busy&&_accepted is null)_status=ReviewStatus.Idle;
     }
     private void WorkspaceChanged(){lock(_sync){if(_disposed)return;InvalidatePreview();RefreshSession();}Notify();}
-    private void AnalysisChanged(AnalysisState _){lock(_sync){if(_disposed)return;InvalidatePreview();}Notify();}
+    private void AnalysisChanged(AnalysisState _)
+    {
+        lock(_sync)
+        {
+            if(_disposed)return;
+            // Generic text has no report authority to replace. Background
+            // progress/completion must not cancel unrelated User/Ai review.
+            // A changed binding (including selection ABA) still revokes it;
+            // canonical Rule previews ALWAYS remain tied to their report.
+            bool Keep(ReviewBinding binding,TextPatchOrigin origin,AnalysisReport? report)
+                => report is null&&(origin is TextPatchOrigin.User or TextPatchOrigin.Ai)
+                    &&BaseCurrent(binding)&&_workspace.IsCurrentTextPatchWriter(binding.Workspace);
+            if(_pendingPreview is{} pending&&(_previewCts?.IsCancellationRequested!=false||!Keep(pending.Binding,pending.Origin,pending.Report))
+                ||_preview is{} preview&&!Keep(preview.Binding,preview.Proposal.Origin,preview.Report))InvalidatePreview();
+        }
+        Notify();
+    }
     private ReviewBinding Binding(AnalysisReport? report)=>new(_workspace.CurrentTextPatchIdentity!,_analysis.CurrentWorkspaceEpoch,_analysis.CurrentSelectionVersion,_analysis.CurrentSelection,
         report?.Snapshot.Id,report?.RequestId,report?.WorkerEpoch);
     private bool BaseCurrent(ReviewBinding b)=>_workspace.CurrentTextPatchIdentity==b.Workspace&&_analysis.CurrentWorkspaceEpoch==b.WorkspaceEpoch
@@ -159,7 +179,8 @@ public sealed class ChangeReviewService : IChangeReviewService
             else InvalidatePreview();
             if(set is null||_workspace.CurrentTextPatchIdentity is null)return Failure(ReviewCode.InvalidInput);
             intent=_previewIntent;cts=CancellationTokenSource.CreateLinkedTokenSource(ct);_previewCts=cts;
-            binding=original?.Binding??Binding(report);_busy=true;_status=ReviewStatus.Previewing;_notice=null;
+            binding=original?.Binding??Binding(report);_pendingPreview=new(binding,set.Origin,report);
+            _busy=true;_status=ReviewStatus.Previewing;_notice=null;
         }
         Notify();
         bool Current(){lock(_sync)return !_disposed&&intent==_previewIntent&&!cts.IsCancellationRequested&&BaseCurrent(binding)
@@ -201,7 +222,7 @@ public sealed class ChangeReviewService : IChangeReviewService
         catch(OperationCanceledException){return Reject(ReviewCode.Cancelled);}
         catch(Exception){return Reject(original is not null&&_disposed?ReviewCode.Disposed:
             original is not null&&cts.IsCancellationRequested?ReviewCode.Cancelled:ReviewCode.Unavailable);}
-        finally{lock(_sync){if(ReferenceEquals(_previewCts,cts)){_previewCts=null;_busy=false;if(_preview is null&&_status==ReviewStatus.Previewing)_status=_accepted is null?ReviewStatus.Idle:ReviewStatus.AppliedUnsaved;}}cts.Dispose();if(!_disposed)Notify();}
+        finally{lock(_sync){if(ReferenceEquals(_previewCts,cts)){_previewCts=null;_pendingPreview=null;_busy=false;if(_preview is null&&_status==ReviewStatus.Previewing)_status=_accepted is null?ReviewStatus.Idle:ReviewStatus.AppliedUnsaved;}}cts.Dispose();if(!_disposed)Notify();}
     }
     public ReviewResult Decline(Guid id)
     {

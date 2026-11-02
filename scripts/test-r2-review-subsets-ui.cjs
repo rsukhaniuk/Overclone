@@ -254,17 +254,42 @@ const reEscape = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 function expectedSearchRange(bytes, sourceStart, sourceEnd, expectedToken) {
   const source = bytes.toString("utf8").replace(/^\uFEFF/, "");
   assert(Number.isSafeInteger(sourceStart) && Number.isSafeInteger(sourceEnd));
-  assert(sourceStart >= 0 && sourceEnd >= sourceStart && sourceEnd <= source.length);
+  assert(
+    sourceStart >= 0 && sourceEnd >= sourceStart && sourceEnd <= source.length,
+  );
   for (const offset of [sourceStart, sourceEnd]) {
-    assert(!(source[offset - 1] === "\r" && source[offset] === "\n"), "Range splits CRLF");
-    const before = source.charCodeAt(offset - 1), after = source.charCodeAt(offset);
-    assert(!(before >= 0xd800 && before <= 0xdbff && after >= 0xdc00 && after <= 0xdfff), "Range splits surrogate pair");
+    assert(
+      !(source[offset - 1] === "\r" && source[offset] === "\n"),
+      "Range splits CRLF",
+    );
+    const before = source.charCodeAt(offset - 1),
+      after = source.charCodeAt(offset);
+    assert(
+      !(
+        before >= 0xd800 &&
+        before <= 0xdbff &&
+        after >= 0xdc00 &&
+        after <= 0xdfff
+      ),
+      "Range splits surrogate pair",
+    );
   }
-  assert.equal(source.slice(sourceStart, sourceEnd), expectedToken, "Exact-source UTF-16 span must select the fixture token");
+  assert.equal(
+    source.slice(sourceStart, sourceEnd),
+    expectedToken,
+    "Exact-source UTF-16 span must select the fixture token",
+  );
   const start = normalize(source.slice(0, sourceStart)).length;
   const end = normalize(source.slice(0, sourceEnd)).length;
   assert.equal(editorText(bytes).slice(start, end), expectedToken);
-  return { start, end, sourceStart, sourceEnd, sourceUnit: "UTF-16 exact source without BOM", domUnit: "UTF-16 LF-normalized textarea" };
+  return {
+    start,
+    end,
+    sourceStart,
+    sourceEnd,
+    sourceUnit: "UTF-16 exact source without BOM",
+    domUnit: "UTF-16 LF-normalized textarea",
+  };
 }
 function editList(bytes) {
   const edits = [];
@@ -448,7 +473,60 @@ async function search(p) {
   );
   assert.equal(await $(p, "project-search-result").count(), 5);
 }
-async function fullProposal(p, name) {
+async function settleAnalysisBeforeProposal(p, name) {
+  // Diagnostic isolation ONLY: Undo/save does not settle debounced analysis,
+  // but generic User/Ai review must survive its unrelated progress/completion.
+  // The normal post-Undo browser case never calls this helper. This separately
+  // labeled cycle uses Cancelled -> Complete, not an old retained Complete.
+  await reviewIdle(p);
+  assert.equal(
+    await ids(p),
+    null,
+    "Resolve an existing preview explicitly; never hide it with this fence",
+  );
+  const before = await head(p, name, original()),
+    stamp = await H.stamp(p);
+  const fence = {
+    step: record.step,
+    project: name,
+    stamp,
+    beforeStatus: await $(p, "analysis-status").textContent(),
+    states: [],
+  };
+  (record.analysisFences ||= []).push(fence);
+  flush();
+  await H.reveal(p, $(p, "cancel-analysis"));
+  await $(p, "cancel-analysis").click();
+  await p.waitForFunction(
+    () =>
+      document.querySelector("[data-testid=analysis-status]")?.textContent ===
+      "Analysis cancelled.",
+  );
+  fence.states.push("Analysis cancelled.");
+  flush();
+  await $(p, "analyze-now").click();
+  await p.waitForFunction(
+    () =>
+      document.querySelector("[data-testid=analysis-status]")?.textContent ===
+      "Analysis complete.",
+    null,
+    { timeout: 60000 },
+  );
+  fence.states.push("Analysis complete.");
+  assert.deepEqual(
+    await H.stamp(p),
+    stamp,
+    "Analysis settlement must not edit/save or change session/head",
+  );
+  assert.deepEqual(await head(p, name, original()), before);
+  assert.equal(await ids(p), null);
+  fence.unchangedHeadGeneration = true;
+  flush();
+}
+async function fullProposal(p, name, options = {}) {
+  // Normal User preview must work during unrelated debounced analysis. The
+  // old explicit fence is diagnostic isolation ONLY, never a prerequisite.
+  if (options.diagnosticAnalysisSettlement === true) await settleAnalysisBeforeProposal(p, name);
   const old = await ids(p),
     before = await head(p, name, original()),
     stamp = await H.stamp(p);
@@ -467,8 +545,30 @@ async function fullProposal(p, name) {
     5,
   );
   await H.reveal(p, $(p, "project-replace-preview"));
+  const attempt = {
+    step: record.step,
+    project: name,
+    before: await observations(p),
+    startedAt: new Date().toISOString(),
+    analysisPolicy: options.diagnosticAnalysisSettlement === true ? "explicit diagnostic isolation" : "ordinary background analysis; NO settlement fence, NO retry",
+  };
+  (record.reviewAttempts ||= []).push(attempt);
+  flush();
   await $(p, "project-replace-preview").click();
-  const identity = await newPreview(p, old);
+  let identity;
+  try {
+    identity = await newPreview(p, old);
+  } catch (error) {
+    const notice = $(p, "review-page-notice");
+    attempt.failure = {
+      after: await observations(p),
+      notice: (await notice.count()) ? await notice.textContent() : null,
+    };
+    flush();
+    throw error; // no retry: retain the actual refused operation
+  }
+  attempt.identity = identity;
+  flush();
   assert.equal(identity.origin, "User");
   await verifyReview(p, false);
   assert.deepEqual(await head(p, name, original()), before);
@@ -583,11 +683,14 @@ async function selectSubset(p, name, identity) {
   );
   assert.deepEqual(await ids(p), identity);
   assert.deepEqual(await head(p, name, original()), before);
-  assert.deepEqual(
-    await observations(p),
-    obs,
-    "Checkboxes must not change generation/head/analysis/compiler/recovery/network state",
-  );
+  const afterChoices = await observations(p);
+  // A pre-existing analysis may legitimately finish while checkboxes are used.
+  // Do not mistake its status repaint for checkbox-triggered analysis or require
+  // cancellation/settlement to make generic review usable. Source/head/compile/
+  // recovery/network invariants remain exact; retain both analysis observations.
+  assert.deepEqual(afterChoices.stamp, obs.stamp);
+  assert.deepEqual({ ...afterChoices.ui, analysis: null }, { ...obs.ui, analysis: null });
+  assert.equal(afterChoices.networkSequence, obs.networkSequence);
   await $(p, "subset-preview").click();
   const fresh = await newPreview(p, identity);
   assert.notEqual(fresh.preview, identity.preview);
@@ -602,6 +705,7 @@ async function selectSubset(p, name, identity) {
     subset: fresh,
     exact,
     selectionOnlyUnchanged: true,
+    backgroundAnalysis: { before: obs.ui.analysis, after: afterChoices.ui.analysis },
   };
 }
 async function decline(p, name) {
@@ -811,7 +915,12 @@ async function readonly(p, name) {
     assert(targetId);
     const sourceStart = Number(await result.getAttribute("data-source-start")),
       sourceEnd = Number(await result.getAttribute("data-source-end"));
-    const expectedRange = expectedSearchRange(original().get(targetPath), sourceStart, sourceEnd, token);
+    const expectedRange = expectedSearchRange(
+      original().get(targetPath),
+      sourceStart,
+      sourceEnd,
+      token,
+    );
     const { start, end } = expectedRange;
     await result.click();
     await reader.waitForFunction(
@@ -920,7 +1029,7 @@ async function phase(p, label) {
       ": full real literal proposal, noncontiguous subset, NEW exact preview, decline",
     p,
   );
-  const declined = await selectSubset(p, name, await fullProposal(p, name));
+  const declined = await selectSubset(p, name, await fullProposal(p, name, { diagnosticAnalysisSettlement: true }));
   await decline(p, name);
   step(
     label +
@@ -930,7 +1039,7 @@ async function phase(p, label) {
   const accepted = await selectSubset(p, name, await fullProposal(p, name));
   const roundTrip = await acceptUndo(p, name, desired(true));
   step(
-    label + ": old original controls retired by analysis selection A-B-A",
+    label + ": after real Undo/new-head, ONE normal unfenced User preview then original controls retired by analysis selection A-B-A",
     p,
   );
   const stale = await staleSelection(p, name);
