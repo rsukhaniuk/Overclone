@@ -249,9 +249,13 @@ else
 
         @if (Coordinator.Recovery is { } recovery)
         {
-            <div class="banner banner-recovery" role="alert">
+            <div class="banner banner-recovery" role="alert" data-testid="recovery-panel" data-damaged-head="@recovery.DamagedHead" data-busy="@(Coordinator.RecoveryBusy.ToString().ToLowerInvariant())">
                 <p>The project head could not be verified and may be damaged. Damaged data is
                     retained. Select a complete checkpoint to recover to:</p>
+                @if (Coordinator.RecoveryUnavailableReason is { } recoveryReason)
+                { <p data-testid="recovery-unavailable">@recoveryReason</p> }
+                @if (!string.IsNullOrEmpty(Coordinator.LastError))
+                { <p role="status" data-testid="recovery-notice">@Coordinator.LastError</p> }
                 @if (recovery.CompleteCheckpoints.Count == 0)
                 {
                     <p>No complete checkpoints are available. Export any recoverable content and
@@ -265,7 +269,7 @@ else
                             <li>
                                 <span>@cp.Reason — @(cp.RevisionId.ToString().Substring(0, 8))</span>
                                 <button @onclick='() => RecoverToAsync(cp.RevisionId)'
-                                        data-testid="recover">Recover to this</button>
+                                        data-testid="recover" data-revision-id="@cp.RevisionId" disabled="@(Coordinator.RecoveryUnavailableReason is not null)">Recover to this</button>
                             </li>
                         }
                     </ul>
@@ -1577,7 +1581,9 @@ else
 
     private async Task RecoverToAsync(RevisionId target)
     {
-        await Coordinator.RecoverToAsync(target, System.Threading.CancellationToken.None);
+        var operation = Coordinator.RecoverToAsync(target, System.Threading.CancellationToken.None);
+        StateHasChanged(); // display admitted busy state while actual recovery settles
+        await operation;
         StateHasChanged();
     }
 

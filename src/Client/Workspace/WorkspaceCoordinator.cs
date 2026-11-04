@@ -955,20 +955,85 @@ public sealed partial class WorkspaceCoordinator : IAsyncDisposable
 
     // ---- recovery ----
 
+    public bool RecoveryBusy { get; private set; }
+    public string? RecoveryUnavailableReason => RecoveryBusy ? "Recovery is in progress."
+        : Project is null || Recovery is null ? "No damaged-head recovery is available."
+        : IsReadOnly ? "Read-only: recovery requires this tab's current writer lock."
+        : IsDirty ? "Unsaved working bytes are retained; download them before using a separate clean recovery writer."
+        : Capabilities?.WebLocks != true || LockId is not { } id || !_locks.IsOwnedLocally(id, LockName(Project.Id))
+            ? "Writer authority is unavailable; recovery cannot change the saved head." : null;
+
     public async Task<CommitResult> RecoverToAsync(RevisionId targetRevision, CancellationToken ct)
     {
-        if (Project is null || Recovery is null) return CommitResult.Unavailable("No recovery in progress.");
-        var damagedHead = Recovery.DamagedHead;
-        var result = await _repo.RepairHeadAsync(Project.Id, damagedHead, targetRevision, ct);
-        if (result.Status == CommitStatus.Saved)
+        if (Project is not { } project || Recovery is not { } recovery)
+            return CommitResult.Unavailable("No recovery in progress.");
+        var projectId = project.Id; var session = SessionId; var generation = WorkingGeneration;
+        var damagedHead = recovery.DamagedHead; var lockId = LockId;
+        bool Same() => Project?.Id == projectId && SessionId == session && WorkingGeneration == generation
+            && ReferenceEquals(Recovery, recovery) && Project.HeadRevisionId == damagedHead;
+        bool Listed() => recovery.CompleteCheckpoints.Any(c => c.ProjectId == projectId && c.RevisionId == targetRevision);
+        bool Local() => Same() && !IsReadOnly && !IsDirty && Capabilities?.WebLocks == true && lockId is not null
+            && LockId == lockId && _locks.IsOwnedLocally(lockId, LockName(projectId)) && Listed();
+        CommitResult Refuse(string message)
         {
-            await LoadSnapshotAsync(Project.Id, ct);
+            if (Same() && LockId == lockId) LastError = message;
+            return CommitResult.Unavailable(message);
         }
-        else
+        void LostWriter()
         {
-            LastError = result.SafeMessage ?? "Recovery failed.";
+            if (!Same() || LockId != lockId) return;
+            LockId = null; IsReadOnly = true;
+            LastError = "Recovery writer lock was lost. Saved data and any working bytes are retained.";
+            RaiseWorkspaceChanged(); // Existing owners retire; no generation/content/head reset.
         }
-        return result;
+        async Task<bool> Owned()
+        {
+            if (!Same() || LockId != lockId || lockId is null || IsReadOnly || IsDirty || !Listed() || Capabilities?.WebLocks != true) return false;
+            if (!_locks.IsOwnedLocally(lockId, LockName(projectId))) { LostWriter(); return false; }
+            var owns = await _locks.OwnsAsync(lockId!, LockName(projectId), ct);
+            if (!Same() || LockId != lockId || IsDirty || !Listed()) return false;
+            if (!owns || !_locks.IsOwnedLocally(lockId!, LockName(projectId))) { LostWriter(); return false; }
+            return Local() && !ct.IsCancellationRequested;
+        }
+        // No repository read/write is allowed for readonly/dirty/unlisted input.
+        if (!Local()) return Refuse("Recovery requires a clean current writer and a listed complete checkpoint.");
+        try { await _gate.WaitAsync(ct); }
+        catch (OperationCanceledException) { return Refuse("Recovery cancelled before admission."); }
+        bool entered = false; CommitResult? durableRepair = null;
+        try
+        {
+            if (!Local()) return Refuse("Recovery context changed while waiting; reopen the recovery choices.");
+            RecoveryBusy = true; entered = true;
+            if (!await Owned()) return Refuse("Recovery writer authority changed; no repair was invoked.");
+            var target = await _repo.ReadRevisionAsync(projectId, targetRevision, ct);
+            if (!Same() || LockId != lockId || IsDirty || !Listed()) return Refuse("Recovery context changed during checkpoint verification.");
+            if (!target.Verified || target.Revision.ProjectId != projectId || target.Revision.Id != targetRevision)
+                return Refuse("The selected checkpoint is not a verified revision of this project.");
+            if (!await Owned() || !Local() || ct.IsCancellationRequested)
+                return Refuse("Recovery writer authority changed before repair.");
+            // Existing CAS pointer repair to an EXISTING checkpoint. This is not
+            // whole-project restore/new-child creation, nor an atomic lease/IDB claim.
+            var result = await _repo.RepairHeadAsync(projectId, damagedHead, targetRevision, ct);
+            if (result.Status == CommitStatus.Saved) durableRepair = result;
+            if (!Same() || LockId != lockId) return result; // old durable result cannot mutate a new session
+            if (result.Status != CommitStatus.Saved) { LastError = result.SafeMessage ?? "Recovery failed."; return result; }
+            if (!await Owned()) return result; // durable repair may have succeeded; don't erase that outcome
+            var snapshot = await _repo.OpenAsync(projectId, ct); // exact captured ID, never mutable Project.Id
+            if (!await Owned() || !Local()) return result;
+            if (snapshot.Project.Id != projectId || snapshot.Project.HeadRevisionId != targetRevision
+                || snapshot.Revision?.Id != targetRevision || snapshot.Recovery is not null)
+            {
+                if (Same()) LastError = "Recovery changed the durable head, but its reload is no longer the selected complete checkpoint.";
+                return result;
+            }
+            ApplySnapshot(snapshot); SavePhase = SavePhase.Saved; LastError = null;
+            RaiseWorkspaceChanged();
+            return result;
+        }
+        catch (OperationCanceledException) { return durableRepair ?? Refuse("Recovery cancelled; inspect the current durable recovery state before another action."); }
+        catch (Exception error) when (error is not OutOfMemoryException)
+        { return durableRepair ?? Refuse("Recovery could not finish safely. Saved objects and recovery choices are retained."); }
+        finally { if (entered) RecoveryBusy = false; _gate.Release(); }
     }
 
     // ---- path normalization ----
