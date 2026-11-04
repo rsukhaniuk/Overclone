@@ -1,0 +1,16 @@
+% Private format-generation experiment only; never injected into project source.
+% The original T2A declarations map CYRII/cyrii to the same slots as Latin I/i.
+% Preserve those glyph slots and attach the semantic distinction at the command.
+\AddToHook{package/fontenc/after}{%
+  \DeclareTextCommand{\CYRII}{T2A}{%
+    \leavevmode\FontProbeBegin{0406}\char73\FontProbeEnd}%
+  \DeclareTextCommand{\cyrii}{T2A}{%
+    \leavevmode\FontProbeBegin{0456}\char105\FontProbeEnd}%
+}
+\ifnum\pdfoutput>0
+  \def\FontProbeBegin#1{\pdfliteral direct{/Span << /ActualText <FEFF#1> >> BDC}}
+  \def\FontProbeEnd{\pdfliteral direct{EMC}}
+\else
+  \def\FontProbeBegin#1{\special{pdf:literal direct /Span << /ActualText <FEFF#1> >> BDC}}
+  \def\FontProbeEnd{\special{pdf:literal direct EMC}}
+\fi

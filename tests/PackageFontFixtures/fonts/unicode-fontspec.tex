@@ -1,0 +1,28 @@
+% Synthetic Unicode-engine control; explicitly selected real bundled faces.
+\documentclass[12pt]{article}
+\usepackage{fontspec}
+\setmainfont{DejaVuSerif.ttf}[
+  BoldFont=DejaVuSerif-Bold.ttf,
+  ItalicFont=DejaVuSerif-Italic.ttf,
+  BoldItalicFont=DejaVuSerif-BoldItalic.ttf]
+\newcommand{\UFace}[2]{\begingroup#1\fontsize{#2}{30}\selectfont
+  \typeout{R1-UNICODE-FONT:\fontname\font}
+  \noindent Привіт Київ. Іі Її Єє Ґґ. ASCII I i.\par\endgroup}
+\begin{document}
+\UFace{\normalfont}{10}
+\UFace{\normalfont\bfseries}{10}
+\UFace{\normalfont\itshape}{10}
+\UFace{\normalfont\bfseries\itshape}{10}
+\UFace{\normalfont}{11}
+\UFace{\normalfont\bfseries}{11}
+\UFace{\normalfont\itshape}{11}
+\UFace{\normalfont\bfseries\itshape}{11}
+\UFace{\normalfont}{12}
+\UFace{\normalfont\bfseries}{12}
+\UFace{\normalfont\itshape}{12}
+\UFace{\normalfont\bfseries\itshape}{12}
+\UFace{\normalfont}{14}
+\UFace{\normalfont\bfseries}{14}
+\UFace{\normalfont\itshape}{14}
+\UFace{\normalfont\bfseries\itshape}{14}
+\end{document}

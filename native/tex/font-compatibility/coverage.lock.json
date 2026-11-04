@@ -1,0 +1,1266 @@
+{
+  "schemaVersion": 1,
+  "status": "incomplete-acquisition-required",
+  "scope": "Original T2A cmr/cmss/cmtt declarations only; not every installed T2A family or font availability proof",
+  "inputs": {
+    "runtimePins": {
+      "length": 530986,
+      "sha256": "3dcca8f206211dbe0d3346b54f8fef4f5b7e7be904a241f3b6f3376e8d948289"
+    },
+    "declarations": [
+      {
+        "name": "t2acmr.fd",
+        "length": 2556,
+        "sha256": "193f28c15cf5506b89694f1a155307016cc00a3eec05f07c2c6cb4e6835580b5"
+      },
+      {
+        "name": "t2acmss.fd",
+        "length": 2598,
+        "sha256": "acb0e061ead6882e321ebeb12294776ae14c5bdddaa659e1e7ad4c2f658f45bf"
+      },
+      {
+        "name": "t2acmtt.fd",
+        "length": 2533,
+        "sha256": "c89bbf44d7da281c11dfec26a9a98eb4a3d5e466b236bd996a0b0325aac94f37"
+      }
+    ],
+    "map": {
+      "length": 1786126,
+      "sha256": "bb437ccc3665f4475efefcff12d3baf8e51935a3bb40f609b0c6bb509b8998b6"
+    },
+    "metricArchive": {
+      "length": 55216,
+      "sha256": "e414d8dc28d0ec03c96ae13d9f6d98834487f8066ab543827d93ab7d020617fc"
+    },
+    "outlineIndex": {
+      "length": 48781,
+      "sha256": "56b6bbccd29ad57006f0cc348d77cf035068b607e70ce841c40a65438b1e9505"
+    }
+  },
+  "totals": {
+    "declaredSelections": 292,
+    "runtimeCompleteSelections": 2,
+    "uniqueMetrics": 241,
+    "cachedArchiveT2AMetrics": 16,
+    "missingMetricFilesBeyondCache": 225,
+    "missingOutlineFiles": 237,
+    "missingOutlineBytesFromRetainedIndex": 34905352
+  },
+  "substitutions": [
+    {
+      "family": "cmss",
+      "series": "m",
+      "shape": "sc",
+      "kind": "sub",
+      "target": "cmr/m/sc",
+      "advertisedReady": false
+    },
+    {
+      "family": "cmtt",
+      "series": "bx",
+      "shape": "n",
+      "kind": "ssub",
+      "target": "cmtt/m/n",
+      "advertisedReady": false
+    },
+    {
+      "family": "cmtt",
+      "series": "bx",
+      "shape": "it",
+      "kind": "ssub",
+      "target": "cmtt/m/it",
+      "advertisedReady": false
+    }
+  ],
+  "acquisition": {
+    "authorized": false,
+    "outlineBaseUrl": "https://mirrors.ctan.org/fonts/ps-type1/cm-super/pfb/",
+    "outlines": [
+      {
+        "name": "sfbi0500.pfb",
+        "indexLength": 197365
+      },
+      {
+        "name": "sfbi0600.pfb",
+        "indexLength": 197045
+      },
+      {
+        "name": "sfbi0700.pfb",
+        "indexLength": 187640
+      },
+      {
+        "name": "sfbi0800.pfb",
+        "indexLength": 199864
+      },
+      {
+        "name": "sfbi0900.pfb",
+        "indexLength": 193544
+      },
+      {
+        "name": "sfbi1000.pfb",
+        "indexLength": 193571
+      },
+      {
+        "name": "sfbi1095.pfb",
+        "indexLength": 204454
+      },
+      {
+        "name": "sfbi1200.pfb",
+        "indexLength": 205875
+      },
+      {
+        "name": "sfbi1440.pfb",
+        "indexLength": 207857
+      },
+      {
+        "name": "sfbi1728.pfb",
+        "indexLength": 192025
+      },
+      {
+        "name": "sfbi2074.pfb",
+        "indexLength": 201124
+      },
+      {
+        "name": "sfbi2488.pfb",
+        "indexLength": 199071
+      },
+      {
+        "name": "sfbi2986.pfb",
+        "indexLength": 195647
+      },
+      {
+        "name": "sfbi3583.pfb",
+        "indexLength": 195002
+      },
+      {
+        "name": "sfbl0500.pfb",
+        "indexLength": 162061
+      },
+      {
+        "name": "sfbl0600.pfb",
+        "indexLength": 154305
+      },
+      {
+        "name": "sfbl0700.pfb",
+        "indexLength": 154452
+      },
+      {
+        "name": "sfbl0800.pfb",
+        "indexLength": 161471
+      },
+      {
+        "name": "sfbl0900.pfb",
+        "indexLength": 146176
+      },
+      {
+        "name": "sfbl1000.pfb",
+        "indexLength": 149528
+      },
+      {
+        "name": "sfbl1095.pfb",
+        "indexLength": 158927
+      },
+      {
+        "name": "sfbl1200.pfb",
+        "indexLength": 145717
+      },
+      {
+        "name": "sfbl1440.pfb",
+        "indexLength": 143376
+      },
+      {
+        "name": "sfbl1728.pfb",
+        "indexLength": 146820
+      },
+      {
+        "name": "sfbl2074.pfb",
+        "indexLength": 150228
+      },
+      {
+        "name": "sfbl2488.pfb",
+        "indexLength": 147873
+      },
+      {
+        "name": "sfbl2986.pfb",
+        "indexLength": 149725
+      },
+      {
+        "name": "sfbl3583.pfb",
+        "indexLength": 155944
+      },
+      {
+        "name": "sfbx0500.pfb",
+        "indexLength": 165845
+      },
+      {
+        "name": "sfbx0600.pfb",
+        "indexLength": 161999
+      },
+      {
+        "name": "sfbx0700.pfb",
+        "indexLength": 144215
+      },
+      {
+        "name": "sfbx0800.pfb",
+        "indexLength": 164252
+      },
+      {
+        "name": "sfbx0900.pfb",
+        "indexLength": 143961
+      },
+      {
+        "name": "sfbx1095.pfb",
+        "indexLength": 154600
+      },
+      {
+        "name": "sfbx1200.pfb",
+        "indexLength": 140176
+      },
+      {
+        "name": "sfbx1440.pfb",
+        "indexLength": 135942
+      },
+      {
+        "name": "sfbx1728.pfb",
+        "indexLength": 139826
+      },
+      {
+        "name": "sfbx2074.pfb",
+        "indexLength": 140194
+      },
+      {
+        "name": "sfbx2488.pfb",
+        "indexLength": 135938
+      },
+      {
+        "name": "sfbx2986.pfb",
+        "indexLength": 142040
+      },
+      {
+        "name": "sfbx3583.pfb",
+        "indexLength": 139820
+      },
+      {
+        "name": "sfcc0500.pfb",
+        "indexLength": 140690
+      },
+      {
+        "name": "sfcc0600.pfb",
+        "indexLength": 129705
+      },
+      {
+        "name": "sfcc0700.pfb",
+        "indexLength": 137120
+      },
+      {
+        "name": "sfcc0800.pfb",
+        "indexLength": 138426
+      },
+      {
+        "name": "sfcc0900.pfb",
+        "indexLength": 118515
+      },
+      {
+        "name": "sfcc1000.pfb",
+        "indexLength": 109713
+      },
+      {
+        "name": "sfcc1095.pfb",
+        "indexLength": 118110
+      },
+      {
+        "name": "sfcc1200.pfb",
+        "indexLength": 108594
+      },
+      {
+        "name": "sfcc1440.pfb",
+        "indexLength": 110032
+      },
+      {
+        "name": "sfcc1728.pfb",
+        "indexLength": 107203
+      },
+      {
+        "name": "sfcc2074.pfb",
+        "indexLength": 108041
+      },
+      {
+        "name": "sfcc2488.pfb",
+        "indexLength": 107888
+      },
+      {
+        "name": "sfcc2986.pfb",
+        "indexLength": 109950
+      },
+      {
+        "name": "sfcc3583.pfb",
+        "indexLength": 108158
+      },
+      {
+        "name": "sfit0800.pfb",
+        "indexLength": 150882
+      },
+      {
+        "name": "sfit0900.pfb",
+        "indexLength": 158366
+      },
+      {
+        "name": "sfit1000.pfb",
+        "indexLength": 157419
+      },
+      {
+        "name": "sfit1095.pfb",
+        "indexLength": 162237
+      },
+      {
+        "name": "sfit1200.pfb",
+        "indexLength": 156727
+      },
+      {
+        "name": "sfit1440.pfb",
+        "indexLength": 160769
+      },
+      {
+        "name": "sfit1728.pfb",
+        "indexLength": 154121
+      },
+      {
+        "name": "sfit2074.pfb",
+        "indexLength": 161474
+      },
+      {
+        "name": "sfit2488.pfb",
+        "indexLength": 159478
+      },
+      {
+        "name": "sfrb0500.pfb",
+        "indexLength": 151200
+      },
+      {
+        "name": "sfrb0600.pfb",
+        "indexLength": 150666
+      },
+      {
+        "name": "sfrb0700.pfb",
+        "indexLength": 139181
+      },
+      {
+        "name": "sfrb0800.pfb",
+        "indexLength": 165053
+      },
+      {
+        "name": "sfrb0900.pfb",
+        "indexLength": 138918
+      },
+      {
+        "name": "sfrb1000.pfb",
+        "indexLength": 142647
+      },
+      {
+        "name": "sfrb1095.pfb",
+        "indexLength": 155163
+      },
+      {
+        "name": "sfrb1200.pfb",
+        "indexLength": 138529
+      },
+      {
+        "name": "sfrb1440.pfb",
+        "indexLength": 136412
+      },
+      {
+        "name": "sfrb1728.pfb",
+        "indexLength": 137424
+      },
+      {
+        "name": "sfrb2074.pfb",
+        "indexLength": 138343
+      },
+      {
+        "name": "sfrb2488.pfb",
+        "indexLength": 139033
+      },
+      {
+        "name": "sfrb2986.pfb",
+        "indexLength": 137653
+      },
+      {
+        "name": "sfrb3583.pfb",
+        "indexLength": 139764
+      },
+      {
+        "name": "sfrm0500.pfb",
+        "indexLength": 180418
+      },
+      {
+        "name": "sfrm0600.pfb",
+        "indexLength": 162624
+      },
+      {
+        "name": "sfrm0700.pfb",
+        "indexLength": 154599
+      },
+      {
+        "name": "sfrm0800.pfb",
+        "indexLength": 164227
+      },
+      {
+        "name": "sfrm0900.pfb",
+        "indexLength": 149037
+      },
+      {
+        "name": "sfrm1095.pfb",
+        "indexLength": 145929
+      },
+      {
+        "name": "sfrm1200.pfb",
+        "indexLength": 136101
+      },
+      {
+        "name": "sfrm1440.pfb",
+        "indexLength": 131078
+      },
+      {
+        "name": "sfrm1728.pfb",
+        "indexLength": 131438
+      },
+      {
+        "name": "sfrm2074.pfb",
+        "indexLength": 131290
+      },
+      {
+        "name": "sfrm2488.pfb",
+        "indexLength": 131381
+      },
+      {
+        "name": "sfrm2986.pfb",
+        "indexLength": 133811
+      },
+      {
+        "name": "sfrm3583.pfb",
+        "indexLength": 131277
+      },
+      {
+        "name": "sfsi0500.pfb",
+        "indexLength": 105182
+      },
+      {
+        "name": "sfsi0600.pfb",
+        "indexLength": 103953
+      },
+      {
+        "name": "sfsi0700.pfb",
+        "indexLength": 103906
+      },
+      {
+        "name": "sfsi0800.pfb",
+        "indexLength": 106155
+      },
+      {
+        "name": "sfsi0900.pfb",
+        "indexLength": 104439
+      },
+      {
+        "name": "sfsi1000.pfb",
+        "indexLength": 103607
+      },
+      {
+        "name": "sfsi1095.pfb",
+        "indexLength": 106965
+      },
+      {
+        "name": "sfsi1200.pfb",
+        "indexLength": 104587
+      },
+      {
+        "name": "sfsi1440.pfb",
+        "indexLength": 99279
+      },
+      {
+        "name": "sfsi1728.pfb",
+        "indexLength": 99816
+      },
+      {
+        "name": "sfsi2074.pfb",
+        "indexLength": 96650
+      },
+      {
+        "name": "sfsi2488.pfb",
+        "indexLength": 95540
+      },
+      {
+        "name": "sfsi2986.pfb",
+        "indexLength": 97044
+      },
+      {
+        "name": "sfsi3583.pfb",
+        "indexLength": 98309
+      },
+      {
+        "name": "sfsl0500.pfb",
+        "indexLength": 177404
+      },
+      {
+        "name": "sfsl0600.pfb",
+        "indexLength": 164339
+      },
+      {
+        "name": "sfsl0700.pfb",
+        "indexLength": 160404
+      },
+      {
+        "name": "sfsl0800.pfb",
+        "indexLength": 173305
+      },
+      {
+        "name": "sfsl0900.pfb",
+        "indexLength": 155905
+      },
+      {
+        "name": "sfsl1000.pfb",
+        "indexLength": 156075
+      },
+      {
+        "name": "sfsl1095.pfb",
+        "indexLength": 158320
+      },
+      {
+        "name": "sfsl1200.pfb",
+        "indexLength": 150680
+      },
+      {
+        "name": "sfsl1440.pfb",
+        "indexLength": 143646
+      },
+      {
+        "name": "sfsl1728.pfb",
+        "indexLength": 143313
+      },
+      {
+        "name": "sfsl2074.pfb",
+        "indexLength": 140848
+      },
+      {
+        "name": "sfsl2488.pfb",
+        "indexLength": 145545
+      },
+      {
+        "name": "sfsl2986.pfb",
+        "indexLength": 144448
+      },
+      {
+        "name": "sfsl3583.pfb",
+        "indexLength": 146441
+      },
+      {
+        "name": "sfso0500.pfb",
+        "indexLength": 159616
+      },
+      {
+        "name": "sfso0600.pfb",
+        "indexLength": 160732
+      },
+      {
+        "name": "sfso0700.pfb",
+        "indexLength": 161083
+      },
+      {
+        "name": "sfso0800.pfb",
+        "indexLength": 162254
+      },
+      {
+        "name": "sfso0900.pfb",
+        "indexLength": 159220
+      },
+      {
+        "name": "sfso1000.pfb",
+        "indexLength": 160858
+      },
+      {
+        "name": "sfso1095.pfb",
+        "indexLength": 158805
+      },
+      {
+        "name": "sfso1200.pfb",
+        "indexLength": 158660
+      },
+      {
+        "name": "sfso1440.pfb",
+        "indexLength": 157030
+      },
+      {
+        "name": "sfso1728.pfb",
+        "indexLength": 155361
+      },
+      {
+        "name": "sfso2074.pfb",
+        "indexLength": 157946
+      },
+      {
+        "name": "sfso2488.pfb",
+        "indexLength": 156016
+      },
+      {
+        "name": "sfso2986.pfb",
+        "indexLength": 156883
+      },
+      {
+        "name": "sfso3583.pfb",
+        "indexLength": 158538
+      },
+      {
+        "name": "sfss0500.pfb",
+        "indexLength": 101283
+      },
+      {
+        "name": "sfss0600.pfb",
+        "indexLength": 99931
+      },
+      {
+        "name": "sfss0700.pfb",
+        "indexLength": 96887
+      },
+      {
+        "name": "sfss0800.pfb",
+        "indexLength": 95441
+      },
+      {
+        "name": "sfss0900.pfb",
+        "indexLength": 94648
+      },
+      {
+        "name": "sfss1000.pfb",
+        "indexLength": 94269
+      },
+      {
+        "name": "sfss1095.pfb",
+        "indexLength": 97272
+      },
+      {
+        "name": "sfss1200.pfb",
+        "indexLength": 95792
+      },
+      {
+        "name": "sfss1440.pfb",
+        "indexLength": 90944
+      },
+      {
+        "name": "sfss1728.pfb",
+        "indexLength": 91468
+      },
+      {
+        "name": "sfss2074.pfb",
+        "indexLength": 91932
+      },
+      {
+        "name": "sfss2488.pfb",
+        "indexLength": 92148
+      },
+      {
+        "name": "sfss2986.pfb",
+        "indexLength": 93241
+      },
+      {
+        "name": "sfss3583.pfb",
+        "indexLength": 91028
+      },
+      {
+        "name": "sfssdc10.pfb",
+        "indexLength": 149381
+      },
+      {
+        "name": "sfst0800.pfb",
+        "indexLength": 168927
+      },
+      {
+        "name": "sfst0900.pfb",
+        "indexLength": 166647
+      },
+      {
+        "name": "sfst1000.pfb",
+        "indexLength": 161968
+      },
+      {
+        "name": "sfst1095.pfb",
+        "indexLength": 160886
+      },
+      {
+        "name": "sfst1200.pfb",
+        "indexLength": 167182
+      },
+      {
+        "name": "sfst1440.pfb",
+        "indexLength": 162871
+      },
+      {
+        "name": "sfst1728.pfb",
+        "indexLength": 167461
+      },
+      {
+        "name": "sfst2074.pfb",
+        "indexLength": 166484
+      },
+      {
+        "name": "sfst2488.pfb",
+        "indexLength": 167208
+      },
+      {
+        "name": "sfst2986.pfb",
+        "indexLength": 161518
+      },
+      {
+        "name": "sfst3583.pfb",
+        "indexLength": 166142
+      },
+      {
+        "name": "sfsx0500.pfb",
+        "indexLength": 156212
+      },
+      {
+        "name": "sfsx0600.pfb",
+        "indexLength": 148906
+      },
+      {
+        "name": "sfsx0700.pfb",
+        "indexLength": 148435
+      },
+      {
+        "name": "sfsx0800.pfb",
+        "indexLength": 151158
+      },
+      {
+        "name": "sfsx0900.pfb",
+        "indexLength": 154664
+      },
+      {
+        "name": "sfsx1000.pfb",
+        "indexLength": 149078
+      },
+      {
+        "name": "sfsx1095.pfb",
+        "indexLength": 145807
+      },
+      {
+        "name": "sfsx1200.pfb",
+        "indexLength": 148436
+      },
+      {
+        "name": "sfsx1440.pfb",
+        "indexLength": 148301
+      },
+      {
+        "name": "sfsx1728.pfb",
+        "indexLength": 144018
+      },
+      {
+        "name": "sfsx2074.pfb",
+        "indexLength": 141339
+      },
+      {
+        "name": "sfsx2488.pfb",
+        "indexLength": 142843
+      },
+      {
+        "name": "sfsx2986.pfb",
+        "indexLength": 143316
+      },
+      {
+        "name": "sfsx3583.pfb",
+        "indexLength": 146714
+      },
+      {
+        "name": "sftc0800.pfb",
+        "indexLength": 146769
+      },
+      {
+        "name": "sftc0900.pfb",
+        "indexLength": 141947
+      },
+      {
+        "name": "sftc1000.pfb",
+        "indexLength": 145522
+      },
+      {
+        "name": "sftc1095.pfb",
+        "indexLength": 141588
+      },
+      {
+        "name": "sftc1200.pfb",
+        "indexLength": 143443
+      },
+      {
+        "name": "sftc1440.pfb",
+        "indexLength": 140247
+      },
+      {
+        "name": "sftc1728.pfb",
+        "indexLength": 141749
+      },
+      {
+        "name": "sftc2074.pfb",
+        "indexLength": 145545
+      },
+      {
+        "name": "sftc2488.pfb",
+        "indexLength": 144486
+      },
+      {
+        "name": "sftc2986.pfb",
+        "indexLength": 148105
+      },
+      {
+        "name": "sftc3583.pfb",
+        "indexLength": 145397
+      },
+      {
+        "name": "sfti0500.pfb",
+        "indexLength": 199261
+      },
+      {
+        "name": "sfti0600.pfb",
+        "indexLength": 188157
+      },
+      {
+        "name": "sfti0700.pfb",
+        "indexLength": 184338
+      },
+      {
+        "name": "sfti0800.pfb",
+        "indexLength": 187625
+      },
+      {
+        "name": "sfti0900.pfb",
+        "indexLength": 183673
+      },
+      {
+        "name": "sfti1000.pfb",
+        "indexLength": 186554
+      },
+      {
+        "name": "sfti1095.pfb",
+        "indexLength": 196446
+      },
+      {
+        "name": "sfti1200.pfb",
+        "indexLength": 198221
+      },
+      {
+        "name": "sfti1440.pfb",
+        "indexLength": 187615
+      },
+      {
+        "name": "sfti1728.pfb",
+        "indexLength": 179164
+      },
+      {
+        "name": "sfti2074.pfb",
+        "indexLength": 192934
+      },
+      {
+        "name": "sfti2488.pfb",
+        "indexLength": 194312
+      },
+      {
+        "name": "sfti2986.pfb",
+        "indexLength": 192836
+      },
+      {
+        "name": "sfti3583.pfb",
+        "indexLength": 191023
+      },
+      {
+        "name": "sftt0800.pfb",
+        "indexLength": 175641
+      },
+      {
+        "name": "sftt0900.pfb",
+        "indexLength": 170827
+      },
+      {
+        "name": "sftt1000.pfb",
+        "indexLength": 169201
+      },
+      {
+        "name": "sftt1095.pfb",
+        "indexLength": 169670
+      },
+      {
+        "name": "sftt1200.pfb",
+        "indexLength": 167085
+      },
+      {
+        "name": "sftt1440.pfb",
+        "indexLength": 166192
+      },
+      {
+        "name": "sftt1728.pfb",
+        "indexLength": 173249
+      },
+      {
+        "name": "sftt2074.pfb",
+        "indexLength": 174825
+      },
+      {
+        "name": "sftt2488.pfb",
+        "indexLength": 169145
+      },
+      {
+        "name": "sftt2986.pfb",
+        "indexLength": 170138
+      },
+      {
+        "name": "sftt3583.pfb",
+        "indexLength": 168454
+      },
+      {
+        "name": "sfui0500.pfb",
+        "indexLength": 174642
+      },
+      {
+        "name": "sfui0600.pfb",
+        "indexLength": 160465
+      },
+      {
+        "name": "sfui0700.pfb",
+        "indexLength": 164280
+      },
+      {
+        "name": "sfui0800.pfb",
+        "indexLength": 158380
+      },
+      {
+        "name": "sfui0900.pfb",
+        "indexLength": 152694
+      },
+      {
+        "name": "sfui1000.pfb",
+        "indexLength": 153243
+      },
+      {
+        "name": "sfui1095.pfb",
+        "indexLength": 162195
+      },
+      {
+        "name": "sfui1200.pfb",
+        "indexLength": 150526
+      },
+      {
+        "name": "sfui1440.pfb",
+        "indexLength": 143848
+      },
+      {
+        "name": "sfui1728.pfb",
+        "indexLength": 146443
+      },
+      {
+        "name": "sfui2074.pfb",
+        "indexLength": 146179
+      },
+      {
+        "name": "sfui2488.pfb",
+        "indexLength": 145723
+      },
+      {
+        "name": "sfui2986.pfb",
+        "indexLength": 145703
+      },
+      {
+        "name": "sfui3583.pfb",
+        "indexLength": 145470
+      },
+      {
+        "name": "sfxc0500.pfb",
+        "indexLength": 144222
+      },
+      {
+        "name": "sfxc0600.pfb",
+        "indexLength": 134544
+      },
+      {
+        "name": "sfxc0700.pfb",
+        "indexLength": 115452
+      },
+      {
+        "name": "sfxc0800.pfb",
+        "indexLength": 134224
+      },
+      {
+        "name": "sfxc0900.pfb",
+        "indexLength": 118384
+      },
+      {
+        "name": "sfxc1000.pfb",
+        "indexLength": 118670
+      },
+      {
+        "name": "sfxc1095.pfb",
+        "indexLength": 131321
+      },
+      {
+        "name": "sfxc1200.pfb",
+        "indexLength": 114082
+      },
+      {
+        "name": "sfxc1440.pfb",
+        "indexLength": 110801
+      },
+      {
+        "name": "sfxc1728.pfb",
+        "indexLength": 113994
+      },
+      {
+        "name": "sfxc2074.pfb",
+        "indexLength": 111780
+      },
+      {
+        "name": "sfxc2488.pfb",
+        "indexLength": 115470
+      },
+      {
+        "name": "sfxc2986.pfb",
+        "indexLength": 113349
+      },
+      {
+        "name": "sfxc3583.pfb",
+        "indexLength": 114282
+      }
+    ],
+    "metricPackagePage": "https://ctan.org/pkg/lh",
+    "metricPackageUrl": null,
+    "missingMetricsBeyondCache": [
+      "labi0500.tfm",
+      "labi0600.tfm",
+      "labi0700.tfm",
+      "labi0800.tfm",
+      "labi0900.tfm",
+      "labi1000.tfm",
+      "labi1095.tfm",
+      "labi1200.tfm",
+      "labi1440.tfm",
+      "labi1728.tfm",
+      "labi2074.tfm",
+      "labi2488.tfm",
+      "labi2986.tfm",
+      "labi3583.tfm",
+      "labl0500.tfm",
+      "labl0600.tfm",
+      "labl0700.tfm",
+      "labl0800.tfm",
+      "labl0900.tfm",
+      "labl1000.tfm",
+      "labl1095.tfm",
+      "labl1200.tfm",
+      "labl1440.tfm",
+      "labl1728.tfm",
+      "labl2074.tfm",
+      "labl2488.tfm",
+      "labl2986.tfm",
+      "labl3583.tfm",
+      "labx0500.tfm",
+      "labx0600.tfm",
+      "labx0800.tfm",
+      "labx1095.tfm",
+      "labx1200.tfm",
+      "labx1440.tfm",
+      "labx1728.tfm",
+      "labx2074.tfm",
+      "labx2488.tfm",
+      "labx2986.tfm",
+      "labx3583.tfm",
+      "lacc0500.tfm",
+      "lacc0600.tfm",
+      "lacc0700.tfm",
+      "lacc0800.tfm",
+      "lacc0900.tfm",
+      "lacc1095.tfm",
+      "lacc1200.tfm",
+      "lacc1440.tfm",
+      "lacc1728.tfm",
+      "lacc2074.tfm",
+      "lacc2488.tfm",
+      "lacc2986.tfm",
+      "lacc3583.tfm",
+      "lait0800.tfm",
+      "lait0900.tfm",
+      "lait1000.tfm",
+      "lait1095.tfm",
+      "lait1200.tfm",
+      "lait1440.tfm",
+      "lait1728.tfm",
+      "lait2074.tfm",
+      "lait2488.tfm",
+      "lait2986.tfm",
+      "lait3583.tfm",
+      "larb0500.tfm",
+      "larb0600.tfm",
+      "larb0700.tfm",
+      "larb0800.tfm",
+      "larb0900.tfm",
+      "larb1000.tfm",
+      "larb1095.tfm",
+      "larb1200.tfm",
+      "larb1440.tfm",
+      "larb1728.tfm",
+      "larb2074.tfm",
+      "larb2488.tfm",
+      "larb2986.tfm",
+      "larb3583.tfm",
+      "larm0500.tfm",
+      "larm0600.tfm",
+      "larm0800.tfm",
+      "larm1095.tfm",
+      "larm1200.tfm",
+      "larm1440.tfm",
+      "larm1728.tfm",
+      "larm2074.tfm",
+      "larm2488.tfm",
+      "larm2986.tfm",
+      "larm3583.tfm",
+      "lasi0500.tfm",
+      "lasi0600.tfm",
+      "lasi0700.tfm",
+      "lasi0800.tfm",
+      "lasi0900.tfm",
+      "lasi1000.tfm",
+      "lasi1095.tfm",
+      "lasi1200.tfm",
+      "lasi1440.tfm",
+      "lasi1728.tfm",
+      "lasi2074.tfm",
+      "lasi2488.tfm",
+      "lasi2986.tfm",
+      "lasi3583.tfm",
+      "lasl0500.tfm",
+      "lasl0600.tfm",
+      "lasl0700.tfm",
+      "lasl0800.tfm",
+      "lasl1095.tfm",
+      "lasl1200.tfm",
+      "lasl1440.tfm",
+      "lasl1728.tfm",
+      "lasl2074.tfm",
+      "lasl2488.tfm",
+      "lasl2986.tfm",
+      "lasl3583.tfm",
+      "laso0500.tfm",
+      "laso0600.tfm",
+      "laso0700.tfm",
+      "laso0800.tfm",
+      "laso0900.tfm",
+      "laso1000.tfm",
+      "laso1095.tfm",
+      "laso1200.tfm",
+      "laso1440.tfm",
+      "laso1728.tfm",
+      "laso2074.tfm",
+      "laso2488.tfm",
+      "laso2986.tfm",
+      "laso3583.tfm",
+      "lass0500.tfm",
+      "lass0600.tfm",
+      "lass0700.tfm",
+      "lass0800.tfm",
+      "lass0900.tfm",
+      "lass1095.tfm",
+      "lass1200.tfm",
+      "lass1440.tfm",
+      "lass1728.tfm",
+      "lass2074.tfm",
+      "lass2488.tfm",
+      "lass2986.tfm",
+      "lass3583.tfm",
+      "lassdc10.tfm",
+      "last0800.tfm",
+      "last0900.tfm",
+      "last1000.tfm",
+      "last1095.tfm",
+      "last1200.tfm",
+      "last1440.tfm",
+      "last1728.tfm",
+      "last2074.tfm",
+      "last2488.tfm",
+      "last2986.tfm",
+      "last3583.tfm",
+      "lasx0500.tfm",
+      "lasx0600.tfm",
+      "lasx0700.tfm",
+      "lasx0800.tfm",
+      "lasx0900.tfm",
+      "lasx1095.tfm",
+      "lasx1200.tfm",
+      "lasx1440.tfm",
+      "lasx1728.tfm",
+      "lasx2074.tfm",
+      "lasx2488.tfm",
+      "lasx2986.tfm",
+      "lasx3583.tfm",
+      "latc0800.tfm",
+      "latc0900.tfm",
+      "latc1000.tfm",
+      "latc1095.tfm",
+      "latc1200.tfm",
+      "latc1440.tfm",
+      "latc1728.tfm",
+      "latc2074.tfm",
+      "latc2488.tfm",
+      "latc2986.tfm",
+      "latc3583.tfm",
+      "lati0500.tfm",
+      "lati0600.tfm",
+      "lati0700.tfm",
+      "lati0800.tfm",
+      "lati1095.tfm",
+      "lati1200.tfm",
+      "lati1440.tfm",
+      "lati1728.tfm",
+      "lati2074.tfm",
+      "lati2488.tfm",
+      "lati2986.tfm",
+      "lati3583.tfm",
+      "latt1095.tfm",
+      "latt1200.tfm",
+      "latt1440.tfm",
+      "latt1728.tfm",
+      "latt2074.tfm",
+      "latt2488.tfm",
+      "latt2986.tfm",
+      "latt3583.tfm",
+      "laui0500.tfm",
+      "laui0600.tfm",
+      "laui0700.tfm",
+      "laui0800.tfm",
+      "laui0900.tfm",
+      "laui1000.tfm",
+      "laui1095.tfm",
+      "laui1200.tfm",
+      "laui1440.tfm",
+      "laui1728.tfm",
+      "laui2074.tfm",
+      "laui2488.tfm",
+      "laui2986.tfm",
+      "laui3583.tfm",
+      "laxc0500.tfm",
+      "laxc0600.tfm",
+      "laxc0700.tfm",
+      "laxc0800.tfm",
+      "laxc0900.tfm",
+      "laxc1000.tfm",
+      "laxc1095.tfm",
+      "laxc1200.tfm",
+      "laxc1440.tfm",
+      "laxc1728.tfm",
+      "laxc2074.tfm",
+      "laxc2488.tfm",
+      "laxc2986.tfm",
+      "laxc3583.tfm"
+    ],
+    "metricDownloadBytes": null,
+    "noticeEvidence": [
+      "CM-Super retained README/COPYING/INSTALL",
+      "LH full-package font notices require association",
+      "LaTeX Cyrillic FD/source bundle LPPL notices"
+    ],
+    "caveat": "Index lengths are retained upstream claims, not acquired hashes. Exact full-LH artifact URL/version/length still needs metadata resolution; no archive URL is guessed. New sources and distribution route need separate approval."
+  },
+  "fullInventorySha256": "ea27491bc690a758237ce280619aa8fd6bb1f612a155fe4a8d440c50d2058603"
+}
