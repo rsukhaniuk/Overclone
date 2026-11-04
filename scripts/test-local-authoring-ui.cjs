@@ -19,7 +19,12 @@
 //   RESULT_DIR             required for font-assets: retain actual downloaded PDFs
 //   PREFLIGHT_ONLY=1        fixture checks only; exits BEFORE origin/browser creation
 //   PDF_DOWNLOAD_CHECKS=1   optional CASE=plain online/offline/stale export checks (RESULT_DIR required)
+//   SOURCE_PDF_CHECKS=1     plain/golden/portable native forward/inverse checks
 //   T2A_UNICODE_REPAIR=1    explicit source-example opt-in, ONLY CASE=font-assets; original inputs still verified first
+// packages/biblatex always require RESULT_DIR, exact PDF downloads and native
+// root/include navigation. Supply the complete mapped P10 runtime for all engines.
+// Their URI links/outlines need separate inspection of the retained actual PDFs:
+// the registered preview does not request/expose passive actions or bookmarks.
 //
 // plain  : single main.tex, no BibTeX — full compile + render + cold offline.
 // golden : exact accepted fixture bytes extracted from the controlled repo
@@ -59,11 +64,12 @@ const RUNTIME_DIR = req("AUTHORING_RUNTIME_DIR");
 const PDF_DIR = req("PDF_RUNTIME_DIR");
 const RESULT_DIR = process.env.RESULT_DIR || "";
 const CASE = process.env.CASE || "plain";
+const PACKAGE_CASE = ["packages", "biblatex"].includes(CASE);
 const COMPILER_CHOICE = process.env.COMPILER_CHOICE || "local-authoring-v4";
 assert.ok(["local-authoring-v4", "latex-dvi", "xelatex", "lualatex"].includes(COMPILER_CHOICE), "explicit supported compiler choice");
 const BUNDLED_RUNTIME = process.env.BUNDLED_RUNTIME === "1";
-const SOURCE_PDF_CHECKS = process.env.SOURCE_PDF_CHECKS === "1";
-assert.ok(!SOURCE_PDF_CHECKS || ["plain", "golden", "portable"].includes(CASE), "source/PDF checks support plain/golden/portable fixtures");
+const SOURCE_PDF_CHECKS = process.env.SOURCE_PDF_CHECKS === "1" || PACKAGE_CASE;
+assert.ok(!SOURCE_PDF_CHECKS || ["plain", "golden", "portable", "packages", "biblatex"].includes(CASE), "source/PDF checks support plain/golden/portable/packages/biblatex fixtures");
 // Opt-in real UI rename of the original input bytes, followed by the same
 // registered compile/BibTeX/render/full-cold-offline workflow.
 const MAIN_PATH = process.env.SELECTED_MAIN_PATH || "main.tex";
@@ -78,7 +84,7 @@ const repairSetting = process.env.T2A_UNICODE_REPAIR;
 assert.ok(repairSetting === undefined || ["", "0", "1"].includes(repairSetting), "T2A_UNICODE_REPAIR must be absent,0 or1");
 const T2A_UNICODE_REPAIR = repairSetting === "1";
 assert.ok(!T2A_UNICODE_REPAIR || CASE === "font-assets", "T2A_UNICODE_REPAIR=1 is supported only for CASE=font-assets");
-const CHECK_DOWNLOADS = CASE === "font-assets" || PDF_DOWNLOAD_CHECKS;
+const CHECK_DOWNLOADS = CASE === "font-assets" || PDF_DOWNLOAD_CHECKS || PACKAGE_CASE;
 if (CHECK_DOWNLOADS) assert.ok(RESULT_DIR, "RESULT_DIR is required to retain actual PDF downloads");
 
 // --- Validate the published SDK manifest: EVERY asset byte hash, as in the
@@ -376,6 +382,7 @@ function chromiumCensus() {
 
 const record = {
   result: "FAIL", case: CASE, compilerChoice: COMPILER_CHOICE, scope: "local-authoring-compile-pdf-cold-offline", pdfDownloadChecksEnabled: CHECK_DOWNLOADS, bundledRuntime: BUNDLED_RUNTIME,
+  sourcePdfChecksEnabled: SOURCE_PDF_CHECKS,
   harnessSha256: sha256(fs.readFileSync(__filename)),
   sourcePdfHelperSha256: sha256(fs.readFileSync(path.join(__dirname, 'source-pdf-navigation-ui-checks.cjs'))),
   sdk: { cspValid: true, manifestVersion: manifest.version, manifestAssets: manifest.assets.length, allAssetHashesVerified: true },
@@ -386,6 +393,12 @@ const record = {
   },
   fontSourceSelection: fontSourceSelection(),
   online: {}, coldOffline: {}, skipped: null, failure: null,
+};
+if (PACKAGE_CASE) record.packagePdfFeatureCoverage = {
+  links: { status: 'not-assessed', expectedUri: 'https://example.org/',
+    reason: 'Registered PDF preview does not request or expose passive URI actions; a rendered text label is not a link check.' },
+  bookmarks: { status: 'not-assessed', expectedTitles: ['Compiler suite', 'Included chapter'],
+    reason: 'Registered PDF preview and E1 inspection contract do not expose outlines; inspect the exact retained PDF artifacts separately.' },
 };
 let phase = "setup";
 function save() {
@@ -646,6 +659,19 @@ async function selectMainInTree(page) {
   await page.locator(".editor-toolbar label", { hasText: MAIN_PATH }).waitFor();
 }
 
+function assertPackageHead(head, expectedMainBytes) {
+  assert.equal(head.files.length, portableFiles.length, 'exact unchanged package fixture file set');
+  return portableFiles.map(input => {
+    const filePath = input.name === 'main.tex' ? MAIN_PATH : input.name;
+    const file = head.files.find(value => value.path === filePath);
+    assert.ok(file, `saved package input: ${filePath}`);
+    const expected = input.name === 'main.tex' ? expectedMainBytes : input.buffer;
+    const bytes = Buffer.from(file.bytes);
+    assert.deepEqual(bytes, expected, `saved exact package input bytes: ${filePath}`);
+    return { path: filePath, bytes: bytes.length, sha256: sha256(bytes) };
+  });
+}
+
 function assertFontHead(head, expectedMainBytes) {
   assert.deepEqual(head.files.map(file => file.path).sort(), Object.keys(FONT_IDENTITIES).sort(), "persisted exact7 project files");
   return FONT_FILES.map(input => {
@@ -794,7 +820,7 @@ let profile, base;
     await page.getByRole("button", { name: "Create project", exact: true }).click();
 
     // Import fixture through the real single-file import picker.
-    if (PDF_DOWNLOAD_CHECKS) {
+    if (PDF_DOWNLOAD_CHECKS || PACKAGE_CASE) {
       assert.equal(await H.$(page, "download-pdf").isDisabled(), true, "no output: PDF download disabled");
       record.online.initialDownloadDisabled = true;
     }
@@ -849,6 +875,7 @@ let profile, base;
     record.online.importedFiles = importedCount;
     record.online.sourceSha256 = sha256(Buffer.from(savedHead.files.find((f) => f.path === MAIN_PATH).bytes));
     assert.equal(record.online.sourceSha256, sha256(expectedMainBytes), "saved main.tex bytes match imported");
+    if (PACKAGE_CASE) record.online.packageInputs = assertPackageHead(savedHead, expectedMainBytes);
     if (CASE === "font-assets") record.online.projectAssets = assertFontHead(savedHead, expectedMainBytes);
 
     if (BUNDLED_RUNTIME) {
@@ -1034,6 +1061,12 @@ let profile, base;
       assert.ok((await canvasNonwhite(page)) > 0, "canvas nonblank raster");
       // Collect markers across actual pages (do not assume bibliography on page 1).
       const allText = await collectAllPageText(page);
+      if (PACKAGE_CASE) {
+        // Retain genuine bytes/text before strict text or bibliography assertions.
+        record.online.actualPageText = allText.slice(0, 4096);
+        assert.deepEqual(await H.head(page, project), savedHead, 'package compile/render preserve every saved input');
+        record.online.download = await downloadAcceptedPdf(page, project, 'online-package-download', 'online.pdf', outputHash);
+      }
       assert.ok(allText.trim().length > 0, "page text nonblank");
       record.online.pageTextLen = allText.trim().length;
       if (CASE === "plain") {
@@ -1052,6 +1085,7 @@ let profile, base;
           assert.match(norm, /Привіт/); assert.match(norm, /Київ/);
         }
         if (['packages', 'biblatex'].includes(CASE)) {
+          record.online.packageTextEvidence = sourcePdfNavigation.assertPackageText(allText, CASE, COMPILER_CHOICE);
           assert.match(norm, /Hyperlink fixture/);
           assert.match(norm, /Listing marker/);
           assert.match(norm, /Package compatibility entry/);
@@ -1101,7 +1135,7 @@ let profile, base;
       record.online.nativeWorkersDuringPreview = nativeWorkersInPhase("preview").length;
     }
 
-    if (PDF_DOWNLOAD_CHECKS) {
+    if (PDF_DOWNLOAD_CHECKS && !PACKAGE_CASE) {
       assert.deepEqual(await H.head(page, project), savedHead, "online plain compile/render preserve saved source");
       record.online.download = await downloadAcceptedPdf(page, project, "online-plain-download", "online.pdf", outputHash);
     }
@@ -1114,7 +1148,7 @@ let profile, base;
 
     if (SOURCE_PDF_CHECKS) {
       phase = "online-source-pdf-navigation";
-      record.online.sourcePdfNavigation = await sourcePdfNavigation.verify(page, project, MAIN_PATH, CASE === "portable" ? "portable" : CASE === "golden", phase);
+      record.online.sourcePdfNavigation = await sourcePdfNavigation.verify(page, project, MAIN_PATH, CASE === "portable" || PACKAGE_CASE ? CASE : CASE === "golden", phase);
     }
     // --- Wait for the offline cache to be genuinely provisioned.
     await page.waitForFunction(() => window.__oopOfflineReady === true, null, { timeout: 90000 });
@@ -1237,6 +1271,7 @@ let profile, base;
     const offlineSavedHead = await H.head(page, project);
     record.coldOffline.editedHeadId = offlineSavedHead.id;
     record.coldOffline.editedSourceSha256 = sha256(Buffer.from(offlineSavedHead.files.find((f) => f.path === MAIN_PATH).bytes));
+    if (PACKAGE_CASE) record.coldOffline.packageInputs = assertPackageHead(offlineSavedHead, Buffer.from(changedSource, 'utf8'));
     assert.notEqual(record.coldOffline.editedSourceSha256, record.online.sourceSha256, "source actually changed offline");
     await H.selectKnu(page);
     assert.deepEqual(await H.head(page, project), offlineSavedHead, "analyze did not mutate source");
@@ -1320,6 +1355,11 @@ let profile, base;
     } else {
       assert.ok((await canvasNonwhite(page)) > 0, "offline canvas nonblank raster");
       const offlineText = await collectAllPageText(page);
+      if (PACKAGE_CASE) {
+        record.coldOffline.actualPageText = offlineText.slice(0, 4096);
+        assert.deepEqual(await H.head(page, project), offlineSavedHead, 'offline package compile/render preserve every saved input');
+        record.coldOffline.download = await downloadAcceptedPdf(page, project, 'offline-package-download', 'offline.pdf', offlineOutputHash);
+      }
       assert.ok(offlineText.trim().length > 0, "offline page text nonblank");
       assert.match(offlineText, /Edited offline/, "offline edited section rendered");
       if (CASE === 't2a-bundled') {
@@ -1335,6 +1375,7 @@ let profile, base;
         record.coldOffline.projectFontFiles = 0;
       }
       if (['packages', 'biblatex'].includes(CASE)) {
+        record.coldOffline.packageTextEvidence = sourcePdfNavigation.assertPackageText(offlineText, CASE, COMPILER_CHOICE);
         const norm = offlineText.replace(/\s+/g, ' ').trim();
         assert.match(norm, /Hyperlink fixture/);
         assert.match(norm, /Listing marker/);
@@ -1373,13 +1414,13 @@ let profile, base;
 
     if (SOURCE_PDF_CHECKS) {
       phase = "offline-source-pdf-navigation";
-      record.coldOffline.sourcePdfNavigation = await sourcePdfNavigation.verify(page, project, MAIN_PATH, CASE === "portable" ? "portable" : CASE === "golden", phase);
+      record.coldOffline.sourcePdfNavigation = await sourcePdfNavigation.verify(page, project, MAIN_PATH, CASE === "portable" || PACKAGE_CASE ? CASE : CASE === "golden", phase);
     }
     if (CHECK_DOWNLOADS) {
       assert.equal((await H.$(page, "pdf-hash").textContent()).trim(), offlineOutputHash);
       assert.deepEqual(await H.head(page, project), offlineSavedHead, "fresh offline compile/render keep saved project head and bytes");
       if (CASE === "font-assets") assertFontHead(offlineSavedHead, Buffer.from(changedSource, "utf8"));
-      record.coldOffline.download = await downloadAcceptedPdf(page, project,
+      if (!PACKAGE_CASE) record.coldOffline.download = await downloadAcceptedPdf(page, project,
         CASE === "font-assets" ? "offline-font-download" : "offline-plain-download",
         CASE === "font-assets" ? "offline-font.pdf" : "offline.pdf", offlineOutputHash);
       record.coldOffline.freshCurrentVerified = true;
