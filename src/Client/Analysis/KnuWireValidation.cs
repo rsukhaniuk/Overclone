@@ -57,7 +57,7 @@ internal static class KnuWireValidation
     }
     internal static void Shape(JsonElement root)
     {
-        if (root.GetProperty("payload").GetProperty("profile").GetProperty("version").GetString() == AnalysisCatalog.ThesisVersion)
+        if (AnalysisCatalog.IsThesis(new(AnalysisCatalog.KnuId, root.GetProperty("payload").GetProperty("profile").GetProperty("version").GetString()!)))
         {
             ThesisWireValidation.Shape(root);
             using var legacy = ThesisWireValidation.LegacyDocument(root);

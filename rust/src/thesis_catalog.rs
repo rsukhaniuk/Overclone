@@ -1,7 +1,7 @@
 //! Bundled source-backed support catalog; no source document, IO or PDF facts.
 //! Unsupported required cells stay open. Source observations are not compliance.
-pub const VERSION: &str = "1.0.0";
-pub const SOURCE_PROFILE_VERSION: &str = "1.5.0";
+pub const VERSION: &str = "1.1.0";
+pub const SOURCE_PROFILE_VERSION: &str = "1.6.0";
 pub const JSON: &str = include_str!("thesis_catalog/catalog.json");
 
 #[cfg(test)]

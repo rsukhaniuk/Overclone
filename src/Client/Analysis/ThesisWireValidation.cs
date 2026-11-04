@@ -53,10 +53,12 @@ internal static class ThesisWireValidation
         ReferenceWireValidation.Configuration(p.GetProperty("referenceConfiguration"));
         Items(p.GetProperty("facts").GetProperty("files"), AnalysisLimits.DMaxFiles, f =>
         { Need(f.GetProperty("byteLength").TryGetInt64(out var n) && n >= 0 && n <= AnalysisLimits.DMaxBytesPerFile); });
-        Need(JsonElement.DeepEquals(p.GetProperty("knu").GetProperty("metadata"), AnalysisCatalog.MetadataFor(AnalysisCatalog.ThesisVersion)));
+        var profileVersion = p.GetProperty("profile").GetProperty("version").GetString()!;
+        Need(JsonElement.DeepEquals(p.GetProperty("knu").GetProperty("metadata"), AnalysisCatalog.MetadataFor(profileVersion)));
         var t = p.GetProperty("thesis");
         Fields(t, "schemaVersion catalogId catalogVersion guidelineSha256 rootFileId workType domain globalCoverage renderedCompliance completeLiteralScan limitations closureFileIds events ruleResults unavailableCells workTypeDependentTitle bibliographyMode firstLiteralCitationKeys");
         foreach (var name in new[] { "catalogId", "catalogVersion", "guidelineSha256", "rootFileId", "workType", "domain", "globalCoverage", "renderedCompliance", "workTypeDependentTitle", "bibliographyMode" }) Text(t, name, 128);
+        Need(t.GetProperty("catalogVersion").GetString() == ThesisCatalog.VersionForProfile(profileVersion));
         Need(t.GetProperty("schemaVersion").TryGetInt32(out var schema) && schema == 1);
         Need(t.GetProperty("completeLiteralScan").ValueKind is JsonValueKind.True or JsonValueKind.False);
         foreach (var (name, max, bytes) in new[] { ("limitations",64,64), ("closureFileIds",5000,128), ("firstLiteralCitationKeys",1000,512) })
@@ -79,7 +81,7 @@ internal static class ThesisWireValidation
     }
 
     // A bounded legacy-format view reuses the exact accepted 1.4 guards. It does
-    // not widen any legacy version or mutate/replace the original 1.5 payload.
+    // not widen any legacy version or mutate/replace the original versioned payload.
     internal static JsonDocument LegacyDocument(JsonElement root)
     {
         var node = JsonNode.Parse(root.GetRawText())!.AsObject(); var p = node["payload"]!.AsObject();
@@ -102,11 +104,11 @@ internal static class ThesisWireValidation
     {
         var t = r.Thesis ?? throw new JsonException("Missing thesis source report.");
         Need(AnalysisCatalog.IsValid(r.Profile.Id,r.Profile.Version,r.Configuration,r.ReferenceConfiguration));
-        Need(t.SchemaVersion==1 && t.CatalogId==ThesisCatalog.Id && t.CatalogVersion==ThesisCatalog.Version && t.GuidelineSha256==ThesisCatalog.GuidelineSha256);
+        Need(t.SchemaVersion==1 && t.CatalogId==ThesisCatalog.Id && t.CatalogVersion==ThesisCatalog.VersionForProfile(r.Profile.Version) && t.GuidelineSha256==ThesisCatalog.GuidelineSha256);
         Need(t.RootFileId==r.ReferenceConfiguration!.RootFileId && t.WorkType==r.Configuration!.WorkType);
         Need(t.Domain=="sourceObservation" && t.GlobalCoverage=="incomplete" && t.RenderedCompliance=="notAssessed");
         Need(r.Knu is not null && r.Knu.FixDescriptors.IsEmpty);
-        Need(JsonElement.DeepEquals(JsonSerializer.SerializeToElement(r.Knu!.Metadata,AnalysisJson.Options),AnalysisCatalog.MetadataFor(AnalysisCatalog.ThesisVersion)));
+        Need(JsonElement.DeepEquals(JsonSerializer.SerializeToElement(r.Knu!.Metadata,AnalysisJson.Options),AnalysisCatalog.MetadataFor(r.Profile.Version)));
         Need(r.UnavailableCapabilities.SequenceEqual(new[]{"pdfFacts","pdfChecks","thesisRenderedChecks"}));
         Need(!t.Limitations.IsDefault && !t.ClosureFileIds.IsDefault && !t.Events.IsDefault && !t.RuleResults.IsDefault && !t.UnavailableCells.IsDefault && !t.FirstLiteralCitationKeys.IsDefault);
         Need(t.Limitations.Length<=64 && t.Limitations.Distinct(StringComparer.Ordinal).Count()==t.Limitations.Length && t.Limitations.All(Limitations.Contains));
@@ -131,7 +133,7 @@ internal static class ThesisWireValidation
             var rr=t.RuleResults[i];
             Need(rr.RuleId==ThesisCatalog.RuleIds[i] && rr.RuleVersion=="1.0.0" && rr.Domain=="sourceObservation"
                 && rr.SupportState=="partial" && rr.Method==ThesisCatalog.Methods[i] && rr.FixPolicy=="none" && rr.Severity=="warning");
-            Need(JsonElement.DeepEquals(JsonSerializer.SerializeToElement(rr.Citation,AnalysisJson.Options),ThesisCatalog.SourceRule(rr.RuleId).GetProperty("citation")));
+            Need(JsonElement.DeepEquals(JsonSerializer.SerializeToElement(rr.Citation,AnalysisJson.Options),ThesisCatalog.SourceRule(rr.RuleId,t.CatalogVersion).GetProperty("citation")));
             Need(!rr.EvidenceIndexes.IsDefault && rr.EvidenceIndexes.SequenceEqual(Enumerable.Range(0,t.Events.Length)));
             bool scoped=appendix && i is 1 or 2;
             if (scoped || !t.Limitations.IsEmpty)

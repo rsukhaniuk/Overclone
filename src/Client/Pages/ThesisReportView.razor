@@ -5,7 +5,7 @@
 {
     var report = Report!;
     <section aria-label="Cited thesis source review" data-testid="thesis-report" data-snapshot-id="@report.Snapshot.Id">
-        <h3>Cited thesis source observations — opt-in 1.5</h3>
+        <h3>Cited thesis source observations — opt-in @report.Result.Profile.Version</h3>
         <p>KNU Faculty of Computer Science and Cybernetics, 2025. This faculty profile is not a university-wide standard or DSTU certification.</p>
         <p data-testid="thesis-scope"><strong>Incomplete standards coverage.</strong> Literal source observations only; effective TeX state, physical PDF layout and overall compliance are not assessed. No automatic fixes.</p>
         <p data-testid="thesis-selection">Root: @FileName(report, thesis.RootFileId). Work type: @AnalysisPresentation.WorkType(thesis.WorkType).</p>
@@ -53,7 +53,7 @@
         <details data-testid="thesis-support-catalog">
             <summary>Full cited support catalog — 31 cells; required unsupported cells remain open</summary>
             <p>No PDF measurements are supplied by this source report. The partial length entry delegates only to the existing narrow extent/labelled-range observation; it does not certify structure or layout.</p>
-            @foreach (var row in ThesisCatalog.Rows)
+            @foreach (var row in ThesisCatalog.RowsForCatalog(thesis.CatalogVersion))
             {
                 var citation = row.GetProperty("citation");
                 <details data-testid="thesis-catalog-row" data-rule-id="@Value(row,"ruleId")">

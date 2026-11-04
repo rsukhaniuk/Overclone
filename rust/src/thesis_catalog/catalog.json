@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "catalogId": "knu-csc-2025-thesis-support",
-  "catalogVersion": "1.0.0",
-  "profileVersion": "1.5.0",
+  "catalogVersion": "1.1.0",
+  "profileVersion": "1.6.0",
   "guidelineSha256": "8be4d724ac108488e6b1766322e7fd6b3646412aa2b6de12b6945f48fb380714",
   "extractedTextSha256": "0fcc851c795df7e39c113cdaf56cc1b68a7f1ab2f17689642e9aac7f81a0d4e3",
   "approvedUrl": "https://csc.knu.ua/uk/filer/canonical/1740300611/2680/",
@@ -1066,12 +1066,15 @@
         "selectedRootClosure",
         "existingBoundedBibliographyReader"
       ],
-      "supportedSyntax": "Unstarred cite{comma-separated exact literal keys}; manual bibitem{key} in thebibliography or existing bounded Project reader of selected bibliography/addbibresource .bib keys; no field/backend evaluation",
+      "supportedSyntax": "Profile 1.6: unstarred cite{keys}, cite[postnote]{keys} and cite[]{keys}; at most one optional postnote of at most 512 UTF-8 bytes of plain literal text, empty permitted. ASCII whitespace/comments may separate command, postnote and mandatory group. Exact comma-separated literal keys resolve against manual bibitem{key} in thebibliography or the existing bounded Project reader of selected bibliography/addbibresource .bib keys. Profile 1.5 retains only cite{keys}. No field/backend/package evaluation.",
       "limitations": [
         "No rendered compliance from source settings",
         "Semantic adequacy requires human review",
         "No authored-content fixes; existing legacy fix policy remains separate",
-        "Physical formatting and semantic adequacy remain unassessed"
+        "Physical formatting and semantic adequacy remain unassessed",
+        "The 512-byte note bound is an implementation observation limit, not a faculty requirement; longer notes remain indeterminate",
+        "Notes containing commands, braces, comments, opening brackets, TeX-special characters or non-whitespace controls remain indeterminate; malformed, multiple-note and starred citation syntax is unsupported",
+        "Page/note text is not interpreted or checked against the cited work. Two-note pre/post-note cite forms need package command semantics not established by this observer and remain indeterminate; compiled numeric citation formatting is unassessed"
       ],
       "examples": [
         {
@@ -1081,6 +1084,18 @@
         {
           "kind": "negativeOrUncertain",
           "description": "cite{á} does not match decomposed á; duplicate definitions are retained"
+        },
+        {
+          "kind": "positiveOrPermitted",
+          "description": "Profile 1.6: cite[с. 2]{ключ😀} resolves the exact key; section 3.15 p30 permits page-specific references, without prescribing a LaTeX command"
+        },
+        {
+          "kind": "positiveOrPermitted",
+          "description": "Profile 1.6: cite[]{a,b} and cite[с. 10–15]{a,b} observe the same exact keys; postnote contents do not affect first-use order"
+        },
+        {
+          "kind": "negativeOrUncertain",
+          "description": "Profile 1.5 cite[с. 2]{a} remains indeterminate; profile 1.6 two-note cite[див.][с. 2]{a}, macro notes, an unclosed optional group or a postnote above 512 UTF-8 bytes also remains indeterminate"
         }
       ],
       "fixPolicy": "none",
@@ -1123,7 +1138,7 @@
         "boundedLiteralSource",
         "selectedRootClosure"
       ],
-      "supportedSyntax": "Same finite manual citation grammar; bibliography content remains authored text",
+      "supportedSyntax": "Profile 1.6 uses the same finite citation grammar including at most one plain literal postnote; note contents never affect exact-key first-use order. Manual unstarred bibitem{key} grammar is unchanged; bibliography content remains authored text. Profile 1.5 grammar is unchanged.",
       "limitations": [
         "No rendered compliance from source settings",
         "Semantic adequacy requires human review",

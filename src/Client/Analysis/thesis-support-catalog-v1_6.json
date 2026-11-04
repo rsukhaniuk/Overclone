@@ -1,0 +1,1995 @@
+{
+  "schemaVersion": 1,
+  "catalogId": "knu-csc-2025-thesis-support",
+  "catalogVersion": "1.1.0",
+  "profileVersion": "1.6.0",
+  "guidelineSha256": "8be4d724ac108488e6b1766322e7fd6b3646412aa2b6de12b6945f48fb380714",
+  "extractedTextSha256": "0fcc851c795df7e39c113cdaf56cc1b68a7f1ab2f17689642e9aac7f81a0d4e3",
+  "approvedUrl": "https://csc.knu.ua/uk/filer/canonical/1740300611/2680/",
+  "scope": "KNU Faculty of Computer Science and Cybernetics 2025, not university-wide; global compliance never assessed",
+  "workTypeDefault": "unspecified",
+  "globalCoverage": "incomplete",
+  "rules": [
+    {
+      "ruleId": "KNU-STRUCTURE-001",
+      "ruleVersion": "1.0.0",
+      "domain": "renderedObservation",
+      "citation": {
+        "section": "2; 2.1–2.9",
+        "printedPages": [
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17
+        ],
+        "pdfPages": [
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17
+        ]
+      },
+      "guidelineSha256": "8be4d724ac108488e6b1766322e7fd6b3646412aa2b6de12b6945f48fb380714",
+      "requirementStrength": "mandatory",
+      "applicableWorkTypes": [
+        "coursework",
+        "bachelorQualification",
+        "masterQualification"
+      ],
+      "preconditions": [
+        "Exact successful compiled revision and PDF identity",
+        "Confirmed applicable roles; unknown evidence is not absence"
+      ],
+      "requiredCapabilities": [
+        "confirmedStructuralRoles",
+        "titleMetadata",
+        "workType"
+      ],
+      "supportedSyntax": "none",
+      "limitations": [
+        "No rendered compliance from source settings",
+        "Semantic adequacy requires human review"
+      ],
+      "examples": [
+        {
+          "kind": "positiveOrPermitted",
+          "description": "Literal source role sequence title/abstract/contents/introduction/body/conclusions/references; semantic title/signatures still unavailable"
+        },
+        {
+          "kind": "negativeOrUncertain",
+          "description": "Confirmed conclusions preceding introduction contradicts order; unknown macros remain indeterminate"
+        }
+      ],
+      "fixPolicy": "none",
+      "supportState": "unsupported",
+      "predicates": [
+        {
+          "id": "order",
+          "text": "Title, abstract, contents, optional abbreviations, introduction, body chapters, conclusions, references, optional appendices in this order"
+        },
+        {
+          "id": "title",
+          "text": "Organization/university/faculty/department, topic, student course and full name, supervisor full name/position/degree/title, place/year; student and supervisor signatures"
+        },
+        {
+          "id": "qualification-title",
+          "strength": "conditional",
+          "workTypes": [
+            "bachelorQualification",
+            "masterQualification"
+          ],
+          "text": "Pre-defence department meeting number/date and department head signature; unspecified work type unavailable"
+        }
+      ]
+    },
+    {
+      "ruleId": "KNU-ABSTRACT-001",
+      "ruleVersion": "1.0.0",
+      "domain": "renderedObservation",
+      "citation": {
+        "section": "2.2",
+        "printedPages": [
+          12,
+          13
+        ],
+        "pdfPages": [
+          12,
+          13
+        ]
+      },
+      "guidelineSha256": "8be4d724ac108488e6b1766322e7fd6b3646412aa2b6de12b6945f48fb380714",
+      "requirementStrength": "mandatory",
+      "applicableWorkTypes": [
+        "coursework",
+        "bachelorQualification",
+        "masterQualification"
+      ],
+      "preconditions": [
+        "Exact successful compiled revision and PDF identity",
+        "Confirmed applicable roles; unknown evidence is not absence"
+      ],
+      "requiredCapabilities": [
+        "confirmedAbstractRoles",
+        "languageCollation",
+        "semanticContent"
+      ],
+      "supportedSyntax": "none",
+      "limitations": [
+        "No rendered compliance from source settings",
+        "Semantic adequacy requires human review"
+      ],
+      "examples": [
+        {
+          "kind": "positiveOrPermitted",
+          "description": "Five uppercase alphabetically ordered keywords are within usual guidance"
+        },
+        {
+          "kind": "negativeOrUncertain",
+          "description": "Four keywords trigger advisory review only, not a mandatory failure; absent implementation information may be omitted"
+        }
+      ],
+      "fixPolicy": "none",
+      "supportState": "unsupported",
+      "predicates": [
+        {
+          "id": "content",
+          "text": "Counts of pages, illustrations, tables, used sources, appendices if present; uppercase keywords; concise description"
+        },
+        {
+          "id": "keywords",
+          "strength": "usual",
+          "min": 5,
+          "max": 15,
+          "unit": "wordsOrPhrases",
+          "text": "Usually 5–15; alphabetic order in work language, uppercase, comma-separated, nominative singular and direct word order"
+        },
+        {
+          "id": "description-order",
+          "text": "Object; purpose; methods/software/tools; results/novelty; implementation; relation to other work; use recommendations; field; significance; conclusions/development. Absent information may be omitted without reordering remaining aspects"
+        }
+      ]
+    },
+    {
+      "ruleId": "KNU-LENGTH-001",
+      "ruleVersion": "1.0.0",
+      "domain": "renderedObservation",
+      "citation": {
+        "section": "2",
+        "printedPages": [
+          11
+        ],
+        "pdfPages": [
+          11
+        ]
+      },
+      "guidelineSha256": "8be4d724ac108488e6b1766322e7fd6b3646412aa2b6de12b6945f48fb380714",
+      "requirementStrength": "conditional",
+      "applicableWorkTypes": [
+        "coursework",
+        "bachelorQualification",
+        "masterQualification"
+      ],
+      "preconditions": [
+        "Exact successful compiled revision and PDF identity",
+        "Confirmed applicable roles; unknown evidence is not absence"
+      ],
+      "requiredCapabilities": [
+        "existingExtentEvaluator",
+        "confirmedOrAuthorLabelledRanges",
+        "explicitWorkType"
+      ],
+      "supportedSyntax": "none",
+      "limitations": [
+        "Existing extent/section results retain author-label provenance",
+        "Unspecified type cannot select a body minimum/usual total",
+        "No automatic structural identification"
+      ],
+      "examples": [
+        {
+          "kind": "positive",
+          "description": "All listed applicable predicates established by required evidence"
+        },
+        {
+          "kind": "negative",
+          "description": "One mandatory predicate contradicted by confirmed evidence; recommendations remain advisory"
+        }
+      ],
+      "fixPolicy": "none",
+      "supportState": "partial",
+      "predicates": [
+        {
+          "id": "delegate",
+          "text": "Delegate existing extent/sections evaluator; never emit a duplicate result",
+          "evaluatorRuleId": "KNU-CSC-2025-PDF-EXTENT-001"
+        },
+        {
+          "id": "mandatory",
+          "introductionMaxPages": 3,
+          "conclusionsMaxPages": 5,
+          "bodyMinimumPages": {
+            "coursework": 15,
+            "bachelorQualification": 25,
+            "masterQualification": 35
+          }
+        },
+        {
+          "id": "usual",
+          "strength": "usual",
+          "totalWithoutAppendices": {
+            "coursework": [
+              20,
+              40
+            ],
+            "bachelorQualification": [
+              40,
+              60
+            ],
+            "masterQualification": [
+              50,
+              70
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "ruleId": "KNU-PAPER-001",
+      "ruleVersion": "1.0.0",
+      "domain": "renderedObservation",
+      "citation": {
+        "section": "3.1",
+        "printedPages": [
+          18
+        ],
+        "pdfPages": [
+          18
+        ]
+      },
+      "guidelineSha256": "8be4d724ac108488e6b1766322e7fd6b3646412aa2b6de12b6945f48fb380714",
+      "requirementStrength": "conditional",
+      "applicableWorkTypes": [
+        "coursework",
+        "bachelorQualification",
+        "masterQualification"
+      ],
+      "preconditions": [
+        "Exact successful compiled revision and PDF identity",
+        "Confirmed applicable roles; unknown evidence is not absence"
+      ],
+      "requiredCapabilities": [
+        "nativePhysicalScale",
+        "pageBoxes",
+        "confirmedIllustrationPurpose"
+      ],
+      "supportedSyntax": "none",
+      "limitations": [
+        "No rendered compliance from source settings",
+        "Semantic adequacy requires human review"
+      ],
+      "examples": [
+        {
+          "kind": "positiveOrPermitted",
+          "description": "A3 illustration-purpose page is permitted conditionally"
+        },
+        {
+          "kind": "negativeOrUncertain",
+          "description": "A3 of unknown purpose is indeterminate, not automatically noncompliant"
+        }
+      ],
+      "fixPolicy": "none",
+      "supportState": "unsupported",
+      "predicates": [
+        {
+          "id": "a4",
+          "widthMm": 210,
+          "heightMm": 297
+        },
+        {
+          "id": "a3",
+          "widthMm": 297,
+          "heightMm": 420,
+          "condition": "Necessary for illustrations"
+        },
+        {
+          "id": "physical-printing",
+          "text": "White paper, one-sided printing; cannot certify printing from PDF"
+        }
+      ]
+    },
+    {
+      "ruleId": "KNU-MARGINS-001",
+      "ruleVersion": "1.0.0",
+      "domain": "renderedObservation",
+      "citation": {
+        "section": "3.1",
+        "printedPages": [
+          18
+        ],
+        "pdfPages": [
+          18
+        ]
+      },
+      "guidelineSha256": "8be4d724ac108488e6b1766322e7fd6b3646412aa2b6de12b6945f48fb380714",
+      "requirementStrength": "mandatory",
+      "applicableWorkTypes": [
+        "coursework",
+        "bachelorQualification",
+        "masterQualification"
+      ],
+      "preconditions": [
+        "Exact successful compiled revision and PDF identity",
+        "Confirmed applicable roles; unknown evidence is not absence"
+      ],
+      "requiredCapabilities": [
+        "nativePhysicalScale",
+        "classifiedBodyBounds"
+      ],
+      "supportedSyntax": "none",
+      "limitations": [
+        "No rendered compliance from source settings",
+        "Semantic adequacy requires human review"
+      ],
+      "examples": [
+        {
+          "kind": "positiveOrPermitted",
+          "description": "30 mm left margin meets minimum 25 mm"
+        },
+        {
+          "kind": "negativeOrUncertain",
+          "description": "24 mm left margin contradicts minimum only with physical evidence"
+        }
+      ],
+      "fixPolicy": "none",
+      "supportState": "unsupported",
+      "predicates": [
+        {
+          "id": "minimums",
+          "unit": "mm",
+          "top": 20,
+          "bottom": 20,
+          "left": 25,
+          "right": 10,
+          "comparison": "atLeast"
+        }
+      ]
+    },
+    {
+      "ruleId": "KNU-TYPOGRAPHY-001",
+      "ruleVersion": "1.0.0",
+      "domain": "renderedObservation",
+      "citation": {
+        "section": "3.1; 3.10–3.11",
+        "printedPages": [
+          18,
+          26,
+          27
+        ],
+        "pdfPages": [
+          18,
+          26,
+          27
+        ]
+      },
+      "guidelineSha256": "8be4d724ac108488e6b1766322e7fd6b3646412aa2b6de12b6945f48fb380714",
+      "requirementStrength": "mandatory",
+      "applicableWorkTypes": [
+        "coursework",
+        "bachelorQualification",
+        "masterQualification"
+      ],
+      "preconditions": [
+        "Exact successful compiled revision and PDF identity",
+        "Confirmed applicable roles; unknown evidence is not absence"
+      ],
+      "requiredCapabilities": [
+        "nativeGlyphInk",
+        "validatedTextStyle",
+        "baselineModel",
+        "confirmedTextRole"
+      ],
+      "supportedSyntax": "none",
+      "limitations": [
+        "measurement-definition-unresolved: minimum font height does not specify capital/x-height/every mark/font metric",
+        "Nominal point size and font name are not visible height/style evidence",
+        "Usual family/14pt is advisory, not mandatory"
+      ],
+      "examples": [
+        {
+          "kind": "positiveOrPermitted",
+          "description": "A non-Times family is not a mandatory family error"
+        },
+        {
+          "kind": "negativeOrUncertain",
+          "description": "Nominal 14 pt is not proof of >=1.8 mm visible glyph height"
+        }
+      ],
+      "fixPolicy": "none",
+      "supportState": "unsupported",
+      "predicates": [
+        {
+          "id": "height",
+          "minimumMm": 1.8,
+          "decision": "measurement-definition-unresolved"
+        },
+        {
+          "id": "usual-font",
+          "strength": "usual",
+          "family": "Times New Roman Cyr",
+          "nominalPoints": 14
+        },
+        {
+          "id": "spacing",
+          "ratio": 1.5,
+          "decision": "baseline-model-and-role-required"
+        },
+        {
+          "id": "notes-footnotes",
+          "strength": "conditional",
+          "nominalPoints": 12,
+          "spacing": 1,
+          "text": "Apply notes/footnote role-specific clauses, not blanket body spacing"
+        }
+      ]
+    },
+    {
+      "ruleId": "KNU-PARAGRAPH-RENDERED-001",
+      "ruleVersion": "1.0.0",
+      "domain": "renderedObservation",
+      "citation": {
+        "section": "3.1",
+        "printedPages": [
+          18
+        ],
+        "pdfPages": [
+          18
+        ]
+      },
+      "guidelineSha256": "8be4d724ac108488e6b1766322e7fd6b3646412aa2b6de12b6945f48fb380714",
+      "requirementStrength": "mandatory",
+      "applicableWorkTypes": [
+        "coursework",
+        "bachelorQualification",
+        "masterQualification"
+      ],
+      "preconditions": [
+        "Exact successful compiled revision and PDF identity",
+        "Confirmed applicable roles; unknown evidence is not absence"
+      ],
+      "requiredCapabilities": [
+        "nativePhysicalScale",
+        "classifiedParagraphStarts",
+        "classifiedBodyBounds"
+      ],
+      "supportedSyntax": "none",
+      "limitations": [
+        "No rendered compliance from source settings",
+        "Semantic adequacy requires human review"
+      ],
+      "examples": [
+        {
+          "kind": "positive",
+          "description": "All listed applicable predicates established by required evidence"
+        },
+        {
+          "kind": "negative",
+          "description": "One mandatory predicate contradicted by confirmed evidence; recommendations remain advisory"
+        }
+      ],
+      "fixPolicy": "none",
+      "supportState": "unsupported",
+      "predicates": [
+        {
+          "id": "indent",
+          "equalMm": 12.7,
+          "text": "Uniform throughout; five characters is parenthetical, not a glyph-width measurement"
+        }
+      ]
+    },
+    {
+      "ruleId": "KNU-HEADINGS-RENDERED-001",
+      "ruleVersion": "1.0.0",
+      "domain": "renderedObservation",
+      "citation": {
+        "section": "3.2; 3.4",
+        "printedPages": [
+          18,
+          19,
+          20
+        ],
+        "pdfPages": [
+          18,
+          19,
+          20
+        ]
+      },
+      "guidelineSha256": "8be4d724ac108488e6b1766322e7fd6b3646412aa2b6de12b6945f48fb380714",
+      "requirementStrength": "conditional",
+      "applicableWorkTypes": [
+        "coursework",
+        "bachelorQualification",
+        "masterQualification"
+      ],
+      "preconditions": [
+        "Exact successful compiled revision and PDF identity",
+        "Confirmed applicable roles; unknown evidence is not absence"
+      ],
+      "requiredCapabilities": [
+        "confirmedHeadingRoles",
+        "nativeTextStyle",
+        "lineClassification",
+        "pageBoundaries",
+        "compiledCounters"
+      ],
+      "supportedSyntax": "none",
+      "limitations": [
+        "No rendered compliance from source settings",
+        "Semantic adequacy requires human review"
+      ],
+      "examples": [
+        {
+          "kind": "positiveOrPermitted",
+          "description": "A subordinate heading may start new page when necessary to avoid a stranded heading"
+        },
+        {
+          "kind": "negativeOrUncertain",
+          "description": "A heading followed by one text line at page bottom contradicts the confirmed neighboring-line rule"
+        }
+      ],
+      "fixPolicy": "none",
+      "supportState": "unsupported",
+      "predicates": [
+        {
+          "id": "major",
+          "text": "Structural parts and chapters start new pages; bold uppercase centered; example chapter names are not required names"
+        },
+        {
+          "id": "minor",
+          "text": "Bold sentence case, paragraph indent; must not start new page unless needed to avoid stranded-heading violation"
+        },
+        {
+          "id": "punctuation",
+          "text": "No terminal dot, underline or word-part hyphenation; internal sentence dots allowed"
+        },
+        {
+          "id": "neighbors",
+          "text": "At least two interline intervals before/after; heading lines and neighboring headings 1.5; not last line and not only one following text line"
+        },
+        {
+          "id": "counters",
+          "text": "Arabic chapter numbers from 1; no word РОЗДІЛ; hierarchical dot-separated counters without final dot and one space; counters do not project beyond indent"
+        }
+      ]
+    },
+    {
+      "ruleId": "KNU-PAGINATION-001",
+      "ruleVersion": "1.0.0",
+      "domain": "renderedObservation",
+      "citation": {
+        "section": "3.3; 3.16",
+        "printedPages": [
+          19,
+          31,
+          32
+        ],
+        "pdfPages": [
+          19,
+          31,
+          32
+        ]
+      },
+      "guidelineSha256": "8be4d724ac108488e6b1766322e7fd6b3646412aa2b6de12b6945f48fb380714",
+      "requirementStrength": "mandatory",
+      "applicableWorkTypes": [
+        "coursework",
+        "bachelorQualification",
+        "masterQualification"
+      ],
+      "preconditions": [
+        "Exact successful compiled revision and PDF identity",
+        "Confirmed applicable roles; unknown evidence is not absence"
+      ],
+      "requiredCapabilities": [
+        "confirmedTitleRole",
+        "classifiedPageNumbers",
+        "pagePositions"
+      ],
+      "supportedSyntax": "none",
+      "limitations": [
+        "No rendered compliance from source settings",
+        "Semantic adequacy requires human review"
+      ],
+      "examples": [
+        {
+          "kind": "positive",
+          "description": "All listed applicable predicates established by required evidence"
+        },
+        {
+          "kind": "negative",
+          "description": "One mandatory predicate contradicted by confirmed evidence; recommendations remain advisory"
+        }
+      ],
+      "fixPolicy": "none",
+      "supportState": "unsupported",
+      "predicates": [
+        {
+          "id": "pages",
+          "text": "Title counts as 1 without displayed number; remaining pages top-right Arabic continuous numbering including appendices; copied documents retain own bottom numbering and work top-right numbering"
+        }
+      ]
+    },
+    {
+      "ruleId": "KNU-REFERENCES-001",
+      "ruleVersion": "1.0.0",
+      "domain": "renderedObservation",
+      "citation": {
+        "section": "2.8; 3.15; 3.16; appendix Д",
+        "printedPages": [
+          16,
+          17,
+          30,
+          31,
+          32,
+          50,
+          51,
+          52,
+          53,
+          54
+        ],
+        "pdfPages": [
+          16,
+          17,
+          30,
+          31,
+          32,
+          50,
+          51,
+          52,
+          53,
+          54
+        ]
+      },
+      "guidelineSha256": "8be4d724ac108488e6b1766322e7fd6b3646412aa2b6de12b6945f48fb380714",
+      "requirementStrength": "mandatory",
+      "applicableWorkTypes": [
+        "coursework",
+        "bachelorQualification",
+        "masterQualification"
+      ],
+      "preconditions": [
+        "Exact successful compiled revision and PDF identity",
+        "Confirmed applicable roles; unknown evidence is not absence"
+      ],
+      "requiredCapabilities": [
+        "literalCitationKeys",
+        "compiledBibliography",
+        "compiledCitationOrder",
+        "confirmedAppendixScope"
+      ],
+      "supportedSyntax": "none",
+      "limitations": [
+        "No rendered compliance from source settings",
+        "Semantic adequacy requires human review"
+      ],
+      "examples": [
+        {
+          "kind": "positiveOrPermitted",
+          "description": "[3; 6; 15], [3 – 8], specific pages and appendix-prefixed independent lists permitted"
+        },
+        {
+          "kind": "negativeOrUncertain",
+          "description": "End-text placement is recommended; publisher/ISBN omission does not by itself invalidate identification"
+        }
+      ],
+      "fixPolicy": "none",
+      "supportState": "unsupported",
+      "predicates": [
+        {
+          "id": "placement",
+          "strength": "recommended",
+          "text": "End-text bibliography at end of main text is recommended, not mandatory"
+        },
+        {
+          "id": "membership-order",
+          "text": "List used sources cited in text, in first-mention order; numeric correspondence, continuous numbers starting 1"
+        },
+        {
+          "id": "syntax",
+          "text": "Square-bracket numbers; multiple works separated by semicolons; consecutive-number ranges permitted; whole-source or specific-page citations permitted",
+          "allowedExamples": [
+            "[1]",
+            "[2, с. 10 – 15]",
+            "[3; 6; 15]",
+            "[3 с. 124; 4 с. 211; 5 с. 5]",
+            "[3 – 8]"
+          ]
+        },
+        {
+          "id": "appendix-only",
+          "strength": "conditional",
+          "text": "Sources cited only in an appendix have an independent list at its end; appendix designation prefixes citation/list/footnote numbers"
+        },
+        {
+          "id": "identification",
+          "text": "Sufficient mandatory identification may replace full bibliographic description; source types may omit inapplicable zones. No independent external DSTU certification"
+        }
+      ]
+    },
+    {
+      "ruleId": "KNU-APPENDIX-001",
+      "ruleVersion": "1.0.0",
+      "domain": "renderedObservation",
+      "citation": {
+        "section": "2.9; 3.16",
+        "printedPages": [
+          17,
+          31,
+          32
+        ],
+        "pdfPages": [
+          17,
+          31,
+          32
+        ]
+      },
+      "guidelineSha256": "8be4d724ac108488e6b1766322e7fd6b3646412aa2b6de12b6945f48fb380714",
+      "requirementStrength": "conditional",
+      "applicableWorkTypes": [
+        "coursework",
+        "bachelorQualification",
+        "masterQualification"
+      ],
+      "preconditions": [
+        "Exact successful compiled revision and PDF identity",
+        "Confirmed applicable roles; unknown evidence is not absence"
+      ],
+      "requiredCapabilities": [
+        "confirmedAppendixRoles",
+        "compiledReferenceOrder",
+        "nativePositions",
+        "classifiedPageNumbers"
+      ],
+      "supportedSyntax": "none",
+      "limitations": [
+        "No rendered compliance from source settings",
+        "Semantic adequacy requires human review"
+      ],
+      "examples": [
+        {
+          "kind": "positiveOrPermitted",
+          "description": "ДОДАТОК А; independent copied document retains own bottom numbering"
+        },
+        {
+          "kind": "negativeOrUncertain",
+          "description": "Latin A is not Ukrainian А; forbidden Ґ is not silently substituted"
+        }
+      ],
+      "fixPolicy": "none",
+      "supportState": "unsupported",
+      "predicates": [
+        {
+          "id": "optional",
+          "text": "Appendices only if needed; main text must reference appendix material; appendices follow first-reference order"
+        },
+        {
+          "id": "letters",
+          "alphabet": "АБВГДЕЖИКЛМНПРСТУФХЦШЩЮЯ",
+          "excluded": "ҐЄЗІЇЙОЧЬ",
+          "text": "Uppercase Ukrainian letter; do not normalize Latin lookalikes"
+        },
+        {
+          "id": "layout",
+          "text": "Each appendix starts next page, heading sentence case centered at top; ДОДАТОК plus letter above centered; continuous work pagination"
+        },
+        {
+          "id": "copy",
+          "text": "Independent document may be copied unchanged after numbered cover bearing appendix letter/document title; preserve own bottom numbers and continue work top-right numbers"
+        },
+        {
+          "id": "internal",
+          "text": "Prefix hierarchical headings, figure/table/formula numbers with appendix letter and dot; even one figure/table/formula is А.1 etc.; appendix lists/notes/footnotes follow corresponding clauses"
+        }
+      ]
+    },
+    {
+      "ruleId": "KNU-CAPTION-RENDERED-001",
+      "ruleVersion": "1.0.0",
+      "domain": "renderedObservation",
+      "citation": {
+        "section": "3.7; 3.8",
+        "printedPages": [
+          21,
+          22,
+          23,
+          24,
+          25
+        ],
+        "pdfPages": [
+          21,
+          22,
+          23,
+          24,
+          25
+        ]
+      },
+      "guidelineSha256": "8be4d724ac108488e6b1766322e7fd6b3646412aa2b6de12b6945f48fb380714",
+      "requirementStrength": "conditional",
+      "applicableWorkTypes": [
+        "coursework",
+        "bachelorQualification",
+        "masterQualification"
+      ],
+      "preconditions": [
+        "Exact successful compiled revision and PDF identity",
+        "Confirmed applicable roles; unknown evidence is not absence"
+      ],
+      "requiredCapabilities": [
+        "confirmedFigureTableRoles",
+        "nativePositions",
+        "nativePhysicalScale",
+        "compiledCounters",
+        "compiledReferences",
+        "semanticCaptionParts"
+      ],
+      "supportedSyntax": "none",
+      "limitations": [
+        "No rendered compliance from source settings",
+        "Semantic adequacy requires human review"
+      ],
+      "examples": [
+        {
+          "kind": "positiveOrPermitted",
+          "description": "Рисунок 2 — Назва OR Рисунок 2.3 — Назва; А.1 in appendix; table continuation omits repeated title"
+        },
+        {
+          "kind": "negativeOrUncertain",
+          "description": "Do not require chapter numbering or repeated full title above a continued table"
+        }
+      ],
+      "fixPolicy": "none",
+      "supportState": "unsupported",
+      "predicates": [
+        {
+          "id": "figure-caption",
+          "text": "Below figure, centered to text: Рисунок + number + em dash + sentence-case concise specific title; no terminal dot or word-part hyphenation"
+        },
+        {
+          "id": "numbering",
+          "text": "Arabic continuous numbering OR within chapter (chapter.ordinal); appendix designation.ordinal. Tables analogous to figures; do not mandate chapter numbering"
+        },
+        {
+          "id": "figure-placement",
+          "text": "After paragraph first citing figure or nearest following page, or appendix if needed; in-text numbered reference; one blank line to text; centered, unrotated or 90 degrees clockwise"
+        },
+        {
+          "id": "figure-parts",
+          "text": "Lowercase Ukrainian letters with closing parenthesis under parts; title followed by colon, then а — part; б — part. Explanation immediately after image before caption; schematic fragments preserve component designations"
+        },
+        {
+          "id": "figure-continuation",
+          "text": "First part full designation; subsequent Рисунок 2.1 (продовження); explanatory data under each part"
+        },
+        {
+          "id": "table-title",
+          "text": "Above table: Таблиця + number + em dash + concise specific title; paragraph indent; no terminal dot; long title continues aligned under Таблиця"
+        },
+        {
+          "id": "table-placement",
+          "text": "Centered after first-reference paragraph or following page; numbered text reference; unrotated or 90 degrees clockwise"
+        },
+        {
+          "id": "table-rows",
+          "minimumMm": 8,
+          "text": "No diagonal header divisions; separators may be omitted when readability unaffected"
+        },
+        {
+          "id": "table-headings",
+          "text": "Headings uppercase initial; subheadings lowercase if continuation, uppercase if independent; no terminal dots; single-word headings nominative singular; one-line spacing permitted in headers; column headings parallel to rows or perpendicular if needed"
+        },
+        {
+          "id": "table-units",
+          "text": "Units after comma in headings; common dimension in table title, otherwise per relevant row/column; abbreviated units"
+        },
+        {
+          "id": "table-continuation",
+          "text": "Repeat head/side or replace by numbered columns/rows established in first part; Таблиця only first part; later Продовження таблиці N or Кінець таблиці N without title; omit bottom line when table continues next page; narrow parts may be side-by-side with repeated head, double separator recommended"
+        }
+      ]
+    },
+    {
+      "ruleId": "KNU-BIBLIOGRAPHY-RENDERED-001",
+      "ruleVersion": "1.0.0",
+      "domain": "renderedObservation",
+      "citation": {
+        "section": "2.8; 3.15; 3.16; appendix Д",
+        "printedPages": [
+          16,
+          17,
+          30,
+          31,
+          32,
+          50,
+          51,
+          52,
+          53,
+          54
+        ],
+        "pdfPages": [
+          16,
+          17,
+          30,
+          31,
+          32,
+          50,
+          51,
+          52,
+          53,
+          54
+        ]
+      },
+      "guidelineSha256": "8be4d724ac108488e6b1766322e7fd6b3646412aa2b6de12b6945f48fb380714",
+      "requirementStrength": "conditional",
+      "applicableWorkTypes": [
+        "coursework",
+        "bachelorQualification",
+        "masterQualification"
+      ],
+      "preconditions": [
+        "Exact successful compiled revision and PDF identity",
+        "Confirmed applicable roles; unknown evidence is not absence"
+      ],
+      "requiredCapabilities": [
+        "compiledBibliography",
+        "semanticSourceIdentification"
+      ],
+      "supportedSyntax": "none",
+      "limitations": [
+        "No rigid publisher/ISBN/author-count requirement",
+        "Appendix Д alternatives are allowed examples, not one canonical template",
+        "No external DSTU certification; source-backed identification still requires semantics"
+      ],
+      "examples": [
+        {
+          "kind": "positiveOrPermitted",
+          "description": "Publisher, material designation, series and ISBN may be absent if identification sufficient"
+        },
+        {
+          "kind": "negativeOrUncertain",
+          "description": "Four-author work may list first or all four authors in responsibility zone; do not enforce one template"
+        }
+      ],
+      "fixPolicy": "none",
+      "supportState": "unsupported",
+      "predicates": [
+        {
+          "id": "delegate",
+          "ruleId": "KNU-REFERENCES-001",
+          "text": "Delegate shared membership/order/numbering/citation predicates; do not double-count"
+        },
+        {
+          "id": "permitted-simplifications",
+          "text": "1–3 authors in heading need not repeat after slash; more than 3 names permitted. Dot instead of dot-dash recommended, punctuation uniform in document. Material designation/publisher/series/ISBN/ISMN/ISSN may be omitted. Whole extent OR cited page permitted; first or all four authors allowed in responsibility zone. Source-dependent zones may be absent if identification remains unambiguous"
+        }
+      ]
+    },
+    {
+      "ruleId": "KNU-SRC-STRUCTURE-001",
+      "ruleVersion": "1.0.0",
+      "domain": "sourceObservation",
+      "citation": {
+        "section": "2",
+        "printedPages": [
+          11
+        ],
+        "pdfPages": [
+          11
+        ]
+      },
+      "guidelineSha256": "8be4d724ac108488e6b1766322e7fd6b3646412aa2b6de12b6945f48fb380714",
+      "requirementStrength": "mandatory",
+      "applicableWorkTypes": [
+        "unspecified",
+        "coursework",
+        "bachelorQualification",
+        "masterQualification"
+      ],
+      "preconditions": [
+        "Exact captured source snapshot, root, profile and configuration",
+        "Finite literal observation only; uncertainty retained; missing declarations do not establish absence"
+      ],
+      "requiredCapabilities": [
+        "boundedLiteralSource",
+        "selectedRootClosure"
+      ],
+      "supportedSyntax": "Selected-root standard article/report/book; literal chapter/section titles РЕФЕРАТ, ВСТУП, ВИСНОВКИ, ПЕРЕЛІК ДЖЕРЕЛ ПОСИЛАННЯ; maketitle and tableofcontents; literal standard abstract environment; known literal abbreviations heading; other unstarred headings are source body candidates only, never semantic proof",
+      "limitations": [
+        "No rendered compliance from source settings",
+        "Semantic adequacy requires human review",
+        "No authored-content fixes; existing legacy fix policy remains separate",
+        "Physical formatting and semantic adequacy remain unassessed"
+      ],
+      "examples": [
+        {
+          "kind": "positiveOrPermitted",
+          "description": "maketitle; РЕФЕРАТ; tableofcontents; ВСТУП; numbered heading; ВИСНОВКИ; references"
+        },
+        {
+          "kind": "negativeOrUncertain",
+          "description": "Known body-heading candidate before ВСТУП violates this literal-order predicate; unknown starred role indeterminate"
+        }
+      ],
+      "fixPolicy": "none",
+      "supportState": "partial",
+      "predicates": [
+        {
+          "id": "literal-order",
+          "text": "Observed maketitle, abstract heading, tableofcontents, introduction, body, conclusions, references, appendix headings follow monotonic source order; absence not certified"
+        }
+      ]
+    },
+    {
+      "ruleId": "KNU-SRC-CITATIONS-001",
+      "ruleVersion": "1.0.0",
+      "domain": "sourceObservation",
+      "citation": {
+        "section": "2.8; 3.15",
+        "printedPages": [
+          16,
+          17,
+          30
+        ],
+        "pdfPages": [
+          16,
+          17,
+          30
+        ]
+      },
+      "guidelineSha256": "8be4d724ac108488e6b1766322e7fd6b3646412aa2b6de12b6945f48fb380714",
+      "requirementStrength": "mandatory",
+      "applicableWorkTypes": [
+        "unspecified",
+        "coursework",
+        "bachelorQualification",
+        "masterQualification"
+      ],
+      "preconditions": [
+        "Exact captured source snapshot, root, profile and configuration",
+        "Finite literal observation only; uncertainty retained; missing declarations do not establish absence"
+      ],
+      "requiredCapabilities": [
+        "boundedLiteralSource",
+        "selectedRootClosure",
+        "existingBoundedBibliographyReader"
+      ],
+      "supportedSyntax": "Profile 1.6: unstarred cite{keys}, cite[postnote]{keys} and cite[]{keys}; at most one optional postnote of at most 512 UTF-8 bytes of plain literal text, empty permitted. ASCII whitespace/comments may separate command, postnote and mandatory group. Exact comma-separated literal keys resolve against manual bibitem{key} in thebibliography or the existing bounded Project reader of selected bibliography/addbibresource .bib keys. Profile 1.5 retains only cite{keys}. No field/backend/package evaluation.",
+      "limitations": [
+        "No rendered compliance from source settings",
+        "Semantic adequacy requires human review",
+        "No authored-content fixes; existing legacy fix policy remains separate",
+        "Physical formatting and semantic adequacy remain unassessed",
+        "The 512-byte note bound is an implementation observation limit, not a faculty requirement; longer notes remain indeterminate",
+        "Notes containing commands, braces, comments, opening brackets, TeX-special characters or non-whitespace controls remain indeterminate; malformed, multiple-note and starred citation syntax is unsupported",
+        "Page/note text is not interpreted or checked against the cited work. Two-note pre/post-note cite forms need package command semantics not established by this observer and remain indeterminate; compiled numeric citation formatting is unassessed"
+      ],
+      "examples": [
+        {
+          "kind": "positiveOrPermitted",
+          "description": "cite{ключ😀} with one exact matching selected bibliography key"
+        },
+        {
+          "kind": "negativeOrUncertain",
+          "description": "cite{á} does not match decomposed á; duplicate definitions are retained"
+        },
+        {
+          "kind": "positiveOrPermitted",
+          "description": "Profile 1.6: cite[с. 2]{ключ😀} resolves the exact key; section 3.15 p30 permits page-specific references, without prescribing a LaTeX command"
+        },
+        {
+          "kind": "positiveOrPermitted",
+          "description": "Profile 1.6: cite[]{a,b} and cite[с. 10–15]{a,b} observe the same exact keys; postnote contents do not affect first-use order"
+        },
+        {
+          "kind": "negativeOrUncertain",
+          "description": "Profile 1.5 cite[с. 2]{a} remains indeterminate; profile 1.6 two-note cite[див.][с. 2]{a}, macro notes, an unclosed optional group or a postnote above 512 UTF-8 bytes also remains indeterminate"
+        }
+      ],
+      "fixPolicy": "none",
+      "supportState": "partial",
+      "predicates": [
+        {
+          "id": "resolution",
+          "text": "Each first-used literal cite key resolves uniquely to a manual bibitem key or selected .bib key; duplicates/unresolved keys retained. No compiled numeric citation-style claim."
+        }
+      ]
+    },
+    {
+      "ruleId": "KNU-SRC-BIBLIOGRAPHY-001",
+      "ruleVersion": "1.0.0",
+      "domain": "sourceObservation",
+      "citation": {
+        "section": "2.8",
+        "printedPages": [
+          16,
+          17
+        ],
+        "pdfPages": [
+          16,
+          17
+        ]
+      },
+      "guidelineSha256": "8be4d724ac108488e6b1766322e7fd6b3646412aa2b6de12b6945f48fb380714",
+      "requirementStrength": "mandatory",
+      "applicableWorkTypes": [
+        "unspecified",
+        "coursework",
+        "bachelorQualification",
+        "masterQualification"
+      ],
+      "preconditions": [
+        "Exact captured source snapshot, root, profile and configuration",
+        "Finite literal observation only; uncertainty retained; missing declarations do not establish absence"
+      ],
+      "requiredCapabilities": [
+        "boundedLiteralSource",
+        "selectedRootClosure"
+      ],
+      "supportedSyntax": "Profile 1.6 uses the same finite citation grammar including at most one plain literal postnote; note contents never affect exact-key first-use order. Manual unstarred bibitem{key} grammar is unchanged; bibliography content remains authored text. Profile 1.5 grammar is unchanged.",
+      "limitations": [
+        "No rendered compliance from source settings",
+        "Semantic adequacy requires human review",
+        "No authored-content fixes; existing legacy fix policy remains separate",
+        "Physical formatting and semantic adequacy remain unassessed",
+        "External .bib source record order cannot establish compiled bibliography order; that result is unavailable",
+        "Appendix-only citation lists require semantic scope; current source observation is indeterminate for appendix citations"
+      ],
+      "examples": [
+        {
+          "kind": "positiveOrPermitted",
+          "description": "cite{a,b} then manual bibitem{a},bibitem{b}"
+        },
+        {
+          "kind": "negativeOrUncertain",
+          "description": "cite{b,a} then manual a,b contradicts observed first-use order; .bib backend order stays unavailable"
+        }
+      ],
+      "fixPolicy": "none",
+      "supportState": "partial",
+      "predicates": [
+        {
+          "id": "first-use",
+          "text": "Manual bibitem key order equals unique first literal cite-use order; uncited manual entries observed; external .bib key order is not output order"
+        }
+      ]
+    },
+    {
+      "ruleId": "KNU-SRC-APPENDIX-001",
+      "ruleVersion": "1.0.0",
+      "domain": "sourceObservation",
+      "citation": {
+        "section": "3.16",
+        "printedPages": [
+          31,
+          32
+        ],
+        "pdfPages": [
+          31,
+          32
+        ]
+      },
+      "guidelineSha256": "8be4d724ac108488e6b1766322e7fd6b3646412aa2b6de12b6945f48fb380714",
+      "requirementStrength": "mandatory",
+      "applicableWorkTypes": [
+        "unspecified",
+        "coursework",
+        "bachelorQualification",
+        "masterQualification"
+      ],
+      "preconditions": [
+        "Exact captured source snapshot, root, profile and configuration",
+        "Finite literal observation only; uncertainty retained; missing declarations do not establish absence"
+      ],
+      "requiredCapabilities": [
+        "boundedLiteralSource",
+        "selectedRootClosure"
+      ],
+      "supportedSyntax": "Literal chapter/section heading ДОДАТОК А etc.; no inferred compiled appendix counter",
+      "limitations": [
+        "No rendered compliance from source settings",
+        "Semantic adequacy requires human review",
+        "No authored-content fixes; existing legacy fix policy remains separate",
+        "Physical formatting and semantic adequacy remain unassessed"
+      ],
+      "examples": [
+        {
+          "kind": "positiveOrPermitted",
+          "description": "section*{ДОДАТОК А}"
+        },
+        {
+          "kind": "negativeOrUncertain",
+          "description": "section*{ДОДАТОК A} has Latin designation; no normalization"
+        }
+      ],
+      "fixPolicy": "none",
+      "supportState": "partial",
+      "predicates": [
+        {
+          "id": "designation",
+          "text": "Explicit literal ДОДАТОК plus one uppercase Ukrainian letter from allowed alphabet; no Latin normalization; absent optional appendix unavailable, not fail"
+        }
+      ]
+    },
+    {
+      "ruleId": "KNU-SRC-CAPTION-PRESENCE-001",
+      "ruleVersion": "1.0.0",
+      "domain": "sourceObservation",
+      "citation": {
+        "section": "3.7; 3.8",
+        "printedPages": [
+          21,
+          22,
+          23
+        ],
+        "pdfPages": [
+          21,
+          22,
+          23
+        ]
+      },
+      "guidelineSha256": "8be4d724ac108488e6b1766322e7fd6b3646412aa2b6de12b6945f48fb380714",
+      "requirementStrength": "mandatory",
+      "applicableWorkTypes": [
+        "unspecified",
+        "coursework",
+        "bachelorQualification",
+        "masterQualification"
+      ],
+      "preconditions": [
+        "Exact captured source snapshot, root, profile and configuration",
+        "Finite literal observation only; uncertainty retained; missing declarations do not establish absence"
+      ],
+      "requiredCapabilities": [
+        "boundedLiteralSource",
+        "selectedRootClosure"
+      ],
+      "supportedSyntax": "Ordinary figure/table with unstarred caption{literal title}; optional placements/short titles are unsupported",
+      "limitations": [
+        "No rendered compliance from source settings",
+        "Semantic adequacy requires human review",
+        "No authored-content fixes; existing legacy fix policy remains separate",
+        "Physical formatting and semantic adequacy remain unassessed"
+      ],
+      "examples": [
+        {
+          "kind": "positiveOrPermitted",
+          "description": "begin{figure} caption{Назва} end{figure}"
+        },
+        {
+          "kind": "negativeOrUncertain",
+          "description": "caption{} has empty literal title; no caption gives unavailable, dynamic caption macro gives indeterminate"
+        }
+      ],
+      "fixPolicy": "none",
+      "supportState": "partial",
+      "predicates": [
+        {
+          "id": "caption-presence",
+          "text": "Each observed literal caption title in an ordinary figure/table is nonempty. Absence of a literal caption is unavailable, not proof a caption is physically missing. Multiple captions in a float are not forbidden; floats are not one-to-one physical figures."
+        }
+      ]
+    },
+    {
+      "ruleId": "KNU-SRC-PARINDENT-001",
+      "ruleVersion": "1.0.0",
+      "domain": "sourceObservation",
+      "citation": {
+        "section": "3.1",
+        "printedPages": [
+          18
+        ],
+        "pdfPages": [
+          18
+        ]
+      },
+      "guidelineSha256": "8be4d724ac108488e6b1766322e7fd6b3646412aa2b6de12b6945f48fb380714",
+      "requirementStrength": "mandatory",
+      "applicableWorkTypes": [
+        "unspecified",
+        "coursework",
+        "bachelorQualification",
+        "masterQualification"
+      ],
+      "preconditions": [
+        "Exact captured source snapshot, root, profile and configuration",
+        "Finite literal observation only; uncertainty retained; missing declarations do not establish absence"
+      ],
+      "requiredCapabilities": [
+        "boundedLiteralSource",
+        "selectedRootClosure"
+      ],
+      "supportedSyntax": "Unchanged existing profile1.4 finite grammar; consult bundled existing SourceRule metadata",
+      "limitations": [
+        "No rendered compliance from source settings",
+        "Semantic adequacy requires human review",
+        "No authored-content fixes; existing legacy fix policy remains separate",
+        "Physical formatting and semantic adequacy remain unassessed"
+      ],
+      "examples": [
+        {
+          "kind": "positive",
+          "description": "All listed applicable predicates established by required evidence"
+        },
+        {
+          "kind": "negative",
+          "description": "One mandatory predicate contradicted by confirmed evidence; recommendations remain advisory"
+        }
+      ],
+      "fixPolicy": "Existing explicitly reviewed indent/margin fixes only; unchanged preconditions",
+      "supportState": "partial",
+      "predicates": [
+        {
+          "id": "legacy-delegate",
+          "text": "Explicit literal indent equals 12.7 mm",
+          "profile": "knu-csc-2025-source@1.4.0"
+        }
+      ]
+    },
+    {
+      "ruleId": "KNU-SRC-HEADING-DOT-001",
+      "ruleVersion": "1.0.0",
+      "domain": "sourceObservation",
+      "citation": {
+        "section": "3.2",
+        "printedPages": [
+          18,
+          19
+        ],
+        "pdfPages": [
+          18,
+          19
+        ]
+      },
+      "guidelineSha256": "8be4d724ac108488e6b1766322e7fd6b3646412aa2b6de12b6945f48fb380714",
+      "requirementStrength": "mandatory",
+      "applicableWorkTypes": [
+        "unspecified",
+        "coursework",
+        "bachelorQualification",
+        "masterQualification"
+      ],
+      "preconditions": [
+        "Exact captured source snapshot, root, profile and configuration",
+        "Finite literal observation only; uncertainty retained; missing declarations do not establish absence"
+      ],
+      "requiredCapabilities": [
+        "boundedLiteralSource",
+        "selectedRootClosure"
+      ],
+      "supportedSyntax": "Unchanged existing profile1.4 finite grammar; consult bundled existing SourceRule metadata",
+      "limitations": [
+        "No rendered compliance from source settings",
+        "Semantic adequacy requires human review",
+        "No authored-content fixes; existing legacy fix policy remains separate",
+        "Physical formatting and semantic adequacy remain unassessed"
+      ],
+      "examples": [
+        {
+          "kind": "positive",
+          "description": "All listed applicable predicates established by required evidence"
+        },
+        {
+          "kind": "negative",
+          "description": "One mandatory predicate contradicted by confirmed evidence; recommendations remain advisory"
+        }
+      ],
+      "fixPolicy": "none",
+      "supportState": "partial",
+      "predicates": [
+        {
+          "id": "legacy-delegate",
+          "text": "No terminal U+002E on literal heading titles",
+          "profile": "knu-csc-2025-source@1.4.0"
+        }
+      ]
+    },
+    {
+      "ruleId": "KNU-SRC-MARGINS-001",
+      "ruleVersion": "1.2.0",
+      "domain": "sourceObservation",
+      "citation": {
+        "section": "3.1",
+        "printedPages": [
+          18
+        ],
+        "pdfPages": [
+          18
+        ]
+      },
+      "guidelineSha256": "8be4d724ac108488e6b1766322e7fd6b3646412aa2b6de12b6945f48fb380714",
+      "requirementStrength": "mandatory",
+      "applicableWorkTypes": [
+        "unspecified",
+        "coursework",
+        "bachelorQualification",
+        "masterQualification"
+      ],
+      "preconditions": [
+        "Exact captured source snapshot, root, profile and configuration",
+        "Finite literal observation only; uncertainty retained; missing declarations do not establish absence"
+      ],
+      "requiredCapabilities": [
+        "boundedLiteralSource",
+        "selectedRootClosure"
+      ],
+      "supportedSyntax": "Unchanged existing profile1.4 finite grammar; consult bundled existing SourceRule metadata",
+      "limitations": [
+        "No rendered compliance from source settings",
+        "Semantic adequacy requires human review",
+        "No authored-content fixes; existing legacy fix policy remains separate",
+        "Physical formatting and semantic adequacy remain unassessed"
+      ],
+      "examples": [
+        {
+          "kind": "positive",
+          "description": "All listed applicable predicates established by required evidence"
+        },
+        {
+          "kind": "negative",
+          "description": "One mandatory predicate contradicted by confirmed evidence; recommendations remain advisory"
+        }
+      ],
+      "fixPolicy": "Existing explicitly reviewed indent/margin fixes only; unchanged preconditions",
+      "supportState": "partial",
+      "predicates": [
+        {
+          "id": "legacy-delegate",
+          "text": "Explicit margins >= left25/right10/top20/bottom20 mm",
+          "profile": "knu-csc-2025-source@1.4.0"
+        }
+      ]
+    },
+    {
+      "ruleId": "KNU-SRC-PAPER-001",
+      "ruleVersion": "1.0.0",
+      "domain": "sourceObservation",
+      "citation": {
+        "section": "3.1",
+        "printedPages": [
+          18
+        ],
+        "pdfPages": [
+          18
+        ]
+      },
+      "guidelineSha256": "8be4d724ac108488e6b1766322e7fd6b3646412aa2b6de12b6945f48fb380714",
+      "requirementStrength": "mandatory",
+      "applicableWorkTypes": [
+        "unspecified",
+        "coursework",
+        "bachelorQualification",
+        "masterQualification"
+      ],
+      "preconditions": [
+        "Exact captured source snapshot, root, profile and configuration",
+        "Finite literal observation only; uncertainty retained; missing declarations do not establish absence"
+      ],
+      "requiredCapabilities": [
+        "boundedLiteralSource",
+        "selectedRootClosure"
+      ],
+      "supportedSyntax": "Unchanged existing profile1.4 finite grammar; consult bundled existing SourceRule metadata",
+      "limitations": [
+        "No rendered compliance from source settings",
+        "Semantic adequacy requires human review",
+        "No authored-content fixes; existing legacy fix policy remains separate",
+        "Physical formatting and semantic adequacy remain unassessed"
+      ],
+      "examples": [
+        {
+          "kind": "positive",
+          "description": "All listed applicable predicates established by required evidence"
+        },
+        {
+          "kind": "negative",
+          "description": "One mandatory predicate contradicted by confirmed evidence; recommendations remain advisory"
+        }
+      ],
+      "fixPolicy": "none",
+      "supportState": "partial",
+      "predicates": [
+        {
+          "id": "legacy-delegate",
+          "text": "Declared A4 intent; A3 needs purpose",
+          "profile": "knu-csc-2025-source@1.4.0"
+        }
+      ]
+    },
+    {
+      "ruleId": "KNU-SRC-LINE-SPACING-001",
+      "ruleVersion": "1.0.0",
+      "domain": "sourceObservation",
+      "citation": {
+        "section": "3.1",
+        "printedPages": [
+          18
+        ],
+        "pdfPages": [
+          18
+        ]
+      },
+      "guidelineSha256": "8be4d724ac108488e6b1766322e7fd6b3646412aa2b6de12b6945f48fb380714",
+      "requirementStrength": "mandatory",
+      "applicableWorkTypes": [
+        "unspecified",
+        "coursework",
+        "bachelorQualification",
+        "masterQualification"
+      ],
+      "preconditions": [
+        "Exact captured source snapshot, root, profile and configuration",
+        "Finite literal observation only; uncertainty retained; missing declarations do not establish absence"
+      ],
+      "requiredCapabilities": [
+        "boundedLiteralSource",
+        "selectedRootClosure"
+      ],
+      "supportedSyntax": "Unchanged existing profile1.4 finite grammar; consult bundled existing SourceRule metadata",
+      "limitations": [
+        "No rendered compliance from source settings",
+        "Semantic adequacy requires human review",
+        "No authored-content fixes; existing legacy fix policy remains separate",
+        "Physical formatting and semantic adequacy remain unassessed"
+      ],
+      "examples": [
+        {
+          "kind": "positive",
+          "description": "All listed applicable predicates established by required evidence"
+        },
+        {
+          "kind": "negative",
+          "description": "One mandatory predicate contradicted by confirmed evidence; recommendations remain advisory"
+        }
+      ],
+      "fixPolicy": "none",
+      "supportState": "partial",
+      "predicates": [
+        {
+          "id": "legacy-delegate",
+          "text": "Declared one-and-a-half spacing intent",
+          "profile": "knu-csc-2025-source@1.4.0"
+        }
+      ]
+    },
+    {
+      "ruleId": "KNU-SRC-CAPTION-DOT-001",
+      "ruleVersion": "1.0.0",
+      "domain": "sourceObservation",
+      "citation": {
+        "section": "3.7; 3.8",
+        "printedPages": [
+          21,
+          22,
+          23
+        ],
+        "pdfPages": [
+          21,
+          22,
+          23
+        ]
+      },
+      "guidelineSha256": "8be4d724ac108488e6b1766322e7fd6b3646412aa2b6de12b6945f48fb380714",
+      "requirementStrength": "mandatory",
+      "applicableWorkTypes": [
+        "unspecified",
+        "coursework",
+        "bachelorQualification",
+        "masterQualification"
+      ],
+      "preconditions": [
+        "Exact captured source snapshot, root, profile and configuration",
+        "Finite literal observation only; uncertainty retained; missing declarations do not establish absence"
+      ],
+      "requiredCapabilities": [
+        "boundedLiteralSource",
+        "selectedRootClosure"
+      ],
+      "supportedSyntax": "Unchanged existing profile1.4 finite grammar; consult bundled existing SourceRule metadata",
+      "limitations": [
+        "No rendered compliance from source settings",
+        "Semantic adequacy requires human review",
+        "No authored-content fixes; existing legacy fix policy remains separate",
+        "Physical formatting and semantic adequacy remain unassessed"
+      ],
+      "examples": [
+        {
+          "kind": "positive",
+          "description": "All listed applicable predicates established by required evidence"
+        },
+        {
+          "kind": "negative",
+          "description": "One mandatory predicate contradicted by confirmed evidence; recommendations remain advisory"
+        }
+      ],
+      "fixPolicy": "none",
+      "supportState": "partial",
+      "predicates": [
+        {
+          "id": "legacy-delegate",
+          "text": "No terminal U+002E on literal figure/table captions",
+          "profile": "knu-csc-2025-source@1.4.0"
+        }
+      ]
+    },
+    {
+      "ruleId": "KNU-NAMES-001",
+      "ruleVersion": "1.0.0",
+      "domain": "renderedObservation",
+      "citation": {
+        "section": "3.5",
+        "printedPages": [
+          20
+        ],
+        "pdfPages": [
+          20
+        ]
+      },
+      "guidelineSha256": "8be4d724ac108488e6b1766322e7fd6b3646412aa2b6de12b6945f48fb380714",
+      "requirementStrength": "conditional",
+      "applicableWorkTypes": [
+        "coursework",
+        "bachelorQualification",
+        "masterQualification"
+      ],
+      "preconditions": [
+        "Exact successful compiled revision and PDF identity",
+        "Confirmed applicable roles; unknown evidence is not absence"
+      ],
+      "requiredCapabilities": [
+        "semanticClassification",
+        "nativeLayoutFacts"
+      ],
+      "supportedSyntax": "none",
+      "limitations": [
+        "Additional category outside finite executable source predicates; required coverage remains OPEN, not assessed"
+      ],
+      "examples": [
+        {
+          "kind": "positive",
+          "description": "All listed applicable predicates established by required evidence"
+        },
+        {
+          "kind": "negative",
+          "description": "One mandatory predicate contradicted by confirmed evidence; recommendations remain advisory"
+        }
+      ],
+      "fixPolicy": "none",
+      "supportState": "unsupported",
+      "predicates": [
+        {
+          "id": "not-assessed",
+          "text": "Original-language proper names; transliteration permitted with original at first mention"
+        }
+      ]
+    },
+    {
+      "ruleId": "KNU-ABBREVIATIONS-001",
+      "ruleVersion": "1.0.0",
+      "domain": "renderedObservation",
+      "citation": {
+        "section": "2.4; 3.6",
+        "printedPages": [
+          13,
+          14,
+          20
+        ],
+        "pdfPages": [
+          13,
+          14,
+          20
+        ]
+      },
+      "guidelineSha256": "8be4d724ac108488e6b1766322e7fd6b3646412aa2b6de12b6945f48fb380714",
+      "requirementStrength": "conditional",
+      "applicableWorkTypes": [
+        "coursework",
+        "bachelorQualification",
+        "masterQualification"
+      ],
+      "preconditions": [
+        "Exact successful compiled revision and PDF identity",
+        "Confirmed applicable roles; unknown evidence is not absence"
+      ],
+      "requiredCapabilities": [
+        "semanticClassification",
+        "nativeLayoutFacts"
+      ],
+      "supportedSyntax": "none",
+      "limitations": [
+        "Additional category outside finite executable source predicates; required coverage remains OPEN, not assessed"
+      ],
+      "examples": [
+        {
+          "kind": "positive",
+          "description": "All listed applicable predicates established by required evidence"
+        },
+        {
+          "kind": "negative",
+          "description": "One mandatory predicate contradicted by confirmed evidence; recommendations remain advisory"
+        }
+      ],
+      "fixPolicy": "none",
+      "supportState": "unsupported",
+      "predicates": [
+        {
+          "id": "not-assessed",
+          "text": "Optional nonstandard repeated abbreviation list, Ukrainian/Latin/Greek/other alphabet order; linguistic restrictions need semantic review"
+        }
+      ]
+    },
+    {
+      "ruleId": "KNU-LISTS-001",
+      "ruleVersion": "1.0.0",
+      "domain": "renderedObservation",
+      "citation": {
+        "section": "3.9",
+        "printedPages": [
+          25,
+          26
+        ],
+        "pdfPages": [
+          25,
+          26
+        ]
+      },
+      "guidelineSha256": "8be4d724ac108488e6b1766322e7fd6b3646412aa2b6de12b6945f48fb380714",
+      "requirementStrength": "conditional",
+      "applicableWorkTypes": [
+        "coursework",
+        "bachelorQualification",
+        "masterQualification"
+      ],
+      "preconditions": [
+        "Exact successful compiled revision and PDF identity",
+        "Confirmed applicable roles; unknown evidence is not absence"
+      ],
+      "requiredCapabilities": [
+        "semanticClassification",
+        "nativeLayoutFacts"
+      ],
+      "supportedSyntax": "none",
+      "limitations": [
+        "Additional category outside finite executable source predicates; required coverage remains OPEN, not assessed"
+      ],
+      "examples": [
+        {
+          "kind": "positive",
+          "description": "All listed applicable predicates established by required evidence"
+        },
+        {
+          "kind": "negative",
+          "description": "One mandatory predicate contradicted by confirmed evidence; recommendations remain advisory"
+        }
+      ],
+      "fixPolicy": "none",
+      "supportState": "unsupported",
+      "predicates": [
+        {
+          "id": "not-assessed",
+          "text": "Colon except explanatory figure lists; dash for single-level unreferenced list; otherwise Ukrainian lowercase letters, Arabic digits, dashes; closing parenthesis; complex hierarchy may use editor automatic numbering"
+        }
+      ]
+    },
+    {
+      "ruleId": "KNU-NOTES-001",
+      "ruleVersion": "1.0.0",
+      "domain": "renderedObservation",
+      "citation": {
+        "section": "3.10",
+        "printedPages": [
+          26
+        ],
+        "pdfPages": [
+          26
+        ]
+      },
+      "guidelineSha256": "8be4d724ac108488e6b1766322e7fd6b3646412aa2b6de12b6945f48fb380714",
+      "requirementStrength": "conditional",
+      "applicableWorkTypes": [
+        "coursework",
+        "bachelorQualification",
+        "masterQualification"
+      ],
+      "preconditions": [
+        "Exact successful compiled revision and PDF identity",
+        "Confirmed applicable roles; unknown evidence is not absence"
+      ],
+      "requiredCapabilities": [
+        "semanticClassification",
+        "nativeLayoutFacts"
+      ],
+      "supportedSyntax": "none",
+      "limitations": [
+        "Additional category outside finite executable source predicates; required coverage remains OPEN, not assessed"
+      ],
+      "examples": [
+        {
+          "kind": "positive",
+          "description": "All listed applicable predicates established by required evidence"
+        },
+        {
+          "kind": "negative",
+          "description": "One mandatory predicate contradicted by confirmed evidence; recommendations remain advisory"
+        }
+      ],
+      "fixPolicy": "none",
+      "supportState": "unsupported",
+      "predicates": [
+        {
+          "id": "not-assessed",
+          "text": "12pt/single-spacing note; one unnumbered, multiple Arabic numbered; spacing at least two interline intervals; after related text/figure before caption/table"
+        }
+      ]
+    },
+    {
+      "ruleId": "KNU-FOOTNOTES-001",
+      "ruleVersion": "1.0.0",
+      "domain": "renderedObservation",
+      "citation": {
+        "section": "3.11",
+        "printedPages": [
+          26,
+          27
+        ],
+        "pdfPages": [
+          26,
+          27
+        ]
+      },
+      "guidelineSha256": "8be4d724ac108488e6b1766322e7fd6b3646412aa2b6de12b6945f48fb380714",
+      "requirementStrength": "conditional",
+      "applicableWorkTypes": [
+        "coursework",
+        "bachelorQualification",
+        "masterQualification"
+      ],
+      "preconditions": [
+        "Exact successful compiled revision and PDF identity",
+        "Confirmed applicable roles; unknown evidence is not absence"
+      ],
+      "requiredCapabilities": [
+        "semanticClassification",
+        "nativeLayoutFacts"
+      ],
+      "supportedSyntax": "none",
+      "limitations": [
+        "Additional category outside finite executable source predicates; required coverage remains OPEN, not assessed"
+      ],
+      "examples": [
+        {
+          "kind": "positive",
+          "description": "All listed applicable predicates established by required evidence"
+        },
+        {
+          "kind": "negative",
+          "description": "One mandatory predicate contradicted by confirmed evidence; recommendations remain advisory"
+        }
+      ],
+      "fixPolicy": "none",
+      "supportState": "unsupported",
+      "predicates": [
+        {
+          "id": "not-assessed",
+          "text": "Superscript Arabic with closing parenthesis per page or asterisk permitted; <=4 per page; 12pt/single spacing, 30–40mm left separator; page-bottom or under table"
+        }
+      ]
+    },
+    {
+      "ruleId": "KNU-FORMULAS-001",
+      "ruleVersion": "1.0.0",
+      "domain": "renderedObservation",
+      "citation": {
+        "section": "3.13",
+        "printedPages": [
+          27,
+          28
+        ],
+        "pdfPages": [
+          27,
+          28
+        ]
+      },
+      "guidelineSha256": "8be4d724ac108488e6b1766322e7fd6b3646412aa2b6de12b6945f48fb380714",
+      "requirementStrength": "conditional",
+      "applicableWorkTypes": [
+        "coursework",
+        "bachelorQualification",
+        "masterQualification"
+      ],
+      "preconditions": [
+        "Exact successful compiled revision and PDF identity",
+        "Confirmed applicable roles; unknown evidence is not absence"
+      ],
+      "requiredCapabilities": [
+        "semanticClassification",
+        "nativeLayoutFacts"
+      ],
+      "supportedSyntax": "none",
+      "limitations": [
+        "Additional category outside finite executable source predicates; required coverage remains OPEN, not assessed"
+      ],
+      "examples": [
+        {
+          "kind": "positive",
+          "description": "All listed applicable predicates established by required evidence"
+        },
+        {
+          "kind": "negative",
+          "description": "One mandatory predicate contradicted by confirmed evidence; recommendations remain advisory"
+        }
+      ],
+      "fixPolicy": "none",
+      "supportState": "unsupported",
+      "predicates": [
+        {
+          "id": "not-assessed",
+          "text": "Centered separate line after mention; numbered only if cited; continuous or chapter numbering; appendix prefix; explanation де without colon; grammar punctuation applies"
+        }
+      ]
+    },
+    {
+      "ruleId": "KNU-UNITS-001",
+      "ruleVersion": "1.0.0",
+      "domain": "renderedObservation",
+      "citation": {
+        "section": "3.14",
+        "printedPages": [
+          29
+        ],
+        "pdfPages": [
+          29
+        ]
+      },
+      "guidelineSha256": "8be4d724ac108488e6b1766322e7fd6b3646412aa2b6de12b6945f48fb380714",
+      "requirementStrength": "conditional",
+      "applicableWorkTypes": [
+        "coursework",
+        "bachelorQualification",
+        "masterQualification"
+      ],
+      "preconditions": [
+        "Exact successful compiled revision and PDF identity",
+        "Confirmed applicable roles; unknown evidence is not absence"
+      ],
+      "requiredCapabilities": [
+        "semanticClassification",
+        "nativeLayoutFacts"
+      ],
+      "supportedSyntax": "none",
+      "limitations": [
+        "Additional category outside finite executable source predicates; required coverage remains OPEN, not assessed"
+      ],
+      "examples": [
+        {
+          "kind": "positive",
+          "description": "All listed applicable predicates established by required evidence"
+        },
+        {
+          "kind": "negative",
+          "description": "One mandatory predicate contradicted by confirmed evidence; recommendations remain advisory"
+        }
+      ],
+      "fixPolicy": "none",
+      "supportState": "unsupported",
+      "predicates": [
+        {
+          "id": "not-assessed",
+          "text": "Physical quantities/units and numeric notation require semantic context"
+        }
+      ]
+    }
+  ]
+}

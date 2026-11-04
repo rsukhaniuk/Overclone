@@ -1,6 +1,7 @@
-//! Opt-in 1.5 adapter. Reuses unchanged 1.4 results and the same bounded lexer
-//! tokens/argument ownership. New predicates concern literal selected-root facts
-//! only. No macro expansion, bibliography backend, PDF or authored-content fix.
+//! Opt-in 1.5/1.6 adapter. Reuses unchanged 1.4 results and the same bounded lexer
+//! tokens/argument ownership. Edition 1.6 additionally observes literal citation
+//! postnotes; 1.5 keeps its original grammar. No macro expansion, bibliography backend,
+//! PDF or authored-content fix.
 use super::{
     dto::*,
     lexer::{LookaheadBudget, LookaheadResult},
@@ -9,6 +10,17 @@ use super::{
 use serde::Serialize;
 use serde_json::{json, Value};
 use std::collections::{BTreeSet, HashMap, HashSet};
+
+pub(super) const CITATION_NOTES_VERSION: &str = "1.6.0";
+const LEGACY_VERSION: &str = "1.5.0";
+const LEGACY_CATALOG_VERSION: &str = "1.0.0";
+const CITATION_NOTES_CATALOG_VERSION: &str = "1.1.0";
+// An observation bound, not a guideline limit on page/citation notation.
+const MAX_CITATION_NOTE_BYTES: usize = 512;
+
+pub(super) fn supports_version(version: &str) -> bool {
+    matches!(version, LEGACY_VERSION | CITATION_NOTES_VERSION)
+}
 
 const IDS: [&str; 5] = [
     "KNU-SRC-STRUCTURE-001",
@@ -225,13 +237,12 @@ fn run(metadata: &str, packed: &[u8], p: AnalyzePayload) -> Result<(Value, usize
         pass.limitations.insert("incompleteDocumentBoundaries");
     }
     let report = pass.report()?;
-    value["payload"]["profile"]["version"] = json!(crate::thesis_catalog::SOURCE_PROFILE_VERSION);
-    value["payload"]["knu"]["metadata"]["profile"]["version"] =
-        json!(crate::thesis_catalog::SOURCE_PROFILE_VERSION);
+    value["payload"]["profile"]["version"] = json!(p.profile.version);
+    value["payload"]["knu"]["metadata"]["profile"]["version"] = json!(p.profile.version);
     // Existing fixes retain exact preconditions and are bound to requested edition.
     if let Some(fixes) = value["payload"]["knu"]["fixDescriptors"].as_array_mut() {
         for fix in fixes {
-            fix["profile"]["version"] = json!(crate::thesis_catalog::SOURCE_PROFILE_VERSION);
+            fix["profile"]["version"] = json!(p.profile.version);
         }
     }
     value["payload"]["referenceConfiguration"] =
@@ -376,6 +387,15 @@ impl Pass<'_> {
                 self.limitations.insert("outsideDocumentExecution");
             }
             let mut next = i + 1;
+            if name == "cite" && self.p.profile.version == CITATION_NOTES_VERSION {
+                let (after_notes, end, literal) =
+                    citation_notes(tokens, bytes, next, t.end_byte as usize, &mut work)?;
+                next = after_notes;
+                owned_end = end as u64;
+                if !literal {
+                    self.limitations.insert("dynamicCitation");
+                }
+            }
             let mut arg = || -> Result<Option<(usize, usize, usize)>, &'static str> {
                 match ownership::group(tokens, bytes, &closes, next, &mut work) {
                     LookaheadResult::Found(a) => {
@@ -773,7 +793,7 @@ impl Pass<'_> {
                 "evidenceIndexes":(0..self.events.len()).collect::<Vec<_>>()}));
         }
         Ok(
-            json!({"schemaVersion":1,"catalogId":"knu-csc-2025-thesis-support","catalogVersion":crate::thesis_catalog::VERSION,
+            json!({"schemaVersion":1,"catalogId":"knu-csc-2025-thesis-support","catalogVersion":if self.p.profile.version == CITATION_NOTES_VERSION {CITATION_NOTES_CATALOG_VERSION}else{LEGACY_CATALOG_VERSION},
             "guidelineSha256":profiles::SHA256,"rootFileId":self.p.reference_configuration.as_ref().ok_or("InvalidInput")?.root_file_id,
             "workType":self.p.configuration.as_ref().ok_or("InvalidInput")?.work_type,
             "domain":"sourceObservation","globalCoverage":"incomplete","renderedCompliance":"notAssessed",
@@ -787,6 +807,83 @@ impl Pass<'_> {
         )
     }
 }
+
+/// One ordinary cite postnote, using the existing lexer's bounded optional-group
+/// reader. Additional groups are unsupported and owned only to keep their text
+/// from becoming executed thesis events. Token text can span adjacent brackets,
+/// so raw mandatory-group adjacency is checked before token association.
+fn citation_notes(
+    tokens: &[Token],
+    bytes: &[u8],
+    mut next: usize,
+    mut pos: usize,
+    work: &mut LookaheadBudget,
+) -> Result<(usize, usize, bool), &'static str> {
+    let mut seen_note = false;
+    let mut literal = true;
+    loop {
+        // Match the existing Project argument observer's inter-argument trivia.
+        loop {
+            match bytes.get(pos) {
+                Some(b) if b.is_ascii_whitespace() => {
+                    if !work.consume(1) {
+                        return Err("QuotaExceeded");
+                    }
+                    pos += 1;
+                }
+                Some(b'%') => {
+                    while pos < bytes.len() && !matches!(bytes[pos], b'\r' | b'\n') {
+                        if !work.consume(1) {
+                            return Err("QuotaExceeded");
+                        }
+                        pos += 1;
+                    }
+                }
+                _ => break,
+            }
+        }
+        if bytes.get(pos) != Some(&b'[') {
+            break;
+        }
+        // Two-note forms require package command semantics not established here.
+        // Owning them is conservative skipping, never positive syntax support.
+        literal &= !seen_note;
+        seen_note = true;
+        let close = match super::lexer::find_optional_close(bytes, pos + 1, work) {
+            LookaheadResult::Found(close) => close,
+            LookaheadResult::NotFound => return Ok((next, pos, false)),
+            LookaheadResult::Exhausted => return Err("QuotaExceeded"),
+        };
+        let note = &bytes[pos + 1..close];
+        if !work.consume(note.len()) {
+            return Err("QuotaExceeded");
+        }
+        literal &= note.len() <= MAX_CITATION_NOTE_BYTES
+            && note.iter().all(|b| {
+                (!b.is_ascii_control() || matches!(b, b'\t' | b'\r' | b'\n'))
+                    && !matches!(
+                        b,
+                        b'\\' | b'{' | b'}' | b'%' | b'#' | b'$' | b'&' | b'^' | b'_' | b'~' | b'['
+                    )
+            });
+        pos = close + 1;
+        while next < tokens.len() && tokens[next].start_byte < pos as u64 {
+            if !work.consume(1) {
+                return Err("QuotaExceeded");
+            }
+            next += 1;
+        }
+    }
+    if seen_note {
+        match super::lexer::skip_to_group_open(bytes, pos, work) {
+            LookaheadResult::Found(_) => {}
+            LookaheadResult::NotFound => literal = false,
+            LookaheadResult::Exhausted => return Err("QuotaExceeded"),
+        }
+    }
+    Ok((next, pos, literal))
+}
+
 fn literal_title(bytes: &[u8]) -> bool {
     !bytes.is_empty()
         && !bytes.iter().any(|b| {

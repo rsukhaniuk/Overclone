@@ -210,6 +210,16 @@ async function dashboard(page) {
 }
 async function openProject(page,name) {
   const row=page.locator('[data-testid=project-row]',{hasText:name});assert.equal(await row.count(),1);await row.locator('[data-testid=open-project]').click();
+  // The click starts an async Blazor/OPFS open. Wait for this exact project
+  // and its complete healthy file tree OR damaged-head view before choosing.
+  await page.waitForFunction(expected => {
+    const title=document.querySelector('.workspace-header h1')?.textContent;
+    const model=document.querySelector('[data-testid=analysis-panel]');
+    return title===expected && !!model?.dataset.session &&
+      (!!document.querySelector('[data-testid=recovery-panel]') ||
+       document.querySelectorAll('[data-testid=select-file]').length===2);
+  },name);
+
 }
 async function assertRecovery(page,C,A,B,readonly) {
   await $(page,'recovery-panel').waitFor();assert.equal(await $(page,'recovery-panel').getAttribute('data-damaged-head'),C.revision.id);

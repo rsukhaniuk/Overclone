@@ -341,8 +341,7 @@ pub fn analyze_source(metadata_json: &str, packed_bytes: &[u8]) -> String {
     if let Err(msg) = validate_payload_identity(&payload) {
         return failed_response(Some(request_id), "InvalidInput", msg);
     }
-    if payload.profile.id == profiles::KNU_ID
-        && payload.profile.version == crate::thesis_catalog::SOURCE_PROFILE_VERSION
+    if payload.profile.id == profiles::KNU_ID && thesis::supports_version(&payload.profile.version)
     {
         return thesis::analyze(metadata_json, packed_bytes, payload, request_id);
     }

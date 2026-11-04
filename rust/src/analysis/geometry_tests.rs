@@ -234,7 +234,7 @@ fn utf8_bom_crlf_scalar_spans_and_deterministic_output() {
     let (req, bytes) = request(&[("main.tex", b"\xff")]);
     assert_eq!(wire(&req, &bytes)["error"]["code"], "InvalidInput");
     let (mut req, bytes) = request(&[("main.tex", GOOD.as_bytes())]);
-    req["payload"]["profile"]["version"] = json!("1.6.0");
+    req["payload"]["profile"]["version"] = json!("1.7.0");
     assert_eq!(wire(&req, &bytes)["error"]["code"], "UnsupportedCapability");
 }
 

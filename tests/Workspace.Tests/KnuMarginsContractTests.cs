@@ -33,7 +33,7 @@ public sealed class KnuMarginsContractTests
     [InlineData("knu-csc-2025-source", "latest")]
     [InlineData("knu-csc-2025-source", "1.1")]
     [InlineData("knu-csc-2025-source", "1.1.1")]
-    [InlineData("knu-csc-2025-source", "1.6.0")]
+    [InlineData("knu-csc-2025-source", "1.7.0")]
     [InlineData("unknown", "1.1.0")]
     [InlineData("engine-structural", "1.1.0")]
     public void Catalog_rejects_nonexact_versions_and_unknown_ids(string id, string version)

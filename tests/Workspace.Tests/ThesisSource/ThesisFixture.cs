@@ -28,7 +28,7 @@ internal sealed class ThesisFixture(JsonObject data)
         }).ToImmutableArray();
         int root=p["files"]!.AsArray().Select((f,i)=>(f,i)).Single(x=>x.f!["fileId"]!.GetValue<string>()==p["referenceConfiguration"]!["rootFileId"]!.GetValue<string>()).i;
         return new(AnalysisSnapshotId.New(),ProjectId.New(),Guid.NewGuid(),1,1,RevisionId.New(),
-            new(AnalysisCatalog.KnuId,AnalysisCatalog.ThesisVersion),AnalysisLimits.Defaults(),files,[],
+            new(AnalysisCatalog.KnuId,p["profile"]!["version"]!.GetValue<string>()),AnalysisLimits.Defaults(),files,[],
             AnalysisJson.ParseConfiguration(p["configuration"]!.ToJsonString()),ReferenceConfiguration:new(files[root].FileId.ToString()));
     }
     internal string Reply(AnalysisSnapshot s,string requestId)
