@@ -1,0 +1,99 @@
+{
+  "repository": "https://github.com/TeXlyre/texlyre-busytex-build",
+  "commit": "46ebb6216a5c1fe63dd1dc885831d1a8cef2dc86",
+  "sourceArchiveSha256": "b5356166679565d3f7dc00710cd37c687e1bbe886debbceb9ca30237fa86f8d4",
+  "license": "AGPL-3.0",
+  "scope": "Exact upstream Biber build subtree plus rootLICENSE/NOTICE; upstream copyright and embedded WebPerl notices retained.",
+  "files": [
+    {
+      "path": "LICENSE",
+      "length": 34523,
+      "sha256": "8486a10c4393cee1c25392769ddd3b2d6c242d6ec7928e1414efff7dfb2f07ef"
+    },
+    {
+      "path": "NOTICE",
+      "length": 467,
+      "sha256": "984c51c84d462e27d93386f65a07c4e7177f18a1b2f9c8d8c4b2f343e89f0c56"
+    },
+    {
+      "path": "biber/README.md",
+      "length": 2666,
+      "sha256": "2bcaf862fdc388398bbd52fc230e48d0c370701916490e414b06e9a85172af3d"
+    },
+    {
+      "path": "biber/browser_prerun.js",
+      "length": 680,
+      "sha256": "1331cd0d1c2c3d9f52968472121df9d3b5346b2f937b23dcf5037e0484befd80"
+    },
+    {
+      "path": "biber/build_biber.sh",
+      "length": 7763,
+      "sha256": "81a6e5b7a76f1a9f787d9cec7a6d19f183f4ecadfe66870de9bd3c95d7846e9c"
+    },
+    {
+      "path": "biber/build_deps.sh",
+      "length": 2412,
+      "sha256": "f277597b993954213658e51ec10328b5cb90faff93bc9578307069703eda4eca"
+    },
+    {
+      "path": "biber/build_xs.sh",
+      "length": 2324,
+      "sha256": "5fd5ea532b4678c10f1179f9ae84d634a4cf73e9da25830be8f7a3ebf273eebe"
+    },
+    {
+      "path": "biber/config_fixups.sh",
+      "length": 812,
+      "sha256": "e092128f4f75372458b084047dbf1c3e05187567c70c0d70720cb7c81082bdc4"
+    },
+    {
+      "path": "biber/emcc_configure_shim.sh",
+      "length": 968,
+      "sha256": "8390d231c26a23da0d8cf8b13b794f59180bf76a82e401236eee3f90141a4772"
+    },
+    {
+      "path": "biber/fetch_sources.sh",
+      "length": 2688,
+      "sha256": "4c0364b2f4c4a8319a0761aa67816f7fa22475ae97b3efc0ee3047e9b334009c"
+    },
+    {
+      "path": "biber/modules.txt",
+      "length": 642,
+      "sha256": "5715ebbb25c6c7cf8166b8be8acf46297bdcb64481b8ad6de37b80f331ea1b8a"
+    },
+    {
+      "path": "biber/patches/01-remove-sock-cloexec.patch",
+      "length": 1356,
+      "sha256": "959a567b39420356cb20071b5c063ba1a9b49675e052b9fc9bf4cfa9baab8e26"
+    },
+    {
+      "path": "biber/patches/02-disable-signal-handling.patch",
+      "length": 2113,
+      "sha256": "7127bb60b963c2e3942ff3249d1b574bb5acaed8b084a9c19a3cf0cba20ac123"
+    },
+    {
+      "path": "biber/patches/03-errno-emscripten.patch",
+      "length": 1295,
+      "sha256": "87f08dfadebb293dd79d9a494ff851cc3b7f1762fbab6d3efa3ba558067b9ed3"
+    },
+    {
+      "path": "biber/patches/04-makefile-sh.patch",
+      "length": 4230,
+      "sha256": "5f80f6f9322c122a58e9d891d6b7fad045613d2bad5d57cc6cf72823c65f4d17"
+    },
+    {
+      "path": "biber/patches/05-perlmain-noexit.patch",
+      "length": 2473,
+      "sha256": "358808897020878b9f034fadcf4865cc326dd8d2b1cc385c2bfcc10bd9e82943"
+    },
+    {
+      "path": "biber/patches/06-hints-emscripten.patch",
+      "length": 9054,
+      "sha256": "628a4d92e01247641d42eba33103e49cdacd6dfe489cef8f80295a89bf5243f6"
+    },
+    {
+      "path": "biber/patches/07-re-static-symbols.patch",
+      "length": 2306,
+      "sha256": "78ea261f791428ce41df0d3e02ee966a457b11fa79bbfbf04218e77f562bed1e"
+    }
+  ]
+}

@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "scope": "Synthetic source inputs; expected BCF is actual immutable fresh P10 LuaLaTeX output, not an approximate handwritten control file. Generate the BCF externally; generated outputs are not checked in.",
+  "source": {
+    "name": "genuine-bcf.tex",
+    "length": 285,
+    "sha256": "077ea06569e3535de1729c61907d4c74c2924d2a0603e2dfb234de969aa9dd18"
+  },
+  "producer": {
+    "version": "LuaTeX 1.13.0 (TeX Live 2021, svn 7410); browser ABI 5",
+    "loaderSha256": "6fb762c18ea4719dd2157d5950303a5f498ad511df0665cca54af141ff0882b5",
+    "wasmSha256": "220999882c2ddb4057b6d798f21785fce35accb4c63c0436dfa62af9f3987dbc",
+    "manifestSha256": "1abe84eeda5eb6cda3825b04614464ca07e1ffb174ca46c9c09fe4de1efbe52c",
+    "formatSha256": "e05a14512add21f7781ff071af6bb4bf8a392269deac02feb5baf990ea4e63dc"
+  },
+  "expectedBcf": {
+    "name": "result.bcf",
+    "length": 107766,
+    "sha256": "17b9c2c70d4a9cdfbdf0608097486254ac52d5f90a309072daa0f7f60d38bc06"
+  },
+  "fixtureManifestShape": {
+    "schemaVersion": 1,
+    "scope": "fresh actual P10 LuaLaTeX/biblatex3.19 BCF plus original synthetic BIB",
+    "entry": "result.bcf",
+    "files": [
+      {
+        "name": "result.bcf",
+        "source": "result.bcf",
+        "role": 2,
+        "length": 107766,
+        "sha256": "17b9c2c70d4a9cdfbdf0608097486254ac52d5f90a309072daa0f7f60d38bc06"
+      },
+      {
+        "name": "references.bib",
+        "source": "references.bib",
+        "role": 1,
+        "length": 127,
+        "sha256": "bc7423473ab31da0ea17979552c9124d50e59c22cdaf5bd6204b78679429b7e7"
+      }
+    ],
+    "expectedKeys": [
+      "reference2"
+    ],
+    "expectedText": [
+      "Reference2 bibliography marker"
+    ]
+  },
+  "expectedBbl": {
+    "length": 1493,
+    "sha256": "6d33fa3a1479358fcbd9c828f53c689e560adb02adbeeb4ae4a668d40c0e0b6d"
+  }
+}

@@ -1,0 +1,87 @@
+{
+  "schemaVersion": 2,
+  "proposalId": "R1-D-biber-2.19-source",
+  "status": "approved-and-acquired-source-build-proved-not-product-accepted",
+  "historicalOriginalProposal": {
+    "schemaVersion": 1,
+    "proposalId": "R1-D-biber-2.19-source",
+    "status": "approval-required-not-acquired",
+    "purpose": "Inspect the genuine matching Biber source and freeze its dependency manifest before selecting a browser Perl build.",
+    "pairing": {
+      "biblatex": "3.19",
+      "bcf": "3.10",
+      "bbl": "3.2",
+      "biber": "2.19",
+      "reference": "https://tug.ctan.org/macros/latex/contrib/biblatex/doc/biblatex.pdf",
+      "location": "Table 1, printed page 8"
+    },
+    "requestedInput": {
+      "component": "biblatex-biber",
+      "version": "2.19",
+      "archiveName": "biblatex-biber.tar.gz",
+      "sourceUrl": "https://sourceforge.net/projects/biblatex-biber/files/biblatex-biber/2.19/biblatex-biber.tar.gz/download",
+      "releaseIndex": "https://sourceforge.net/projects/biblatex-biber/files/biblatex-biber/2.19/",
+      "listedCompressedSize": "1.1 MB",
+      "sizeConfidence": "Rounded official release-index display, not measured downloaded bytes.",
+      "sha256": null,
+      "hashStatus": "Compute after separately authorized retrieval; freeze before build/use.",
+      "license": "Artistic-2.0",
+      "licenseReference": "https://raw.githubusercontent.com/plk/biber/v2.19/README.md",
+      "licenseTextToRetain": "LICENSE from the acquired release"
+    },
+    "proposedAcquisitionCaps": {
+      "compressedBytes": 2097152,
+      "expandedBytes": 16777216,
+      "archiveMembers": 4096,
+      "inspectionWorkspaceBytes": 67108864,
+      "confidence": "Proposed hard refusal bounds, not measured costs or proof the archive fits."
+    },
+    "allowedNextStageAfterApproval": [
+      "Retrieve only the specified Biber source archive into private staging.",
+      "Validate archive paths, symlinks, member/count/expanded bounds and content hashes before extraction/use.",
+      "Retain its license, Build.PL, exact source version and complete dependency metadata.",
+      "Return a separately reviewable browser-Perl/XS source lock and bounded build proposal."
+    ],
+    "notIncluded": [
+      "Perl/WebPerl/emperl source acquisition or runtime adoption",
+      "Automatic CPAN installation or unresolved transitive dependency downloads",
+      "Host toolchain installation or a host/companion Biber runtime",
+      "Changes to application profiles, pins, UI, workers or the bibliography scheduler",
+      "Distribution/license selection or a claim that browser BCF-to-BBL works"
+    ],
+    "unresolvedPortInputs": [
+      "A pinned browser Perl source/build compatible with the existing Emscripten toolchain",
+      "The exact Biber 2.19 Build.PL dependency closure and its source hashes/licenses",
+      "Static XML::LibXML/XML::LibXSLT and their C dependencies",
+      "Static Text::BibTeX/btparse and required Unicode/other XS dependencies"
+    ],
+    "fullPortDownloadBytes": null,
+    "fullPortBuildWorkspaceBytes": null,
+    "fullPortPeakHeapBytes": null,
+    "fullPortBudgetStatus": "Unknown until genuine dependency metadata and a reproducible build are available."
+  },
+  "currentAuthorizations": [
+    "User explicitly approved all needed R1 source/dependency acquisition.",
+    "User explicitly allowed GPL/AGPL and sharing corresponding source."
+  ],
+  "pairing": {
+    "biblatex": "3.19",
+    "bcf": "3.10",
+    "bbl": "3.2",
+    "biber": "2.19",
+    "reference": "https://tug.ctan.org/macros/latex/contrib/biblatex/doc/biblatex.pdf",
+    "location": "Table 1, printed page 8"
+  },
+  "actualSource": {
+    "length": 1080481,
+    "sha256": "2c6b97a50b14414b1946264e7a0e7aa4d1ee147fb6aa779ba46fa1f4b1d4aeba",
+    "expandedBytes": 7845803,
+    "members": 231
+  },
+  "currentLocks": [
+    "source-lock.json",
+    "bootstrap-lock.json",
+    "upstream/texlyre-biber/UPSTREAM.json"
+  ],
+  "remainingAdoptionBoundary": "Root-owned final browser/worker/profile/offline/all-four-engine acceptance and source-distribution packaging."
+}

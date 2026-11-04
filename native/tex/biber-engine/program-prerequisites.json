@@ -1,0 +1,83 @@
+{
+  "schemaVersion": 1,
+  "source": "biber2.19/META.json",
+  "sourceSha256": "43e7f5c30621de3e3ad73cbd982085c019318db9212dce66fbca440842bac4b6",
+  "originalPrerequisites": {
+    "build": {
+      "requires": {
+        "Config::AutoConf": "0.15",
+        "ExtUtils::LibBuilder": "0.02"
+      }
+    },
+    "configure": {
+      "requires": {
+        "Module::Build": "0.38"
+      }
+    },
+    "runtime": {
+      "requires": {
+        "Business::ISBN": "0",
+        "Business::ISMN": "0",
+        "Business::ISSN": "0",
+        "Class::Accessor": "0",
+        "Data::Compare": "0",
+        "Data::Dump": "0",
+        "Data::Uniqid": "0",
+        "DateTime::Calendar::Julian": "0",
+        "DateTime::Format::Builder": "0",
+        "Encode::EUCJPASCII": "0",
+        "Encode::HanExtra": "0",
+        "Encode::JIS2K": "0",
+        "Encode::Locale": "0",
+        "File::Slurper": "0",
+        "IO::String": "0",
+        "IPC::Cmd": "0",
+        "IPC::Run3": "0",
+        "LWP::Protocol::https": "0",
+        "LWP::UserAgent": "0",
+        "Lingua::Translit": "0.28",
+        "List::AllUtils": "0",
+        "List::MoreUtils": "0",
+        "List::MoreUtils::XS": "0",
+        "Log::Log4perl": "0",
+        "Mozilla::CA": "20160104",
+        "Parse::RecDescent": "0",
+        "PerlIO::utf8_strict": "0",
+        "Regexp::Common": "0",
+        "Sort::Key": "0",
+        "Storable": "0",
+        "Text::Balanced": "0",
+        "Text::BibTeX": "0.88",
+        "Text::CSV": "0",
+        "Text::CSV_XS": "0",
+        "Text::Roman": "0",
+        "URI": "0",
+        "Unicode::Collate": "1.29",
+        "Unicode::GCString": "0",
+        "Unicode::LineBreak": "2019.001",
+        "Unicode::Normalize": "1.26",
+        "XML::LibXML": "1.7",
+        "XML::LibXML::Simple": "0",
+        "XML::LibXSLT": "0",
+        "XML::Writer": "0",
+        "autovivification": "0",
+        "perl": "v5.32.0"
+      }
+    },
+    "test": {
+      "requires": {
+        "File::Which": "0",
+        "Test::Differences": "0",
+        "Test::More": "0"
+      }
+    }
+  },
+  "currentFeatureGaps": {
+    "XML::LibXSLT": "Optional --convert-control BCF-to-HTML diagnostic; Biber.pm378-384; fixed product argv excludes this switch.",
+    "Encode::EUCJPASCII": "Legacy encoding XS not statically linked; UTF8 bibliography input does not load it.",
+    "Encode::HanExtra": "Legacy encoding XS not statically linked; UTF8 bibliography input does not load it.",
+    "Encode::JIS2K": "Legacy encoding XS not statically linked; UTF8 bibliography input does not load it.",
+    "LWP::Protocol::https": "Native network deliberately denied; remote data sources are not supported.",
+    "otherInputFormats": "Current finite acceptance is matchingBCF3.10 plus literal captured UTF8BibTeX; XML/CSV/other format support has not been established."
+  }
+}

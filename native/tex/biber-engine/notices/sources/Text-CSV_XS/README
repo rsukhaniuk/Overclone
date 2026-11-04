@@ -1,0 +1,75 @@
+Module:
+    Text::CSV_XS
+
+Description:
+    Text::CSV_XS provides facilities for the composition and decomposition
+    of comma-separated values.   An instance of the Text::CSV_XS class can
+    combine fields into a CSV string and parse a CSV string into fields.
+
+    Program to process a CSV file:
+    ------------------------------
+    This distribution provides several examples of scripts that convert CSV
+    files or data streams into XLS or XLSX  or simply check if the CSV data
+    is valid. It is easy to amend those scripts to do whatever the end-user
+    actually requires.  The full documentation also provides various small
+    snippets of example code.
+
+    Convert a CSV file into JSON:
+    -----------------------------
+    That process is described in the documentation.
+
+Copying:
+    Copyright (c) 2007-2023 H.Merijn Brand.  All rights reserved.
+    Copyright (c) 1998-2001 Jochen Wiedmann. All rights reserved.
+    Portions Copyright (c) 1997 Alan Citterman. All rights reserved.
+
+    This program is free software; you can redistribute it and/or modify
+    it under the same terms as Perl itself.
+
+    Recent changes can be (re)viewed in the public GIT repository at
+    https://github.com/Tux/Text-CSV_XS
+    Feel free to clone your own copy:
+
+     $ git clone https://github.com/Tux/Text-CSV_XS Text-CSV_XS
+
+    or get it as a tgz:
+
+     $ wget --output-document=Text-CSV_XS-git.tgz \
+	   https://github.com/Tux/Text-CSV_XS/archive/master.tar.gz
+
+Prerequisites:
+    perl 5.6.1 or up.
+
+    You can have a working Test::More for 5.6.1 by requiring version
+    Test::Harness-2.64 and Test::Simple-0.90
+
+    I found no easy way to get Test::More working on 5.6.0
+
+    examples/csv-check requires perl with defined-or and PerlIO, and
+    making that work on other versions is left as an exercise to the
+    reader. Other examples are checked against 5.8.4. For Unicode to
+    work more or less reliable, you'd need perl 5.8.2 or newer.
+
+    examples/csv2xlsx requires 5.14 or newer.
+
+Build/Installation:
+    Standard build/installation:
+	perl Makefile.PL
+	make test
+	make install
+
+Author:
+    H.Merijn Brand <hmbrand@cpan.org> (   0.25 - 2007-05-07 ..)
+    Jochen Wiedmann <joe@ispsoft.de>  (.. 0.23 - 2001-10-10   )
+
+    Interface design by Alan Citterman <alan@mfgrtl.com>
+
+    A pure-perl version Text::CSV_PP is being maintained by  Kenichi
+    Ishigaki. This module was created by Makamaka Hannyaharamitu who
+    maintained it up to 2015.   It tries to follow  Text::CSV_XS  as
+    closely as possible.
+    Do not file bugs on Text::CSV to Text::CSV_XS.
+
+    Text::CSV_PP is bundled with Text::CSV which is a wrapper module
+    over Text::CSV_XS and Text::CSV_PP that selects  Text::CSV_XS if
+    if available, and otherwise uses Text::CSV_PP.

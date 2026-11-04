@@ -1,0 +1,908 @@
+{
+  "schemaVersion": 1,
+  "scope": "Build-only Ubuntu24.04 package inputs; native binaries are never browser runtime dependencies. Runtime .pm source provenance is retained in the bootstrap source/notices lock.",
+  "baseImage": "sha256:2e6c4876b7288a5d8846aff1ff73dc4a0cc8e97cf4b6d8bc169ffdd3bd7a9b2d",
+  "emscripten": "6.0.13",
+  "downloadedBytes": 13096208,
+  "files": [
+    {
+      "name": "biber_2.19-2_all.deb",
+      "length": 555312,
+      "sha256": "d7e18079dfdf5c92a678f712b1ade88a12e1e9118904118a7c5a3d2dec1844de",
+      "fields": "Package: biber\nVersion: 2.19-2\nArchitecture: all\n",
+      "url": "http://archive.ubuntu.com/ubuntu/pool/universe/b/biber/biber_2.19-2_all.deb"
+    },
+    {
+      "name": "libalgorithm-c3-perl_0.11-2_all.deb",
+      "length": 10158,
+      "sha256": "f2941332bda3f7ef61604b72f5216ff257675e6bc0d8324f527e19ee94eca23b",
+      "fields": "Package: libalgorithm-c3-perl\nVersion: 0.11-2\nArchitecture: all\n",
+      "url": "http://archive.ubuntu.com/ubuntu/pool/universe/liba/libalgorithm-c3-perl/libalgorithm-c3-perl_0.11-2_all.deb"
+    },
+    {
+      "name": "libautovivification-perl_0.18-2build4_amd64.deb",
+      "length": 22384,
+      "sha256": "1c3cf6538a2e57cf9b8c4e4a465981cce57f1cdc19a316507fbde92d31e95fe7",
+      "fields": "Package: libautovivification-perl\nVersion: 0.18-2build4\nArchitecture: amd64\n",
+      "url": "http://archive.ubuntu.com/ubuntu/pool/universe/liba/libautovivification-perl/libautovivification-perl_0.18-2build4_amd64.deb"
+    },
+    {
+      "name": "libb-hooks-endofscope-perl_0.28-1_all.deb",
+      "length": 15778,
+      "sha256": "d6a8abc71d5961e7456057fc5c5abf22845395924634df6833d63eb27c52fda1",
+      "fields": "Package: libb-hooks-endofscope-perl\nVersion: 0.28-1\nArchitecture: all\n",
+      "url": "http://archive.ubuntu.com/ubuntu/pool/main/libb/libb-hooks-endofscope-perl/libb-hooks-endofscope-perl_0.28-1_all.deb"
+    },
+    {
+      "name": "libb-hooks-op-check-perl_0.22-3build1_amd64.deb",
+      "length": 9518,
+      "sha256": "c27b9409e705daf998af2b11784aab841a331a96d7315d3d495ba9a78e3b9dc1",
+      "fields": "Package: libb-hooks-op-check-perl\nVersion: 0.22-3build1\nArchitecture: amd64\n",
+      "url": "http://archive.ubuntu.com/ubuntu/pool/main/libb/libb-hooks-op-check-perl/libb-hooks-op-check-perl_0.22-3build1_amd64.deb"
+    },
+    {
+      "name": "libbtparse2_0.89-1build3_amd64.deb",
+      "length": 40206,
+      "sha256": "73ed76658492ddeb40d321788b5683b4d421fe730501d4ae6c4afd26fd9e9d38",
+      "fields": "Package: libbtparse2\nVersion: 0.89-1build3\nSource: libtext-bibtex-perl\nArchitecture: amd64\n",
+      "url": "http://archive.ubuntu.com/ubuntu/pool/universe/libt/libtext-bibtex-perl/libbtparse2_0.89-1build3_amd64.deb"
+    },
+    {
+      "name": "libbusiness-isbn-data-perl_20240229.001-1_all.deb",
+      "length": 20370,
+      "sha256": "e11784e3310602bcac5d0d60e7c0ff8ba159bea8b692bd1804b59344715c7091",
+      "fields": "Package: libbusiness-isbn-data-perl\nVersion: 20240229.001-1\nArchitecture: all\n",
+      "url": "http://archive.ubuntu.com/ubuntu/pool/universe/libb/libbusiness-isbn-data-perl/libbusiness-isbn-data-perl_20240229.001-1_all.deb"
+    },
+    {
+      "name": "libbusiness-isbn-perl_3.009-1_all.deb",
+      "length": 22134,
+      "sha256": "07f62af4eb3890d2b70a4a36ee0b2ba432f78b7f01690b8ab985d6448d3eb334",
+      "fields": "Package: libbusiness-isbn-perl\nVersion: 3.009-1\nArchitecture: all\n",
+      "url": "http://archive.ubuntu.com/ubuntu/pool/universe/libb/libbusiness-isbn-perl/libbusiness-isbn-perl_3.009-1_all.deb"
+    },
+    {
+      "name": "libbusiness-ismn-perl_1.204-1_all.deb",
+      "length": 13474,
+      "sha256": "abd01138ad644386d1215df4ba022ba17b03629748b8249a6cea29b5df4d3d81",
+      "fields": "Package: libbusiness-ismn-perl\nVersion: 1.204-1\nArchitecture: all\n",
+      "url": "http://archive.ubuntu.com/ubuntu/pool/universe/libb/libbusiness-ismn-perl/libbusiness-ismn-perl_1.204-1_all.deb"
+    },
+    {
+      "name": "libbusiness-issn-perl_1.005-2_all.deb",
+      "length": 10266,
+      "sha256": "a2076adc1402fb5c73cde5be35a24cb9de4bd3acfb064c4493cdb4e4512d9cbd",
+      "fields": "Package: libbusiness-issn-perl\nVersion: 1.005-2\nArchitecture: all\n",
+      "url": "http://archive.ubuntu.com/ubuntu/pool/universe/libb/libbusiness-issn-perl/libbusiness-issn-perl_1.005-2_all.deb"
+    },
+    {
+      "name": "libclass-accessor-perl_0.51-2_all.deb",
+      "length": 21446,
+      "sha256": "a2c4973739a234a12de54d12aa557c14f2ec4da466f1b6e32d3a5902f78c0a0a",
+      "fields": "Package: libclass-accessor-perl\nVersion: 0.51-2\nArchitecture: all\n",
+      "url": "http://archive.ubuntu.com/ubuntu/pool/universe/libc/libclass-accessor-perl/libclass-accessor-perl_0.51-2_all.deb"
+    },
+    {
+      "name": "libclass-c3-perl_0.35-2_all.deb",
+      "length": 18392,
+      "sha256": "d2089c0a870431a6fdb9e85389f5a8c5854366821837f5d91dc3fde98c780a1a",
+      "fields": "Package: libclass-c3-perl\nVersion: 0.35-2\nArchitecture: all\n",
+      "url": "http://archive.ubuntu.com/ubuntu/pool/universe/libc/libclass-c3-perl/libclass-c3-perl_0.35-2_all.deb"
+    },
+    {
+      "name": "libclass-data-inheritable-perl_0.08-3_all.deb",
+      "length": 8084,
+      "sha256": "6d989a0a6ae168883c9abcb4443cb81e53f86ce4f73baf18a886a91e1d75b667",
+      "fields": "Package: libclass-data-inheritable-perl\nVersion: 0.08-3\nArchitecture: all\n",
+      "url": "http://archive.ubuntu.com/ubuntu/pool/main/libc/libclass-data-inheritable-perl/libclass-data-inheritable-perl_0.08-3_all.deb"
+    },
+    {
+      "name": "libclass-inspector-perl_1.36-3_all.deb",
+      "length": 15418,
+      "sha256": "dd7fe70ca6970b41d8925b1b22bb240a6106e578e7e7847bf75e2f68f2bd3ee7",
+      "fields": "Package: libclass-inspector-perl\nVersion: 1.36-3\nArchitecture: all\n",
+      "url": "http://archive.ubuntu.com/ubuntu/pool/main/libc/libclass-inspector-perl/libclass-inspector-perl_1.36-3_all.deb"
+    },
+    {
+      "name": "libclass-method-modifiers-perl_2.15-1_all.deb",
+      "length": 16100,
+      "sha256": "a521c82b2ccbfec0e3e7dabd1789cbfe106d4a99a293aac4e814aaf6a0f13d7a",
+      "fields": "Package: libclass-method-modifiers-perl\nVersion: 2.15-1\nArchitecture: all\n",
+      "url": "http://archive.ubuntu.com/ubuntu/pool/main/libc/libclass-method-modifiers-perl/libclass-method-modifiers-perl_2.15-1_all.deb"
+    },
+    {
+      "name": "libclass-singleton-perl_1.6-2_all.deb",
+      "length": 11462,
+      "sha256": "490dbe7cbf0849cbf4b357fc12ce35eab83acb4dbf8f6db2da19a454ac6e6a30",
+      "fields": "Package: libclass-singleton-perl\nVersion: 1.6-2\nArchitecture: all\n",
+      "url": "http://archive.ubuntu.com/ubuntu/pool/universe/libc/libclass-singleton-perl/libclass-singleton-perl_1.6-2_all.deb"
+    },
+    {
+      "name": "libclone-perl_0.46-1build3_amd64.deb",
+      "length": 10728,
+      "sha256": "02e1f01f6abee4ed137e35c53a1116646c06b4d36f2d5910c8c8e9c33a1e3e1f",
+      "fields": "Package: libclone-perl\nVersion: 0.46-1build3\nArchitecture: amd64\n",
+      "url": "http://archive.ubuntu.com/ubuntu/pool/main/libc/libclone-perl/libclone-perl_0.46-1build3_amd64.deb"
+    },
+    {
+      "name": "libdata-compare-perl_1.29-1_all.deb",
+      "length": 17924,
+      "sha256": "2fc8968d5474bcfbfa79500f00dc97ae5f44a0cab31ada02b5e644b619c53856",
+      "fields": "Package: libdata-compare-perl\nVersion: 1.29-1\nArchitecture: all\n",
+      "url": "http://archive.ubuntu.com/ubuntu/pool/universe/libd/libdata-compare-perl/libdata-compare-perl_1.29-1_all.deb"
+    },
+    {
+      "name": "libdata-dump-perl_1.25-1_all.deb",
+      "length": 25924,
+      "sha256": "91514d4b78329ea1bdf6f964613149d5b53ceaf90627998d65f13e306712f452",
+      "fields": "Package: libdata-dump-perl\nVersion: 1.25-1\nArchitecture: all\n",
+      "url": "http://archive.ubuntu.com/ubuntu/pool/main/libd/libdata-dump-perl/libdata-dump-perl_1.25-1_all.deb"
+    },
+    {
+      "name": "libdata-optlist-perl_0.114-1_all.deb",
+      "length": 9708,
+      "sha256": "b5d472f71c34931888668b30ded3cc26396ceac25b4075290f3f345d280200ab",
+      "fields": "Package: libdata-optlist-perl\nVersion: 0.114-1\nArchitecture: all\n",
+      "url": "http://archive.ubuntu.com/ubuntu/pool/main/libd/libdata-optlist-perl/libdata-optlist-perl_0.114-1_all.deb"
+    },
+    {
+      "name": "libdata-uniqid-perl_0.12-3_all.deb",
+      "length": 4986,
+      "sha256": "31aec75b0a1ac1de1342915a2690e4c99b8826fac5877ac71725be93600c583a",
+      "fields": "Package: libdata-uniqid-perl\nVersion: 0.12-3\nArchitecture: all\n",
+      "url": "http://archive.ubuntu.com/ubuntu/pool/universe/libd/libdata-uniqid-perl/libdata-uniqid-perl_0.12-3_all.deb"
+    },
+    {
+      "name": "libdate-simple-perl_3.0300-3build6_amd64.deb",
+      "length": 30936,
+      "sha256": "b9a5c7da81f74458522274598f46fff24586cc9c599f8662b82108253ca0f57b",
+      "fields": "Package: libdate-simple-perl\nVersion: 3.0300-3build6\nArchitecture: amd64\n",
+      "url": "http://archive.ubuntu.com/ubuntu/pool/universe/libd/libdate-simple-perl/libdate-simple-perl_3.0300-3build6_amd64.deb"
+    },
+    {
+      "name": "libdatetime-calendar-julian-perl_0.107-1_all.deb",
+      "length": 8628,
+      "sha256": "af342ebb6423fb7b8467081757a6bf60692c7daf9f8c54c5ee5a72800aeabf2c",
+      "fields": "Package: libdatetime-calendar-julian-perl\nVersion: 0.107-1\nArchitecture: all\n",
+      "url": "http://archive.ubuntu.com/ubuntu/pool/universe/libd/libdatetime-calendar-julian-perl/libdatetime-calendar-julian-perl_0.107-1_all.deb"
+    },
+    {
+      "name": "libdatetime-format-builder-perl_0.8300-1_all.deb",
+      "length": 61476,
+      "sha256": "e49854e7def604f70abcd61458ceb79d124eba9bb0fbe0227be74baf0a57dbab",
+      "fields": "Package: libdatetime-format-builder-perl\nVersion: 0.8300-1\nArchitecture: all\n",
+      "url": "http://archive.ubuntu.com/ubuntu/pool/universe/libd/libdatetime-format-builder-perl/libdatetime-format-builder-perl_0.8300-1_all.deb"
+    },
+    {
+      "name": "libdatetime-format-strptime-perl_1.7900-1_all.deb",
+      "length": 29736,
+      "sha256": "759baccce1d78cab56d2c79128a2ec134b751b7334b9f9bee72eb00b6ab8c0b6",
+      "fields": "Package: libdatetime-format-strptime-perl\nVersion: 1.7900-1\nArchitecture: all\n",
+      "url": "http://archive.ubuntu.com/ubuntu/pool/universe/libd/libdatetime-format-strptime-perl/libdatetime-format-strptime-perl_1.7900-1_all.deb"
+    },
+    {
+      "name": "libdatetime-locale-perl_1%3a1.37-1_all.deb",
+      "length": 2832902,
+      "sha256": "7a89136793dd58a89d5f5359f0f8e0b77416bf0cab2b2eaa69f32737b63e1ba5",
+      "fields": "Package: libdatetime-locale-perl\nVersion: 1:1.37-1\nArchitecture: all\n",
+      "url": "http://archive.ubuntu.com/ubuntu/pool/universe/libd/libdatetime-locale-perl/libdatetime-locale-perl_1.37-1_all.deb"
+    },
+    {
+      "name": "libdatetime-perl_2%3a1.65-1build2_amd64.deb",
+      "length": 95750,
+      "sha256": "025cff049d175b2c3d323a9677103da41d3f0c1bf6d75a4b9a3929e1b850aaec",
+      "fields": "Package: libdatetime-perl\nVersion: 2:1.65-1build2\nArchitecture: amd64\n",
+      "url": "http://archive.ubuntu.com/ubuntu/pool/universe/libd/libdatetime-perl/libdatetime-perl_1.65-1build2_amd64.deb"
+    },
+    {
+      "name": "libdatetime-timezone-perl_1%3a2.62-1+2024a_all.deb",
+      "length": 262368,
+      "sha256": "bf05b44cdd474cd8de9fed823afc0829e11faafe54df87797dd51104047a255e",
+      "fields": "Package: libdatetime-timezone-perl\nVersion: 1:2.62-1+2024a\nArchitecture: all\n",
+      "url": "http://archive.ubuntu.com/ubuntu/pool/universe/libd/libdatetime-timezone-perl/libdatetime-timezone-perl_2.62-1%2b2024a_all.deb"
+    },
+    {
+      "name": "libdatrie1_0.2.13-3build1_amd64.deb",
+      "length": 18992,
+      "sha256": "1ae164e40e413eac4fbd38ce1c6ef9591f7a03278ad9076d71fa29258727f447",
+      "fields": "Package: libdatrie1\nVersion: 0.2.13-3build1\nSource: libdatrie\nArchitecture: amd64\n",
+      "url": "http://archive.ubuntu.com/ubuntu/pool/main/libd/libdatrie/libdatrie1_0.2.13-3build1_amd64.deb"
+    },
+    {
+      "name": "libdevel-callchecker-perl_0.008-2build3_amd64.deb",
+      "length": 13224,
+      "sha256": "8f1d52aba20ff6f8a93104f70253ba0436d0307b489221b0542f0af904f30a2d",
+      "fields": "Package: libdevel-callchecker-perl\nVersion: 0.008-2build3\nArchitecture: amd64\n",
+      "url": "http://archive.ubuntu.com/ubuntu/pool/main/libd/libdevel-callchecker-perl/libdevel-callchecker-perl_0.008-2build3_amd64.deb"
+    },
+    {
+      "name": "libdevel-stacktrace-perl_2.0500-1_all.deb",
+      "length": 22056,
+      "sha256": "3862272ad38c08056c0f3cf64e01dce536244f391d980c082019f05f0d6f2c93",
+      "fields": "Package: libdevel-stacktrace-perl\nVersion: 2.0500-1\nArchitecture: all\n",
+      "url": "http://archive.ubuntu.com/ubuntu/pool/main/libd/libdevel-stacktrace-perl/libdevel-stacktrace-perl_2.0500-1_all.deb"
+    },
+    {
+      "name": "libdynaloader-functions-perl_0.003-3_all.deb",
+      "length": 12098,
+      "sha256": "ba183df4aab98075f731db03198157da046749800e30459e12a929365d08e7a5",
+      "fields": "Package: libdynaloader-functions-perl\nVersion: 0.003-3\nArchitecture: all\n",
+      "url": "http://archive.ubuntu.com/ubuntu/pool/main/libd/libdynaloader-functions-perl/libdynaloader-functions-perl_0.003-3_all.deb"
+    },
+    {
+      "name": "libencode-eucjpascii-perl_0.03-1build4_amd64.deb",
+      "length": 157576,
+      "sha256": "4442ee2629b142b8ba05719ae3de894239ce11de60bb91171fd7ae1582b469ac",
+      "fields": "Package: libencode-eucjpascii-perl\nVersion: 0.03-1build4\nArchitecture: amd64\n",
+      "url": "http://archive.ubuntu.com/ubuntu/pool/universe/libe/libencode-eucjpascii-perl/libencode-eucjpascii-perl_0.03-1build4_amd64.deb"
+    },
+    {
+      "name": "libencode-eucjpms-perl_0.07-3build13_amd64.deb",
+      "length": 203150,
+      "sha256": "2829da23476c2107b65c16cb8ced625e0be5bed6e2517c28b7ed2bebbc13bcb9",
+      "fields": "Package: libencode-eucjpms-perl\nVersion: 0.07-3build13\nArchitecture: amd64\n",
+      "url": "http://archive.ubuntu.com/ubuntu/pool/universe/libe/libencode-eucjpms-perl/libencode-eucjpms-perl_0.07-3build13_amd64.deb"
+    },
+    {
+      "name": "libencode-hanextra-perl_0.23-6build4_amd64.deb",
+      "length": 2010946,
+      "sha256": "1364584103a6d8dcd52a1f433210a6bffc40f458bfdcbd6639f28c9d5b113b8c",
+      "fields": "Package: libencode-hanextra-perl\nVersion: 0.23-6build4\nArchitecture: amd64\n",
+      "url": "http://archive.ubuntu.com/ubuntu/pool/universe/libe/libencode-hanextra-perl/libencode-hanextra-perl_0.23-6build4_amd64.deb"
+    },
+    {
+      "name": "libencode-jis2k-perl_0.05-1build3_amd64.deb",
+      "length": 391152,
+      "sha256": "309940679be7ffd040e838ebbf617008bed060332359a569a53578c911a7d721",
+      "fields": "Package: libencode-jis2k-perl\nVersion: 0.05-1build3\nArchitecture: amd64\n",
+      "url": "http://archive.ubuntu.com/ubuntu/pool/universe/libe/libencode-jis2k-perl/libencode-jis2k-perl_0.05-1build3_amd64.deb"
+    },
+    {
+      "name": "libencode-locale-perl_1.05-3_all.deb",
+      "length": 11568,
+      "sha256": "11c7ea66f45a1447cc90b3b12d30f8ae30e0aaa16f6808878ca1be04e1dca763",
+      "fields": "Package: libencode-locale-perl\nVersion: 1.05-3\nArchitecture: all\n",
+      "url": "http://archive.ubuntu.com/ubuntu/pool/main/libe/libencode-locale-perl/libencode-locale-perl_1.05-3_all.deb"
+    },
+    {
+      "name": "libencode-perl_3.21-1build2_amd64.deb",
+      "length": 1726182,
+      "sha256": "f0f4754957277e17d2136ced84ba4ecb28572e3ac17b4dba732fc1e3de7096b1",
+      "fields": "Package: libencode-perl\nVersion: 3.21-1build2\nArchitecture: amd64\n",
+      "url": "http://archive.ubuntu.com/ubuntu/pool/universe/libe/libencode-perl/libencode-perl_3.21-1build2_amd64.deb"
+    },
+    {
+      "name": "libeval-closure-perl_0.14-3_all.deb",
+      "length": 10068,
+      "sha256": "9b9fe16b31cf98446e03a21d000a9a7f5114279d6c13a264badc7384914ed4ee",
+      "fields": "Package: libeval-closure-perl\nVersion: 0.14-3\nArchitecture: all\n",
+      "url": "http://archive.ubuntu.com/ubuntu/pool/universe/libe/libeval-closure-perl/libeval-closure-perl_0.14-3_all.deb"
+    },
+    {
+      "name": "libexception-class-perl_1.45-1_all.deb",
+      "length": 28574,
+      "sha256": "fdc5f213bdd03670a8f432d4dfe7e0837349583b2cb64d00c4be525d1768f97c",
+      "fields": "Package: libexception-class-perl\nVersion: 1.45-1\nArchitecture: all\n",
+      "url": "http://archive.ubuntu.com/ubuntu/pool/main/libe/libexception-class-perl/libexception-class-perl_1.45-1_all.deb"
+    },
+    {
+      "name": "libexporter-tiny-perl_1.006002-1_all.deb",
+      "length": 36750,
+      "sha256": "a9dc88cc6ee689361b42fee98fd60f9d107476884dc4a82ff8d0ecf402c18382",
+      "fields": "Package: libexporter-tiny-perl\nVersion: 1.006002-1\nArchitecture: all\n",
+      "url": "http://archive.ubuntu.com/ubuntu/pool/main/libe/libexporter-tiny-perl/libexporter-tiny-perl_1.006002-1_all.deb"
+    },
+    {
+      "name": "libfile-find-rule-perl_0.34-3ubuntu0.24.04.1_all.deb",
+      "length": 23794,
+      "sha256": "29ce2629682a2ab28ffcb0e0470d41c9ce10521af05c47f7f4fed0c418493832",
+      "fields": "Package: libfile-find-rule-perl\nVersion: 0.34-3ubuntu0.24.04.1\nArchitecture: all\n",
+      "url": "http://archive.ubuntu.com/ubuntu/pool/main/libf/libfile-find-rule-perl/libfile-find-rule-perl_0.34-3ubuntu0.24.04.1_all.deb"
+    },
+    {
+      "name": "libfile-listing-perl_6.16-1_all.deb",
+      "length": 11332,
+      "sha256": "d37a2a2f6998b3db159f469f04eff9d44fda75d49ebaeb824d047b235d827bbe",
+      "fields": "Package: libfile-listing-perl\nVersion: 6.16-1\nArchitecture: all\n",
+      "url": "http://archive.ubuntu.com/ubuntu/pool/main/libf/libfile-listing-perl/libfile-listing-perl_6.16-1_all.deb"
+    },
+    {
+      "name": "libfile-sharedir-perl_1.118-3_all.deb",
+      "length": 14032,
+      "sha256": "89527cfe0b1bc9f1b3ac4bb82a8be5c12552fb4e20ecd365624d27bf41e83f38",
+      "fields": "Package: libfile-sharedir-perl\nVersion: 1.118-3\nArchitecture: all\n",
+      "url": "http://archive.ubuntu.com/ubuntu/pool/main/libf/libfile-sharedir-perl/libfile-sharedir-perl_1.118-3_all.deb"
+    },
+    {
+      "name": "libfile-slurper-perl_0.014-1_all.deb",
+      "length": 7660,
+      "sha256": "9650d276054b727a8e9a2674b4325cc58be9e02c860688e8e72b1864477dfcd7",
+      "fields": "Package: libfile-slurper-perl\nVersion: 0.014-1\nArchitecture: all\n",
+      "url": "http://archive.ubuntu.com/ubuntu/pool/main/libf/libfile-slurper-perl/libfile-slurper-perl_0.014-1_all.deb"
+    },
+    {
+      "name": "libhtml-parser-perl_3.81-1ubuntu0.1_amd64.deb",
+      "length": 86028,
+      "sha256": "6dfe372178ae1ea09b8e17e9ceef93d894aad9bd1daa753fee75db19f47665ff",
+      "fields": "Package: libhtml-parser-perl\nVersion: 3.81-1ubuntu0.1\nArchitecture: amd64\n",
+      "url": "http://archive.ubuntu.com/ubuntu/pool/main/libh/libhtml-parser-perl/libhtml-parser-perl_3.81-1ubuntu0.1_amd64.deb"
+    },
+    {
+      "name": "libhtml-tagset-perl_3.20-6_all.deb",
+      "length": 11274,
+      "sha256": "06c79fe3285b1b403f2a404e77a972ae344c78e5409468cbdd9fd1e5f243e0ca",
+      "fields": "Package: libhtml-tagset-perl\nVersion: 3.20-6\nArchitecture: all\n",
+      "url": "http://archive.ubuntu.com/ubuntu/pool/main/libh/libhtml-tagset-perl/libhtml-tagset-perl_3.20-6_all.deb"
+    },
+    {
+      "name": "libhtml-tree-perl_5.07-3_all.deb",
+      "length": 199830,
+      "sha256": "e2759b8b8ab5a879923718c9335e256f508ea17e4c8c810c52d11a19fcd088b2",
+      "fields": "Package: libhtml-tree-perl\nVersion: 5.07-3\nArchitecture: all\n",
+      "url": "http://archive.ubuntu.com/ubuntu/pool/main/libh/libhtml-tree-perl/libhtml-tree-perl_5.07-3_all.deb"
+    },
+    {
+      "name": "libhttp-cookies-perl_6.11-1_all.deb",
+      "length": 18208,
+      "sha256": "1dcb51ac2201ecf596741c5234bb6aa8d4f65c8ac1f71e56f17a484a2424e60f",
+      "fields": "Package: libhttp-cookies-perl\nVersion: 6.11-1\nArchitecture: all\n",
+      "url": "http://archive.ubuntu.com/ubuntu/pool/main/libh/libhttp-cookies-perl/libhttp-cookies-perl_6.11-1_all.deb"
+    },
+    {
+      "name": "libhttp-date-perl_6.06-1ubuntu0.24.04.1_all.deb",
+      "length": 10564,
+      "sha256": "3c3c11766423d42506e153306dd538e4b05568a3aba19bfd647dbe37c8bb0b24",
+      "fields": "Package: libhttp-date-perl\nVersion: 6.06-1ubuntu0.24.04.1\nArchitecture: all\n",
+      "url": "http://archive.ubuntu.com/ubuntu/pool/main/libh/libhttp-date-perl/libhttp-date-perl_6.06-1ubuntu0.24.04.1_all.deb"
+    },
+    {
+      "name": "libhttp-message-perl_6.45-1ubuntu1_all.deb",
+      "length": 78240,
+      "sha256": "053b6ff81c25a75ec178a8b34d6bdd422564038a4334d3077e459a00d44366a4",
+      "fields": "Package: libhttp-message-perl\nVersion: 6.45-1ubuntu1\nArchitecture: all\n",
+      "url": "http://archive.ubuntu.com/ubuntu/pool/main/libh/libhttp-message-perl/libhttp-message-perl_6.45-1ubuntu1_all.deb"
+    },
+    {
+      "name": "libhttp-negotiate-perl_6.01-2_all.deb",
+      "length": 12368,
+      "sha256": "c39b2d426a434c2a7f1ddd5c19b2f72a0c07f767932d15f97d31a4dad408c25a",
+      "fields": "Package: libhttp-negotiate-perl\nVersion: 6.01-2\nArchitecture: all\n",
+      "url": "http://archive.ubuntu.com/ubuntu/pool/main/libh/libhttp-negotiate-perl/libhttp-negotiate-perl_6.01-2_all.deb"
+    },
+    {
+      "name": "libio-html-perl_1.004-3_all.deb",
+      "length": 15870,
+      "sha256": "999f8b54d84ac26dda0340ac4ab3263d190688dd92f312e62f3d499807687ed9",
+      "fields": "Package: libio-html-perl\nVersion: 1.004-3\nArchitecture: all\n",
+      "url": "http://archive.ubuntu.com/ubuntu/pool/main/libi/libio-html-perl/libio-html-perl_1.004-3_all.deb"
+    },
+    {
+      "name": "libio-socket-ssl-perl_2.085-1_all.deb",
+      "length": 195108,
+      "sha256": "6a4e181e342ebe14bf353f4e764bcb9d9046e7d6d1f297033dce8abef9e47b43",
+      "fields": "Package: libio-socket-ssl-perl\nVersion: 2.085-1\nArchitecture: all\n",
+      "url": "http://archive.ubuntu.com/ubuntu/pool/main/libi/libio-socket-ssl-perl/libio-socket-ssl-perl_2.085-1_all.deb"
+    },
+    {
+      "name": "libipc-run3-perl_0.049-1_all.deb",
+      "length": 28836,
+      "sha256": "2a1be4e01e14abebe5d2faeda2ca3f89de4a682c8d0b9e519299825d8b507fa1",
+      "fields": "Package: libipc-run3-perl\nVersion: 0.049-1\nArchitecture: all\n",
+      "url": "http://archive.ubuntu.com/ubuntu/pool/main/libi/libipc-run3-perl/libipc-run3-perl_0.049-1_all.deb"
+    },
+    {
+      "name": "liblingua-translit-perl_0.29-2_all.deb",
+      "length": 24718,
+      "sha256": "a31e26b05b6f6ba5952d97e3dff18681354e558da8fac3a7177ce9bde4371378",
+      "fields": "Package: liblingua-translit-perl\nVersion: 0.29-2\nArchitecture: all\n",
+      "url": "http://archive.ubuntu.com/ubuntu/pool/universe/libl/liblingua-translit-perl/liblingua-translit-perl_0.29-2_all.deb"
+    },
+    {
+      "name": "liblist-allutils-perl_0.19-1_all.deb",
+      "length": 41490,
+      "sha256": "14163e2ed30719124ee3ae2676b6c17e5234d497bd9fc0b340e1946b8309538f",
+      "fields": "Package: liblist-allutils-perl\nVersion: 0.19-1\nArchitecture: all\n",
+      "url": "http://archive.ubuntu.com/ubuntu/pool/universe/libl/liblist-allutils-perl/liblist-allutils-perl_0.19-1_all.deb"
+    },
+    {
+      "name": "liblist-moreutils-perl_0.430-2_all.deb",
+      "length": 38240,
+      "sha256": "ea50fa4bb0c6a5cc44436b83adade5141fc2836e29c7746be3b33fea279ebc99",
+      "fields": "Package: liblist-moreutils-perl\nVersion: 0.430-2\nArchitecture: all\n",
+      "url": "http://archive.ubuntu.com/ubuntu/pool/universe/libl/liblist-moreutils-perl/liblist-moreutils-perl_0.430-2_all.deb"
+    },
+    {
+      "name": "liblist-moreutils-xs-perl_0.430-3build5_amd64.deb",
+      "length": 43866,
+      "sha256": "c4224681fd2283be3ffbf56a1d0246e016893bbc7b194b5165c1001418dc629e",
+      "fields": "Package: liblist-moreutils-xs-perl\nVersion: 0.430-3build5\nArchitecture: amd64\n",
+      "url": "http://archive.ubuntu.com/ubuntu/pool/universe/libl/liblist-moreutils-xs-perl/liblist-moreutils-xs-perl_0.430-3build5_amd64.deb"
+    },
+    {
+      "name": "liblist-someutils-perl_0.59-1_all.deb",
+      "length": 30414,
+      "sha256": "60b67863b6bab4787d6a3dc63e27e4b2e87dadeead89a59b143de62e4122c11a",
+      "fields": "Package: liblist-someutils-perl\nVersion: 0.59-1\nArchitecture: all\n",
+      "url": "http://archive.ubuntu.com/ubuntu/pool/main/libl/liblist-someutils-perl/liblist-someutils-perl_0.59-1_all.deb"
+    },
+    {
+      "name": "liblist-utilsby-perl_0.12-2_all.deb",
+      "length": 14852,
+      "sha256": "96394a4f7258bf673be2dcc86999fe817d661db18bdb4990f975cf7fa4ab83d3",
+      "fields": "Package: liblist-utilsby-perl\nVersion: 0.12-2\nArchitecture: all\n",
+      "url": "http://archive.ubuntu.com/ubuntu/pool/main/libl/liblist-utilsby-perl/liblist-utilsby-perl_0.12-2_all.deb"
+    },
+    {
+      "name": "liblog-log4perl-perl_1.57-1_all.deb",
+      "length": 344852,
+      "sha256": "aca84b348c63df6c8603d4d1b09510c43dd3f9b7fecab051883da061bf7bd3e8",
+      "fields": "Package: liblog-log4perl-perl\nVersion: 1.57-1\nArchitecture: all\n",
+      "url": "http://archive.ubuntu.com/ubuntu/pool/universe/libl/liblog-log4perl-perl/liblog-log4perl-perl_1.57-1_all.deb"
+    },
+    {
+      "name": "liblwp-mediatypes-perl_6.04-2_all.deb",
+      "length": 20102,
+      "sha256": "a8e1de745f650233753c5e7e9d914d357eaedf2a32d333aa98728c5f6601dfcc",
+      "fields": "Package: liblwp-mediatypes-perl\nVersion: 6.04-2\nArchitecture: all\n",
+      "url": "http://archive.ubuntu.com/ubuntu/pool/main/libl/liblwp-mediatypes-perl/liblwp-mediatypes-perl_6.04-2_all.deb"
+    },
+    {
+      "name": "liblwp-protocol-https-perl_6.13-1_all.deb",
+      "length": 9006,
+      "sha256": "b39e8bd73bfee927e2b5fe0a88a7118bf2cce32770b6b7a5e87617dc64932890",
+      "fields": "Package: liblwp-protocol-https-perl\nVersion: 6.13-1\nArchitecture: all\n",
+      "url": "http://archive.ubuntu.com/ubuntu/pool/main/libl/liblwp-protocol-https-perl/liblwp-protocol-https-perl_6.13-1_all.deb"
+    },
+    {
+      "name": "libmime-charset-perl_1.013.1-2_all.deb",
+      "length": 31022,
+      "sha256": "dadcd0c5e774a1f917d99a39754004ddcdacd3bcfefe9cad48d60a3dd83311b2",
+      "fields": "Package: libmime-charset-perl\nVersion: 1.013.1-2\nArchitecture: all\n",
+      "url": "http://archive.ubuntu.com/ubuntu/pool/universe/libm/libmime-charset-perl/libmime-charset-perl_1.013.1-2_all.deb"
+    },
+    {
+      "name": "libmodule-implementation-perl_0.09-2_all.deb",
+      "length": 12004,
+      "sha256": "1fb753f886494e62198a2f5544e541cacb1369f0ddac706b1ba1df468652d13b",
+      "fields": "Package: libmodule-implementation-perl\nVersion: 0.09-2\nArchitecture: all\n",
+      "url": "http://archive.ubuntu.com/ubuntu/pool/main/libm/libmodule-implementation-perl/libmodule-implementation-perl_0.09-2_all.deb"
+    },
+    {
+      "name": "libmodule-runtime-perl_0.016-2_all.deb",
+      "length": 16400,
+      "sha256": "4d41c41411afc60d0cb94a0a917bb3011a1f8e206e18b3f3a8203dd83c53a166",
+      "fields": "Package: libmodule-runtime-perl\nVersion: 0.016-2\nArchitecture: all\n",
+      "url": "http://archive.ubuntu.com/ubuntu/pool/main/libm/libmodule-runtime-perl/libmodule-runtime-perl_0.016-2_all.deb"
+    },
+    {
+      "name": "libmro-compat-perl_0.15-2_all.deb",
+      "length": 10122,
+      "sha256": "262834906fe50c4def72e9e449cb926e05df1801d5957189f95718494e38d32f",
+      "fields": "Package: libmro-compat-perl\nVersion: 0.15-2\nArchitecture: all\n",
+      "url": "http://archive.ubuntu.com/ubuntu/pool/universe/libm/libmro-compat-perl/libmro-compat-perl_0.15-2_all.deb"
+    },
+    {
+      "name": "libnamespace-autoclean-perl_0.29-2_all.deb",
+      "length": 11652,
+      "sha256": "0cc30e5d2eb64ad657f616bdd8769b29042104b7d7fc204bffbb7e8dad016335",
+      "fields": "Package: libnamespace-autoclean-perl\nVersion: 0.29-2\nArchitecture: all\n",
+      "url": "http://archive.ubuntu.com/ubuntu/pool/universe/libn/libnamespace-autoclean-perl/libnamespace-autoclean-perl_0.29-2_all.deb"
+    },
+    {
+      "name": "libnamespace-clean-perl_0.27-2_all.deb",
+      "length": 13996,
+      "sha256": "71d37914ad566ffa5d339c9a131fe427cb5755f461e1f73feb7be76e47b7720b",
+      "fields": "Package: libnamespace-clean-perl\nVersion: 0.27-2\nArchitecture: all\n",
+      "url": "http://archive.ubuntu.com/ubuntu/pool/main/libn/libnamespace-clean-perl/libnamespace-clean-perl_0.27-2_all.deb"
+    },
+    {
+      "name": "libnet-http-perl_6.23-1_all.deb",
+      "length": 22324,
+      "sha256": "5d035add995792f4882274bdbfac1a59ee7de3c4964879c5adec4f2ef93695d9",
+      "fields": "Package: libnet-http-perl\nVersion: 6.23-1\nArchitecture: all\n",
+      "url": "http://archive.ubuntu.com/ubuntu/pool/main/libn/libnet-http-perl/libnet-http-perl_6.23-1_all.deb"
+    },
+    {
+      "name": "libnet-ssleay-perl_1.94-1build4_amd64.deb",
+      "length": 316036,
+      "sha256": "aeef3077207f3828571c5b9f72584516205267586da5080017ba6ece1b483cb8",
+      "fields": "Package: libnet-ssleay-perl\nVersion: 1.94-1build4\nArchitecture: amd64\n",
+      "url": "http://archive.ubuntu.com/ubuntu/pool/main/libn/libnet-ssleay-perl/libnet-ssleay-perl_1.94-1build4_amd64.deb"
+    },
+    {
+      "name": "libnumber-compare-perl_0.03-3_all.deb",
+      "length": 5974,
+      "sha256": "4e9238aeece145c2681d72026953af6bb927cc1c9186876955e2997821aa11cf",
+      "fields": "Package: libnumber-compare-perl\nVersion: 0.03-3\nArchitecture: all\n",
+      "url": "http://archive.ubuntu.com/ubuntu/pool/main/libn/libnumber-compare-perl/libnumber-compare-perl_0.03-3_all.deb"
+    },
+    {
+      "name": "libpackage-stash-perl_0.40-1_all.deb",
+      "length": 19500,
+      "sha256": "f1ed1a5ebed858006c69d221d94dcd9eef8bf6f11df7d9046f74dc9d9d4ba954",
+      "fields": "Package: libpackage-stash-perl\nVersion: 0.40-1\nArchitecture: all\n",
+      "url": "http://archive.ubuntu.com/ubuntu/pool/main/libp/libpackage-stash-perl/libpackage-stash-perl_0.40-1_all.deb"
+    },
+    {
+      "name": "libparams-classify-perl_0.015-2build5_amd64.deb",
+      "length": 20114,
+      "sha256": "6fe65b84decec1fd254173e48ceafdeb257d9f8a8fb31ff24429bd583e61126d",
+      "fields": "Package: libparams-classify-perl\nVersion: 0.015-2build5\nArchitecture: amd64\n",
+      "url": "http://archive.ubuntu.com/ubuntu/pool/main/libp/libparams-classify-perl/libparams-classify-perl_0.015-2build5_amd64.deb"
+    },
+    {
+      "name": "libparams-util-perl_1.102-2build3_amd64.deb",
+      "length": 21154,
+      "sha256": "66ddd82b04b38c4613cbef0ed90b7b1e71c4fd307744c24e305b44f314c3ac1f",
+      "fields": "Package: libparams-util-perl\nVersion: 1.102-2build3\nArchitecture: amd64\n",
+      "url": "http://archive.ubuntu.com/ubuntu/pool/main/libp/libparams-util-perl/libparams-util-perl_1.102-2build3_amd64.deb"
+    },
+    {
+      "name": "libparams-validate-perl_1.31-2build3_amd64.deb",
+      "length": 53854,
+      "sha256": "b97b45c514f130d086f33a60a9152c8572174e8f2218539ec290f37d10a3b29c",
+      "fields": "Package: libparams-validate-perl\nVersion: 1.31-2build3\nArchitecture: amd64\n",
+      "url": "http://archive.ubuntu.com/ubuntu/pool/universe/libp/libparams-validate-perl/libparams-validate-perl_1.31-2build3_amd64.deb"
+    },
+    {
+      "name": "libparams-validationcompiler-perl_0.31-1_all.deb",
+      "length": 28296,
+      "sha256": "7bc2878a9000d5064364858e4cbc861402a08ae9ab2e63f1841502aca7969185",
+      "fields": "Package: libparams-validationcompiler-perl\nVersion: 0.31-1\nArchitecture: all\n",
+      "url": "http://archive.ubuntu.com/ubuntu/pool/universe/libp/libparams-validationcompiler-perl/libparams-validationcompiler-perl_0.31-1_all.deb"
+    },
+    {
+      "name": "libparse-recdescent-perl_1.967015+dfsg-4_all.deb",
+      "length": 138846,
+      "sha256": "e89938dd038853435f49f1fbdabf0f9ef0253970f80d6dbdf7d0bedd79b2e01a",
+      "fields": "Package: libparse-recdescent-perl\nVersion: 1.967015+dfsg-4\nArchitecture: all\n",
+      "url": "http://archive.ubuntu.com/ubuntu/pool/universe/libp/libparse-recdescent-perl/libparse-recdescent-perl_1.967015%2bdfsg-4_all.deb"
+    },
+    {
+      "name": "libreadonly-perl_2.050-3_all.deb",
+      "length": 19860,
+      "sha256": "a0c4f7c3a92611998ca5403632767053cd20e8a17c9cbdadfbd858fce0ed8144",
+      "fields": "Package: libreadonly-perl\nVersion: 2.050-3\nArchitecture: all\n",
+      "url": "http://archive.ubuntu.com/ubuntu/pool/universe/libr/libreadonly-perl/libreadonly-perl_2.050-3_all.deb"
+    },
+    {
+      "name": "libregexp-common-perl_2017060201-3_all.deb",
+      "length": 170724,
+      "sha256": "9576e050d5e46b283eff6f618d2256d7cbe94095f6fa5d1fc619f143f5d59988",
+      "fields": "Package: libregexp-common-perl\nVersion: 2017060201-3\nArchitecture: all\n",
+      "url": "http://archive.ubuntu.com/ubuntu/pool/main/libr/libregexp-common-perl/libregexp-common-perl_2017060201-3_all.deb"
+    },
+    {
+      "name": "librole-tiny-perl_2.002004-1_all.deb",
+      "length": 16256,
+      "sha256": "6d0a308bd07294d3f45fa5ed564acb47d6944b79b40044eb29ccafa0470f6347",
+      "fields": "Package: librole-tiny-perl\nVersion: 2.002004-1\nArchitecture: all\n",
+      "url": "http://archive.ubuntu.com/ubuntu/pool/main/libr/librole-tiny-perl/librole-tiny-perl_2.002004-1_all.deb"
+    },
+    {
+      "name": "libsombok3_2.4.0-2build1_amd64.deb",
+      "length": 29390,
+      "sha256": "3f71c7194df98c3d6e22e734081aa145865335a1a740b3f6dcef02127270be66",
+      "fields": "Package: libsombok3\nVersion: 2.4.0-2build1\nSource: sombok\nArchitecture: amd64\n",
+      "url": "http://archive.ubuntu.com/ubuntu/pool/universe/s/sombok/libsombok3_2.4.0-2build1_amd64.deb"
+    },
+    {
+      "name": "libsort-key-perl_1.33-3build4_amd64.deb",
+      "length": 34124,
+      "sha256": "5a6f5f312f7ba311849336231b31844d122d617ff7160f47b192ca811d178c7c",
+      "fields": "Package: libsort-key-perl\nVersion: 1.33-3build4\nArchitecture: amd64\n",
+      "url": "http://archive.ubuntu.com/ubuntu/pool/universe/libs/libsort-key-perl/libsort-key-perl_1.33-3build4_amd64.deb"
+    },
+    {
+      "name": "libspecio-perl_0.48-1_all.deb",
+      "length": 137456,
+      "sha256": "d3969eac23e703e44292ae9bf1edb537e82e16d0247dcc9b0f6ce96ab864a06f",
+      "fields": "Package: libspecio-perl\nVersion: 0.48-1\nArchitecture: all\n",
+      "url": "http://archive.ubuntu.com/ubuntu/pool/universe/libs/libspecio-perl/libspecio-perl_0.48-1_all.deb"
+    },
+    {
+      "name": "libsub-exporter-perl_0.990-1_all.deb",
+      "length": 49010,
+      "sha256": "4ca076975e9cd1b9bda4c831a52ad35e96077ae5a8609d0783d2af1f8b164fd9",
+      "fields": "Package: libsub-exporter-perl\nVersion: 0.990-1\nArchitecture: all\n",
+      "url": "http://archive.ubuntu.com/ubuntu/pool/main/libs/libsub-exporter-perl/libsub-exporter-perl_0.990-1_all.deb"
+    },
+    {
+      "name": "libsub-exporter-progressive-perl_0.001013-3_all.deb",
+      "length": 6718,
+      "sha256": "69c277cb6edc9c2b10a79a00d41300a636757cdc91a0c0c83f037b2b9d9edee7",
+      "fields": "Package: libsub-exporter-progressive-perl\nVersion: 0.001013-3\nArchitecture: all\n",
+      "url": "http://archive.ubuntu.com/ubuntu/pool/main/libs/libsub-exporter-progressive-perl/libsub-exporter-progressive-perl_0.001013-3_all.deb"
+    },
+    {
+      "name": "libsub-identify-perl_0.14-3build3_amd64.deb",
+      "length": 9786,
+      "sha256": "0598c381b79421e0cbde3db03bd90f5c522b070f6efb01c37e7b09bd403aa445",
+      "fields": "Package: libsub-identify-perl\nVersion: 0.14-3build3\nArchitecture: amd64\n",
+      "url": "http://archive.ubuntu.com/ubuntu/pool/main/libs/libsub-identify-perl/libsub-identify-perl_0.14-3build3_amd64.deb"
+    },
+    {
+      "name": "libsub-install-perl_0.929-1_all.deb",
+      "length": 9764,
+      "sha256": "c56357fefea0f9f0f333b4566c39daf55d26145be72cdb9dd4afb4fb9f88ca2a",
+      "fields": "Package: libsub-install-perl\nVersion: 0.929-1\nArchitecture: all\n",
+      "url": "http://archive.ubuntu.com/ubuntu/pool/main/libs/libsub-install-perl/libsub-install-perl_0.929-1_all.deb"
+    },
+    {
+      "name": "libsub-name-perl_0.27-1build3_amd64.deb",
+      "length": 10768,
+      "sha256": "6d0cc7f6c7614cc15e18af16bdb8e5b8590a9d28c3c57074440957bea760bda6",
+      "fields": "Package: libsub-name-perl\nVersion: 0.27-1build3\nArchitecture: amd64\n",
+      "url": "http://archive.ubuntu.com/ubuntu/pool/main/libs/libsub-name-perl/libsub-name-perl_0.27-1build3_amd64.deb"
+    },
+    {
+      "name": "libsub-quote-perl_2.006008-1ubuntu1_all.deb",
+      "length": 20714,
+      "sha256": "9ea34664b218c02819d22f3b898e870d9af219f904ec3352a1bb8c1250a2731d",
+      "fields": "Package: libsub-quote-perl\nVersion: 2.006008-1ubuntu1\nArchitecture: all\n",
+      "url": "http://archive.ubuntu.com/ubuntu/pool/main/libs/libsub-quote-perl/libsub-quote-perl_2.006008-1ubuntu1_all.deb"
+    },
+    {
+      "name": "libtext-bibtex-perl_0.89-1build3_amd64.deb",
+      "length": 120478,
+      "sha256": "958f0677dad90c672f15de46860d5104716e66c3d9bd13cee4ff94708cb7483d",
+      "fields": "Package: libtext-bibtex-perl\nVersion: 0.89-1build3\nArchitecture: amd64\n",
+      "url": "http://archive.ubuntu.com/ubuntu/pool/universe/libt/libtext-bibtex-perl/libtext-bibtex-perl_0.89-1build3_amd64.deb"
+    },
+    {
+      "name": "libtext-csv-perl_2.04-1_all.deb",
+      "length": 108908,
+      "sha256": "437cd25cf31862a2c8dd923c60c7078d874283ae6bf23cbdbc1b6cd984df8b2b",
+      "fields": "Package: libtext-csv-perl\nVersion: 2.04-1\nArchitecture: all\n",
+      "url": "http://archive.ubuntu.com/ubuntu/pool/universe/libt/libtext-csv-perl/libtext-csv-perl_2.04-1_all.deb"
+    },
+    {
+      "name": "libtext-csv-xs-perl_1.53-1build3_amd64.deb",
+      "length": 122036,
+      "sha256": "512810d29d34dc6e83f1644a36d5fc9489ca7a6fe09aa1dfcc7ea16e8519825b",
+      "fields": "Package: libtext-csv-xs-perl\nVersion: 1.53-1build3\nArchitecture: amd64\n",
+      "url": "http://archive.ubuntu.com/ubuntu/pool/universe/libt/libtext-csv-xs-perl/libtext-csv-xs-perl_1.53-1build3_amd64.deb"
+    },
+    {
+      "name": "libtext-glob-perl_0.11-3_all.deb",
+      "length": 6780,
+      "sha256": "c6e1481f9e19b9b8acce07670b51a8b7d4c3b04647e491a22b34fda464484027",
+      "fields": "Package: libtext-glob-perl\nVersion: 0.11-3\nArchitecture: all\n",
+      "url": "http://archive.ubuntu.com/ubuntu/pool/main/libt/libtext-glob-perl/libtext-glob-perl_0.11-3_all.deb"
+    },
+    {
+      "name": "libtext-roman-perl_3.5-4_all.deb",
+      "length": 11142,
+      "sha256": "535778bb96a45772e992a9c44da38adddf8d6ea93c52edf309dc911173a1b3c7",
+      "fields": "Package: libtext-roman-perl\nVersion: 3.5-4\nArchitecture: all\n",
+      "url": "http://archive.ubuntu.com/ubuntu/pool/universe/libt/libtext-roman-perl/libtext-roman-perl_3.5-4_all.deb"
+    },
+    {
+      "name": "libthai-data_0.1.29-2build1_all.deb",
+      "length": 158016,
+      "sha256": "6035d4a714290b97816bed7f3bf64921c6358ddb84d1dacdddccdc1cf39bffb7",
+      "fields": "Package: libthai-data\nVersion: 0.1.29-2build1\nSource: libthai\nArchitecture: all\n",
+      "url": "http://archive.ubuntu.com/ubuntu/pool/main/libt/libthai/libthai-data_0.1.29-2build1_all.deb"
+    },
+    {
+      "name": "libthai0_0.1.29-2build1_amd64.deb",
+      "length": 18914,
+      "sha256": "5ada7045c5f84a4b774e6449151800aa6470e8d01dc9d6124ef4a44ae6af5508",
+      "fields": "Package: libthai0\nVersion: 0.1.29-2build1\nSource: libthai\nArchitecture: amd64\n",
+      "url": "http://archive.ubuntu.com/ubuntu/pool/main/libt/libthai/libthai0_0.1.29-2build1_amd64.deb"
+    },
+    {
+      "name": "libtie-cycle-perl_1.228-1_all.deb",
+      "length": 10484,
+      "sha256": "32d696f4a6876a09ddb255d53bc2e712a3fb9976d10df6a8e4807a06287805ac",
+      "fields": "Package: libtie-cycle-perl\nVersion: 1.228-1\nArchitecture: all\n",
+      "url": "http://archive.ubuntu.com/ubuntu/pool/universe/libt/libtie-cycle-perl/libtie-cycle-perl_1.228-1_all.deb"
+    },
+    {
+      "name": "libtimedate-perl_2.3300-2_all.deb",
+      "length": 33972,
+      "sha256": "71c8cf8da8e3f273070268f093cf7b418371be2c8a70566875d0fe6b5d119f89",
+      "fields": "Package: libtimedate-perl\nVersion: 2.3300-2\nArchitecture: all\n",
+      "url": "http://archive.ubuntu.com/ubuntu/pool/main/libt/libtimedate-perl/libtimedate-perl_2.3300-2_all.deb"
+    },
+    {
+      "name": "libtry-tiny-perl_0.31-2_all.deb",
+      "length": 20794,
+      "sha256": "d32e6603afcb6250542442cfd853329530f9eaaa678910dd47bae179fc6b8e1a",
+      "fields": "Package: libtry-tiny-perl\nVersion: 0.31-2\nArchitecture: all\n",
+      "url": "http://archive.ubuntu.com/ubuntu/pool/main/libt/libtry-tiny-perl/libtry-tiny-perl_0.31-2_all.deb"
+    },
+    {
+      "name": "libunicode-linebreak-perl_0.0.20190101-1build7_amd64.deb",
+      "length": 92638,
+      "sha256": "40426779856c8ec98db49dc88df664ef7ad914cf9db0a6169f89564c60a6395b",
+      "fields": "Package: libunicode-linebreak-perl\nVersion: 0.0.20190101-1build7\nArchitecture: amd64\n",
+      "url": "http://archive.ubuntu.com/ubuntu/pool/universe/libu/libunicode-linebreak-perl/libunicode-linebreak-perl_0.0.20190101-1build7_amd64.deb"
+    },
+    {
+      "name": "liburi-perl_5.27-1_all.deb",
+      "length": 88040,
+      "sha256": "4b4a22ff41dce764dcea467f46f29c9b50fd60641c902148758aafb6de71f0a9",
+      "fields": "Package: liburi-perl\nVersion: 5.27-1\nArchitecture: all\n",
+      "url": "http://archive.ubuntu.com/ubuntu/pool/main/libu/liburi-perl/liburi-perl_5.27-1_all.deb"
+    },
+    {
+      "name": "libvariable-magic-perl_0.63-1build3_amd64.deb",
+      "length": 35072,
+      "sha256": "86d1b01398315d7434c9087e49a3c4b9c2cabde591d0ea468cb5c79f8897aa1c",
+      "fields": "Package: libvariable-magic-perl\nVersion: 0.63-1build3\nArchitecture: amd64\n",
+      "url": "http://archive.ubuntu.com/ubuntu/pool/main/libv/libvariable-magic-perl/libvariable-magic-perl_0.63-1build3_amd64.deb"
+    },
+    {
+      "name": "libwww-perl_6.76-1ubuntu0.1_all.deb",
+      "length": 139086,
+      "sha256": "0232430a89f1fff7c0a014da3f314246b91b3d1d9ace351f0097c7f5dca330ca",
+      "fields": "Package: libwww-perl\nVersion: 6.76-1ubuntu0.1\nArchitecture: all\n",
+      "url": "http://archive.ubuntu.com/ubuntu/pool/main/libw/libwww-perl/libwww-perl_6.76-1ubuntu0.1_all.deb"
+    },
+    {
+      "name": "libwww-robotrules-perl_6.02-1_all.deb",
+      "length": 12600,
+      "sha256": "8c77cc5cbef468c257c8e9c359bd9d715352f4a6bf1481c9470ccd20a010d987",
+      "fields": "Package: libwww-robotrules-perl\nVersion: 6.02-1\nArchitecture: all\n",
+      "url": "http://archive.ubuntu.com/ubuntu/pool/main/libw/libwww-robotrules-perl/libwww-robotrules-perl_6.02-1_all.deb"
+    },
+    {
+      "name": "libxml-libxml-perl_2.0207+dfsg+really+2.0134-1build4_amd64.deb",
+      "length": 303984,
+      "sha256": "9fb537ee60e15fd709b3315fcf963ce501d11894938e0e732108a410042bbba6",
+      "fields": "Package: libxml-libxml-perl\nVersion: 2.0207+dfsg+really+2.0134-1build4\nArchitecture: amd64\n",
+      "url": "http://archive.ubuntu.com/ubuntu/pool/main/libx/libxml-libxml-perl/libxml-libxml-perl_2.0207%2bdfsg%2breally%2b2.0134-1build4_amd64.deb"
+    },
+    {
+      "name": "libxml-libxml-simple-perl_1.01-3_all.deb",
+      "length": 24018,
+      "sha256": "2aecb5746af12652404386f01c5d551535bb759b95125a3260536db7fb63c8de",
+      "fields": "Package: libxml-libxml-simple-perl\nVersion: 1.01-3\nArchitecture: all\n",
+      "url": "http://archive.ubuntu.com/ubuntu/pool/universe/libx/libxml-libxml-simple-perl/libxml-libxml-simple-perl_1.01-3_all.deb"
+    },
+    {
+      "name": "libxml-libxslt-perl_2.002001-1build3_amd64.deb",
+      "length": 43824,
+      "sha256": "18e10be7fd3f4f5585f4a7773c50e219b31812236bd07da28cb7636fcd6c60e0",
+      "fields": "Package: libxml-libxslt-perl\nVersion: 2.002001-1build3\nArchitecture: amd64\n",
+      "url": "http://archive.ubuntu.com/ubuntu/pool/universe/libx/libxml-libxslt-perl/libxml-libxslt-perl_2.002001-1build3_amd64.deb"
+    },
+    {
+      "name": "libxml-namespacesupport-perl_1.12-2_all.deb",
+      "length": 13516,
+      "sha256": "fa5c5ba9beb445220d9c73282f0845bfc3a0e1481e324175792b07155276807b",
+      "fields": "Package: libxml-namespacesupport-perl\nVersion: 1.12-2\nArchitecture: all\n",
+      "url": "http://archive.ubuntu.com/ubuntu/pool/main/libx/libxml-namespacesupport-perl/libxml-namespacesupport-perl_1.12-2_all.deb"
+    },
+    {
+      "name": "libxml-sax-base-perl_1.09-3_all.deb",
+      "length": 18948,
+      "sha256": "08ed3ee24927c53638871d2be63d5dd9c0f1f42a58124b4b28c776bb8f0b5888",
+      "fields": "Package: libxml-sax-base-perl\nVersion: 1.09-3\nArchitecture: all\n",
+      "url": "http://archive.ubuntu.com/ubuntu/pool/main/libx/libxml-sax-base-perl/libxml-sax-base-perl_1.09-3_all.deb"
+    },
+    {
+      "name": "libxml-sax-perl_1.02+dfsg-3_all.deb",
+      "length": 56972,
+      "sha256": "c75639a373b5873248e03c53ae204e0832e5b9addc22b6484e3851141868af65",
+      "fields": "Package: libxml-sax-perl\nVersion: 1.02+dfsg-3\nArchitecture: all\n",
+      "url": "http://archive.ubuntu.com/ubuntu/pool/main/libx/libxml-sax-perl/libxml-sax-perl_1.02%2bdfsg-3_all.deb"
+    },
+    {
+      "name": "libxml-writer-perl_0.900-2_all.deb",
+      "length": 23960,
+      "sha256": "e06cf706847ac4898be105017b4b9c38c86732319706f35c6a8550579f0ac2aa",
+      "fields": "Package: libxml-writer-perl\nVersion: 0.900-2\nArchitecture: all\n",
+      "url": "http://archive.ubuntu.com/ubuntu/pool/universe/libx/libxml-writer-perl/libxml-writer-perl_0.900-2_all.deb"
+    },
+    {
+      "name": "libxslt1.1_1.1.39-0exp1ubuntu0.24.04.3_amd64.deb",
+      "length": 167806,
+      "sha256": "e716daf96ea2526cab92e5cc4708739d5f2f4b89fb76782dfda7f49283eeeb40",
+      "fields": "Package: libxslt1.1\nVersion: 1.1.39-0exp1ubuntu0.24.04.3\nSource: libxslt\nArchitecture: amd64\n",
+      "url": "http://archive.ubuntu.com/ubuntu/pool/main/libx/libxslt/libxslt1.1_1.1.39-0exp1ubuntu0.24.04.3_amd64.deb"
+    },
+    {
+      "name": "libxstring-perl_0.005-2build3_amd64.deb",
+      "length": 7852,
+      "sha256": "c67416e5880c6d690138103658c552f2e2591b62ee9ea47e09fb394b271fc017",
+      "fields": "Package: libxstring-perl\nVersion: 0.005-2build3\nArchitecture: amd64\n",
+      "url": "http://archive.ubuntu.com/ubuntu/pool/universe/libx/libxstring-perl/libxstring-perl_0.005-2build3_amd64.deb"
+    },
+    {
+      "name": "perl-openssl-defaults_7build3_amd64.deb",
+      "length": 6626,
+      "sha256": "f17acf583d46b926f750d5428c2bbd1a32b5cd7303c3cf6a93ae69b4a4c9d1d7",
+      "fields": "Package: perl-openssl-defaults\nVersion: 7build3\nArchitecture: amd64\n",
+      "url": "http://archive.ubuntu.com/ubuntu/pool/main/p/perl-openssl-defaults/perl-openssl-defaults_7build3_amd64.deb"
+    },
+    {
+      "name": "tex-common_6.18_all.deb",
+      "length": 32768,
+      "sha256": "12040ad68843b3b58eba1baec6b1972673153827e623e5f2748a90b0e706ad9d",
+      "fields": "Package: tex-common\nVersion: 6.18\nArchitecture: all\n",
+      "url": "http://archive.ubuntu.com/ubuntu/pool/universe/t/tex-common/tex-common_6.18_all.deb"
+    },
+    {
+      "name": "ucf_3.0043+nmu1_all.deb",
+      "length": 56522,
+      "sha256": "397e541af11db776ed7facf1674ee37b56e7de51348c9f077d7a283912c4b458",
+      "fields": "Package: ucf\nVersion: 3.0043+nmu1\nArchitecture: all\n",
+      "url": "http://archive.ubuntu.com/ubuntu/pool/main/u/ucf/ucf_3.0043%2bnmu1_all.deb"
+    }
+  ],
+  "toolchainImage": "emscripten/emsdk@sha256:fb7864e398acfda863dfcea78b8bc8adad359fa60c6a0bbeb845931de64aa68a",
+  "baseBuildPackages": [
+    {
+      "name": "autoconf_2.71-3_all.deb",
+      "length": 338946,
+      "sha256": "cc3f9f7a1e576173fb59c36652c0a67c6426feae752b352404ba92dfcb1b26c9"
+    },
+    {
+      "name": "automake_1%3a1.16.5-1.3ubuntu1_all.deb",
+      "length": 558172,
+      "sha256": "5ae9a98e73545002cd891f028859941af2a3c760cb6190e635c7ef36953912de"
+    },
+    {
+      "name": "autotools-dev_20220109.1_all.deb",
+      "length": 44886,
+      "sha256": "d909f0327b09d9a9136239caca975df89782fa28efd721c4eb4caea422d3fc5a"
+    },
+    {
+      "name": "bison_2%3a3.8.2+dfsg-1ubuntu0.24.04.1_amd64.deb",
+      "length": 748794,
+      "sha256": "9d75084d1293f68f3c1a2ee677dea5baa4e010bac2d4c455d8e23177e97aa353"
+    },
+    {
+      "name": "file_1%3a5.45-3build1_amd64.deb",
+      "length": 22042,
+      "sha256": "17dae1d6e803d0304e318f451c8abf62cbd5bb2a0068300cdeea77c62075b895"
+    },
+    {
+      "name": "flex_2.6.4-8.2build1_amd64.deb",
+      "length": 300754,
+      "sha256": "c5604f55827b50e3f568b4731b7799f86b147454c867be02bc141d9d8ce561ff"
+    },
+    {
+      "name": "libmagic-mgc_1%3a5.45-3build1_amd64.deb",
+      "length": 307366,
+      "sha256": "f0ed0e314a63ae1b7e5403d7e43a26c6e0c0ee69e9a305babcf9c6775607377a"
+    },
+    {
+      "name": "libmagic1t64_1%3a5.45-3build1_amd64.deb",
+      "length": 87240,
+      "sha256": "fc2319f342c437e044ccf854e0c95bd472a7eb0b9363e1f76ad1524ab04df68e"
+    },
+    {
+      "name": "libpkgconf3_1.8.1-2build1_amd64.deb",
+      "length": 30652,
+      "sha256": "fc3a57e8f931ec06cb7c51acc56878f1fec247ff02a7adcab26905c2faeb2792"
+    },
+    {
+      "name": "libtool_2.4.7-7build1_all.deb",
+      "length": 166404,
+      "sha256": "9d1d707179675d38e024bb13613b1d99e0d33fa6c45e5f3bcba19340781781d3"
+    },
+    {
+      "name": "m4_1.4.19-4build1_amd64.deb",
+      "length": 243640,
+      "sha256": "30ea715845a1863abd55d11e47ab91513130bf347852d4cdeae69e9d98fa795c"
+    },
+    {
+      "name": "pkg-config_1.8.1-2build1_amd64.deb",
+      "length": 7264,
+      "sha256": "16bda455d9216da31ad55d72df5a7380cb9d5ac32a2393941cab262a4e5b526f"
+    },
+    {
+      "name": "pkgconf-bin_1.8.1-2build1_amd64.deb",
+      "length": 20730,
+      "sha256": "7a812f05ee1610154b433e2ad54f6e4163fcbb306b9fb31afe959afb2e5e1545"
+    },
+    {
+      "name": "pkgconf_1.8.1-2build1_amd64.deb",
+      "length": 16790,
+      "sha256": "834a58031069d97d7cfb8b2f5bfd5effc69cecf7f30cc362071875f1f8dc1828"
+    }
+  ]
+}
