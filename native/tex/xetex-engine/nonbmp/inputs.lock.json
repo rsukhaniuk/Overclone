@@ -1,0 +1,7 @@
+{
+  "schemaVersion": 1,
+  "baseSourceManifestSha256": "3e1d9030040c6c0763f60a9046799d903d2791c5a22c31b1b438bcff8d39085b",
+  "baseGenerationManifestSha256": "d7d607734b150abb86752d344e4cd834036cced15ebd628adc58febc12bfc055",
+  "baseCombinedChangeSha256": "53909cea1c7f062d69fcf98a57c2ad71a40185ff281f481a31e85b6eb92b1c46",
+  "purpose": "Explicit candidate from the reviewed Xe map source; existing runtime/default source generation is unchanged."
+}
