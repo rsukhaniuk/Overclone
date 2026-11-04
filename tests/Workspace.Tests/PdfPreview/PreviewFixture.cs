@@ -21,10 +21,12 @@ internal sealed class PreviewInspector : IPdfInspector
     public ValueTask DisposeAsync() { Disposes++; return ValueTask.CompletedTask; }
     internal static TaskCompletionSource<T> Signal<T>() => new(TaskCreationOptions.RunContinuationsAsynchronously);
     internal static PdfDocument Document(byte marker = 1) => new([37, 80, 68, 70, marker]);
-    internal static PdfInspectionOutcome Page(PdfInspectRequest request, long epoch, int pageCount = 3, bool missingBox = false, bool rotate = false)
+    internal static PdfInspectionOutcome Page(PdfInspectRequest request, long epoch, int pageCount = 3, bool missingBox = false, bool rotate = false,
+        int? rotationDegrees = null)
     {
         string id = Guid.NewGuid().ToString("N"); var runtime = new PdfRuntimeIdentity(new('a', 64), new('b', 64));
-        var display = rotate ? new[] { 200, 100 } : new[] { 100, 200 };
+        int rotation = rotationDegrees ?? (rotate ? 90 : 0);
+        var display = rotation is 90 or 270 ? new[] { 200, 100 } : new[] { 100, 200 };
         var chars = new[] { 1030, 128512, 120 }.Select((scalar, index) => new
         {
             index, unicode = scalar, origin = new[] { 10 + index * 20, 20 }, box = missingBox && index == 1 ? null : new[] { 10 + index * 20, 20, 20 + index * 20, 30 },
@@ -47,7 +49,7 @@ internal sealed class PreviewInspector : IPdfInspector
             Version = 2, RequestId = id, DocumentSha256 = request.Document.Sha256, Epoch = epoch,
             LoaderSha256 = runtime.LoaderSha256, WasmSha256 = runtime.WasmSha256, Status = "completed", NativeStatus = 0, EnteredNative = true,
             PageCount = pageCount, ActionState = "not-requested",
-            FactsJson = JsonSerializer.Serialize(new { media = new[] { 0, 0, 100, 200 }, crop = (int[]?)null, cropDefaulted = true, effective = new[] { 0, 0, 100, 200 }, rotation = rotate ? 90 : 0, displayPoints = display, nativeWidthHeight = display, sourceMapping = "unsupported" }),
+            FactsJson = JsonSerializer.Serialize(new { media = new[] { 0, 0, 100, 200 }, crop = (int[]?)null, cropDefaulted = true, effective = new[] { 0, 0, 100, 200 }, rotation, displayPoints = display, nativeWidthHeight = display, sourceMapping = "unsupported" }),
             TextJson = JsonSerializer.Serialize(new { text = "І😀x", utf16 = new[] { 1030, 55357, 56832, 120 }, characterCount = 3, characters = chars, sourceMapping = "unsupported" }),
             SearchJson = JsonSerializer.Serialize(hits), Raster = raster,
             NativeCalls = ["e1_version", "e1_open", "e1_page", "e1_facts", "e1_text", "e1_search", "e1_raster", "e1_reset"]

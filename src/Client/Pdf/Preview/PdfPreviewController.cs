@@ -280,7 +280,7 @@ public sealed class PdfPreviewController : IAsyncDisposable
         var frame = new PdfPreviewFrame(selection.Generation, selection.Document.Sha256, selection.Page, rendered.RasterWidth, rendered.RasterHeight, rgba);
         Update(s => s with { Status = PdfPreviewStatus.Available, Detail = "Native page available. Provided PDF provenance remains caller metadata.", Frame = frame,
             Text = rendered.Text, Utf16Units = rendered.Utf16Units, Glyphs = rendered.Glyphs, Search = search,
-            PageGeometry = new(rendered.MediaBox, rendered.EffectiveBox, rendered.Rotation, rendered.NativeDisplaySize) });
+            PageGeometry = new(rendered.MediaBox, rendered.EffectiveBox, rendered.Rotation / 90, rendered.NativeDisplaySize) });
     }
     private static PdfPreviewSearch ScanError(PdfPreviewSearch search, string detail) => search.Status == PdfPreviewSearchStatus.Scanning
         ? search with { Status = PdfPreviewSearchStatus.Error, Detail = detail } : search;

@@ -16,6 +16,8 @@ public sealed record PdfPreviewPolicy(int InputBytes = 8388608, int MaxPixels = 
         && MaxDocumentPages is > 0 and <= PdfInspectionBudget.MaxDocumentPages;
 }
 public readonly record struct PdfPreviewRect(double Left, double Top, double Width, double Height);
+/// <summary>Measured raw page view. Rotation is clockwise quarter turns (0..3),
+/// converted once from the inspector's validated degrees by the preview controller.</summary>
 public sealed record PdfPreviewGeometry(PdfBox Media, PdfBox Effective, int Rotation, PdfPoint Display);
 public sealed record PdfPreviewPointer(long Generation, string DocumentSha256, int PageIndex,
     double X, double Y, bool Activate);

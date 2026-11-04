@@ -1,3 +1,5 @@
+using System.Text;
+using Client.Compilation.SyncTeX;
 using Client.Pdf;
 using Client.Pdf.Preview;
 using Xunit;
@@ -74,8 +76,60 @@ public sealed class PreviewControllerTests
     {
         var request = new PdfInspectRequest(PreviewInspector.Document(), 0, new(), "І", false);
         var page = PreviewInspector.Page(request, 1, rotate: true).Page!; var rect = Assert.Single(PdfPreviewPixels.Hit(page, page.SearchHits[0], 1).NormalizedBoxes);
+        Assert.Equal(90, page.Rotation);
         Assert.Equal(.05, rect.Left, 8); Assert.Equal(.2, rect.Top, 8); Assert.Equal(.05, rect.Width, 8); Assert.Null(page.PhysicalSizeInPdfPoints);
         Assert.Empty(PdfPreviewPixels.Hit(page, page.SearchHits[0], 0).NormalizedBoxes);
+    }
+    [Theory]
+    [InlineData(0, 0, .2, .35, .18, .335, .04, .03)]
+    [InlineData(90, 1, .65, .2, .635, .18, .03, .04)]
+    [InlineData(180, 2, .8, .65, .78, .635, .04, .03)]
+    [InlineData(270, 3, .35, .8, .335, .78, .03, .04)]
+    public async Task Parsed_degree_rotation_is_converted_once_for_preview_source_geometry(int degrees, int quarterTurns,
+        double x, double y, double left, double top, double width, double height)
+    {
+        PdfPageInspection? inspected = null;
+        var port = new PreviewInspector();
+        port.Handler = (request, epoch) =>
+        {
+            var outcome = PreviewInspector.Page(request, epoch, rotationDegrees: degrees);
+            inspected = outcome.Page;
+            return Task.FromResult(outcome);
+        };
+        await using var c = new PdfPreviewController(port);
+        Assert.True(c.Provide(PreviewInspector.Document())); await Idle(c);
+        Assert.Equal(PdfPreviewStatus.Available, c.State.Status);
+        var geometry = Assert.IsType<PdfPreviewGeometry>(c.State.PageGeometry);
+        Assert.Equal(quarterTurns, geometry.Rotation);
+        Assert.Equal(degrees, Assert.IsType<PdfPageInspection>(inspected).Rotation);
+        Assert.Contains("Unavailable", c.State.SourceNavigationStatus);
+
+        // Hand-calculated raw target (20,130), raw box x=18..22 / y=127..133
+        // on a 100x200 page. The InlineData values are its rotated normalized view.
+        var legacyPoint = Assert.IsType<SyncTeXPoint>(SyncTeXDisplayGeometry.Inverse(geometry, x, y));
+        Assert.Equal(20, legacyPoint.H, 8); Assert.Equal(70, legacyPoint.V, 8);
+
+        // Synthetic transform DATA only: (h,v)=(5,30) -> raw (20,130).
+        // Parsing this sidecar creates no live compile or navigation authority.
+        var page = SourceMapGeometryCodec.ParseNativeSidecar(Encoding.UTF8.GetBytes(
+            """{"schemaVersion":1,"pages":[{"page":1,"status":"available","reason":"none","writerToPdfRaw":[2,0,0,-2,10,190],"writerPageBoxBp":[-5,-5,45,95]}]}"""))
+            .Sidecar!.Pages[0];
+        var typedPoint = Assert.IsType<SyncTeXPoint>(SyncTeXDisplayGeometry.Inverse(geometry, page, x, y));
+        Assert.Equal(5, typedPoint.H, 8); Assert.Equal(30, typedPoint.V, 8);
+        foreach (var box in new[]
+        {
+            Assert.IsType<PdfPreviewRect>(SyncTeXDisplayGeometry.Highlight(geometry, new(18, 70, 4, 3, 3))),
+            Assert.IsType<PdfPreviewRect>(SyncTeXDisplayGeometry.Highlight(geometry, page, new(4, 30, 2, 1.5, 1.5)))
+        })
+        {
+            Assert.Equal(left, box.Left, 8); Assert.Equal(top, box.Top, 8);
+            Assert.Equal(width, box.Width, 8); Assert.Equal(height, box.Height, 8);
+        }
+        Assert.Equal(degrees, inspected!.Rotation);
+
+        var nonzeroOrigin = geometry with { Media = new(1, 2, 101, 202), Effective = new(1, 2, 101, 202) };
+        Assert.Null(SyncTeXDisplayGeometry.Inverse(nonzeroOrigin, x, y));
+        Assert.Null(SyncTeXDisplayGeometry.Highlight(nonzeroOrigin, new(18, 70, 4, 3, 3)));
     }
     [Fact] public async Task Full_document_search_and_result_navigation_use_real_page_indices()
     {
