@@ -1,0 +1,9 @@
+{
+  "fonts/notonastaliq.ttf": {"length":497204,"sha256":"c598f61cc40ff27ff94858271f0bc000bc4529be0dad364b7a1b3118f5da8e02"},
+  "fonts/amiri-regular.ttf": {"length":548016,"sha256":"6988222efdde090e0926cabcaf695c5f551269efbf751b29b097eeb3dbf27e39"},
+  "src/harfbuzz.lua": {"length":3023,"sha256":"6afe2357e6d96c656a903965010ebb5e8b11a40ca73cdc9c481cd7d44e56b47d"},
+  "fixtures/notonastaliq_U06CC_U06C1.json": {"length":199,"sha256":"31f416d339002b50043473f9f0ce00d207f3975bc754d73b6e523eeec79ab7ba"},
+  "fixtures/amiri-regular_123.json": {"length":143,"sha256":"b08afa774a577ade58cf8128e6f3342765430ed685c065e70fe615619e7661e1"},
+  "fixtures/amiri-regular_123_numr.json": {"length":146,"sha256":"3ff18de9fbb19b4c7f2012628a5846f2ea606b4ad861d9776ccb7577f1e681b7"},
+  "LICENSE": {"length":1082,"sha256":"0adbe9a18a0e2c10e939b4cf136d1aa59cce294aa11bce0aaf318b4ae1959c8a"}
+}

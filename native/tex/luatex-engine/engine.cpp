@@ -47,7 +47,14 @@ int oc_engine_main(int, char **);
 
 namespace {
 constexpr uint32_t MaxFile = 32u * 1024u * 1024u;
+#if defined(OC_LUA_FONT_CLOSURE) && OC_LUA_FONT_CLOSURE
+constexpr uint32_t MaxInput = 160u * 1024u * 1024u;
+constexpr uint32_t MaxRuntimeInput = 128u * 1024u * 1024u;
+constexpr uint32_t MaxWorkInput = 32u * 1024u * 1024u;
+uint32_t runtimeInputBytes = 0, workInputBytes = 0;
+#else
 constexpr uint32_t MaxInput = 96u * 1024u * 1024u;
+#endif
 constexpr uint32_t MaxOutput = 64u * 1024u * 1024u;
 constexpr uint32_t MaxOutputs = 128;
 char declared[MaxOutputs][241] = {};
@@ -290,7 +297,9 @@ int oc_lua_maps_eligible() {
     if (oc_budget_failed()) { succeeded = false; oc_mem_abort(); }
     return used && !running && succeeded && !formatAttempt;
 }
-#if OC_LUATEX_ABI == 5
+#if OC_LUATEX_ABI == 5 && defined(OC_LUA_HARFBUZZ) && OC_LUA_HARFBUZZ
+const char *oc_luatex_version() { return "LuaHBTeX 1.13.0 (TeX Live 2021, svn 7410); browser ABI 5; HarfBuzz 1"; }
+#elif OC_LUATEX_ABI == 5
 const char *oc_luatex_version() { return "LuaTeX 1.13.0 (TeX Live 2021, svn 7410); browser ABI 5"; }
 #else
 const char *oc_luatex_version() { return "LuaTeX 1.13.0 (TeX Live 2021, svn 7410); browser ABI 4"; }
@@ -356,6 +365,11 @@ int oc_luatex_add_file(int kind, const char *name, const uint8_t *bytes, uint32_
     else if (kind == 1) base = "project";
     else if (kind == 2 && isCarryName(name) && isDeclared(name)) base = "output";
     else return fail(-1, "invalid input kind or carry name");
+#if defined(OC_LUA_FONT_CLOSURE) && OC_LUA_FONT_CLOSURE
+    if (kind == 0 ? length > MaxRuntimeInput || runtimeInputBytes > MaxRuntimeInput - length
+                  : length > MaxWorkInput || workInputBytes > MaxWorkInput - length)
+        return fail(-4, "input role budget exceeded");
+#endif
     const auto key = pathKey(name);
     if (namespaceConflict(inputKeys[kind], key)) return fail(-1, "input namespace collision");
     if (kind == 1 && namespaceConflict(outputKeys, key)) return fail(-1, "project/generated namespace collision");
@@ -369,6 +383,10 @@ int oc_luatex_add_file(int kind, const char *name, const uint8_t *bytes, uint32_
     ok = std::fclose(file) == 0 && ok;
     if (!ok) { unlink(path); return fail(-3, "input write failed"); }
     inputBytes += length; ++inputFiles;
+#if defined(OC_LUA_FONT_CLOSURE) && OC_LUA_FONT_CLOSURE
+    if (kind == 0) runtimeInputBytes += length;
+    else workInputBytes += length;
+#endif
     inputKeys[kind].insert(key);
     if (kind == 1) projectKeys.insert(key);
     return 0;
