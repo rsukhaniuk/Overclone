@@ -300,7 +300,7 @@ async function exercise(page, name, bytes, marker) {
   await reveal(page, $(page, 'refresh-compile-tools'));
   await page.locator('select[aria-label="Compile main file"]').selectOption({ label: 'main.tex' });
   await page.locator('select[aria-label="Compile engine"]').selectOption('local-authoring-v4');
-  if (await $(page, 'use-bibtex').isChecked()) await $(page, 'use-bibtex').uncheck();
+  await require("./review-ui-helpers.cjs").bibliography(page, "None");
   await save(page);
   const before = await head(page, name), authority = await stamp(page); sourceAt(before, bytes);
   assert.ok(authority.session && authority.head && /^\d+$/.test(authority.generation), 'visible source authority');

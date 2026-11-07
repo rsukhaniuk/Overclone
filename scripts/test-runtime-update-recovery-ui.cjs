@@ -769,8 +769,7 @@ async function main() {
   await p
    .getByLabel("Compile engine", { exact: true })
    .selectOption("lualatex");
-  const bib = $(p, "use-bibtex");
-  if (!(await bib.isChecked())) await bib.check();
+  await H.bibliography(p, "Bibtex");
   const before = await head(p),
    bridge = await p.evaluate(async () =>
     (await import("./js/compile-port-bridge.js")).observations(),

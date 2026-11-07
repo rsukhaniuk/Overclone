@@ -2,6 +2,21 @@
 const assert = require("node:assert/strict");
 const { fixtures } = require("./knu-fixtures.cjs");
 const $ = (p, id) => p.locator(`[data-testid="${id}"]`);
+async function bibliography(p, kind) {
+ assert.ok(["None", "Bibtex", "Biber"].includes(kind));
+ const select = $(p, "bibliography-tool");
+ if (await select.count()) {
+  await select.selectOption(kind);
+  assert.equal(await select.inputValue(), kind);
+  return;
+ }
+ // Retained published builds expose the old two-state control.
+ assert.notEqual(kind, "Biber", "legacy published UI has no Biber capability");
+ const checkbox = $(p, "use-bibtex");
+ if (kind === "Bibtex") await checkbox.check();
+ else await checkbox.uncheck();
+ assert.equal(await checkbox.isChecked(), kind === "Bibtex");
+}
 const after = Buffer.from(
  fixtures.negative.toString("utf8").replace("10 mm", "1.27cm"),
 );
@@ -219,6 +234,7 @@ async function releaseOwnership(p) {
  });
 }
 module.exports = {
+ bibliography,
  reveal,
  $,
  ready,

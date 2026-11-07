@@ -121,7 +121,7 @@ async function projectRecord(name) {
     if (matches.length !== 1) throw new Error("Expected one controlled project"); const p = matches[0]; return { id: p.id, name: p.name, head: p.headRevisionId ?? null }; }, name);
 }
 async function selection() { return page.evaluate(() => ({ main: document.querySelector('select[aria-label="Compile main file"]')?.value,
-  engine: document.querySelector('select[aria-label="Compile engine"]')?.value, bibtex: document.querySelector('[data-testid="use-bibtex"]')?.checked ?? null,
+  engine: document.querySelector('select[aria-label="Compile engine"]')?.value, bibtex: (document.querySelector('[data-testid="bibliography-tool"]') ? document.querySelector('[data-testid="bibliography-tool"]').value === "Bibtex" : document.querySelector('[data-testid="use-bibtex"]')?.checked) ?? null,
   version: document.querySelector('[data-testid="compile-panel"]')?.dataset.selectionVersion, output: document.querySelector('[data-testid="compile-panel"]')?.dataset.outputHash ?? null })); }
 async function snapshot(project) {
   return { project: await projectRecord(project), stamp: await H.stamp(page), head: await H.head(page, project), config: await selection(),

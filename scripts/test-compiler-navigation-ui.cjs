@@ -218,9 +218,7 @@ async function setupSelection() {
   await selectFile("main.tex");
   await page.locator('select[aria-label="Compile main file"]').selectOption({ label: "main.tex" });
   await page.locator('select[aria-label="Compile engine"]').selectOption("local-authoring-v4");
-  const bib = H.$(page, "use-bibtex"); await bib.waitFor();
-  if (await bib.isChecked()) await bib.uncheck();
-  assert.equal(await bib.isChecked(), false);
+  await H.bibliography(page, "None");
   await page.waitForFunction(() => document.querySelector('[data-testid="compile"]')?.disabled === false);
 }
 function actions() { return H.$(page, "compiler-go-to-source"); }
@@ -239,7 +237,7 @@ async function configuration() {
   return page.evaluate(() => ({
     main: document.querySelector('select[aria-label="Compile main file"]')?.value,
     engine: document.querySelector('select[aria-label="Compile engine"]')?.value,
-    bibtex: document.querySelector('[data-testid="use-bibtex"]')?.checked,
+    bibtex: (document.querySelector('[data-testid="bibliography-tool"]') ? document.querySelector('[data-testid="bibliography-tool"]').value === "Bibtex" : document.querySelector('[data-testid="use-bibtex"]')?.checked),
     selectionVersion: document.querySelector('[data-testid="compile-panel"]')?.dataset.selectionVersion,
     compileStatus: document.querySelector('[data-testid="compile-status"]')?.textContent,
     pdfStatus: document.querySelector('[data-testid="compiled-pdf-status"]')?.textContent,

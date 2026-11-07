@@ -224,7 +224,7 @@ async function configure() {
   await selectMain(); await H.reveal(page, H.$(page, "refresh-compile-tools"));
   await page.locator('select[aria-label="Compile main file"]').selectOption({ label: "main.tex" });
   await page.locator('select[aria-label="Compile engine"]').selectOption("local-authoring-v4");
-  const bib = H.$(page, "use-bibtex"); await bib.waitFor(); if (await bib.isChecked()) await bib.uncheck(); assert.equal(await bib.isChecked(), false);
+  await H.bibliography(page, "None");
   await page.waitForFunction(() => document.querySelector('[data-testid="compile"]')?.disabled === false);
 }
 const compileBridge = () => page.evaluate(async () => (await import("./js/compile-port-bridge.js")).observations());
@@ -289,7 +289,7 @@ async function snapshot(project, bytes, head) {
   return { head: await H.head(page, project), editor: await H.$(page, "editor").evaluate(e => ({ value: e.value,
     file: e.dataset.fileId, start: e.selectionStart, end: e.selectionEnd, selected: e.value.slice(e.selectionStart, e.selectionEnd) })),
     config: await page.evaluate(() => ({ main: document.querySelector('select[aria-label="Compile main file"]')?.value,
-      engine: document.querySelector('select[aria-label="Compile engine"]')?.value, bibtex: document.querySelector('[data-testid="use-bibtex"]')?.checked,
+      engine: document.querySelector('select[aria-label="Compile engine"]')?.value, bibtex: (document.querySelector('[data-testid="bibliography-tool"]') ? document.querySelector('[data-testid="bibliography-tool"]').value === "Bibtex" : document.querySelector('[data-testid="use-bibtex"]')?.checked),
       version: document.querySelector('[data-testid="compile-panel"]')?.dataset.selectionVersion,
       outcome: document.querySelector('[data-testid="compile-status"]')?.textContent, details: document.querySelector('[data-testid="compile-details"]')?.textContent,
       hash: document.querySelector('[data-testid="compile-panel"]')?.dataset.outputHash, current: document.querySelector('[data-testid="compile-panel"]')?.dataset.isCurrent })),

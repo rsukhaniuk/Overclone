@@ -235,7 +235,7 @@ async function compile(p, engine, expected, pages, label) {
   step(label, p); await H.reveal(p, $(p, 'refresh-compile-tools'));
   await p.waitForFunction(() => document.querySelector('[data-testid=compiler-readiness]')?.textContent.includes('compilation available.'), null, { timeout: TIME.provision });
   await p.locator('select[aria-label="Compile main file"]').selectOption({ label: MAIN }); await p.locator('select[aria-label="Compile engine"]').selectOption(engine);
-  const bib = $(p, 'use-bibtex'); if (await bib.count() && await bib.isChecked()) await bib.uncheck();
+  await H.bibliography(p, "None");
   const before = await bridge(p), beforeHead = await H.head(p, projectName), oldHash = await $(p, 'compile-panel').getAttribute('data-output-hash');
   const fresh = p.waitForEvent('worker', { predicate: w => /\/__oop\/native-worker\/(?:compile|xetex)\?/.test(w.url()), timeout: TIME.compile });
   await Promise.all([fresh, $(p, 'compile').click()]);

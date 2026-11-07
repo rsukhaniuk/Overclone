@@ -250,7 +250,7 @@ async function rowFor(id,name) {
  const row=page.locator(`[data-testid="project-row"][data-project-id=${JSON.stringify(rows[0].id)}][data-name=${JSON.stringify(name)}]`);assert.equal(await row.count(),1);
  assert.equal((await row.locator('[data-testid="open-project"]').textContent()).trim(),name);return {row,identity:rows[0]};
 }
-async function config() {return page.evaluate(()=>({main:document.querySelector('select[aria-label="Compile main file"]')?.value,engine:document.querySelector('select[aria-label="Compile engine"]')?.value,bibtex:document.querySelector('[data-testid="use-bibtex"]')?.checked??null}));}
+async function config() {return page.evaluate(()=>({main:document.querySelector('select[aria-label="Compile main file"]')?.value,engine:document.querySelector('select[aria-label="Compile engine"]')?.value,bibtex:(document.querySelector('[data-testid="bibliography-tool"]') ? document.querySelector('[data-testid="bibliography-tool"]').value === "Bibtex" : document.querySelector('[data-testid="use-bibtex"]')?.checked)??null}));}
 async function settleConfiguration(){await H.reveal(page,H.$(page,"refresh-compile-tools"));await page.waitForFunction(()=>document.querySelector('[data-testid="refresh-compile-tools"]')?.disabled===false,null,{timeout:60000});}
 async function waitDestination(id,name,file=null,previousSession=lastClosedSession) {
  stage("wait-destination:"+id,"PROJECT_NAVIGATION");
