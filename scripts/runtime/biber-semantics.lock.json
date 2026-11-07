@@ -1,0 +1,1270 @@
+{
+  "schemaVersion": 1,
+  "profile": 13,
+  "scope": "Reassemble already built, source-associated artifacts. No native rebuild, acquisition, default adoption or browser acceptance. Preserve original notices and corresponding sources.",
+  "base": {
+    "resourceCount": 4186,
+    "totalBytes": 229018228,
+    "closureSha256": "2ec3569c2e208ff08f4b7cf66cdc2b808820bc6947ef4c93848136e9a21ff73e",
+    "pins": {
+      "length": 597267,
+      "sha256": "9c20826069e1a3d7a68e09e3d459b7d667da368ba80f7890643c1624b3b0fa10"
+    }
+  },
+  "target": {
+    "resourceCount": 4357,
+    "totalBytes": 259559615,
+    "closureSha256": "34540765dfd1b5d46666841378221cce0b40204014c4a8c2dc25ddddbe56d1ed",
+    "pins": {
+      "length": 627138,
+      "sha256": "8b00b37ec9fcba8e5dc46fcbd6ef2fdd05376baa44f33eb02536240e096975e8"
+    },
+    "package": {
+      "length": 260724683,
+      "sha256": "5acb71b3aff3e7e072605124db4487d7583eaed557d99dcbad7b4d240b94b367"
+    }
+  },
+  "limits": {
+    "resourceCount": 8192,
+    "fileBytes": 67108864,
+    "totalBytes": 268435456,
+    "manifestBytes": 2097152
+  },
+  "phases": {
+    "pdftex": 23,
+    "latex-dvi": 24,
+    "xelatex": 21,
+    "lualatex": 22,
+    "biber": 10
+  },
+  "components": [
+    {
+      "name": "semantic-engine.js",
+      "length": 141918,
+      "sha256": "735c17494d6ec61c1b2f000f437f343ece9af3258f2f354f11745b7b5836dde2",
+      "group": "semantic",
+      "source": "engine.js"
+    },
+    {
+      "name": "semantic-engine.wasm",
+      "length": 1952801,
+      "sha256": "e3136893e75d5b6b3a7b4297349c28f51423dee2c014a607d9c1cd20f75357c3",
+      "group": "semantic",
+      "source": "engine.wasm"
+    },
+    {
+      "name": "pdflatex.fmt",
+      "length": 22404123,
+      "sha256": "69e67945852ac84675d043b3f7a5ef02adce773e64129427edb8ce0ebdd84deb",
+      "group": "pdf_format",
+      "source": null
+    },
+    {
+      "name": "latex-dvi.fmt",
+      "length": 22404979,
+      "sha256": "729d02f1e2cd5b63886cf03520634b8fc319fdabe3ff61dd224134b8baf40605",
+      "group": "dvi_format",
+      "source": null
+    },
+    {
+      "name": "dvi-map-converter.js",
+      "length": 13270,
+      "sha256": "2975efeae6dc759ccdce984f68350a250ed8bb8bedaa6584329de5901db23caf",
+      "group": "converter",
+      "source": "oc-dvi.js"
+    },
+    {
+      "name": "dvi-map-converter.wasm",
+      "length": 691713,
+      "sha256": "4f4e13b462772c15184bf4279b533d598d446fa7a44c0b2bafda276baf91701f",
+      "group": "converter",
+      "source": "oc-dvi.wasm"
+    },
+    {
+      "name": "biber.js",
+      "length": 777719,
+      "sha256": "e8cece7433da70dc83372d18ce314eea7c911467cdfc9b5cb3a877cf80d1dee7",
+      "group": "biber",
+      "source": "biber.js"
+    },
+    {
+      "name": "biber.wasm",
+      "length": 8698666,
+      "sha256": "f68864e55dafda71bf25e6903f0f9490a7c4fb14302cb3f0650e56dbc36d0201",
+      "group": "biber",
+      "source": "biber.wasm"
+    },
+    {
+      "name": "biber.data",
+      "length": 18216642,
+      "sha256": "28eaeec67f837530073d1de54ba3ab92a7fc8e96bcd83255eb6aa1a0a037c10b",
+      "group": "biber",
+      "source": "biber.data"
+    },
+    {
+      "name": "luatex.js",
+      "length": 193350,
+      "sha256": "3ebd6f09571509648e6ce88de8f1229f4709514f5fbc9a1b1029b8c59a3cba4d",
+      "group": "lua",
+      "source": "luatex.js"
+    },
+    {
+      "name": "luatex.wasm",
+      "length": 6013352,
+      "sha256": "2eefd3abfec7292f0a912b364693e830bc47792d5c6c56029246ebc3505e2a16",
+      "group": "lua",
+      "source": "luatex.wasm"
+    },
+    {
+      "name": "luaotfload-harf-plug.lua",
+      "length": 44737,
+      "sha256": "b8ee9bf48072f929a2d159e67c16ab575ea0b4056e915b6b368412b45cfbb0cd",
+      "group": "lua_resource",
+      "source": null
+    }
+  ],
+  "notices": [
+    {
+      "name": "notices/biber/browser-port/LICENSE",
+      "length": 34523,
+      "sha256": "8486a10c4393cee1c25392769ddd3b2d6c242d6ec7928e1414efff7dfb2f07ef",
+      "source": "upstream/texlyre-biber/LICENSE"
+    },
+    {
+      "name": "notices/biber/browser-port/NOTICE",
+      "length": 467,
+      "sha256": "984c51c84d462e27d93386f65a07c4e7177f18a1b2f9c8d8c4b2f343e89f0c56",
+      "source": "upstream/texlyre-biber/NOTICE"
+    },
+    {
+      "name": "notices/biber/packages/biber.copyright",
+      "length": 9834,
+      "sha256": "00b458e16c6984996d42f9781f7def877fd80f551eaa8b96603b24712d72a1c9",
+      "source": "notices/packages/biber.copyright"
+    },
+    {
+      "name": "notices/biber/packages/libalgorithm-c3-perl.copyright",
+      "length": 1258,
+      "sha256": "7a8ae28d281420582cdf31189fb43e5b16f978854242339cee72ee083a0af3e9",
+      "source": "notices/packages/libalgorithm-c3-perl.copyright"
+    },
+    {
+      "name": "notices/biber/packages/libautovivification-perl.copyright",
+      "length": 1601,
+      "sha256": "7cfa72a92f898aa1c1615196f90ab7f790e2b2c4f711cd1461b02d657e03ad64",
+      "source": "notices/packages/libautovivification-perl.copyright"
+    },
+    {
+      "name": "notices/biber/packages/libb-hooks-endofscope-perl.copyright",
+      "length": 1345,
+      "sha256": "c384e443dc65c63be181a962aaafa9c7ab2309d6d8b142f282522a03518244fb",
+      "source": "notices/packages/libb-hooks-endofscope-perl.copyright"
+    },
+    {
+      "name": "notices/biber/packages/libb-hooks-op-check-perl.copyright",
+      "length": 1381,
+      "sha256": "027cf55c401c860e9c956dccaf87276d3dc2029e0c30349808165cd05df487ce",
+      "source": "notices/packages/libb-hooks-op-check-perl.copyright"
+    },
+    {
+      "name": "notices/biber/packages/libbtparse2.copyright",
+      "length": 2362,
+      "sha256": "6962c9d4c72097109b9613eae190e86c258362b363ebfdd839a7db0bdd7238db",
+      "source": "notices/packages/libbtparse2.copyright"
+    },
+    {
+      "name": "notices/biber/packages/libbusiness-isbn-data-perl.copyright",
+      "length": 11371,
+      "sha256": "25a7455eef49e347cd3df0663fee8df4e79c359f68f506966dc1724486c52248",
+      "source": "notices/packages/libbusiness-isbn-data-perl.copyright"
+    },
+    {
+      "name": "notices/biber/packages/libbusiness-isbn-perl.copyright",
+      "length": 10395,
+      "sha256": "2f2a31fc441c14189e8d9b72e3e0818071679d5169bb63ab01b46cac05c0c435",
+      "source": "notices/packages/libbusiness-isbn-perl.copyright"
+    },
+    {
+      "name": "notices/biber/packages/libbusiness-ismn-perl.copyright",
+      "length": 1121,
+      "sha256": "a017feeb148dc6ca2203ea8c8166eb0172af5f102c74fcf1be719a58ce745640",
+      "source": "notices/packages/libbusiness-ismn-perl.copyright"
+    },
+    {
+      "name": "notices/biber/packages/libbusiness-issn-perl.copyright",
+      "length": 10386,
+      "sha256": "9fb904208da8089efe713b35c2a8654f6a170e7010ca641abd2a91272c0bcc0b",
+      "source": "notices/packages/libbusiness-issn-perl.copyright"
+    },
+    {
+      "name": "notices/biber/packages/libclass-accessor-perl.copyright",
+      "length": 1263,
+      "sha256": "8e7fb0aa283e4b8684b395254fd5bd4079c7f77f716498d06a6aa5fbbc64ace3",
+      "source": "notices/packages/libclass-accessor-perl.copyright"
+    },
+    {
+      "name": "notices/biber/packages/libclass-c3-perl.copyright",
+      "length": 1290,
+      "sha256": "6935a95c9edd8408d532bd8445e19e8284e3869ca3e41db28fd202163f5b7923",
+      "source": "notices/packages/libclass-c3-perl.copyright"
+    },
+    {
+      "name": "notices/biber/packages/libclass-data-inheritable-perl.copyright",
+      "length": 1216,
+      "sha256": "1c78ac8cb376f8b1121298a0bfe6a8deae2d20b40aacbbb00a594e9db4d71985",
+      "source": "notices/packages/libclass-data-inheritable-perl.copyright"
+    },
+    {
+      "name": "notices/biber/packages/libclass-inspector-perl.copyright",
+      "length": 1463,
+      "sha256": "2c2472023f3ea8cd930e154a72460552fb360b72b05bb362f3c60c928d695152",
+      "source": "notices/packages/libclass-inspector-perl.copyright"
+    },
+    {
+      "name": "notices/biber/packages/libclass-method-modifiers-perl.copyright",
+      "length": 1167,
+      "sha256": "3f322a5f05156df8b03c6c560c4ec77fc12f3f752768ed310439a030ce7f0f0f",
+      "source": "notices/packages/libclass-method-modifiers-perl.copyright"
+    },
+    {
+      "name": "notices/biber/packages/libclass-singleton-perl.copyright",
+      "length": 1366,
+      "sha256": "16fbb95d35e92a875d0f1406055c1fe26343aa1c1ccba89def5a670624a3d6aa",
+      "source": "notices/packages/libclass-singleton-perl.copyright"
+    },
+    {
+      "name": "notices/biber/packages/libclone-perl.copyright",
+      "length": 1586,
+      "sha256": "8ef210dca61a242d9b34e9c68e5a88868648851deef2c7f05432cc5f55207d0e",
+      "source": "notices/packages/libclone-perl.copyright"
+    },
+    {
+      "name": "notices/biber/packages/libdata-compare-perl.copyright",
+      "length": 1128,
+      "sha256": "56ba7d78747c78e2b188387fadee9dcdfffc14249651247b754663e63e9ecaa1",
+      "source": "notices/packages/libdata-compare-perl.copyright"
+    },
+    {
+      "name": "notices/biber/packages/libdata-dump-perl.copyright",
+      "length": 1490,
+      "sha256": "a64ce57ebab53731b54ee842832dc8a7744dbf7017edc3c5258ecfa2fd2521f2",
+      "source": "notices/packages/libdata-dump-perl.copyright"
+    },
+    {
+      "name": "notices/biber/packages/libdata-optlist-perl.copyright",
+      "length": 1255,
+      "sha256": "3bb3b6b0f15f26657aadd1e908013e4b97326e36612b0aa941778de54ae30c24",
+      "source": "notices/packages/libdata-optlist-perl.copyright"
+    },
+    {
+      "name": "notices/biber/packages/libdata-uniqid-perl.copyright",
+      "length": 1035,
+      "sha256": "1987047e2ab1808ed178a4682fe41de6743cfc93ed5b64463367853f714318cb",
+      "source": "notices/packages/libdata-uniqid-perl.copyright"
+    },
+    {
+      "name": "notices/biber/packages/libdate-simple-perl.copyright",
+      "length": 1164,
+      "sha256": "24b2db5ba2f41926dcccee5b9c6773c29b7cf6c73cce5a4dd2142095b8bd10f5",
+      "source": "notices/packages/libdate-simple-perl.copyright"
+    },
+    {
+      "name": "notices/biber/packages/libdatetime-calendar-julian-perl.copyright",
+      "length": 1526,
+      "sha256": "e076cf5787e7a459f90b77e8102b6749f5ee59c81d1f656412df1e5afdb2ba86",
+      "source": "notices/packages/libdatetime-calendar-julian-perl.copyright"
+    },
+    {
+      "name": "notices/biber/packages/libdatetime-format-builder-perl.copyright",
+      "length": 10699,
+      "sha256": "77cbdde5d1b82aad8e1e6532d30c0db730ab409a7e91cbf616180530705f235a",
+      "source": "notices/packages/libdatetime-format-builder-perl.copyright"
+    },
+    {
+      "name": "notices/biber/packages/libdatetime-format-strptime-perl.copyright",
+      "length": 10574,
+      "sha256": "211ee92bc944639be7c5e2b049df0d8be22ede9a913457e2e3bcf1227fd1392e",
+      "source": "notices/packages/libdatetime-format-strptime-perl.copyright"
+    },
+    {
+      "name": "notices/biber/packages/libdatetime-locale-perl.copyright",
+      "length": 4291,
+      "sha256": "16895248e87d50b07754ceda26b9443d9b3703bd8bdd29591ee65bddaa98d6a0",
+      "source": "notices/packages/libdatetime-locale-perl.copyright"
+    },
+    {
+      "name": "notices/biber/packages/libdatetime-perl.copyright",
+      "length": 10993,
+      "sha256": "b1dd6270ce7afa4c9b9900601a164d845f99e3a5ebc327dde9ba28e2fc6c7e97",
+      "source": "notices/packages/libdatetime-perl.copyright"
+    },
+    {
+      "name": "notices/biber/packages/libdatetime-timezone-perl.copyright",
+      "length": 1298,
+      "sha256": "3a95dbe613b0863ba562020e61816b50cc67884d98678e8d5f957b0fb0b40e80",
+      "source": "notices/packages/libdatetime-timezone-perl.copyright"
+    },
+    {
+      "name": "notices/biber/packages/libdatrie1.copyright",
+      "length": 2129,
+      "sha256": "7c994f175cb0da0bbe158f729ca43bc6193bb99d3c8bc82b41c46d93904b584d",
+      "source": "notices/packages/libdatrie1.copyright"
+    },
+    {
+      "name": "notices/biber/packages/libdevel-callchecker-perl.copyright",
+      "length": 1144,
+      "sha256": "949e7215260acd89d9fa76b027d9e4c34c391118ea158cbce96adc43f0ffc418",
+      "source": "notices/packages/libdevel-callchecker-perl.copyright"
+    },
+    {
+      "name": "notices/biber/packages/libdevel-stacktrace-perl.copyright",
+      "length": 10592,
+      "sha256": "bfbabc73fe0d4b40ee065b61cbbc91e5634cb26348a0a96fa419765fdcee5ed8",
+      "source": "notices/packages/libdevel-stacktrace-perl.copyright"
+    },
+    {
+      "name": "notices/biber/packages/libdynaloader-functions-perl.copyright",
+      "length": 1141,
+      "sha256": "9bc9c91c52854ff06cd7a8da2e0d73a9f18039f7fff3ac21076f1cac97b3b6aa",
+      "source": "notices/packages/libdynaloader-functions-perl.copyright"
+    },
+    {
+      "name": "notices/biber/packages/libencode-eucjpascii-perl.copyright",
+      "length": 1087,
+      "sha256": "7e6bcaae8aebc4271811d80e95c1d35c1853f812cb4ba9fbe182bfd57865fa2f",
+      "source": "notices/packages/libencode-eucjpascii-perl.copyright"
+    },
+    {
+      "name": "notices/biber/packages/libencode-eucjpms-perl.copyright",
+      "length": 1052,
+      "sha256": "2ee2859ed163092ab5894dbd740f3dc4c02bec502a977f675cc3023cb0368392",
+      "source": "notices/packages/libencode-eucjpms-perl.copyright"
+    },
+    {
+      "name": "notices/biber/packages/libencode-hanextra-perl.copyright",
+      "length": 2343,
+      "sha256": "13b69759fc4f09a8fe22deea410f0ba86894fa5164f5e730945760cd0e646ded",
+      "source": "notices/packages/libencode-hanextra-perl.copyright"
+    },
+    {
+      "name": "notices/biber/packages/libencode-jis2k-perl.copyright",
+      "length": 1106,
+      "sha256": "50b93900279c757d92316081308bd2f1b840ebed54195002c032ff1a07d15329",
+      "source": "notices/packages/libencode-jis2k-perl.copyright"
+    },
+    {
+      "name": "notices/biber/packages/libencode-locale-perl.copyright",
+      "length": 1117,
+      "sha256": "7ab4fbb42a7acb8587ded73f8c82389735993199ed5d63d414a5044439b72486",
+      "source": "notices/packages/libencode-locale-perl.copyright"
+    },
+    {
+      "name": "notices/biber/packages/libencode-perl.copyright",
+      "length": 4224,
+      "sha256": "781a4ffb169c2b0e4bef7ba1a85751a3dcc27a4a9de6e26dd7af46589150bbfe",
+      "source": "notices/packages/libencode-perl.copyright"
+    },
+    {
+      "name": "notices/biber/packages/libeval-closure-perl.copyright",
+      "length": 1047,
+      "sha256": "6a3fe928c0035471c2f8d9090f1570f1b7e511005b54dca592d7a890a7cbc77d",
+      "source": "notices/packages/libeval-closure-perl.copyright"
+    },
+    {
+      "name": "notices/biber/packages/libexception-class-perl.copyright",
+      "length": 1356,
+      "sha256": "5913d33c006322486e7823b54fbe2537a67c3ea57f40257ed9ced9d938d2121a",
+      "source": "notices/packages/libexception-class-perl.copyright"
+    },
+    {
+      "name": "notices/biber/packages/libexporter-tiny-perl.copyright",
+      "length": 3368,
+      "sha256": "2057e1752a150caf31fc3b61f61c491648867b19f66b2e776aab07745507baea",
+      "source": "notices/packages/libexporter-tiny-perl.copyright"
+    },
+    {
+      "name": "notices/biber/packages/libfile-find-rule-perl.copyright",
+      "length": 1361,
+      "sha256": "b228f5ea92483a7d81331ef403392e24e2502af012efe439f5f6bd4b450967a8",
+      "source": "notices/packages/libfile-find-rule-perl.copyright"
+    },
+    {
+      "name": "notices/biber/packages/libfile-listing-perl.copyright",
+      "length": 1237,
+      "sha256": "54058e6af9571f5b466a0bd0028dc628f31f8494947abf8e96c1ba8a4311d0f6",
+      "source": "notices/packages/libfile-listing-perl.copyright"
+    },
+    {
+      "name": "notices/biber/packages/libfile-sharedir-perl.copyright",
+      "length": 1453,
+      "sha256": "bb4cd008f8d8eac0986d6c1d94e95bad9c47d0b8f98060498793d3ff85d92fff",
+      "source": "notices/packages/libfile-sharedir-perl.copyright"
+    },
+    {
+      "name": "notices/biber/packages/libfile-slurper-perl.copyright",
+      "length": 1060,
+      "sha256": "b9a92be28e112eda7354fdf91ff5410d49d3e13714ca6d7ca4c36d4e76e895f3",
+      "source": "notices/packages/libfile-slurper-perl.copyright"
+    },
+    {
+      "name": "notices/biber/packages/libhtml-parser-perl.copyright",
+      "length": 1795,
+      "sha256": "1ca577d07b8744d5caa6d40b087eaa679d2aa4ea88554056281799066122a928",
+      "source": "notices/packages/libhtml-parser-perl.copyright"
+    },
+    {
+      "name": "notices/biber/packages/libhtml-tagset-perl.copyright",
+      "length": 1296,
+      "sha256": "71158cd2ca9e9486692fb10ac5205cb9b1f8e9d869afb0f23896abcd0419c5ab",
+      "source": "notices/packages/libhtml-tagset-perl.copyright"
+    },
+    {
+      "name": "notices/biber/packages/libhtml-tree-perl.copyright",
+      "length": 1518,
+      "sha256": "263dbfee95a57ca50929560c85e6e8347c80d2a3be70c1540a027daec0cdc0bd",
+      "source": "notices/packages/libhtml-tree-perl.copyright"
+    },
+    {
+      "name": "notices/biber/packages/libhttp-cookies-perl.copyright",
+      "length": 1207,
+      "sha256": "f1b41b1b5d90f95a1005a6a69fc5a2f3843bd247826e80c41b24cbe393ce4735",
+      "source": "notices/packages/libhttp-cookies-perl.copyright"
+    },
+    {
+      "name": "notices/biber/packages/libhttp-date-perl.copyright",
+      "length": 1108,
+      "sha256": "4f95d60141213264aa1a2417bdd0345b6f142156be8f38a648db60b998811428",
+      "source": "notices/packages/libhttp-date-perl.copyright"
+    },
+    {
+      "name": "notices/biber/packages/libhttp-message-perl.copyright",
+      "length": 1106,
+      "sha256": "b7c356244a436dc41fba6c44b32c84c0da0e08a57f7ece4cbb0ea2f52270eb5e",
+      "source": "notices/packages/libhttp-message-perl.copyright"
+    },
+    {
+      "name": "notices/biber/packages/libhttp-negotiate-perl.copyright",
+      "length": 1120,
+      "sha256": "a3f1272e03076ffab7018d34c295fbd201b15324a9bfcb68fc03d85219063818",
+      "source": "notices/packages/libhttp-negotiate-perl.copyright"
+    },
+    {
+      "name": "notices/biber/packages/libio-html-perl.copyright",
+      "length": 1745,
+      "sha256": "964fe843258356f878121d85ec0f670724e3d1def440277803c3f8b1a2041a4c",
+      "source": "notices/packages/libio-html-perl.copyright"
+    },
+    {
+      "name": "notices/biber/packages/libio-socket-ssl-perl.copyright",
+      "length": 1755,
+      "sha256": "250af550450d055d517bbc3532f82bfe3522508ec2cc54a7ede06d5df0eb50d0",
+      "source": "notices/packages/libio-socket-ssl-perl.copyright"
+    },
+    {
+      "name": "notices/biber/packages/libipc-run3-perl.copyright",
+      "length": 3182,
+      "sha256": "108f88768feebaeca5fb00310d1c3199ea5eb81bd8691c3706af69da06376319",
+      "source": "notices/packages/libipc-run3-perl.copyright"
+    },
+    {
+      "name": "notices/biber/packages/liblingua-translit-perl.copyright",
+      "length": 1244,
+      "sha256": "bce1a121186c7b6d8f717515da785099d73365d7126f0d7152504d7aa0583b6c",
+      "source": "notices/packages/liblingua-translit-perl.copyright"
+    },
+    {
+      "name": "notices/biber/packages/liblist-allutils-perl.copyright",
+      "length": 10405,
+      "sha256": "33abe6a2d027f50a6a5ea04d624e1a9b3adbaef50db42f9d45afacba7ba94230",
+      "source": "notices/packages/liblist-allutils-perl.copyright"
+    },
+    {
+      "name": "notices/biber/packages/liblist-moreutils-perl.copyright",
+      "length": 2809,
+      "sha256": "ec07d8cc25825e5f40a22f75be3b26282c951d0d9f31244ece3842cc50b63e71",
+      "source": "notices/packages/liblist-moreutils-perl.copyright"
+    },
+    {
+      "name": "notices/biber/packages/liblist-moreutils-xs-perl.copyright",
+      "length": 5193,
+      "sha256": "701442cf3769c37d49c6e531c5c80c69e98fd02e13293ed3c29f3ddaf3f9583a",
+      "source": "notices/packages/liblist-moreutils-xs-perl.copyright"
+    },
+    {
+      "name": "notices/biber/packages/liblist-someutils-perl.copyright",
+      "length": 1375,
+      "sha256": "6715e849a849479eb475771a4b56f7a7f27c58830063fb93faa2aac1e6286619",
+      "source": "notices/packages/liblist-someutils-perl.copyright"
+    },
+    {
+      "name": "notices/biber/packages/liblist-utilsby-perl.copyright",
+      "length": 1199,
+      "sha256": "739473ff32bd527f2d97b7b591b77eec5f7829c16e9fd423ddd61a6d89475644",
+      "source": "notices/packages/liblist-utilsby-perl.copyright"
+    },
+    {
+      "name": "notices/biber/packages/liblog-log4perl-perl.copyright",
+      "length": 1234,
+      "sha256": "6d813efc65e7cc64ecdd02f1b49ea1939d68f1285c1edaba0cdcee29b2cb667a",
+      "source": "notices/packages/liblog-log4perl-perl.copyright"
+    },
+    {
+      "name": "notices/biber/packages/liblwp-mediatypes-perl.copyright",
+      "length": 1071,
+      "sha256": "8c2cc51198a9ef28f7694850f8581fccd14fa5fac0aebba81104106e8dc065ac",
+      "source": "notices/packages/liblwp-mediatypes-perl.copyright"
+    },
+    {
+      "name": "notices/biber/packages/liblwp-protocol-https-perl.copyright",
+      "length": 1127,
+      "sha256": "c1b5fe9babe9a1953bed67f8ed7418e97d8d524183f26cd5d9c87199ab3bfec5",
+      "source": "notices/packages/liblwp-protocol-https-perl.copyright"
+    },
+    {
+      "name": "notices/biber/packages/libmime-charset-perl.copyright",
+      "length": 1555,
+      "sha256": "1728ec88fb931c0b166123b1c76317c47b69c8197b84078ebd22bc22acf09774",
+      "source": "notices/packages/libmime-charset-perl.copyright"
+    },
+    {
+      "name": "notices/biber/packages/libmodule-implementation-perl.copyright",
+      "length": 10423,
+      "sha256": "6487cd1dc32114d793dd2c87c60a31ee96b4f2764dec8b42b2761c2209265a77",
+      "source": "notices/packages/libmodule-implementation-perl.copyright"
+    },
+    {
+      "name": "notices/biber/packages/libmodule-runtime-perl.copyright",
+      "length": 1312,
+      "sha256": "cb85b813403f82d3ac4b3c7b956c645e83f8b50e5f10b32346f67582b7bb2b02",
+      "source": "notices/packages/libmodule-runtime-perl.copyright"
+    },
+    {
+      "name": "notices/biber/packages/libmro-compat-perl.copyright",
+      "length": 1250,
+      "sha256": "e5b5fed696caaf2ea71d7c781b1c4029eabf55dffa5b6dabd2e163b0efc4bf35",
+      "source": "notices/packages/libmro-compat-perl.copyright"
+    },
+    {
+      "name": "notices/biber/packages/libnamespace-autoclean-perl.copyright",
+      "length": 1203,
+      "sha256": "252dca48bcc0d2b1fd61805f435dc60925089cd784068f5f229680cd775d793b",
+      "source": "notices/packages/libnamespace-autoclean-perl.copyright"
+    },
+    {
+      "name": "notices/biber/packages/libnamespace-clean-perl.copyright",
+      "length": 1471,
+      "sha256": "bb89922e14121fe4b14c5e6f3e8601b17a73f5242bcd3fab6fe197525a26d339",
+      "source": "notices/packages/libnamespace-clean-perl.copyright"
+    },
+    {
+      "name": "notices/biber/packages/libnet-http-perl.copyright",
+      "length": 1108,
+      "sha256": "2b931a4b81d3047ace504221323152a27e8c072586d409d276dbe88244c8c3f5",
+      "source": "notices/packages/libnet-http-perl.copyright"
+    },
+    {
+      "name": "notices/biber/packages/libnet-ssleay-perl.copyright",
+      "length": 11595,
+      "sha256": "5052b860a1c9ba755bc309134c1bc31e2663527ce9fddc30e7ae1fa4bc2c5165",
+      "source": "notices/packages/libnet-ssleay-perl.copyright"
+    },
+    {
+      "name": "notices/biber/packages/libnumber-compare-perl.copyright",
+      "length": 1308,
+      "sha256": "fcacb3c1f36dd6734e5a1dfcf9bf7d11cd31bf500d3363d8385c473c366dc16e",
+      "source": "notices/packages/libnumber-compare-perl.copyright"
+    },
+    {
+      "name": "notices/biber/packages/libpackage-stash-perl.copyright",
+      "length": 1234,
+      "sha256": "5efe7ec7af83a1ce1565e53204c2408ae095e3a704f550e40dcf83205fc7c41e",
+      "source": "notices/packages/libpackage-stash-perl.copyright"
+    },
+    {
+      "name": "notices/biber/packages/libparams-classify-perl.copyright",
+      "length": 1329,
+      "sha256": "46a4604df2be2f0cd45c34cdc208bc351bd9e8178fb76ba9b988df3cbf811068",
+      "source": "notices/packages/libparams-classify-perl.copyright"
+    },
+    {
+      "name": "notices/biber/packages/libparams-util-perl.copyright",
+      "length": 2583,
+      "sha256": "e0c53f7b70b5d8fca3f083e97ea510eefde70198084fd72213e0f83603ef2bc0",
+      "source": "notices/packages/libparams-util-perl.copyright"
+    },
+    {
+      "name": "notices/biber/packages/libparams-validate-perl.copyright",
+      "length": 11097,
+      "sha256": "49312df712e9c39377fc586a58bccb8a300ac815f647ff1bbda8ae0d3feb48d5",
+      "source": "notices/packages/libparams-validate-perl.copyright"
+    },
+    {
+      "name": "notices/biber/packages/libparams-validationcompiler-perl.copyright",
+      "length": 10342,
+      "sha256": "267bacf8e3beb219e758a4d4dff988bb738b4c1e0e79364afe796a7f7c736425",
+      "source": "notices/packages/libparams-validationcompiler-perl.copyright"
+    },
+    {
+      "name": "notices/biber/packages/libparse-recdescent-perl.copyright",
+      "length": 2102,
+      "sha256": "fc6d70f27fc20cb54079a60ff4371b34141af868e61ef4f27997b9d76968a7d2",
+      "source": "notices/packages/libparse-recdescent-perl.copyright"
+    },
+    {
+      "name": "notices/biber/packages/libreadonly-perl.copyright",
+      "length": 1188,
+      "sha256": "29fe76ce46fcb65d38b4e55743b13a4bd3ab093a381ae95980e1f681fd6f2fb2",
+      "source": "notices/packages/libreadonly-perl.copyright"
+    },
+    {
+      "name": "notices/biber/packages/libregexp-common-perl.copyright",
+      "length": 13143,
+      "sha256": "b7112956cfce06b4f926ed20ef23948742e18b431533f33a69f084069b50fead",
+      "source": "notices/packages/libregexp-common-perl.copyright"
+    },
+    {
+      "name": "notices/biber/packages/librole-tiny-perl.copyright",
+      "length": 1707,
+      "sha256": "5fd03ae2c949d1e20519f3fc640bba113f91b325781c8d17717edf8909a1ab8e",
+      "source": "notices/packages/librole-tiny-perl.copyright"
+    },
+    {
+      "name": "notices/biber/packages/libsombok3.copyright",
+      "length": 1191,
+      "sha256": "cba190e51cf28c0e7333eb9ab003e437f81bb1c000ec2110c1de1c971054e017",
+      "source": "notices/packages/libsombok3.copyright"
+    },
+    {
+      "name": "notices/biber/packages/libsort-key-perl.copyright",
+      "length": 1375,
+      "sha256": "40df27448f54d6d0a5ae39570d5c422e447b88f33aaa7e6a1f759658e11b692c",
+      "source": "notices/packages/libsort-key-perl.copyright"
+    },
+    {
+      "name": "notices/biber/packages/libspecio-perl.copyright",
+      "length": 10484,
+      "sha256": "00a5d9db82fd7fd1d419efbd7df837cdedd019533727de2cca4ecd41d4e52f9e",
+      "source": "notices/packages/libspecio-perl.copyright"
+    },
+    {
+      "name": "notices/biber/packages/libsub-exporter-perl.copyright",
+      "length": 1360,
+      "sha256": "52bc27b53f77bf288335f6a01905e8ddc672840655972a367e1d41e7ed358f07",
+      "source": "notices/packages/libsub-exporter-perl.copyright"
+    },
+    {
+      "name": "notices/biber/packages/libsub-exporter-progressive-perl.copyright",
+      "length": 1283,
+      "sha256": "10f10ba9b79329bc5e481c595b82c788bd9d030fd5be842376ddebd655d9fa1c",
+      "source": "notices/packages/libsub-exporter-progressive-perl.copyright"
+    },
+    {
+      "name": "notices/biber/packages/libsub-identify-perl.copyright",
+      "length": 1304,
+      "sha256": "0b770110ea0a0c79e1e528177bbf1aa1000bafb3a07e6c66b1e66eb5e729db67",
+      "source": "notices/packages/libsub-identify-perl.copyright"
+    },
+    {
+      "name": "notices/biber/packages/libsub-install-perl.copyright",
+      "length": 1260,
+      "sha256": "97347e713f60309f2224a5bc9ecd6b2413e4b99e13ef14146ef64e06f8bea382",
+      "source": "notices/packages/libsub-install-perl.copyright"
+    },
+    {
+      "name": "notices/biber/packages/libsub-name-perl.copyright",
+      "length": 1444,
+      "sha256": "7bdc7b7a0ca0bc19a7905db5f766f9bd12964923aa55de6958dabfcfd69de74e",
+      "source": "notices/packages/libsub-name-perl.copyright"
+    },
+    {
+      "name": "notices/biber/packages/libsub-quote-perl.copyright",
+      "length": 1998,
+      "sha256": "ed079968cf5737526457bec14bca688aafa5ef45f48d1378debb5f895af2b0f3",
+      "source": "notices/packages/libsub-quote-perl.copyright"
+    },
+    {
+      "name": "notices/biber/packages/libtext-bibtex-perl.copyright",
+      "length": 2362,
+      "sha256": "6962c9d4c72097109b9613eae190e86c258362b363ebfdd839a7db0bdd7238db",
+      "source": "notices/packages/libtext-bibtex-perl.copyright"
+    },
+    {
+      "name": "notices/biber/packages/libtext-csv-perl.copyright",
+      "length": 1603,
+      "sha256": "a7481d5571e24ac423bf4faba71abe857d7b0332d268610f9dc3c7d9a3585eef",
+      "source": "notices/packages/libtext-csv-perl.copyright"
+    },
+    {
+      "name": "notices/biber/packages/libtext-csv-xs-perl.copyright",
+      "length": 2206,
+      "sha256": "1859005ed05c1887c17564f19315ce69ec910579e088d1b768539030ec780774",
+      "source": "notices/packages/libtext-csv-xs-perl.copyright"
+    },
+    {
+      "name": "notices/biber/packages/libtext-glob-perl.copyright",
+      "length": 1211,
+      "sha256": "a0dae4d1e9e6c30ba14baab1df1048ee4bcf722a4271f5574f2de96315485606",
+      "source": "notices/packages/libtext-glob-perl.copyright"
+    },
+    {
+      "name": "notices/biber/packages/libtext-roman-perl.copyright",
+      "length": 1296,
+      "sha256": "a5135b0ba4eb2cd65c569e903b13511c8b8ae85462e840d5477ba2dac47b597c",
+      "source": "notices/packages/libtext-roman-perl.copyright"
+    },
+    {
+      "name": "notices/biber/packages/libthai-data.copyright",
+      "length": 2458,
+      "sha256": "62d2835587b92a6abdbe62fe4524a7b6a59ac478df2c591eb98c3fbce6c3fa08",
+      "source": "notices/packages/libthai-data.copyright"
+    },
+    {
+      "name": "notices/biber/packages/libthai0.copyright",
+      "length": 2458,
+      "sha256": "62d2835587b92a6abdbe62fe4524a7b6a59ac478df2c591eb98c3fbce6c3fa08",
+      "source": "notices/packages/libthai0.copyright"
+    },
+    {
+      "name": "notices/biber/packages/libtie-cycle-perl.copyright",
+      "length": 10310,
+      "sha256": "44ce306232722c40852667e3767e17991b9cf4bcbcb4e9a52567db8ddf4887fb",
+      "source": "notices/packages/libtie-cycle-perl.copyright"
+    },
+    {
+      "name": "notices/biber/packages/libtimedate-perl.copyright",
+      "length": 1427,
+      "sha256": "63a8fd33784fdf6f5cb7f09bdc3b79cf72fb2cb1562438775b11eaeed8024d29",
+      "source": "notices/packages/libtimedate-perl.copyright"
+    },
+    {
+      "name": "notices/biber/packages/libtry-tiny-perl.copyright",
+      "length": 1566,
+      "sha256": "36b59e1396cfabed18908a5a58f52e71e115bb4937ca9a65ee8ea5dfc5a77da6",
+      "source": "notices/packages/libtry-tiny-perl.copyright"
+    },
+    {
+      "name": "notices/biber/packages/libunicode-linebreak-perl.copyright",
+      "length": 2500,
+      "sha256": "0c649bfc797318fa4a5091e98facbd3c38a98e4b6ff11587fff2270a9a8b6aa0",
+      "source": "notices/packages/libunicode-linebreak-perl.copyright"
+    },
+    {
+      "name": "notices/biber/packages/liburi-perl.copyright",
+      "length": 1414,
+      "sha256": "bec26ae90841753f906e11559d9f1506f6753cd863006d84eb3b5934bebfe67a",
+      "source": "notices/packages/liburi-perl.copyright"
+    },
+    {
+      "name": "notices/biber/packages/libvariable-magic-perl.copyright",
+      "length": 1569,
+      "sha256": "a775cf5d6f00c9fa28217aee2179c51abb34413d65d4ddab52930776eb262359",
+      "source": "notices/packages/libvariable-magic-perl.copyright"
+    },
+    {
+      "name": "notices/biber/packages/libwww-perl.copyright",
+      "length": 1945,
+      "sha256": "8fddda8deffb13d75fc892a6c2a9bb07c2f29ba7a2cd06cc75908386d9c40df0",
+      "source": "notices/packages/libwww-perl.copyright"
+    },
+    {
+      "name": "notices/biber/packages/libwww-robotrules-perl.copyright",
+      "length": 1141,
+      "sha256": "d86bc4daf67b16c46b7e86f180e13547903696ab7718e59f51afec50286fedfe",
+      "source": "notices/packages/libwww-robotrules-perl.copyright"
+    },
+    {
+      "name": "notices/biber/packages/libxml-libxml-perl.copyright",
+      "length": 3577,
+      "sha256": "d02a17eef4044af532e73cca8ca17fa7ff0136c6339d16fa3c42ab6307ba5987",
+      "source": "notices/packages/libxml-libxml-perl.copyright"
+    },
+    {
+      "name": "notices/biber/packages/libxml-libxml-simple-perl.copyright",
+      "length": 1077,
+      "sha256": "d2253a4b3716b55170ee197fe8524f6091d6addd3e92f48c6dfd87b18a37c99c",
+      "source": "notices/packages/libxml-libxml-simple-perl.copyright"
+    },
+    {
+      "name": "notices/biber/packages/libxml-libxslt-perl.copyright",
+      "length": 2845,
+      "sha256": "a9d4563c2c2e0328a6412bb638edee4e98a5f7fad23281b455251b3f7ca79e74",
+      "source": "notices/packages/libxml-libxslt-perl.copyright"
+    },
+    {
+      "name": "notices/biber/packages/libxml-namespacesupport-perl.copyright",
+      "length": 1165,
+      "sha256": "ceb32abafa4fe9bac427a96c631f1f726f2e08e1cc2e62ce047585cd4b012fee",
+      "source": "notices/packages/libxml-namespacesupport-perl.copyright"
+    },
+    {
+      "name": "notices/biber/packages/libxml-sax-base-perl.copyright",
+      "length": 1467,
+      "sha256": "2a4dae4cd52f2f2e8fdd84cb80ded2502c3a8e8c11e753dfe3fe6eee7a85459d",
+      "source": "notices/packages/libxml-sax-base-perl.copyright"
+    },
+    {
+      "name": "notices/biber/packages/libxml-sax-perl.copyright",
+      "length": 1585,
+      "sha256": "a1f5adc406821fca029426153651a28488ad3b44c24fedead18f12d658360dac",
+      "source": "notices/packages/libxml-sax-perl.copyright"
+    },
+    {
+      "name": "notices/biber/packages/libxml-writer-perl.copyright",
+      "length": 1622,
+      "sha256": "8d957e4d84854c09ea47ac9de3ebd73ce6311360b084d2b7f2e52ebe21b60ad8",
+      "source": "notices/packages/libxml-writer-perl.copyright"
+    },
+    {
+      "name": "notices/biber/packages/libxslt1.1.copyright",
+      "length": 3282,
+      "sha256": "4b82c8dd6e55001a5921bea1d6db20be5c51e5976d892e870324026c23f37b6f",
+      "source": "notices/packages/libxslt1.1.copyright"
+    },
+    {
+      "name": "notices/biber/packages/libxstring-perl.copyright",
+      "length": 1250,
+      "sha256": "fc539bbb594dee8bcafdeff46136e14537a48426a045730552c5efb45f82cf0b",
+      "source": "notices/packages/libxstring-perl.copyright"
+    },
+    {
+      "name": "notices/biber/packages/perl-openssl-defaults.copyright",
+      "length": 1446,
+      "sha256": "56f90808e9f6955e5743bec88350cf29051bed449bd55accbdc29b66861396dd",
+      "source": "notices/packages/perl-openssl-defaults.copyright"
+    },
+    {
+      "name": "notices/biber/packages/tex-common.copyright",
+      "length": 3163,
+      "sha256": "86ad2c88447a71cfe74944c89b8908b40a85d0e181d037f91d2db78e76d688f7",
+      "source": "notices/packages/tex-common.copyright"
+    },
+    {
+      "name": "notices/biber/packages/ucf.copyright",
+      "length": 4161,
+      "sha256": "67dd4031ca283ba2f0def195329740f237e7ba30ef26e3dce3afa7f73cb62c8b",
+      "source": "notices/packages/ucf.copyright"
+    },
+    {
+      "name": "notices/biber/sources/Class-XSAccessor/README",
+      "length": 6774,
+      "sha256": "ad3a0aeef3605a0846c72e1923352c4f4ffc62e20d7f1e9cf6f15e620d5fd55c",
+      "source": "notices/sources/Class-XSAccessor/README"
+    },
+    {
+      "name": "notices/biber/sources/Clone/README.md",
+      "length": 2057,
+      "sha256": "40aa7eb133e97b075024380640528760a54aefc344781741ed02539a375db5ac",
+      "source": "notices/sources/Clone/README.md"
+    },
+    {
+      "name": "notices/biber/sources/DateTime/LICENSE",
+      "length": 9047,
+      "sha256": "bd6780eab28e32b38ec8207b1f9d4c7ddedce4cfdc005b4937e9f36ef71a9a53",
+      "source": "notices/sources/DateTime/LICENSE"
+    },
+    {
+      "name": "notices/biber/sources/DateTime/README.md",
+      "length": 72089,
+      "sha256": "06918dabcf1b2539e16789cc033b608f97e0fc53fca554940ec67700302e35d7",
+      "source": "notices/sources/DateTime/README.md"
+    },
+    {
+      "name": "notices/biber/sources/List-MoreUtils-XS/ARTISTIC-1.0",
+      "length": 6320,
+      "sha256": "08c2ed7589aff3b2076b48b792078d3479c2295559ee7bc4615e93abe0473939",
+      "source": "notices/sources/List-MoreUtils-XS/ARTISTIC-1.0"
+    },
+    {
+      "name": "notices/biber/sources/List-MoreUtils-XS/LICENSE",
+      "length": 11357,
+      "sha256": "b40930bbcf80744c86c46a12bc9da056641d722716c378f5659b9e555ef833e1",
+      "source": "notices/sources/List-MoreUtils-XS/LICENSE"
+    },
+    {
+      "name": "notices/biber/sources/List-MoreUtils-XS/README.md",
+      "length": 2311,
+      "sha256": "dbe77d49891caef12775ee883ba653c2a1bf9835d8facc0b921339366eeb5aa6",
+      "source": "notices/sources/List-MoreUtils-XS/README.md"
+    },
+    {
+      "name": "notices/biber/sources/List-SomeUtils-XS/LICENSE",
+      "length": 9040,
+      "sha256": "fa6533a05e621c6e3fd228f920cc61000f312438770fc770d496373fede6e3dd",
+      "source": "notices/sources/List-SomeUtils-XS/LICENSE"
+    },
+    {
+      "name": "notices/biber/sources/List-SomeUtils-XS/README.md",
+      "length": 2651,
+      "sha256": "006aeec781df68f18fb29a71b990005938bc08a9b178ea03f2a22157fdc7f175",
+      "source": "notices/sources/List-SomeUtils-XS/README.md"
+    },
+    {
+      "name": "notices/biber/sources/Package-Stash-XS/LICENSE",
+      "length": 18344,
+      "sha256": "5f82745d355b43f451c557642618cbd903251192b89f31ca53eaab90c35aeb7c",
+      "source": "notices/sources/Package-Stash-XS/LICENSE"
+    },
+    {
+      "name": "notices/biber/sources/Package-Stash-XS/README",
+      "length": 401,
+      "sha256": "db78015b213cf055516455f5aeaf41d83f085b44c41e17f380619dcf7616d938",
+      "source": "notices/sources/Package-Stash-XS/README"
+    },
+    {
+      "name": "notices/biber/sources/Params-Util/ARTISTIC-1.0",
+      "length": 6320,
+      "sha256": "08c2ed7589aff3b2076b48b792078d3479c2295559ee7bc4615e93abe0473939",
+      "source": "notices/sources/Params-Util/ARTISTIC-1.0"
+    },
+    {
+      "name": "notices/biber/sources/Params-Util/LICENSE",
+      "length": 667,
+      "sha256": "834c4ebff45be11f35f059b077fdd747dee4b8a747b95049d849fef1c0ccdc62",
+      "source": "notices/sources/Params-Util/LICENSE"
+    },
+    {
+      "name": "notices/biber/sources/Params-Util/README.md",
+      "length": 14711,
+      "sha256": "7200e8dc891b651e71a2d5db92641fe7036ab3d9503fc607b14e39bae6a91adb",
+      "source": "notices/sources/Params-Util/README.md"
+    },
+    {
+      "name": "notices/biber/sources/Params-Validate-XS/LICENSE",
+      "length": 9065,
+      "sha256": "6e64f7a02fc0877b354c5dfb96fc718e556bb838e8df6bfc4e814fdab9be39fc",
+      "source": "notices/sources/Params-Validate-XS/LICENSE"
+    },
+    {
+      "name": "notices/biber/sources/Params-Validate-XS/README.md",
+      "length": 25632,
+      "sha256": "ed663cba580c41180ca63078be40dd326b8eb9c1fa00e8b1d3c2fda1da9a3542",
+      "source": "notices/sources/Params-Validate-XS/README.md"
+    },
+    {
+      "name": "notices/biber/sources/PerlIO-utf8_strict/LICENSE",
+      "length": 18407,
+      "sha256": "37f7e51d4f6e63d8fbd88ddbde5145195b50c88573b56bd14e6cecb0da9a7f46",
+      "source": "notices/sources/PerlIO-utf8_strict/LICENSE"
+    },
+    {
+      "name": "notices/biber/sources/PerlIO-utf8_strict/README",
+      "length": 386,
+      "sha256": "4bf6426d5c6a85f0eb4b2b308ab8ba13f5a0c32ac9a455c5fd3f8c0d19678211",
+      "source": "notices/sources/PerlIO-utf8_strict/README"
+    },
+    {
+      "name": "notices/biber/sources/Ref-Util-XS/LICENSE",
+      "length": 1155,
+      "sha256": "9270fbae67077af4147f2c96d82bad1d108336618c20ab188cce1801b220016b",
+      "source": "notices/sources/Ref-Util-XS/LICENSE"
+    },
+    {
+      "name": "notices/biber/sources/Ref-Util-XS/README",
+      "length": 292,
+      "sha256": "67afb4157b151e8f51ee81574b618c6705bc234e5fa0c587f39bf9031c14a062",
+      "source": "notices/sources/Ref-Util-XS/README"
+    },
+    {
+      "name": "notices/biber/sources/Sort-Key/README",
+      "length": 483,
+      "sha256": "10eda796647eab017cad8257dc980f17ada3751370fffdfdaa740e796ecc63d3",
+      "source": "notices/sources/Sort-Key/README"
+    },
+    {
+      "name": "notices/biber/sources/Sub-Identify/README.mdown",
+      "length": 187,
+      "sha256": "7f482dee56943edbab6fc5d33c7d2c4e55b521c5cd8137629fa3725c8b232163",
+      "source": "notices/sources/Sub-Identify/README.mdown"
+    },
+    {
+      "name": "notices/biber/sources/Sub-Name/README",
+      "length": 363,
+      "sha256": "b8eb3c3894c11185593d8cbab67c0b64cafb026f659c973439d16a7f787340ec",
+      "source": "notices/sources/Sub-Name/README"
+    },
+    {
+      "name": "notices/biber/sources/Text-BibTeX/README",
+      "length": 2799,
+      "sha256": "90632dda8e028192d4c50905a795ceb723743bef35ea88411298ab3fa892369e",
+      "source": "notices/sources/Text-BibTeX/README"
+    },
+    {
+      "name": "notices/biber/sources/Text-CSV_XS/README",
+      "length": 2765,
+      "sha256": "a6d355e4d39dc5c98acd521cf4b3f01c9c5d3c80af6861d02c55daed067e6127",
+      "source": "notices/sources/Text-CSV_XS/README"
+    },
+    {
+      "name": "notices/biber/sources/Unicode-LineBreak/ARTISTIC",
+      "length": 6451,
+      "sha256": "0078ac51c216649df3bcdb624ae348d1432aab534aa5d2ac7df7e58d400c15dd",
+      "source": "notices/sources/Unicode-LineBreak/ARTISTIC"
+    },
+    {
+      "name": "notices/biber/sources/Unicode-LineBreak/README",
+      "length": 1901,
+      "sha256": "5e820b5a092bdcf5bd10a0596fdcc37d49ea34c2e6fdfbdd30fc50db72cad8a4",
+      "source": "notices/sources/Unicode-LineBreak/README"
+    },
+    {
+      "name": "notices/biber/sources/Variable-Magic/README",
+      "length": 24036,
+      "sha256": "27623fcb4514e987bb2d4dd0a8aa1cebc7d881d33db4dc3e2181bff75222c3b0",
+      "source": "notices/sources/Variable-Magic/README"
+    },
+    {
+      "name": "notices/biber/sources/XML-LibXML/LICENSE",
+      "length": 401,
+      "sha256": "5046a7ec515cc1542beafdf2eadeeff24cc221fc3fde9913dd144fd263ae6100",
+      "source": "notices/sources/XML-LibXML/LICENSE"
+    },
+    {
+      "name": "notices/biber/sources/XML-LibXML/README",
+      "length": 9594,
+      "sha256": "9d93efe47f77eabc7d76f6ff607012d91d5b5b0f1fdbc8bb37d09f9ca8703a07",
+      "source": "notices/sources/XML-LibXML/README"
+    },
+    {
+      "name": "notices/biber/sources/XString/LICENSE",
+      "length": 18346,
+      "sha256": "6b182f28e37a34ee5c7405a2df99f62b7b96bf8c41f7a404ce67a758b0e41175",
+      "source": "notices/sources/XString/LICENSE"
+    },
+    {
+      "name": "notices/biber/sources/XString/README",
+      "length": 358,
+      "sha256": "b20cc87728b201f1e6b887e9cae928cc9d255cb9969e6b39fb88fd54e9df0115",
+      "source": "notices/sources/XString/README"
+    },
+    {
+      "name": "notices/biber/sources/autovivification/README",
+      "length": 7161,
+      "sha256": "fceb8c3fa240a99ff438f80e17fc2a135c59655dc16c4c7dfd096d0222df8a79",
+      "source": "notices/sources/autovivification/README"
+    },
+    {
+      "name": "notices/biber/sources/biber/README.md",
+      "length": 2457,
+      "sha256": "f8e717b4e6201f03eaae94832373836d28b7854ed371326200ad662c6b5cec02",
+      "source": "notices/sources/biber/README.md"
+    },
+    {
+      "name": "notices/biber/sources/emperl/Artistic",
+      "length": 6321,
+      "sha256": "dd90d4f42e4dcadf5a7c09eea0189d93c7b37ae560c91f0f6d5233ed3b9292a2",
+      "source": "notices/sources/emperl/Artistic"
+    },
+    {
+      "name": "notices/biber/sources/emperl/Copying",
+      "length": 12632,
+      "sha256": "d77d235e41d54594865151f4751e835c5a82322b0e87ace266567c3391a4b912",
+      "source": "notices/sources/emperl/Copying"
+    },
+    {
+      "name": "notices/biber/sources/emperl/README",
+      "length": 5683,
+      "sha256": "4a39adc445d79e213df5c2028c5432806dfcdfe69a5bc31ba5c83071a0097877",
+      "source": "notices/sources/emperl/README"
+    },
+    {
+      "name": "notices/biber/sources/libxml2/COPYING",
+      "length": 1289,
+      "sha256": "c5c63674f8a83c4d2e385d96d1c670a03cb871ba2927755467017317878574bd",
+      "source": "notices/sources/libxml2/COPYING"
+    },
+    {
+      "name": "notices/biber/sources/libxml2/Copyright",
+      "length": 1289,
+      "sha256": "c5c63674f8a83c4d2e385d96d1c670a03cb871ba2927755467017317878574bd",
+      "source": "notices/sources/libxml2/Copyright"
+    },
+    {
+      "name": "notices/biber/sources/libxml2/README.md",
+      "length": 3744,
+      "sha256": "163a54f9593b6a7ef39caca031a9b9899dd60b3bb943527e71d699fabf5564ea",
+      "source": "notices/sources/libxml2/README.md"
+    },
+    {
+      "name": "notices/biber/sources/perl/Artistic",
+      "length": 6321,
+      "sha256": "dd90d4f42e4dcadf5a7c09eea0189d93c7b37ae560c91f0f6d5233ed3b9292a2",
+      "source": "notices/sources/perl/Artistic"
+    },
+    {
+      "name": "notices/biber/sources/perl/Copying",
+      "length": 12632,
+      "sha256": "d77d235e41d54594865151f4751e835c5a82322b0e87ace266567c3391a4b912",
+      "source": "notices/sources/perl/Copying"
+    },
+    {
+      "name": "notices/biber/sources/perl/README",
+      "length": 5427,
+      "sha256": "9519aaeeac509b3fa8778155a63545b6086f8313546b93fe9958d1c434d476a8",
+      "source": "notices/sources/perl/README"
+    },
+    {
+      "name": "notices/biber/sources/sombok/ARTISTIC",
+      "length": 6451,
+      "sha256": "0078ac51c216649df3bcdb624ae348d1432aab534aa5d2ac7df7e58d400c15dd",
+      "source": "notices/sources/sombok/ARTISTIC"
+    },
+    {
+      "name": "notices/biber/sources/sombok/COPYING",
+      "length": 12632,
+      "sha256": "d77d235e41d54594865151f4751e835c5a82322b0e87ace266567c3391a4b912",
+      "source": "notices/sources/sombok/COPYING"
+    },
+    {
+      "name": "notices/biber/sources/sombok/README",
+      "length": 1443,
+      "sha256": "e0009264839036984c976847d8a1e2039fefea7877762115c50d0b195aadf88f",
+      "source": "notices/sources/sombok/README"
+    }
+  ],
+  "noticeCount": 166,
+  "noticeBytes": 749101,
+  "pinFields": {
+    "BiberLoader": "biber.js",
+    "BiberWasm": "biber.wasm",
+    "BiberData": "biber.data",
+    "SemanticLoader": "semantic-engine.js",
+    "SemanticWasm": "semantic-engine.wasm",
+    "PdfFormat": "pdflatex.fmt",
+    "DviFormat": "latex-dvi.fmt",
+    "ConverterLoader": "dvi-map-converter.js",
+    "ConverterWasm": "dvi-map-converter.wasm",
+    "LuaLoader": "luatex.js",
+    "LuaWasm": "luatex.wasm",
+    "LuaFormat": "lualatex.fmt",
+    "LuaHarfResource": "luaotfload-harf-plug.lua"
+  },
+  "retainedBibtex": [
+    "engine.js",
+    "engine.wasm"
+  ],
+  "sourceBuildAssociations": [
+    {
+      "id": "biber04",
+      "evidence": [
+        {
+          "id": "native-freeze05",
+          "length": 44233,
+          "sha256": "c934cf95fd96d18a13d002123e03393dcd7a06b776be6587e5ee2373a526496a"
+        },
+        {
+          "id": "C-ABI-link-receipt04",
+          "length": 11185,
+          "sha256": "238499db13232241d82e9a0b36967432ba9d87bb7adfcab60330bd8e9ec13abe"
+        }
+      ],
+      "recipes": [
+        {
+          "path": "native/tex/biber-engine/build.py",
+          "length": 5919,
+          "sha256": "2a88856427f736e88c2029a1e77309859761d417fbfc3dd6131075829cd055dd"
+        },
+        {
+          "path": "native/tex/biber-engine/link.py",
+          "length": 6795,
+          "sha256": "c9cb05135cba4cef4d1777897e49b952e6a20f8a129d9c628275c9e3d578444f"
+        },
+        {
+          "path": "native/tex/biber-engine/source-lock.json",
+          "length": 21043,
+          "sha256": "cfa5c5db66d74e01fef02b9cd82adb4e586e4881978061dd2ee1a7e1b8a4874a"
+        },
+        {
+          "path": "native/tex/biber-engine/bootstrap-lock.json",
+          "length": 49502,
+          "sha256": "dfa42002873685f95235ec84df8cca30b6baddb9d5fe9d6233b91276dbf88d2c"
+        },
+        {
+          "path": "native/tex/biber-engine/upstream/texlyre-biber/UPSTREAM.json",
+          "length": 3312,
+          "sha256": "2cf8291fb104d2a8c915d9aa9574e43198c136dacde06ff191408ee3fc204ca5"
+        }
+      ]
+    },
+    {
+      "id": "semantic-dual03-converter02",
+      "evidence": [
+        {
+          "id": "native-and-format-freeze03",
+          "length": 11487,
+          "sha256": "4409f814b4a6993cc8926648a5288e21e90a3defb7aea130aa72a24c53f976d0"
+        }
+      ],
+      "recipes": [
+        {
+          "path": "native/tex/font-semantics/prepare.py",
+          "length": 4015,
+          "sha256": "29c373759ca442ddac259a20c69f35e5c1cc042d6260f40ad787d6c5dd8a9ba5"
+        },
+        {
+          "path": "native/tex/font-semantics/build.py",
+          "length": 4860,
+          "sha256": "01bfebfe7b5969c69da8b0debce547aa8a443a8cdd5cead8be8b080df23f83c8"
+        },
+        {
+          "path": "native/tex/font-semantics/build-converter.py",
+          "length": 2486,
+          "sha256": "6a693c0726023922b06cefb24c183eca0c5dd638b84c9d526dc3700407cf51e6"
+        },
+        {
+          "path": "native/tex/font-semantics/matrix.py",
+          "length": 3033,
+          "sha256": "023c8cf587c81d1ebb728f34d7d77c92ada921474294f1d24090085bb1bc9f1b"
+        }
+      ]
+    },
+    {
+      "id": "luahb-text1-native03-resource05",
+      "evidence": [
+        {
+          "id": "native-build03",
+          "length": 79186,
+          "sha256": "1722ad430cd6ef0de19e56415e51ae1266290f956fdab6f300bab6a010db4d7a"
+        },
+        {
+          "id": "resource-overlay05",
+          "length": 843,
+          "sha256": "cb4d6cdbf184cbf170d21c6934f38016d18708f51d29c20da152c66f5cdf46ca"
+        }
+      ],
+      "recipes": [
+        {
+          "path": "native/tex/luatex-engine/harfbuzz/semantics/build.py",
+          "length": 5537,
+          "sha256": "1a44b32bcd44109f435932b91d0dc35e288234966c1854d966b4dee3c56cf567"
+        },
+        {
+          "path": "native/tex/luatex-engine/harfbuzz/semantics/overlay.py",
+          "length": 2387,
+          "sha256": "a44a41a41feeb63f1c8221b73cc59995c9cb15271986d6eab7286955b2500e29"
+        },
+        {
+          "path": "native/tex/luatex-engine/harfbuzz/semantics/rtl-spans.lua",
+          "length": 2165,
+          "sha256": "eb3d76ae6c74cc71f295e21750d3cfdcb1b423eabb406ba005b6f739f3d94893"
+        }
+      ]
+    },
+    {
+      "id": "base-profile12",
+      "evidence": [
+        {
+          "id": "profile12-staging",
+          "length": 973,
+          "sha256": "b43b1d9ec1db2dab5ddc7b98cfbe3c853249a6f909b7878cc3fe162c4c8d5e9f"
+        }
+      ],
+      "recipes": [
+        {
+          "path": "scripts/runtime/prepare-unicode-shaping.py",
+          "length": 5085,
+          "sha256": "ddc68a2fb5c646f6e8a37e9aa4075b1f565147f6696cbd31c995931fd78e485f"
+        }
+      ]
+    }
+  ]
+}
