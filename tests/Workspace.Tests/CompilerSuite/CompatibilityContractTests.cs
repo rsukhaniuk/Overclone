@@ -29,7 +29,7 @@ public sealed class CompatibilityContractTests
         Assert.True(NativeRuntimeProfiles.Modern(Profile));
         Assert.Equal("local-compiler-suite-v1", NativeRuntimeProfiles.IdentityName(NativeRuntimeProfile.LocalCompilerSuite));
         Assert.Equal("local-compiler-suite-v2", NativeRuntimeProfiles.IdentityName(Profile));
-        Assert.Equal(NativeRuntimeProfile.LocalCompilerGraphicsNavigation, BundledRuntimeAssets.CompilerProfile);
+        Assert.Equal(NativeRuntimeProfile.LocalCompilerBiber, BundledRuntimeAssets.CompilerProfile);
     }
 
     [Theory]
