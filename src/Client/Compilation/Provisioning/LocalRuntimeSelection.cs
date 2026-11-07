@@ -17,7 +17,7 @@ public static class LocalRuntimeSelection
     public static NativeRuntimeLimits LimitsFor(NativeRuntimeProfile profile) => profile switch
     {
         Profile or NativeRuntimeProfile.LocalLatex2023SyncTeX or NativeRuntimeProfile.LocalLatex2023Dvi => new(512, 33554432, 67108864, profile),
-        NativeRuntimeProfile.LocalCompilerSuite or NativeRuntimeProfile.LocalCompilerCompatibility or NativeRuntimeProfile.LocalCompilerBibliography or NativeRuntimeProfile.LocalCompilerNavigation or NativeRuntimeProfile.LocalCompilerXeNavigation or NativeRuntimeProfile.LocalCompilerGraphicsNavigation => new(NativeCompilerSuiteContract.Files, NativeCompilerSuiteContract.FileBytes, NativeCompilerSuiteContract.TotalBytes, profile),
+        NativeRuntimeProfile.LocalCompilerSuite or NativeRuntimeProfile.LocalCompilerCompatibility or NativeRuntimeProfile.LocalCompilerBibliography or NativeRuntimeProfile.LocalCompilerNavigation or NativeRuntimeProfile.LocalCompilerXeNavigation or NativeRuntimeProfile.LocalCompilerGraphicsNavigation or NativeRuntimeProfile.LocalCompilerUnicode or NativeRuntimeProfile.LocalCompilerBiber => new(NativeCompilerSuiteContract.Files, NativeCompilerSuiteContract.FileBytes, NativeCompilerSuiteContract.TotalBytes, profile),
         _ => throw Invalid()
     };
     public static bool SupportedSuiteCount(int count) => count is > 0 and <= NativeCompilerSuiteContract.Files
@@ -26,7 +26,9 @@ public static class LocalRuntimeSelection
             || NativeRuntimeProfiles.SuitePinsReady(NativeRuntimeProfile.LocalCompilerBibliography) && count == NativeRuntimeProfiles.InstalledCount(NativeRuntimeProfile.LocalCompilerBibliography)
             || NativeRuntimeProfiles.SuitePinsReady(NativeRuntimeProfile.LocalCompilerNavigation) && count == NativeRuntimeProfiles.InstalledCount(NativeRuntimeProfile.LocalCompilerNavigation)
             || NativeRuntimeProfiles.SuitePinsReady(NativeRuntimeProfile.LocalCompilerXeNavigation) && count == NativeRuntimeProfiles.InstalledCount(NativeRuntimeProfile.LocalCompilerXeNavigation)
-            || NativeRuntimeProfiles.SuitePinsReady(NativeRuntimeProfile.LocalCompilerGraphicsNavigation) && count == NativeRuntimeProfiles.InstalledCount(NativeRuntimeProfile.LocalCompilerGraphicsNavigation));
+            || NativeRuntimeProfiles.SuitePinsReady(NativeRuntimeProfile.LocalCompilerGraphicsNavigation) && count == NativeRuntimeProfiles.InstalledCount(NativeRuntimeProfile.LocalCompilerGraphicsNavigation)
+            || NativeRuntimeProfiles.SuitePinsReady(NativeRuntimeProfile.LocalCompilerUnicode) && count == NativeRuntimeProfiles.InstalledCount(NativeRuntimeProfile.LocalCompilerUnicode)
+            || NativeRuntimeProfiles.SuitePinsReady(NativeRuntimeProfile.LocalCompilerBiber) && count == NativeRuntimeProfiles.InstalledCount(NativeRuntimeProfile.LocalCompilerBiber));
     public static bool SupportedCount(int count) => count is NativeRuntimeProfiles.AuthoringResourceCount or NativeRuntimeProfiles.SyncTeXResourceCount or NativeRuntimeProfiles.DviResourceCount
         || SupportedSuiteCount(count);
     public static NativeRuntimeProfile ProfileFor(IEnumerable<NativeResourcePin> pins)
@@ -40,12 +42,13 @@ public static class LocalRuntimeSelection
         long total = 0;
         foreach (var pin in owned)
         {
-            if (!NativeRuntimePackage.Name(pin.Name, limits.Profile) || !names.Add(pin.Name) || !Hex(pin.Sha256)
+            if (!(NativeRuntimePackage.Name(pin.Name, limits.Profile)
+                    || suiteCount && owned.Length == NativeCompilerBiberPins.ResourceCount && NativeBiberCompilerContract.NoticeName(pin.Name)) || !names.Add(pin.Name) || !Hex(pin.Sha256)
                 || pin.Length < 0 || pin.Length > limits.MaxFileBytes || pin.Length > limits.MaxTotalBytes - total) throw Invalid();
             total += pin.Length;
         }
         var closure = NativeRuntimePackage.ResourceIdentity(owned).Hex;
-        foreach (var profile in new[] { Profile, NativeRuntimeProfile.LocalLatex2023SyncTeX, NativeRuntimeProfile.LocalLatex2023Dvi, NativeRuntimeProfile.LocalCompilerSuite, NativeRuntimeProfile.LocalCompilerCompatibility, NativeRuntimeProfile.LocalCompilerBibliography, NativeRuntimeProfile.LocalCompilerNavigation, NativeRuntimeProfile.LocalCompilerXeNavigation, NativeRuntimeProfile.LocalCompilerGraphicsNavigation })
+        foreach (var profile in new[] { Profile, NativeRuntimeProfile.LocalLatex2023SyncTeX, NativeRuntimeProfile.LocalLatex2023Dvi, NativeRuntimeProfile.LocalCompilerSuite, NativeRuntimeProfile.LocalCompilerCompatibility, NativeRuntimeProfile.LocalCompilerBibliography, NativeRuntimeProfile.LocalCompilerNavigation, NativeRuntimeProfile.LocalCompilerXeNavigation, NativeRuntimeProfile.LocalCompilerGraphicsNavigation, NativeRuntimeProfile.LocalCompilerUnicode, NativeRuntimeProfile.LocalCompilerBiber })
             if ((!NativeRuntimeProfiles.IsSuite(profile) || NativeRuntimeProfiles.SuitePinsReady(profile))
                 && owned.Length == NativeRuntimeProfiles.InstalledCount(profile) && closure == NativeRuntimeProfiles.ClosureHash(profile)
                 && (!NativeRuntimeProfiles.IsSuite(profile) || total == NativeRuntimeProfiles.SuiteTotalBytes(profile)
@@ -75,7 +78,8 @@ public static class LocalRuntimeSelection
         {
             Fields(item, ids ? ["assetId", "name", "length", "sha256"] : ["name", "length", "sha256"]);
             string name = Text(item, "name", 200), hash = Text(item, "sha256", 64);
-            if (!NativeRuntimePackage.Name(name, suite ? NativeRuntimeProfile.LocalCompilerSuite : Profile)
+            if (!(NativeRuntimePackage.Name(name, suite ? NativeRuntimeProfile.LocalCompilerSuite : Profile)
+                    || suite && array.GetArrayLength() == NativeCompilerBiberPins.ResourceCount && NativeBiberCompilerContract.NoticeName(name))
                 || name == NativeRuntimePackage.NativeFormatName || !names.Add(name) || !Hex(hash)) throw Invalid();
             if (!item.GetProperty("length").TryGetInt32(out int length) || length < 0 || length > limits.MaxFileBytes
                 || length > limits.MaxTotalBytes - total) throw Invalid();

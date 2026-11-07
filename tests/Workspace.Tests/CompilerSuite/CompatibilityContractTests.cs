@@ -20,7 +20,7 @@ public sealed class CompatibilityContractTests
         Assert.Equal(5, (int)NativeRuntimeProfile.LocalCompilerSuite);
         Assert.Equal(6, (int)Profile);
         foreach (var profile in Enum.GetValues<NativeRuntimeProfile>())
-            Assert.Equal((int)profile is 5 or 6 or 7 or 8 or 9 or 10, NativeRuntimeProfiles.IsSuite(profile));
+            Assert.Equal((int)profile is 5 or 6 or 7 or 8 or 9 or 10 or 12 or 13, NativeRuntimeProfiles.IsSuite(profile));
         Assert.False(NativeRuntimeProfiles.IsSuite((NativeRuntimeProfile)11));
         Assert.False(NativeRuntimeProfiles.Known((NativeRuntimeProfile)11));
         Assert.False(NativeRuntimeProfiles.IsSuite((NativeRuntimeProfile)int.MaxValue));

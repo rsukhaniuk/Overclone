@@ -51,8 +51,14 @@
     </label>
     @if (Session.ConfiguredPorts is { SelectableBibliography: true })
     {
-        <label><input type="checkbox" checked="@Session.UseBibtex" @onchange="BibliographyChanged" disabled="@(!Session.CanSelectBibtex || !Session.Readiness.Ready)" data-testid="use-bibtex" /> Use BibTeX</label>
-        <p class="hint">Enable BibTeX for documents that use a BibTeX bibliography. Leave it off for plain documents.</p>
+        <label>Bibliography
+            <select aria-label="Bibliography tool" value="@Session.BibliographyTool" @onchange="BibliographyChanged" disabled="@(!Session.Readiness.Ready)" data-testid="bibliography-tool">
+                <option value="None">None</option>
+                <option value="Bibtex" disabled="@(!Session.CanSelectBibtex)">BibTeX</option>
+                <option value="Biber" disabled="@(!Session.CanSelectBiber)">Biber@(Session.CanSelectBiber ? "" : " — unavailable")</option>
+            </select>
+        </label>
+        <p class="hint">Choose the backend required by your document. Bibliography tools run locally; unavailable tools are not substituted.</p>
     }
     <p class="hint">Settings apply to this session. Unsupported engines and packages are not substituted.</p>
     <details><summary>Runtime availability &amp; compatibility</summary>
@@ -151,7 +157,10 @@
     private Task DownloadPdf() => _download?.DownloadAsync() ?? Task.CompletedTask;
     private void MainChanged(ChangeEventArgs e) => Session.SelectMain(Guid.TryParse(e.Value?.ToString(), out var id) ? new FileId(id) : null);
     private void EngineChanged(ChangeEventArgs e) => Session.SelectEngine(e.Value?.ToString() ?? "");
-    private void BibliographyChanged(ChangeEventArgs e) => Session.SelectBibliography(e.Value is true);
+    private void BibliographyChanged(ChangeEventArgs e)
+    {
+        if (e.Value is string value && Enum.TryParse<BibliographyToolKind>(value, out var kind)) Session.SelectBibliography(kind);
+    }
     private void Changed() { if (!_disposed) _ = Render(); }
     private async Task Render()
     {

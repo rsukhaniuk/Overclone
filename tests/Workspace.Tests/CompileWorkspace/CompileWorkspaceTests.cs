@@ -325,7 +325,7 @@ public sealed class CompileWorkspaceTests
         }
         finally { await Drain(session); }
     });
-    [Fact] public void Actual_checkbox_handler_passes_boolean_selection_without_compiling() => Run(async () =>
+    [Fact] public void Actual_backend_handler_passes_explicit_selection_without_compiling() => Run(async () =>
     {
         await using var f = await CompilationTestWorkspace.Open(); var c = new Configuration(selectableBibliography: true, tools: [CompilationTestWorkspace.Descriptor("bibtex")]); var session = Attach(f, c);
         try
@@ -334,10 +334,55 @@ public sealed class CompileWorkspaceTests
             var flags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
             typeof(Client.Pages.CompilePanel).GetProperty("Session", flags)!.SetValue(panel, session);
             var handler = typeof(Client.Pages.CompilePanel).GetMethod("BibliographyChanged", flags)!;
-            handler.Invoke(panel, [new Microsoft.AspNetCore.Components.ChangeEventArgs { Value = true }]); Assert.True(session.UseBibtex);
-            handler.Invoke(panel, [new Microsoft.AspNetCore.Components.ChangeEventArgs { Value = false }]); Assert.False(session.UseBibtex); Assert.Empty(c.Workers.Created);
+            handler.Invoke(panel, [new Microsoft.AspNetCore.Components.ChangeEventArgs { Value = "Bibtex" }]); Assert.True(session.UseBibtex);
+            handler.Invoke(panel, [new Microsoft.AspNetCore.Components.ChangeEventArgs { Value = "None" }]); Assert.False(session.UseBibtex);
+            var version = session.SelectionVersion;
+            handler.Invoke(panel, [new Microsoft.AspNetCore.Components.ChangeEventArgs { Value = "Biber" }]); Assert.Equal(version, session.SelectionVersion);
+            handler.Invoke(panel, [new Microsoft.AspNetCore.Components.ChangeEventArgs { Value = "unknown" }]); Assert.Equal(version, session.SelectionVersion);
+            Assert.Empty(c.Workers.Created);
         }
         finally { await Drain(session); }
+    });
+    [Fact] public void Biber_is_explicit_and_uses_exact_descriptor_with_stale_backend_rejection() => Run(async () =>
+    {
+        await using var f = await CompilationTestWorkspace.Open();
+        var biber = CompilationTestWorkspace.Descriptor("biber", "2.19", new string('b',64));
+        var bibtex = CompilationTestWorkspace.Descriptor("bibtex", "0.99d", new string('c',64));
+        var c = new Configuration(selectableBibliography:true, tools:[bibtex,biber]);var session=Attach(f,c);
+        try
+        {
+            await Select(f,session);Assert.Equal(BibliographyToolKind.None,session.BibliographyTool);Assert.True(session.CanSelectBiber);
+            Assert.True(f.Workspace.EditText(f.Main,@"\usepackage[backend=biber]{biblatex}"));
+            await session.CompileAsync();var plain=await c.Workers.Next();Assert.Empty(plain.Context.Snapshot.Selection.Tools);
+            plain.Reply.TrySetResult(plain.Output());await session.LastTicket!.Completion.WaitAsync(Bound);
+            var version=session.SelectionVersion;var commits=f.Repo.Commits;
+            session.SelectBibliography(BibliographyToolKind.Biber);Assert.Equal(version+1,session.SelectionVersion);Assert.False(session.UseBibtex);
+            await session.CompileAsync();var held=await c.Workers.Next();var old=session.LastTicket!;
+            Assert.Equal(biber,Assert.Single(held.Context.Snapshot.Selection.Tools));
+            session.SelectBibliography(BibliographyToolKind.Bibtex);Assert.True(session.UseBibtex);
+            held.Reply.TrySetResult(held.Output());Assert.NotEqual(CompileLifecycleReason.Succeeded,(await old.Completion.WaitAsync(Bound)).Reason);
+            Assert.False(session.State!.IsCurrent);Assert.Equal(commits,f.Repo.Commits);
+            await session.CompileAsync();var next=await c.Workers.Next();Assert.Equal(bibtex,Assert.Single(next.Context.Snapshot.Selection.Tools));
+            next.Reply.TrySetResult(next.Output());await session.LastTicket!.Completion.WaitAsync(Bound);
+            session.SelectBibliography(BibliographyToolKind.None);Assert.False(session.UseBibtex);Assert.Equal(3,c.Workers.Created.Count);
+        }
+        finally { foreach(var worker in c.Workers.Created)worker.Reply.TrySetResult(worker.Output());await Drain(session); }
+    });
+    [Theory] [InlineData(false)] [InlineData(true)]
+    public void Biber_unknown_or_ambiguous_tools_never_fall_back_to_Bibtex(bool duplicate) => Run(async () =>
+    {
+        await using var f=await CompilationTestWorkspace.Open();
+        var tools=duplicate ? new[]{CompilationTestWorkspace.Descriptor("biber","a"),CompilationTestWorkspace.Descriptor("biber","b"),CompilationTestWorkspace.Descriptor("bibtex")}
+            : new[]{CompilationTestWorkspace.Descriptor("Biber"),CompilationTestWorkspace.Descriptor("bibtex")};
+        var c=new Configuration(selectableBibliography:true,tools:tools);var session=Attach(f,c);
+        try
+        {
+            await Select(f,session);Assert.False(session.CanSelectBiber);var version=session.SelectionVersion;
+            session.SelectBibliography(BibliographyToolKind.Biber);Assert.Equal(version,session.SelectionVersion);
+            session.SelectBibliography((BibliographyToolKind)int.MaxValue);Assert.Equal(version,session.SelectionVersion);
+            Assert.Equal(BibliographyToolKind.None,session.BibliographyTool);Assert.False(session.UseBibtex);Assert.Empty(c.Workers.Created);
+        }
+        finally {await Drain(session);}
     });
     [Theory] [InlineData(false)] [InlineData(true)]
     public void Suite_jobs_survive_the_old_deadline_but_still_time_out_without_accepting_late_output(bool suite) => Run(async () =>

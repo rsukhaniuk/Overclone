@@ -72,7 +72,7 @@ function environment() {
     run: text => vm.runInContext(text, ctx, { timeout: 2000 }),
     get fs() { return ctx.FS; }, get mem() { return ctx.MEMFS; },
     bytes: (length, value = 90) => vm.runInContext(`new Uint8Array(${length}).fill(${value})`, ctx),
-    install: (maximum, maximumLog = 65536, nodeLimit = 64) => ctx.installNativeVfsBudget(ctx.FS, ctx.MEMFS, maximum, maximumLog, nodeLimit)
+    install: (maximum, maximumLog = 65536, nodeLimit = 64, baselineLimit = 8192) => ctx.installNativeVfsBudget(ctx.FS, ctx.MEMFS, maximum, maximumLog, nodeLimit, null, baselineLimit)
   };
 }
 const records = [], measurements = [];
@@ -247,6 +247,25 @@ async function main() {
     e.fs.readFile('/work/new.txt');e.fs.readFile('/work/new.txt');assert.equal(b.snapshot().copyBytes,16);
     refuse(e,()=>e.fs.readFile('/work/new.txt'),node(e,'new.txt'));
   });
+  await test('P12 allocation and read-copy work each cap at64MiB; file and logical growth limits remain8/16MiB', async () => {
+    for(const kind of ['backing','copy']){
+      const e=environment(),data=e.bytes(8388608);e.fs.writeFile('/work/stress.bin',data);
+      const b=await e.install(8388608,65536,128,12288);
+      for(let i=0;i<8;i++){
+        if(kind==='copy')e.fs.readFile('/work/stress.bin');
+        else e.fs.writeFile('/work/stress.bin',data);
+      }
+      assert.equal(b.snapshot()[kind==='copy'?'copyBytes':'backingBytes'],67108864);
+      refuse(e,()=>kind==='copy'?e.fs.readFile('/work/stress.bin'):e.fs.writeFile('/work/stress.bin',data));
+      assert.equal(b.failed,true);
+    }
+    const e=environment(),tooBig=e.bytes(8388609),b=await e.install(8388608,65536,128,12288);
+    refuse(e,()=>e.fs.writeFile('/work/file-over.bin',tooBig));
+    assert.equal(b.snapshot().growthBytes,0);
+    const g=environment(),data=g.bytes(8388608),one=g.bytes(1),q=await g.install(8388608,65536,128,12288);
+    g.fs.writeFile('/work/one.bin',data);g.fs.writeFile('/work/two.bin',data);
+    assert.equal(q.snapshot().growthBytes,16777216);refuse(g,()=>g.fs.writeFile('/work/over.bin',one));
+  });
   await test('implicit allocating string conversion refused before truncate', async () => {
     const e=environment(),n=node(e,'carry.aux');await e.install(8);
     refuse(e,()=>e.fs.writeFile('/work/carry.aux','hello'),n);
@@ -370,6 +389,22 @@ async function main() {
       const e=environment(),write=e.mem.stream_ops.write,inode=e.fs.nextInode;
       await assert.rejects(e.install(8,64,limit),/unsupported pinned VFS shape/);
       assert.equal(e.mem.stream_ops.write,write);assert.equal(e.fs.nextInode,inode);
+    }
+  });
+  await test('P12 bounded baseline accepts the expanded trusted closure, retaining old8192 guard and new-node quota', async () => {
+    for (const [cap, count, accepted] of [[8192,8192,true],[8192,8193,false],[12288,8411,true],[12288,12288,true],[12288,12289,false]]) {
+      const e=environment();
+      const actual=e.run(`(()=>{let n=0,p=[FS.root];while(p.length){const x=p.pop();n++;if(FS.isDir(x.mode))p.push(...Object.values(x.contents));}return n;})()`);
+      for(let i=actual;i<count;i++)e.fs.create('/work/base-'+i);
+      if(!accepted){await assert.rejects(e.install(8,64,128,cap),/unsupported pinned VFS shape/);continue;}
+      const b=await e.install(8,64,128,cap);assert.equal(b.snapshot().nodeCount,count);
+      for(let i=0;i<128;i++)e.fs.create('/work/new-'+i);
+      refuse(e,()=>e.fs.create('/work/over-new-nodes'));assert.equal(b.snapshot().newNodes,128);
+    }
+    for(const cap of [0,8193,12289,Infinity,'12288']){
+      const e=environment(),write=e.mem.stream_ops.write;
+      await assert.rejects(e.install(8,64,128,cap),/unsupported pinned VFS shape/);
+      assert.equal(e.mem.stream_ops.write,write);
     }
   });
   const v4frame=e=>({...frame(e),tag:{...frame(e).tag,version:4},outputs:['main.pdf','main.aux','main.bbl','main.blg','main.log','main.toc','main.lof','main.lot','main.out']});

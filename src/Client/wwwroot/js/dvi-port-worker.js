@@ -54,19 +54,22 @@
         let sourceMapGeometryPayload = null;
         try {
             const tag = frame.tag, resources = frame.runtimeResourceNames;
-            const graphics = tag?.profile === 10;
-            const xeNavigation = (tag?.profile === 9 && tag.version === 13 || graphics && tag.version === 16) && tag.engineId === 'xelatex';
-            const dviNavigation = ([8, 9].includes(tag?.profile) && tag.version === 12 || graphics && tag.version === 15) && tag.engineId === 'latex-dvi';
+            const semantic = tag?.profile === 13 && tag.engineId === 'latex-dvi';
+            const graphics = [10, 12, 13].includes(tag?.profile);
+            const xeNavigation = (tag?.profile === 9 && tag.version === 13 || graphics && tag.version === ([12,13].includes(tag.profile) ? 21 : 16)) && tag.engineId === 'xelatex';
+            const dviNavigation = ([8, 9].includes(tag?.profile) && tag.version === 12 || graphics && tag.version === (tag.profile === 13 ? 24 : 15)) && tag.engineId === 'latex-dvi';
             const navigation = xeNavigation || dviNavigation;
-            const suite = [5, 6, 7, 8, 9, 10].includes(tag?.profile), xe = xeNavigation || [5, 6, 7, 8].includes(tag?.profile) && tag.version === 8 && tag.engineId === 'xelatex';
+            const suite = [5, 6, 7, 8, 9, 10, 12, 13].includes(tag?.profile), xe = xeNavigation || [5, 6, 7, 8].includes(tag?.profile) && tag.version === 8 && tag.engineId === 'xelatex';
             const dvi = dviNavigation || tag?.version === 7 && [4, 5, 6, 7].includes(tag.profile) && tag.engineId === 'latex-dvi';
             const prefix = '__oop_runtime__/', resourceName = name => suite ? name.slice(prefix.length) : name;
             if (!(dvi || xe) || tag.tool !== 'dvipdfmx' || nativeAbi !== (xeNavigation ? 3 : navigation ? 2 : 1)
                 || [8, 9].includes(tag.profile) && !navigation && (loaderSha256 !== 'dc31543194583c105228dc791040c2f09afd7aa64311ce254b215c9fcd24e54a'
                     || wasmSha256 !== '52085c656ec2680150519d39ecd8588326e123652d72294e7e19eedd0ec0171c')
                 || graphics && (typeof module._oc_dvi_graphics_abi !== 'function' || module._oc_dvi_graphics_abi() !== 1)
-                || navigation && (loaderSha256 !== (graphics ? 'a961144a37546755175dfda0687c22bb79e67ebef495aa84c3922b01af6f2c57' : 'd79dca5dd87ab27ecb7dcc63cc96171092ea6a57c43054e4cabcf39a0f5c8c72')
-                    || wasmSha256 !== (graphics ? xeNavigation ? 'ca030fe4077fc02338e4d92cdc5c0ef1b89c73bcb629b9d44f59708993fa15ef' : '53bd8a8a98c509afa8b0e0e5451bf78d7e9d765da1c8f513d9c1a909e9d5270d' : xeNavigation ? '10031d2748be3f6fa6ba5bc99fd4ef597f06f66208c5b9a5aeba60d5dc3aecac' : 'fb6d4da9ee438d66d89a7a0ec36ab7dd243ea2a5c32c4a426179b935e383ca84')
+                || tag.profile === 13 && !['none','bibtex','biber'].includes(frame.bibliographyTool)
+                || semantic && (typeof module._oc_dvi_font_semantics_abi !== 'function' || module._oc_dvi_font_semantics_abi() !== 1 || typeof module._oc_dvi_font_semantics_status !== 'function')
+                || navigation && (loaderSha256 !== (semantic ? '2975efeae6dc759ccdce984f68350a250ed8bb8bedaa6584329de5901db23caf' : graphics ? 'a961144a37546755175dfda0687c22bb79e67ebef495aa84c3922b01af6f2c57' : 'd79dca5dd87ab27ecb7dcc63cc96171092ea6a57c43054e4cabcf39a0f5c8c72')
+                    || wasmSha256 !== (semantic ? '4f4e13b462772c15184bf4279b533d598d446fa7a44c0b2bafda276baf91701f' : graphics ? xeNavigation ? 'ca030fe4077fc02338e4d92cdc5c0ef1b89c73bcb629b9d44f59708993fa15ef' : '53bd8a8a98c509afa8b0e0e5451bf78d7e9d765da1c8f513d9c1a909e9d5270d' : xeNavigation ? '10031d2748be3f6fa6ba5bc99fd4ef597f06f66208c5b9a5aeba60d5dc3aecac' : 'fb6d4da9ee438d66d89a7a0ec36ab7dd243ea2a5c32c4a426179b935e383ca84')
                     || !Number.isSafeInteger(tag.ordinal) || tag.ordinal < 1 || tag.ordinal > 4294967295
                     || ['_oc_dvi_geometry_configure','_oc_dvi_geometry_length','_oc_dvi_geometry_copy','_oc_dvi_geometry_data','_oc_dvi_geometry_size']
                         .some(n => typeof module[n] !== 'function'))
@@ -79,6 +82,9 @@
                 || !Number.isSafeInteger(frame.maxOutputBytes) || frame.maxOutputBytes < 1 || frame.maxOutputBytes > 8388608) throw 0;
             const leaf = frame.selectedRoot.slice(frame.selectedRoot.lastIndexOf('/') + 1), job = leaf.slice(0, -4);
             if (frame.mainEntry !== job + (xe ? '.xdv' : '.dvi') || frame.outputs[0] !== job + '.pdf') throw 0;
+            if (tag.profile === 13 && (!Array.isArray(frame.generatedInputNames) || frame.generatedInputNames.length !== 0
+                || frame.files.some(file => typeof file?.name === 'string' && file.name.normalize('NFC').toUpperCase() === (job + '.pdf').normalize('NFC').toUpperCase())
+                || resources.some(name => typeof name === 'string' && resourceName(name).normalize('NFC').toUpperCase() === (job + '.pdf').normalize('NFC').toUpperCase()))) throw 0;
             const resourceNames = new Set(resources), names = new Set();
             if (resourceNames.size !== resources.length || resources.some(name => !path(name)
                 || suite && !name.startsWith(prefix) || !path(resourceName(name)) || resourceName(name).includes('/'))) throw 0;
@@ -120,7 +126,10 @@
             log = frame.maxLogBytes >= encoder.encode(marker).length ? marker : '';
             log += new TextDecoder().decode(rawLog.slice(0, Math.floor(remaining / 3)));
             outcome = status === 2 ? 'resource-limit' : nativeReturn === null ? 'protocol-failure' : 'native-return';
-            if (status === 0 && nativeReturn === 0) {
+            if (status === 0 && nativeReturn === 0 && semantic && module._oc_dvi_font_semantics_status() === 2) {
+                outcome = 'font-semantics-unsupported';
+            } else if (status === 0 && nativeReturn === 0) {
+                if (semantic && module._oc_dvi_font_semantics_status() !== 1) throw 0;
                 const pdf = copy(module._oc_dvi_pdf_data(), module._oc_dvi_pdf_size(), frame.maxOutputBytes);
                 if (pdf.length < 5 || new TextDecoder().decode(pdf.subarray(0, 5)) !== '%PDF-') throw 0;
                 files = [{ name: frame.outputs[0], bytes: pdf }];

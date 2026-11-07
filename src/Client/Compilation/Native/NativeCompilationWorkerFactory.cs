@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using System.Text;
 using Client.Compilation.Lifecycle;
 using Client.Compilation.SyncTeX;
@@ -101,7 +102,8 @@ public sealed class NativeCompilationWorkerFactory : ICompilationWorkerFactory
                 bool dviOutput = factory._plan.DviOutput;
                 bool convertingOutput = dviOutput || xe;
                 bool measuredMapping = NativeNavigationContract.IsMapped(factory._plan.Profile, factory._plan.EffectivePhaseVersion, engine);
-                bool sourceMapping = measuredMapping || factory._plan.EffectivePhaseVersion == NativeSyncTeXContract.Version;
+                bool sourceMapping = measuredMapping || factory._plan.EffectivePhaseVersion == NativeSyncTeXContract.Version
+                    || factory._plan.Profile == NativeBiberCompilerContract.Profile && engine == NativeCompilerEngine.PdfLaTeX;
                 bool selectedEntry = suite || dviOutput || sourceMapping || factory._plan.EffectivePhaseVersion == NativeSelectedEntryContract.Version;
                 bool v4 = selectedEntry || factory._plan.EffectivePhaseVersion == NativeAuthoringV4Contract.Version;
                 if (v4 && !(suite ? NativeCompilerSuiteContract.MatchesOptions(context.Snapshot.Selection.Options, factory._plan.Profile, engine)
@@ -122,13 +124,16 @@ public sealed class NativeCompilationWorkerFactory : ICompilationWorkerFactory
                 bool runBibtex = selectionTools
                     ? snapshot.Selection.Tools.Contains(runtime.Bibtex)
                     : factory._plan.BibtexRequired;
+                bool runBiber = selectionTools && runtime.HasBiber && snapshot.Selection.Tools.Contains(runtime.Biber);
+                string bibliographyTool = runBiber ? "biber" : runBibtex ? "bibtex" : "none";
                 if (runtime.Profile != factory._plan.Profile
                     || NativeRuntimeProfiles.Modern(runtime.Profile) && (snapshot.Selection.Bundles.Length != 1 || snapshot.Selection.Bundles[0] != runtime.Bundle)
                     || context.OutputFormat is not null && context.OutputFormat != NativeRuntimePackage.Pdf
                     || context.OutputAdapter is not null && context.OutputAdapter != (suite ? runtime.AdapterFor(engine) : dviOutput ? runtime.DviOutputAdapter : runtime.OutputAdapter)
                     || snapshot.Selection.Engine != (suite ? runtime.EngineFor(engine) : dviOutput ? runtime.DviEngine : runtime.Engine) || !snapshot.Selection.Bundles.Contains(runtime.Bundle)
                     || !selectionTools && factory._plan.BibtexRequired && !snapshot.Selection.Tools.Contains(runtime.Bibtex)
-                    || selectionTools && snapshot.Selection.Tools.Any(tool => tool != runtime.Bibtex)
+                    || selectionTools && (snapshot.Selection.Tools.Length > 1
+                        || snapshot.Selection.Tools.Any(tool => tool != runtime.Bibtex && (!runtime.HasBiber || tool != runtime.Biber)))
                     || !v4 && snapshot.Selection.Options.Length != 0)
                     return Finish(CompileOutputStatus.Unsupported, "unsupported-selection");
                 var main = snapshot.Files.SingleOrDefault(f => f.FileId == snapshot.MainFileId);
@@ -136,20 +141,23 @@ public sealed class NativeCompilationWorkerFactory : ICompilationWorkerFactory
                 if (selectedEntry)
                 {
                     if (main is null) return Finish(CompileOutputStatus.Unsupported, "unsupported-main-entry");
-                    if (NativeSelectedEntryContract.ValidateEntry(main.RelativePath) is { } unsupportedEntry)
+                    if (NativeSelectedEntryContract.ValidateEntry(main.RelativePath, factory._plan.Profile, engine) is { } unsupportedEntry)
                         return Finish(CompileOutputStatus.Unsupported, unsupportedEntry);
                     // A supported entry with an invalid derived output namespace is a
                     // failed project admission, not an unsupported compiler selection.
                     string? entryError;
-                    entry = suite ? NativeCompilerSuiteContract.CreateEntry(main.RelativePath, snapshot.Files.Select(f => f.RelativePath), engine, out entryError)
+                    entry = suite ? NativeCompilerSuiteContract.CreateEntry(main.RelativePath, snapshot.Files.Select(f => f.RelativePath), engine, out entryError, factory._plan.Profile)
                         : NativeSelectedEntryContract.Create(main.RelativePath, snapshot.Files.Select(f => f.RelativePath), out entryError, dviOutput);
                     if (entry is null) return Finish(entryError == "xetex-non-bmp-main-unsupported" ? CompileOutputStatus.Unsupported : CompileOutputStatus.Failed, entryError!);
                     if (bibliographyCarry)
                     {
-                        entry = NativeBibliographyContract.ExtendEntry(runtime.Profile, entry);
+                        entry = runBiber ? NativeBiberCompilerContract.ExtendEntry(entry)
+                            : NativeBibliographyContract.ExtendEntry(runtime.Profile, entry);
                         var invalid = NativeBibliographyContract.ValidateProjectNames(snapshot.Files.Select(f => f.RelativePath))
-                            ?? NativeBibliographyContract.ValidateNamespace(entry, runtimeLengths.Select(f => f.Name)
-                                .Concat(snapshot.Files.Select(f => f.RelativePath)), []);
+                            ?? (runBiber ? NativeBiberCompilerContract.ValidateNamespace(entry, runtimeLengths.Select(f => f.Name)
+                                .Concat(snapshot.Files.Select(f => f.RelativePath)), [])
+                                : NativeBibliographyContract.ValidateNamespace(entry, runtimeLengths.Select(f => f.Name)
+                                .Concat(snapshot.Files.Select(f => f.RelativePath)), []));
                         if (invalid is not null) return Finish(CompileOutputStatus.Failed, invalid);
                     }
                 }
@@ -176,19 +184,47 @@ public sealed class NativeCompilationWorkerFactory : ICompilationWorkerFactory
                     return Finish(CompileOutputStatus.Failed, "generated-input-collision");
                 var generated = new Dictionary<string, byte[]>(StringComparer.Ordinal);
                 string? previous = null, lastBibtexInput = null; int stable = 0, ordinal = 0;
+                string? lastBiberInput = null;
+                NativeBiberControl? currentBiberControl = null;
+                Dictionary<string, byte[]>? currentBiberFiles = null;
                 for (int pass = 1; pass <= factory._plan.MaxLatexPasses; pass++)
                 {
                     var latex = await Run("latex");
                     if (latex is null) return Finish(CompileOutputStatus.Failed, "invalid-native-reply");
+                    if (latex.Value.Reply.Outcome == "font-semantics-unsupported")
+                        return Finish(CompileOutputStatus.Unsupported, "font-semantics-unsupported");
                     if (latex.Value.Reply.Outcome != "native-return" || latex.Value.Reply.NativeReturn != 0)
                         return Finish(latex.Value.Reply.Outcome == "transport-timeout" ? CompileOutputStatus.TimedOut : CompileOutputStatus.Failed, "native-latex-failed");
                     var files = latex.Value.Files;
-                    if (suite && (latex.Value.Reply.Log.Contains("Please (re)run Biber", StringComparison.OrdinalIgnoreCase)
+                    if (suite && !runBiber && (latex.Value.Reply.Log.Contains("Please (re)run Biber", StringComparison.OrdinalIgnoreCase)
                         || latex.Value.Reply.Log.Contains("Please rerun Biber", StringComparison.OrdinalIgnoreCase)))
-                        return Finish(CompileOutputStatus.Unsupported, "biber-unavailable");
+                        return Finish(CompileOutputStatus.Unsupported, runtime.HasBiber ? "biber-not-selected" : "biber-unavailable");
                     if (lua && (!files.TryGetValue(pdfName, out var luaPdf) || luaPdf.Length < 5 || !luaPdf.AsSpan(0, 5).SequenceEqual("%PDF-"u8)))
                         return Finish(CompileOutputStatus.Failed, "missing-native-pdf");
                     Carry(files);
+                    if (runBiber)
+                    {
+                        // Read this exact reply, never carried BCF. BCF/run.xml are
+                        // deliberately absent from carry and convergence state.
+                        currentBiberControl = NativeBiberControlContract.Read(entry!, files,
+                            snapshot.Files.Select(f => f.RelativePath), out var biberIssue);
+                        if (currentBiberControl is null) return Finish(CompileOutputStatus.Failed, biberIssue!);
+                        currentBiberFiles = files;
+                        var biberFingerprint = NativeBiberControlContract.Fingerprint(entry!, currentBiberControl,
+                            files, snapshot, runtime.Identity.Hex, runtime.Biber);
+                        if (biberFingerprint != lastBiberInput)
+                        {
+                            var biber = await Run("biber");
+                            if (biber is null) return Finish(CompileOutputStatus.Failed, "invalid-native-reply");
+                            if (biber.Value.Reply.Outcome != "native-return" || biber.Value.Reply.NativeReturn != 0
+                                || !biber.Value.Files.TryGetValue(bblName, out var biberBbl) || biberBbl.Length == 0)
+                                return Finish(biber.Value.Reply.Outcome == "transport-timeout" ? CompileOutputStatus.TimedOut : CompileOutputStatus.Failed, "native-biber-failed");
+                            generated[bblName] = biberBbl;
+                            ValidateState(generated.Select(f => (f.Key, f.Value.Length)));
+                            lastBiberInput = biberFingerprint; previous = null; stable = 0;
+                            continue;
+                        }
+                    }
                     string? bibtexInput = null;
                     if (bibliographyCarry && runBibtex)
                     {
@@ -229,7 +265,7 @@ public sealed class NativeCompilationWorkerFactory : ICompilationWorkerFactory
                     bool warnings = HasLogWord(latex.Value.Reply.Log, "undefined")
                         || HasLogWord(latex.Value.Reply.Log, "rerun")
                         || latex.Value.Reply.Log.Contains("Label(s) may have changed", StringComparison.Ordinal);
-                    if (stable >= 1 && pass >= (runBibtex ? 3 : 2) && !warnings)
+                    if (stable >= 1 && pass >= (runBibtex || runBiber ? 3 : 2) && !warnings)
                     {
                         Check();
                         if (convertingOutput)
@@ -242,6 +278,8 @@ public sealed class NativeCompilationWorkerFactory : ICompilationWorkerFactory
                             var conversion = await Run("dvipdfmx", dvi);
                             Check();
                             if (conversion is null) return Finish(CompileOutputStatus.Failed, "invalid-dvi-reply");
+                            if (conversion.Value.Reply.Outcome == "font-semantics-unsupported")
+                                return Finish(CompileOutputStatus.Unsupported, "font-semantics-unsupported");
                             if (conversion.Value.Reply.Outcome != "native-return" || conversion.Value.Reply.NativeReturn != 0)
                                 return Finish(conversion.Value.Reply.Outcome == "transport-timeout" ? CompileOutputStatus.TimedOut : CompileOutputStatus.Failed, "native-dvi-conversion-failed");
                             if (!conversion.Value.Files.TryGetValue(pdfName, out var converted) || converted.Length < 5
@@ -295,12 +333,29 @@ public sealed class NativeCompilationWorkerFactory : ICompilationWorkerFactory
                 {
                     Check();
                     bool converting = tool == "dvipdfmx";
-                    string[] phaseOutputs = converting ? [pdfName] : outputs;
+                    bool biberPhase = tool == "biber";
+                    string[] phaseOutputs = converting ? [pdfName] : biberPhase ? [bblName, entry!.JobName + ".blg"] : outputs;
                     string[]? resourceNames = null;
                     string[]? generatedNames = suite ? (converting ? [] : generated.Keys.Order(StringComparer.Ordinal).ToArray()) : null;
                     var phaseLengths = (suite ? runtime.SuiteFileLengths(tool == "bibtex" ? NativeCompilerEngine.PdfLaTeX : engine) : runtime.FileLengthsFor(dviOutput)).ToArray();
                     Dictionary<string, byte[]> all;
-                    if (converting)
+                    if (biberPhase)
+                    {
+                        if (!runBiber || !runtime.HasBiber || entry is null || currentBiberControl is null || currentBiberFiles is null
+                            || !currentBiberFiles.TryGetValue(currentBiberControl.BcfName, out var controlBytes) || controlBytes.Length == 0) return null;
+                        var sources = currentBiberControl.Sources.Select(name => snapshot.Files.Single(f => f.RelativePath == name)).ToArray();
+                        if (sources.Length + 1 > NativeBiberCompilerContract.InputFiles || controlBytes.Length > NativeBiberCompilerContract.InputBytes
+                            || sources.Any(f => f.ByteLength > NativeBiberCompilerContract.InputBytes)
+                            || sources.Sum(f => f.ByteLength) + controlBytes.Length > NativeBiberCompilerContract.InputBytes)
+                            throw new NativeAuthoringV4Exception("biber-input-quota");
+                        var invalid = NativeSelectedEntryContract.ValidateNamespace(entry with { Outputs = phaseOutputs.ToImmutableArray(), State = [] },
+                            sources.Select(f => f.RelativePath).Append(currentBiberControl.BcfName), []);
+                        if (invalid is not null) throw new NativeAuthoringV4Exception(invalid);
+                        resourceNames = []; generatedNames = [currentBiberControl.BcfName];
+                        all = sources.ToDictionary(f => f.RelativePath, f => f.ToArray(), StringComparer.Ordinal);
+                        all.Add(currentBiberControl.BcfName, controlBytes.ToArray());
+                    }
+                    else if (converting)
                     {
                         if (!convertingOutput || entry is null || finalDvi is null) return null;
                         var resources = runtime.ConverterResourceLengths.Select(f => (Name: suite ? NativeCompilerSuiteContract.ResourcePrefix + f.Name : f.Name, f.Length)).ToArray();
@@ -329,7 +384,8 @@ public sealed class NativeCompilationWorkerFactory : ICompilationWorkerFactory
                         if (v4)
                         {
                             var inputNames = phaseLengths.Select(f => f.Name).Concat(snapshot.Files.Select(f => f.RelativePath));
-                            var invalid = bibliographyCarry ? NativeBibliographyContract.ValidateNamespace(entry!, inputNames, generated.Keys)
+                            var invalid = runBiber ? NativeBiberCompilerContract.ValidateNamespace(entry!, inputNames, generated.Keys)
+                                : bibliographyCarry ? NativeBibliographyContract.ValidateNamespace(entry!, inputNames, generated.Keys)
                                 : entry is null ? NativeAuthoringV4Contract.ValidateNamespace(inputNames, outputs, generated.Keys)
                                 : NativeSelectedEntryContract.ValidateNamespace(entry, inputNames, generated.Keys);
                             if (invalid is not null) throw new NativeAuthoringV4Exception(invalid);
@@ -348,7 +404,7 @@ public sealed class NativeCompilationWorkerFactory : ICompilationWorkerFactory
                             || lengths.Sum(f => (long)f.Item2) > factory._plan.MaxInputBytes) throw new NativeResourceLimitException();
                         if (suite)
                         {
-                            int resourceCap = tool == "bibtex" ? NativeCompilerSuiteContract.TotalBytes : lua ? 96 * 1024 * 1024 : xe ? 160 * 1024 * 1024 : NativeCompilerSuiteContract.TotalBytes;
+                            int resourceCap = tool == "bibtex" ? NativeCompilerSuiteContract.TotalBytes : lua ? factory._plan.Profile is NativeUnicodeCompilerContract.Profile or NativeBiberCompilerContract.Profile ? NativeUnicodeCompilerContract.LuaResourceBytes : 96 * 1024 * 1024 : xe ? 160 * 1024 * 1024 : NativeCompilerSuiteContract.TotalBytes;
                             int resourceCount = tool == "latex" && lua ? 4608 : NativeCompilerSuiteContract.Files;
                             if (phaseLengths.Length > resourceCount || phaseLengths.Sum(f => (long)f.Length) > resourceCap
                                 || snapshot.Files.Sum(f => f.ByteLength) + generated.Sum(f => (long)f.Value.Length) > 32 * 1024 * 1024)
@@ -368,23 +424,26 @@ public sealed class NativeCompilationWorkerFactory : ICompilationWorkerFactory
                     }
                     var tag = new NativePhaseTag(id.Value.ToString("N"), context.RequestId.ToString(), epoch,
                         context.SnapshotIdentity.CaptureId, context.InputContentDigest.Hex, ++ordinal, tool, Guid.NewGuid().ToString("N"), context.SnapshotIdentity,
-                        factory._plan.EffectivePhaseVersion, runtime.Profile,
+                        biberPhase ? NativeBiberCompilerContract.BiberPhase : factory._plan.EffectivePhaseVersion, runtime.Profile,
                         runtime.Profile == NativeRuntimeProfile.Legacy ? null : runtime.Identity.Hex,
                         suite ? NativeCompilerSuiteContract.EngineId(engine) : dviOutput ? "latex-dvi" : null);
                     var sent = all.OrderBy(x => x.Key, StringComparer.Ordinal).Select(x => new NativeInputFact(x.Key, x.Value.Length, NativeRuntimePackage.Digest(x.Value).Hex)).ToArray();
-                    string component = converting ? runtime.ConverterStemFor(engine) : suite && tool == "latex" && xe ? "xetex" : suite && tool == "latex" && lua ? "luatex" : "engine";
-                    var selectedComponent = suite && !converting
-                        ? runtime.ComponentFor(tool == "bibtex" ? NativeCompilerEngine.PdfLaTeX : engine) : null;
+                    string component = biberPhase ? "biber" : converting ? runtime.ConverterStemFor(engine) : suite && tool == "latex" && xe ? "xetex" : suite && tool == "latex" && lua ? "luatex" : "engine";
+                    var selectedComponent = suite && !converting && !biberPhase
+                        ? tool == "bibtex" && runtime.Profile == NativeBiberCompilerContract.Profile ? NativeBiberCompilerContract.BibtexComponent
+                            : runtime.ComponentFor(tool == "bibtex" ? NativeCompilerEngine.PdfLaTeX : engine) : null;
                     if (selectedComponent is not null) component = Path.GetFileNameWithoutExtension(selectedComponent.LoaderName);
-                    string loaderHash = converting ? runtime.ConverterLoaderHashFor(engine)
+                    string loaderHash = biberPhase ? NativeCompilerBiberPins.BiberLoaderHash : converting ? runtime.ConverterLoaderHashFor(engine)
                         : selectedComponent?.LoaderHash ?? NativeRuntimeProfiles.CompilerLoaderHash(runtime.Profile);
-                    string wasmHash = converting ? runtime.ConverterWasmHashFor(engine)
+                    string wasmHash = biberPhase ? NativeCompilerBiberPins.BiberWasmHash : converting ? runtime.ConverterWasmHashFor(engine)
                         : selectedComponent?.WasmHash ?? NativeRuntimeProfiles.CompilerWasmHash(runtime.Profile);
-                    var toolEntry = converting ? entry!.JobName + (xe ? ".xdv" : ".dvi") : entry is null ? "main.tex" : tool == "latex" ? entry.LatexEntry : entry.BibtexEntry;
+                    var toolEntry = biberPhase ? currentBiberControl!.BcfName : converting ? entry!.JobName + (xe ? ".xdv" : ".dvi") : entry is null ? "main.tex" : tool == "latex" ? entry.LatexEntry : entry.BibtexEntry;
                     var request = new NativePhaseRequest(tag, toolEntry, all.Select(x => new NativeFileTransfer(x.Key, x.Value)).ToArray(),
                         phaseOutputs, runtime.Copy(component + ".js"), runtime.Copy(component + ".wasm"),
-                        Math.Min(limits.MaxLogBytes, 256 * 1024), converting || lua ? Math.Min(limits.MaxPayloadBytes, NativeLatexDviContract.PdfBytes) : limits.MaxPayloadBytes,
-                        entry?.SelectedPath, resourceNames, generatedNames);
+                        Math.Min(limits.MaxLogBytes, 256 * 1024), biberPhase ? Math.Min(limits.MaxPayloadBytes, NativeBiberCompilerContract.OutputBytes)
+                            : converting || lua ? Math.Min(limits.MaxPayloadBytes, NativeLatexDviContract.PdfBytes) : limits.MaxPayloadBytes,
+                        entry?.SelectedPath, resourceNames, generatedNames, biberPhase ? runtime.Copy("biber.data") : null,
+                        runtime.Profile == NativeBiberCompilerContract.Profile ? bibliographyTool : null);
                     var reply = await factory.Operations.RunAsync(() => { lock (_dispatch) { Check(); return factory._transport.ExecuteAsync(request); } }, token).ConfigureAwait(false);
                     Check();
                     if (reply is { Outcome: "transport-timeout", NativeReturn: null, Files.Length: 0, SourceMapPayload: null, SourceMapGeometryPayload: null } && reply.Tag == tag)
@@ -392,11 +451,15 @@ public sealed class NativeCompilationWorkerFactory : ICompilationWorkerFactory
                         factory.Observe(new(tag, sent, reply)); return (reply, new Dictionary<string, byte[]>(StringComparer.Ordinal));
                     }
                     if (reply is null || reply.Tag != tag || reply.WasmSha256 != wasmHash || reply.LoaderSha256 != loaderHash
+                        || (biberPhase ? reply.BootstrapSha256 != NativeCompilerBiberPins.BiberDataHash : reply.BootstrapSha256 is not null)
                         || reply.Files is null || reply.Inputs is null || reply.Log is null || reply.Inputs.Length != sent.Length
                         || !reply.Inputs.OrderBy(x => x.Name, StringComparer.Ordinal).SequenceEqual(sent) || reply.Files.Length > phaseOutputs.Length
                         || reply.Log.Length > request.MaxLogBytes || Encoding.UTF8.GetByteCount(reply.Log) > request.MaxLogBytes) return null;
                     if (reply.Outcome == "native-return" && (!reply.Entered || reply.NativeReturn is null)
                         || reply.Outcome == "wasm-abort" && (!reply.Entered || reply.NativeReturn is not null)) return null;
+                    if (reply.Outcome == "font-semantics-unsupported" && (runtime.Profile != NativeBiberCompilerContract.Profile || tool != "latex"
+                        || engine is not (NativeCompilerEngine.PdfLaTeX or NativeCompilerEngine.LaTeXDvi) || !reply.Entered || reply.NativeReturn != 0
+                        || reply.Files.Length != 0 || reply.SourceMapPayload is not null || reply.SourceMapGeometryPayload is not null)) return null;
                     bool successful = reply.Outcome == "native-return" && reply.NativeReturn == 0;
                     bool mapCell = sourceMapping && tool == "latex";
                     bool geometryCell = measuredMapping && (lua && tool == "latex" || (dviOutput || xe) && converting);
@@ -414,6 +477,7 @@ public sealed class NativeCompilationWorkerFactory : ICompilationWorkerFactory
                             || lua && f.Name == entry!.JobName + ".log" && f.Bytes.Length > request.MaxLogBytes) return null;
                         total += f.Bytes.Length;
                     }
+                    if (biberPhase && total > request.MaxOutputBytes) return null;
                     if (v4 && !converting) ValidateState(reply.Files.Where(f => IsState(f.Name)).Select(f => (f.Name, f.Bytes.Length)));
                     var owned = reply.Files.ToDictionary(f => f.Name, f => f.Bytes.ToArray(), StringComparer.Ordinal);
                     if (Encoding.UTF8.GetByteCount(log.ToString()) + Encoding.UTF8.GetByteCount(reply.Log) > limits.MaxLogBytes) throw new NativeResourceLimitException();

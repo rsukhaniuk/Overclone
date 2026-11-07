@@ -27,15 +27,17 @@ public sealed class CompileWorkspaceSession(WorkspaceCoordinator workspace, ICom
     public CompileReadiness Readiness { get; private set; } = new(false, "Unavailable", "No compiler configured.");
     public FileId? MainFile { get; private set; }
     public string EngineChoice { get; private set; } = "";
-    public bool UseBibtex { get; private set; }
+    public BibliographyToolKind BibliographyTool { get; private set; }
+    public bool UseBibtex => BibliographyTool == BibliographyToolKind.Bibtex;
     public bool CanSelectBibtex => _ports is { SelectableBibliography: true } && AvailableBibtex is not null;
-    private CompilationDescriptor? AvailableBibtex
+    public bool CanSelectBiber => _ports is { SelectableBibliography: true } && AvailableTool(BibliographyToolKind.Biber) is not null;
+    private CompilationDescriptor? AvailableBibtex => AvailableTool(BibliographyToolKind.Bibtex);
+    private CompilationDescriptor? AvailableTool(BibliographyToolKind kind)
     {
-        get
-        {
-            var matches = _ports?.Tools.Where(tool => string.Equals(tool.Id, "bibtex", StringComparison.Ordinal)).Take(2).ToArray();
-            return matches is { Length: 1 } ? matches[0] : null;
-        }
+        var id = kind switch { BibliographyToolKind.Bibtex => "bibtex", BibliographyToolKind.Biber => "biber", _ => null };
+        if (id is null) return null;
+        var matches = _ports?.Tools.Where(tool => string.Equals(tool.Id, id, StringComparison.Ordinal)).Take(2).ToArray();
+        return matches is { Length: 1 } ? matches[0] : null;
     }
     public string Notice { get; private set; } = "Choose a main file and supported engine. Settings are session-only.";
     public CompileLifecycleReason? LastReason { get; private set; }
@@ -57,7 +59,9 @@ public sealed class CompileWorkspaceSession(WorkspaceCoordinator workspace, ICom
     private static bool SuiteOptions(IEnumerable<CompilationOption> options) => NativeCompilerSuiteContract.MatchesOptions(options)
         || NativeCompilerSuiteContract.MatchesOptions(options, NativeNavigationContract.Profile)
         || NativeCompilerSuiteContract.MatchesOptions(options, NativeXeNavigationContract.Profile)
-        || NativeCompilerSuiteContract.MatchesOptions(options, NativeGraphicsNavigationContract.Profile);
+        || NativeCompilerSuiteContract.MatchesOptions(options, NativeGraphicsNavigationContract.Profile)
+        || NativeCompilerSuiteContract.MatchesOptions(options, NativeUnicodeCompilerContract.Profile)
+        || NativeCompilerSuiteContract.MatchesOptions(options, NativeBiberCompilerContract.Profile);
     private CompileLifecycleOptions Options => new(new(64, 1048576, 8388608, 131072),
         new(8388608, 2097152, 64, 128, 4096, 1048576), 65536,
         _ports?.SelectionOptions is { } options && SuiteOptions(options)
@@ -117,16 +121,17 @@ public sealed class CompileWorkspaceSession(WorkspaceCoordinator workspace, ICom
         if (_engines.FirstOrDefault(p => p.CapabilityId == id) is { } selected)
         {
             _ports = selected;
-            if (!CanSelectBibtex) UseBibtex = false;
         }
         ApplySelection();
     });
-    public void SelectBibliography(bool enabled) => Run(() =>
+    public void SelectBibliography(bool enabled) => SelectBibliography(enabled ? BibliographyToolKind.Bibtex : BibliographyToolKind.None);
+    public void SelectBibliography(BibliographyToolKind kind) => Run(() =>
     {
         if (_ports is not { SelectableBibliography: true }) return; // legacy declared tools remain unchanged
-        if (enabled && !CanSelectBibtex)
-        { Notice = "BibTeX is unavailable for this configured adapter."; Refresh(); return; }
-        UseBibtex = enabled; ApplySelection();
+        if (kind is not (BibliographyToolKind.None or BibliographyToolKind.Bibtex or BibliographyToolKind.Biber)
+            || kind != BibliographyToolKind.None && AvailableTool(kind) is null)
+        { Notice = "The selected bibliography tool is unavailable for this configured adapter."; Refresh(); return; }
+        BibliographyTool = kind; ApplySelection();
     });
     private void ApplySelection()
     {
@@ -135,13 +140,21 @@ public sealed class CompileWorkspaceSession(WorkspaceCoordinator workspace, ICom
         bool selectedEntry = _ports?.SelectionOptions is { } options
             && (NativeSelectedEntryContract.MatchesOptions(options) || NativeSyncTeXContract.MatchesOptions(options)
                 || NativeLatexDviContract.MatchesOptions(options) || SuiteOptions(options));
-        var entryError = main is null ? null : selectedEntry ? NativeSelectedEntryContract.ValidateEntry(main.RelativePath)
+        bool unicodeXe = _ports is { Engine: { } configuredEngine, SelectionOptions: { } configuredOptions }
+            && (NativeUnicodeCompilerContract.MatchesXeSelection(configuredEngine, configuredOptions)
+                || configuredEngine == new CompilationDescriptor("xelatex", NativeBiberCompilerContract.Component(NativeCompilerEngine.XeLaTeX).EngineVersion,
+                    new(NativeCompilerUnicodePins.XeWasmHash))
+                    && NativeCompilerBiberPins.Ready
+                    && NativeCompilerSuiteContract.MatchesOptions(configuredOptions, NativeBiberCompilerContract.Profile, NativeCompilerEngine.XeLaTeX));
+        var entryError = main is null ? null : selectedEntry ? unicodeXe
+            ? NativeSelectedEntryContract.ValidateEntry(main.RelativePath, NativeUnicodeCompilerContract.Profile, NativeCompilerEngine.XeLaTeX)
+            : NativeSelectedEntryContract.ValidateEntry(main.RelativePath)
             : main.RelativePath == "main.tex" ? null : "legacy-main-entry";
         if (_ports is { } ports && Readiness.Ready && EngineChoice == ports.CapabilityId && main is not null && entryError is null
-            && (!ports.SelectableBibliography || !UseBibtex || AvailableBibtex is not null))
+            && (!ports.SelectableBibliography || BibliographyTool == BibliographyToolKind.None || AvailableTool(BibliographyTool) is not null))
         {
             CompilationDescriptor[] tools = ports.SelectableBibliography
-                ? UseBibtex ? [AvailableBibtex!] : []
+                ? BibliographyTool == BibliographyToolKind.None ? [] : [AvailableTool(BibliographyTool)!]
                 : ports.Tools;
             selection = CompilationSelection.Create(new(main.Id, ports.Engine, ports.Bundles, tools, ports.SelectionOptions ?? []), 65536).Selection;
         }
@@ -195,7 +208,7 @@ public sealed class CompileWorkspaceSession(WorkspaceCoordinator workspace, ICom
         if (_disposed) return;
         if (_session != workspace.SessionId)
         {
-            _session = workspace.SessionId; MainFile = null; EngineChoice = ""; UseBibtex = false; _selection.SetSelection(null);
+            _session = workspace.SessionId; MainFile = null; EngineChoice = ""; BibliographyTool = BibliographyToolKind.None; _selection.SetSelection(null);
             Preview.Changed -= PreviewChanged; _ = Preview.DisposeAsync(); Preview = new(_ports?.Inspector); Preview.Changed += PreviewChanged;
             _shown = null; _previousCurrent = false; _presented = null; Attempt = null; LastTicket = null; LastReason = null;
         }

@@ -52,6 +52,7 @@ public sealed class NativeBrowserModuleLease : IAsyncDisposable
     public Task<bool> ProvisionDviAsync() => _module.InvokeAsync<bool>("provisionDvi", CancellationToken.None).AsTask();
     public Task<bool> ProvisionXetexAsync() => _module.InvokeAsync<bool>("provisionXetex", CancellationToken.None).AsTask();
     public Task<bool> ProvisionLuatexAsync() => _module.InvokeAsync<bool>("provisionLuatex", CancellationToken.None).AsTask();
+    public Task<bool> ProvisionBiberAsync() => _module.InvokeAsync<bool>("provisionBiber", CancellationToken.None).AsTask();
     public object Observations() => _module.Invoke<System.Text.Json.JsonElement>("observations");
     public ValueTask DisposeAsync() { lock (_disposeGate) return new(_disposing ??= DisposeCore()); }
     private async Task DisposeCore()

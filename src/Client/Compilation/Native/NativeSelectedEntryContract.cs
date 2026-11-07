@@ -26,6 +26,8 @@ public static class NativeSelectedEntryContract
         NativeAuthoringV4Contract.CreatePlan(maxLatexPasses, deadline) with { PhaseProtocolVersion = Version };
 
     public static string? ValidateEntry(string name)
+        => ValidateEntry(name, NativeRuntimeProfile.Legacy, NativeCompilerEngine.PdfLaTeX);
+    public static string? ValidateEntry(string name, NativeRuntimeProfile profile, NativeCompilerEngine engine)
     {
         if (NativeAuthoringV4Contract.ValidatePath(name) is { } invalid) return invalid;
         if (!name.EndsWith(".tex", StringComparison.OrdinalIgnoreCase)) return "selected-entry-extension";
@@ -34,6 +36,10 @@ public static class NativeSelectedEntryContract
         foreach (var rune in name.EnumerateRunes())
         {
             if (rune.Value is '/' or '.' or '_' or '-' or ' ') continue;
+            // Exact native capability/profile only. Path validation above still
+            // refuses malformed UTF-16 and unsafe project/native boundaries.
+            if (profile is NativeUnicodeCompilerContract.Profile or NativeBiberCompilerContract.Profile && engine == NativeCompilerEngine.XeLaTeX
+                && rune.Value > 0xffff) continue;
             if (!Rune.IsLetterOrDigit(rune) && Rune.GetUnicodeCategory(rune) is not
                 (UnicodeCategory.NonSpacingMark or UnicodeCategory.SpacingCombiningMark)) return "selected-entry-syntax";
         }
@@ -43,8 +49,11 @@ public static class NativeSelectedEntryContract
     }
 
     public static NativeSelectedEntry? Create(string selected, IEnumerable<string> projectNames, out string? error, bool dviOutput = false)
+        => Create(selected, projectNames, out error, dviOutput, NativeRuntimeProfile.Legacy, NativeCompilerEngine.PdfLaTeX);
+    public static NativeSelectedEntry? Create(string selected, IEnumerable<string> projectNames, out string? error,
+        bool dviOutput, NativeRuntimeProfile profile, NativeCompilerEngine engine)
     {
-        error = ValidateEntry(selected);
+        error = ValidateEntry(selected, profile, engine);
         if (error is not null) return null;
         var leaf = selected[(selected.LastIndexOf('/') + 1)..];
         var job = leaf[..^4];

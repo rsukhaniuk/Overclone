@@ -16,6 +16,10 @@ public static class NativeCompilerSuiteContract
     public static string EngineId(NativeCompilerEngine engine) => engine switch
     { NativeCompilerEngine.PdfLaTeX => "pdftex", NativeCompilerEngine.LaTeXDvi => "latex-dvi", NativeCompilerEngine.XeLaTeX => "xelatex", NativeCompilerEngine.LuaLaTeX => "lualatex", _ => "" };
     public static int Phase(NativeRuntimeProfile profile, NativeCompilerEngine engine) => !NativeRuntimeProfiles.IsSuite(profile) ? 0
+        : profile == NativeBiberCompilerContract.Profile ? engine switch
+        { NativeCompilerEngine.PdfLaTeX => NativeBiberCompilerContract.PdfPhase, NativeCompilerEngine.LaTeXDvi => NativeBiberCompilerContract.DviPhase, NativeCompilerEngine.XeLaTeX => NativeUnicodeCompilerContract.XePhase, NativeCompilerEngine.LuaLaTeX => NativeUnicodeCompilerContract.LuaPhase, _ => 0 }
+        : profile == NativeUnicodeCompilerContract.Profile ? engine switch
+        { NativeCompilerEngine.PdfLaTeX => 6, NativeCompilerEngine.LaTeXDvi => NativeGraphicsNavigationContract.DviPhase, NativeCompilerEngine.XeLaTeX => NativeUnicodeCompilerContract.XePhase, NativeCompilerEngine.LuaLaTeX => NativeUnicodeCompilerContract.LuaPhase, _ => 0 }
         : profile == NativeGraphicsNavigationContract.Profile ? engine switch
         { NativeCompilerEngine.PdfLaTeX => 6, NativeCompilerEngine.LaTeXDvi => NativeGraphicsNavigationContract.DviPhase, NativeCompilerEngine.XeLaTeX => NativeGraphicsNavigationContract.XePhase, NativeCompilerEngine.LuaLaTeX => NativeGraphicsNavigationContract.LuaPhase, _ => 0 }
         : profile == NativeXeNavigationContract.Profile ? engine switch
@@ -50,15 +54,19 @@ public static class NativeCompilerSuiteContract
                 && p.All(c => char.IsAsciiLetterOrDigit(c) || c is '.' or '-' or '_'));
     }
     public static NativeSelectedEntry? CreateEntry(string selected, IEnumerable<string> projectNames, NativeCompilerEngine engine, out string? error)
+        => CreateEntry(selected, projectNames, engine, out error, NativeRuntimeProfile.LocalCompilerSuite);
+    public static NativeSelectedEntry? CreateEntry(string selected, IEnumerable<string> projectNames, NativeCompilerEngine engine,
+        out string? error, NativeRuntimeProfile profile)
     {
-        if (Phase(engine) == 0) { error = "unsupported-suite-engine"; return null; }
-        error = NativeSelectedEntryContract.ValidateEntry(selected);
+        if (Phase(profile, engine) == 0) { error = "unsupported-suite-engine"; return null; }
+        error = NativeSelectedEntryContract.ValidateEntry(selected, profile, engine);
         if (error is not null) return null;
-        if (engine == NativeCompilerEngine.XeLaTeX && selected.Any(char.IsSurrogate))
+        if (engine == NativeCompilerEngine.XeLaTeX && profile is not (NativeUnicodeCompilerContract.Profile or NativeBiberCompilerContract.Profile) && selected.Any(char.IsSurrogate))
         { error = "xetex-non-bmp-main-unsupported"; return null; }
         if (engine != NativeCompilerEngine.LuaLaTeX)
         {
-            var entry = NativeSelectedEntryContract.Create(selected, projectNames, out error, engine == NativeCompilerEngine.LaTeXDvi);
+            var entry = NativeSelectedEntryContract.Create(selected, projectNames, out error,
+                engine == NativeCompilerEngine.LaTeXDvi, profile, engine);
             if (entry is null || engine != NativeCompilerEngine.XeLaTeX) return entry;
             return entry with { LatexEntry = selected, Outputs = entry.Outputs.Add(entry.JobName + ".xdv") };
         }

@@ -49,6 +49,19 @@ for (const version of [6, 7, 8, 9]) {
         assert.throws(() => validate(guessed), /FFI/, 'only the native biblatex control basename is admitted');
     }
 }
+for (const [version, engineId] of [[6,'pdftex'],[15,'latex-dvi'],[21,'xelatex'],[22,'lualatex']]) {
+    const value = frame(version === 22 ? 9 : version === 21 ? 8 : version === 15 ? 7 : 6,7);
+    value.tag = { version, profile:12, engineId, tool:'bibtex' };
+    if(engineId==='xelatex') {
+        value.selectedRoot='тези/розділ 😀.tex';value.mainEntry='розділ 😀.tex';
+        value.files[0].name=value.selectedRoot;value.files[1].name='розділ 😀.aux';
+        value.generatedInputNames=['розділ 😀.aux'];
+        value.outputs=value.outputs.map(n=>n.replace('my thesis','розділ 😀').replace('my_thesis','розділ_😀'));
+    }
+    assert.doesNotThrow(()=>validate(value), `P12 ${engineId} selected BibTeX frame`);
+    const missing = {...value,files:value.files.slice(0,1)};
+    assert.throws(()=>validate(missing),/FFI/);
+}
 const unknown = frame(8); unknown.outputs.push('my thesis.unapproved');
 assert.throws(() => validate(unknown), /FFI/);
 console.log('BibTeX worker FFI PASS: phase-specific DVI/XDV output namespaces, required AUX and collision refusal.');

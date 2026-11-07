@@ -5,6 +5,7 @@ const ROLES = Object.freeze({
     dvi: Object.freeze({ source: '/js/dvi-port-worker.js', entry: '/__oop/native-worker/dvi' }),
     xetex: Object.freeze({ source: '/js/unicode-tex-port-worker.js', entry: '/__oop/native-worker/xetex' }),
     luatex: Object.freeze({ source: '/js/unicode-tex-port-worker.js', entry: '/__oop/native-worker/luatex' }),
+    biber: Object.freeze({ source: '/js/biber-port-worker.js', entry: '/__oop/native-worker/biber' }),
     pdf: Object.freeze({ source: '/js/pdf-port-worker.js', entry: '/__oop/native-worker/pdf' }),
     synctex: Object.freeze({ source: '/js/synctex-query-worker.js', entry: '/__oop/native-worker/synctex' }),
 });

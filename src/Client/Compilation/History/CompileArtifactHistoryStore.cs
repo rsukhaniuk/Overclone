@@ -14,7 +14,7 @@ namespace Client.Compilation.History;
 public sealed class CompileArtifactHistoryStore : IAsyncDisposable
 {
     // Explicit application-owned descriptor list, including retained runtime versions.
-    public const int MaxAdditionalAdapters = 12;
+    public const int MaxAdditionalAdapters = 16;
     private readonly IRuntimeAssetBackend _backend;
     private readonly RuntimeAssetStore _content;
     private readonly IProjectRepository _repository;

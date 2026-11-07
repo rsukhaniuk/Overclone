@@ -88,6 +88,11 @@ public sealed class LocalCompileWorkspaceConfiguration : ICompileWorkspaceConfig
                     if (provisioned) provisioned = await _module.ProvisionLuatexAsync().ConfigureAwait(false);
                     token.ThrowIfCancellationRequested();
                 }
+                if (provisioned && read.Package.HasBiber)
+                {
+                    provisioned = await _module.ProvisionBiberAsync().ConfigureAwait(false);
+                    token.ThrowIfCancellationRequested();
+                }
                 if (!provisioned) return Result(new(false, "ControllerUpdate", "Local worker entry is not available under the current offline controller. Check the application update status, then Check tools to retry."));
                 var current = await _resources.ConfirmCompilerSelectionAsync(read, token).ConfigureAwait(false);
                 token.ThrowIfCancellationRequested();
@@ -102,15 +107,17 @@ public sealed class LocalCompileWorkspaceConfiguration : ICompileWorkspaceConfig
                         : NativeSelectedEntryContract.CreatePlan(deadline: JobDeadline));
                     // Fixed technical closures only; package integrity is not adoption approval.
                     var package = read.Package;
-                    _ports = new("local-authoring-v4", "Local pdfLaTeX authoring", package.Engine, [package.Bundle], [package.Bibtex],
+                    CompilationDescriptor[] tools = package.HasBiber ? [package.Bibtex, package.Biber] : [package.Bibtex];
+                    _ports = new("local-authoring-v4", "Local pdfLaTeX authoring", package.Engine, [package.Bundle], tools,
                         _factory, _inspector, () => CheckAsync(), this, SelectableBibliography: true,
-                        SelectionOptions: mapped ? NativeSyncTeXContract.SelectionOptions : NativeSelectedEntryContract.SelectionOptions,
+                        SelectionOptions: suite ? NativeCompilerSuiteContract.SelectionOptions(package.Profile, NativeCompilerEngine.PdfLaTeX)
+                            : mapped ? NativeSyncTeXContract.SelectionOptions : NativeSelectedEntryContract.SelectionOptions,
                         OutputAdapter: package.OutputAdapter);
                     if (suite || package.Profile == NativeRuntimeProfile.LocalLatex2023Dvi)
                     {
                         _dviFactory = new(_resources, _module.Transport, suite ? NativeCompilerSuiteContract.CreatePlan(NativeCompilerEngine.LaTeXDvi, profile: package.Profile)
                             : NativeLatexDviContract.CreatePlan(deadline: JobDeadline));
-                        _additionalEngines = [new("latex-dvi", "LaTeX (DVI to PDF)", package.DviEngine, [package.Bundle], [package.Bibtex],
+                        _additionalEngines = [new("latex-dvi", "LaTeX (DVI to PDF)", package.DviEngine, [package.Bundle], tools,
                             _dviFactory, _inspector, () => CheckAsync(), this, SelectableBibliography: true,
                             SelectionOptions: suite ? NativeCompilerSuiteContract.SelectionOptions(package.Profile, NativeCompilerEngine.LaTeXDvi) : NativeLatexDviContract.SelectionOptions, OutputAdapter: package.DviOutputAdapter)];
                         if (suite)
@@ -118,10 +125,10 @@ public sealed class LocalCompileWorkspaceConfiguration : ICompileWorkspaceConfig
                             _xeFactory = new(_resources, _module.Transport, NativeCompilerSuiteContract.CreatePlan(NativeCompilerEngine.XeLaTeX, profile: package.Profile));
                             _luaFactory = new(_resources, _module.Transport, NativeCompilerSuiteContract.CreatePlan(NativeCompilerEngine.LuaLaTeX, profile: package.Profile));
                             _additionalEngines = [.. _additionalEngines,
-                                new("xelatex", "XeLaTeX (XDV to PDF)", package.EngineFor(NativeCompilerEngine.XeLaTeX), [package.Bundle], [package.Bibtex],
+                                new("xelatex", "XeLaTeX (XDV to PDF)", package.EngineFor(NativeCompilerEngine.XeLaTeX), [package.Bundle], tools,
                                     _xeFactory, _inspector, () => CheckAsync(), this, SelectableBibliography: true,
                                     SelectionOptions: NativeCompilerSuiteContract.SelectionOptions(package.Profile, NativeCompilerEngine.XeLaTeX), OutputAdapter: package.AdapterFor(NativeCompilerEngine.XeLaTeX)),
-                                new("lualatex", "LuaLaTeX", package.EngineFor(NativeCompilerEngine.LuaLaTeX), [package.Bundle], [package.Bibtex],
+                                new("lualatex", "LuaLaTeX", package.EngineFor(NativeCompilerEngine.LuaLaTeX), [package.Bundle], tools,
                                     _luaFactory, _inspector, () => CheckAsync(), this, SelectableBibliography: true,
                                     SelectionOptions: NativeCompilerSuiteContract.SelectionOptions(package.Profile, NativeCompilerEngine.LuaLaTeX), OutputAdapter: package.AdapterFor(NativeCompilerEngine.LuaLaTeX))];
                         }

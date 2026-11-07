@@ -205,6 +205,7 @@ const NATIVE_ROLES = Object.freeze({
     dvi: Object.freeze({ entry: "/__oop/native-worker/dvi", source: "/js/dvi-port-worker.js" }),
     xetex: Object.freeze({ entry: "/__oop/native-worker/xetex", source: "/js/unicode-tex-port-worker.js" }),
     luatex: Object.freeze({ entry: "/__oop/native-worker/luatex", source: "/js/unicode-tex-port-worker.js" }),
+    biber: Object.freeze({ entry: "/__oop/native-worker/biber", source: "/js/biber-port-worker.js" }),
     pdf: Object.freeze({ entry: "/__oop/native-worker/pdf", source: "/js/pdf-port-worker.js" }),
     synctex: Object.freeze({ entry: "/__oop/native-worker/synctex", source: "/js/synctex-query-worker.js" }),
 });

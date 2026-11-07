@@ -8,13 +8,14 @@ public sealed record NativePhaseTag(string Job, string Request, long Epoch, Guid
     CompilationSnapshotIdentity? Snapshot = null, int Version = 1,
     NativeRuntimeProfile Profile = NativeRuntimeProfile.Legacy, string? RuntimeIdentity = null, string? EngineId = null);
 public sealed record NativePhaseRequest(NativePhaseTag Tag, string MainEntry, NativeFileTransfer[] Files,
-    string[] Outputs, byte[] Loader, byte[] Wasm, int MaxLogBytes, int MaxOutputBytes, string? SelectedRoot = null, string[]? RuntimeResourceNames = null, string[]? GeneratedInputNames = null);
+    string[] Outputs, byte[] Loader, byte[] Wasm, int MaxLogBytes, int MaxOutputBytes, string? SelectedRoot = null, string[]? RuntimeResourceNames = null, string[]? GeneratedInputNames = null, byte[]? BootstrapData = null, string? BibliographyTool = null);
 public sealed record NativePhaseReply(NativePhaseTag Tag, string Outcome, int? NativeReturn, bool Entered,
     string Log, NativeFileTransfer[] Files, NativeInputFact[] Inputs, double? ElapsedMs = null, int? HeapBytes = null,
     string? WasmSha256 = null, string? LoaderSha256 = null, byte[]? SourceMapPayload = null)
 {
     // Raw native schema1 sidecar only, not the correlated output wrapper.
     public byte[]? SourceMapGeometryPayload { get; init; }
+    public string? BootstrapSha256 { get; init; }
 }
 
 /// <summary>Prompt asynchronous byte/FFI port. Not a second lifecycle. A completed

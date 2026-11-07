@@ -6,7 +6,7 @@ const path = require('node:path');
 const vm = require('node:vm');
 const { createHash, webcrypto } = require('node:crypto');
 const root = path.join(__dirname, '../../src/Client/wwwroot');
-const workerBodies = Object.fromEntries(['compile', 'pdf', 'dvi'].map(kind => [kind, fs.readFileSync(path.join(root, 'js/' + kind + '-port-worker.js'))]));
+const workerBodies = Object.fromEntries(['compile', 'pdf', 'dvi', 'biber'].map(kind => [kind, fs.readFileSync(path.join(root, 'js/' + kind + '-port-worker.js'))]));
 workerBodies.xetex = workerBodies.luatex = fs.readFileSync(path.join(root, 'js/unicode-tex-port-worker.js'));
 const sourceFor = kind => '/js/' + (['xetex', 'luatex'].includes(kind) ? 'unicode-tex' : kind) + '-port-worker.js';
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');

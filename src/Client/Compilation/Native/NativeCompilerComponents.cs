@@ -12,6 +12,8 @@ public static class NativeCompilerComponents
     public static NativeCompilerComponent For(NativeRuntimeProfile profile, NativeCompilerEngine engine)
     {
         if (!NativeRuntimeProfiles.IsSuite(profile)) throw new ArgumentOutOfRangeException(nameof(profile));
+        if (profile == NativeBiberCompilerContract.Profile) return NativeBiberCompilerContract.Component(engine);
+        if (profile == NativeUnicodeCompilerContract.Profile) return NativeUnicodeCompilerContract.Component(engine);
         if (profile == NativeGraphicsNavigationContract.Profile) return NativeGraphicsNavigationContract.Component(engine);
         if (profile == NativeXeNavigationContract.Profile) return NativeXeNavigationContract.Component(engine);
         if (profile == NativeNavigationContract.Profile) return NativeNavigationContract.Component(engine);
