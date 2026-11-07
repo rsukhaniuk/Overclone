@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "scope": "synthetic source-only browser fixture; no generated BCF/BBL/PDF",
+  "biblatex": "3.19",
+  "biber": "2.19",
+  "backend": "biber",
+  "files": [
+    {
+      "name": "chapter.tex",
+      "length": 191,
+      "sha256": "5c36cbd7e18aacd0f42deb8ed3264fa42e3f5e4ae5e8716c331f36431822c20d"
+    },
+    {
+      "name": "main-latin.tex",
+      "length": 1051,
+      "sha256": "06d9f7034c15cfec0418f5c92ef0dea0faa6c19ccac7c999579f86ef942f7cf2"
+    },
+    {
+      "name": "main-unicode.tex",
+      "length": 1023,
+      "sha256": "48a72fd8762d93a9c157732a31387e0e14e783ff3129fef74d31417949eb18ac"
+    },
+    {
+      "name": "references-latin.bib",
+      "length": 323,
+      "sha256": "d5813cad341f3184c0355e93e56f9d545769a255c0a567a94b3ba02f5f5631d8"
+    },
+    {
+      "name": "references-ukrainian.bib",
+      "length": 202,
+      "sha256": "ffcac1827a11e0c0c2796f0bf4ebf0ac1127f8cf54ca0d702a5e37c1d534c3bd"
+    }
+  ],
+  "citationKeys": [
+    "latin-book",
+    "ukrainian-book",
+    "latin-article"
+  ],
+  "bibliographyMarkers": [
+    "Biber Latin Book Marker",
+    "\u0423\u043a\u0440\u0430\u0457\u043d\u0441\u044c\u043a\u0430 \u0431\u0456\u0431\u043b\u0456\u043e\u0433\u0440\u0430\u0444\u0456\u044f \u041a\u0438\u0457\u0432",
+    "Biber Latin Article Marker"
+  ],
+  "pageMarkers": [
+    "Portable compiler fixture. Section 2 is resolved.",
+    "Included file, reference to Section 1.",
+    "Biber included chapter marker.",
+    "Latin book citation [1]. Ukrainian book citation [2].",
+    "Latin article citation [3].",
+    "The included equation is (1).",
+    "Biber table",
+    "\u041f\u0440\u0438\u0432\u0456\u0442, \u041a\u0438\u0457\u0432!"
+  ]
+}

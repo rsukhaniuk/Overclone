@@ -13,16 +13,22 @@
 //   PDF_RUNTIME_DIR        trusted E1 manifest.json + files/ (loader,wasm)
 // Optional:
 //   RESULT_DIR             writable receipt directory (lead-supplied)
-//   CASE                    plain (default) | golden | long | font-assets | portable | packages | biblatex | t2a-bundled
+//   CASE                    plain (default) | golden | long | font-assets | portable | packages | biblatex | packages-compiler | biblatex-compiler | biber | cyrillic-semantics | harfbuzz | t2a-bundled | font-closure | unicode-fonts
 //   COMPILER_CHOICE         local-authoring-v4 (default) | latex-dvi | xelatex | lualatex
 //   T2A_FONT_PROJECT_DIR    required only for font-assets: exact 7 private project files
-//   RESULT_DIR             required for font-assets: retain actual downloaded PDFs
+//   RESULT_DIR             required for font-assets/final R1 cases: retain actual PDFs
 //   PREFLIGHT_ONLY=1        fixture checks only; exits BEFORE origin/browser creation
 //   PDF_DOWNLOAD_CHECKS=1   optional CASE=plain online/offline/stale export checks (RESULT_DIR required)
-//   SOURCE_PDF_CHECKS=1     plain/golden/portable native forward/inverse checks
+//   SOURCE_PDF_CHECKS=1     plain/golden/portable/biber native forward/inverse checks
+//   BUNDLED_RUNTIME=1       mandatory for final R1 cases; automatic embedded tools
+//   CYRILLIC_FIXTURE        mixed-ligature.tex (default) | mixed-semantic.tex, both original unchanged
+//   LUAHARFBUZZ_SOURCE_DIR   approved native LuaHarfbuzz source root, required only for harfbuzz
 //   T2A_UNICODE_REPAIR=1    explicit source-example opt-in, ONLY CASE=font-assets; original inputs still verified first
 // packages/biblatex always require RESULT_DIR, exact PDF downloads and native
 // root/include navigation. Supply the complete mapped P10 runtime for all engines.
+// packages-compiler/biblatex-compiler use those EXACT fixtures and all compiler,
+// text, final-pass, download and cold checks; native navigation is NOT ASSESSED
+// pending R2. SOURCE_PDF_CHECKS=1 is refused for these explicitly scoped cases.
 // Their URI links/outlines need separate inspection of the retained actual PDFs:
 // the registered preview does not request/expose passive actions or bookmarks.
 //
@@ -64,27 +70,35 @@ const RUNTIME_DIR = req("AUTHORING_RUNTIME_DIR");
 const PDF_DIR = req("PDF_RUNTIME_DIR");
 const RESULT_DIR = process.env.RESULT_DIR || "";
 const CASE = process.env.CASE || "plain";
-const PACKAGE_CASE = ["packages", "biblatex"].includes(CASE);
+const STRICT_PACKAGE_CASE = ["packages", "biblatex"].includes(CASE);
+const PACKAGE_COMPILER_ONLY = ["packages-compiler", "biblatex-compiler"].includes(CASE);
+const FIXTURE_CASE = PACKAGE_COMPILER_ONLY ? CASE.slice(0, -"-compiler".length) : CASE;
+const PACKAGE_CASE = STRICT_PACKAGE_CASE || PACKAGE_COMPILER_ONLY;
+const BIBER_CASE = CASE === 'biber';
+const CYRILLIC_CASE = CASE === 'cyrillic-semantics';
+const HARFBUZZ_CASE = CASE === 'harfbuzz';
+const FINAL_R1_CASE = BIBER_CASE || CYRILLIC_CASE || HARFBUZZ_CASE;
 const COMPILER_CHOICE = process.env.COMPILER_CHOICE || "local-authoring-v4";
 assert.ok(["local-authoring-v4", "latex-dvi", "xelatex", "lualatex"].includes(COMPILER_CHOICE), "explicit supported compiler choice");
 const BUNDLED_RUNTIME = process.env.BUNDLED_RUNTIME === "1";
-const SOURCE_PDF_CHECKS = process.env.SOURCE_PDF_CHECKS === "1" || PACKAGE_CASE;
-assert.ok(!SOURCE_PDF_CHECKS || ["plain", "golden", "portable", "packages", "biblatex"].includes(CASE), "source/PDF checks support plain/golden/portable/packages/biblatex fixtures");
+assert.ok(!FINAL_R1_CASE || BUNDLED_RUNTIME, 'final R1 cases require automatic bundled tools');
+const SOURCE_PDF_CHECKS = process.env.SOURCE_PDF_CHECKS === "1" || STRICT_PACKAGE_CASE;
+assert.ok(!SOURCE_PDF_CHECKS || ["plain", "golden", "portable", "packages", "biblatex", "biber"].includes(CASE), "source/PDF checks support plain/golden/portable/packages/biblatex/biber fixtures");
 // Opt-in real UI rename of the original input bytes, followed by the same
 // registered compile/BibTeX/render/full-cold-offline workflow.
 const MAIN_PATH = process.env.SELECTED_MAIN_PATH || "main.tex";
-assert.ok(MAIN_PATH === "main.tex" || ["plain", "golden", "portable", "packages", "biblatex", "t2a-bundled"].includes(CASE), "selected root supports plain/golden/portable/packages/biblatex/t2a-bundled fixtures");
+assert.ok(MAIN_PATH === "main.tex" || ["plain", "golden", "portable", "packages", "biblatex", "t2a-bundled", "font-closure", "unicode-fonts", "biber", "cyrillic-semantics", "harfbuzz"].includes(FIXTURE_CASE), "selected root supports plain/golden/portable/packages/biblatex/t2a-bundled fixtures");
 assert.ok(MAIN_PATH.length <= 200 && MAIN_PATH.endsWith(".tex") && !MAIN_PATH.split("/").some(n => !n || n === "." || n === ".."));
 const PORT = 8768; // dedicated container-only origin port
-assert.ok(["plain", "golden", "long", "font-assets", "portable", "packages", "biblatex", "t2a-bundled"].includes(CASE), "CASE must be plain|golden|long|font-assets|portable|packages|biblatex|t2a-bundled");
+assert.ok(["plain", "golden", "long", "font-assets", "portable", "packages", "biblatex", "packages-compiler", "biblatex-compiler", "t2a-bundled", "font-closure", "unicode-fonts", "biber", "cyrillic-semantics", "harfbuzz"].includes(CASE), "unsupported authoring CASE");
 assert.ok(CASE !== 't2a-bundled' || ['local-authoring-v4', 'latex-dvi'].includes(COMPILER_CHOICE), 'bundled T2A fixture targets pdfTeX-based engines');
 const PDF_DOWNLOAD_CHECKS = process.env.PDF_DOWNLOAD_CHECKS === "1";
-assert.ok(!PDF_DOWNLOAD_CHECKS || ["plain", "portable", "packages", "biblatex", "t2a-bundled"].includes(CASE), "PDF_DOWNLOAD_CHECKS=1 requires plain/portable/packages/biblatex/t2a-bundled");
+assert.ok(!PDF_DOWNLOAD_CHECKS || ["plain", "portable", "packages", "biblatex", "t2a-bundled", "font-closure", "unicode-fonts", "biber", "cyrillic-semantics", "harfbuzz"].includes(FIXTURE_CASE), "PDF_DOWNLOAD_CHECKS=1 requires plain/portable/packages/biblatex/t2a-bundled");
 const repairSetting = process.env.T2A_UNICODE_REPAIR;
 assert.ok(repairSetting === undefined || ["", "0", "1"].includes(repairSetting), "T2A_UNICODE_REPAIR must be absent,0 or1");
 const T2A_UNICODE_REPAIR = repairSetting === "1";
 assert.ok(!T2A_UNICODE_REPAIR || CASE === "font-assets", "T2A_UNICODE_REPAIR=1 is supported only for CASE=font-assets");
-const CHECK_DOWNLOADS = CASE === "font-assets" || PDF_DOWNLOAD_CHECKS || PACKAGE_CASE;
+const CHECK_DOWNLOADS = CASE === "font-assets" || PDF_DOWNLOAD_CHECKS || PACKAGE_CASE || FINAL_R1_CASE;
 if (CHECK_DOWNLOADS) assert.ok(RESULT_DIR, "RESULT_DIR is required to retain actual PDF downloads");
 
 // --- Validate the published SDK manifest: EVERY asset byte hash, as in the
@@ -129,10 +143,25 @@ for (const p of pins) {
 }
 const compilerFiles = pins.map((p) => path.join(RUNTIME_DIR, "files", p.name));
 for (const f of compilerFiles) assert.ok(fs.existsSync(f), `pin file missing: ${path.basename(f)}`);
-const portableFiles = ['portable', 'packages', 'biblatex'].includes(CASE) ? (() => {
+const biberDirectory = path.join(__dirname, '../tests/CompilerBiberFixtures');
+const biberManifest = BIBER_CASE ? json(fs.readFileSync(path.join(biberDirectory, 'manifest.json'), 'utf8')) : null;
+const portableFiles = BIBER_CASE ? (() => {
+  assert.equal(biberManifest.backend, 'biber'); assert.equal(biberManifest.biblatex, '3.19'); assert.equal(biberManifest.biber, '2.19');
+  for (const name of ['biber.js', 'biber.wasm', 'biber.data']) assert.ok(pins.some(p => p.name === name), 'genuine bundled Biber input '+name);
+  const main = ['xelatex','lualatex'].includes(COMPILER_CHOICE) ? 'main-unicode.tex' : 'main-latin.tex';
+  const entries = [main, 'chapter.tex', 'references-latin.bib', 'references-ukrainian.bib'].map(source => {
+    const b=fs.readFileSync(path.join(biberDirectory,source)), expected=biberManifest.files.find(f=>f.name===source);
+    assert.ok(expected); assert.equal(b.length,expected.length); assert.equal(sha256(b),expected.sha256);
+    return {name:source===main?'main.tex':source,buffer:b,mimeType:'text/plain'};
+  });
+  assert.match(entries[0].buffer.toString(), /backend=biber/);
+  entries.push({name:'figure.xbb',buffer:fs.readFileSync(path.join(__dirname,'../tests/CompilerSuiteFixtures/figure.xbb')),mimeType:'text/plain'});
+  entries.push({name:'figure.png',buffer:fs.readFileSync(path.join(__dirname,'../src/Client/wwwroot/icons/icon-192.png')),mimeType:'image/png'});
+  return entries;
+})() : ['portable', 'packages', 'biblatex'].includes(FIXTURE_CASE) ? (() => {
   const directory = path.join(__dirname, '../tests/CompilerSuiteFixtures');
-  const mainDirectory = CASE === 'biblatex' ? path.join(__dirname, '../tests/CompilerBibliographyFixtures')
-    : CASE === 'packages' ? path.join(__dirname, '../tests/PackageFontFixtures') : directory;
+  const mainDirectory = FIXTURE_CASE === 'biblatex' ? path.join(__dirname, '../tests/CompilerBibliographyFixtures')
+    : FIXTURE_CASE === 'packages' ? path.join(__dirname, '../tests/PackageFontFixtures') : directory;
   const unicode = ['xelatex', 'lualatex'].includes(COMPILER_CHOICE);
   const entries = [['main.tex', unicode ? 'main-unicode.tex' : 'main-latin.tex'],
     ['chapter.tex', 'chapter.tex'], ['references.bib', 'references.bib'], ['figure.xbb', 'figure.xbb']]
@@ -140,7 +169,83 @@ const portableFiles = ['portable', 'packages', 'biblatex'].includes(CASE) ? (() 
   entries.push({name: 'figure.png', buffer: fs.readFileSync(path.join(__dirname, '../src/Client/wwwroot/icons/icon-192.png')), mimeType: 'image/png'});
   return entries;
 })() : null;
-const bundledT2a = CASE === 't2a-bundled' ? fs.readFileSync(path.join(__dirname, '../tests/PackageFontFixtures/t2a-bundled.tex')) : null;
+const BIBER_COLD_EDIT = {
+  file: 'references-latin.bib', key: 'offline-added-book', marker: 'Biber Cold Offline Added Book Marker',
+  citation: 'Offline added citation~\\cite{offline-added-book}.', renderedCitation: 'Offline added citation [4].',
+  entry: '\n@book{offline-added-book,\n  author = {Baker, Alice},\n  title = {{Biber Cold Offline Added Book Marker}},\n  publisher = {Offline Revision Press},\n  date = {2027}\n}\n',
+};
+const changedBiberBib = BIBER_CASE ? (()=>{
+  const original=portableFiles.find(f=>f.name===BIBER_COLD_EDIT.file).buffer;
+  assert.ok(!portableFiles.filter(f=>f.name.endsWith('.bib')).some(f=>f.buffer.toString().includes(BIBER_COLD_EDIT.key)), 'new offline citekey is absent from original inputs');
+  const bytes=Buffer.concat([original,Buffer.from(BIBER_COLD_EDIT.entry,'utf8')]);
+  assert.deepEqual(bytes.subarray(0,original.length),original,'BIB edit appends without changing original entries');
+  const keys=[...Buffer.concat([bytes,portableFiles.find(f=>f.name==='references-ukrainian.bib').buffer]).toString().matchAll(/@(?:book|article)\s*\{([^,]+),/g)].map(m=>m[1]);
+  assert.deepEqual(keys.slice().sort(),[...biberManifest.citationKeys,BIBER_COLD_EDIT.key].sort(),'cold edit defines exactly four original/new bibliography entries');
+  return bytes;
+})() : null;
+const packageCompilerScope = () => !PACKAGE_COMPILER_ONLY ? null : ({
+  fixtureCase:FIXTURE_CASE, scope:'compiler/package/font regression with complete cold-offline workflow',
+  nativeNavigation:{status:'not-assessed',pendingMilestone:'R2',reason:'Explicit compiler-only case; use the unchanged packages/biblatex cases for strict root/include navigation.'},
+  fixtures:portableFiles.map(f=>({name:f.name,length:f.buffer.length,sha256:sha256(f.buffer)})),
+});
+const semanticDirectory = path.join(__dirname, '../tests/CompilerSemanticsFixtures');
+const semanticsManifest = CYRILLIC_CASE || HARFBUZZ_CASE ? json(fs.readFileSync(path.join(semanticDirectory,'manifest.json'),'utf8')) : null;
+const CYRILLIC_FIXTURE = process.env.CYRILLIC_FIXTURE || 'mixed-ligature.tex';
+assert.ok(!CYRILLIC_CASE || ['mixed-semantic.tex','mixed-ligature.tex'].includes(CYRILLIC_FIXTURE),'exact original Cyrillic fixture');
+assert.ok(!CYRILLIC_CASE || ['local-authoring-v4','latex-dvi'].includes(COMPILER_CHOICE),'original T2A semantics requires pdfTeX/DVI');
+assert.ok(!HARFBUZZ_CASE || COMPILER_CHOICE==='lualatex','HarfBuzz fixture requires the genuine LuaHB engine');
+const semanticFiles = CYRILLIC_CASE || HARFBUZZ_CASE ? (() => {
+  const selected=HARFBUZZ_CASE?'harfbuzz.tex':CYRILLIC_FIXTURE, expected=semanticsManifest.files.find(f=>f.name===selected);
+  const buffer=fs.readFileSync(path.join(__dirname,'..',expected.source));
+  assert.equal(buffer.length,expected.length);assert.equal(sha256(buffer),expected.sha256);
+  const files=[{name:'main.tex',buffer,mimeType:'text/plain'}];
+  if(HARFBUZZ_CASE){
+    assert.match(buffer.toString(),/Renderer=HarfBuzz/);
+    const font=semanticsManifest.amiri,bytes=fs.readFileSync(path.join(req('LUAHARFBUZZ_SOURCE_DIR'),font.source));
+    assert.equal(bytes.length,font.length);assert.equal(sha256(bytes),font.sha256);
+    files.push({name:'fonts/amiri-regular.ttf',buffer:bytes,mimeType:'font/ttf'});
+  }
+  return files;
+})() : null;
+const capturedR1Files = BIBER_CASE ? portableFiles : semanticFiles;
+const r1Preflight = () => !FINAL_R1_CASE ? null : ({case:CASE,browserNativeProof:false,
+  originalSource:!BIBER_CASE,selectedFixture:BIBER_CASE?(['xelatex','lualatex'].includes(COMPILER_CHOICE)?'main-unicode.tex':'main-latin.tex'):HARFBUZZ_CASE?'harfbuzz.tex':CYRILLIC_FIXTURE,
+  inputs:capturedR1Files.map(f=>({name:f.name,length:f.buffer.length,sha256:sha256(f.buffer)})),
+  bibliography:BIBER_CASE?{tool:'Biber',version:'2.19',phase:10,keys:biberManifest.citationKeys,markers:biberManifest.bibliographyMarkers,
+    coldOfflineEdit:{file:BIBER_COLD_EDIT.file,key:BIBER_COLD_EDIT.key,marker:BIBER_COLD_EDIT.marker,expectedEntries:4,
+      changedBib:{length:changedBiberBib.length,sha256:sha256(changedBiberBib)},citation:BIBER_COLD_EDIT.citation,
+      exactSavedBytesRequired:true,sameInstalledRuntimeRequired:true,backendControlFingerprintExposed:false}}:null,
+  literalQueries:BIBER_CASE?biberManifest.bibliographyMarkers:semanticsManifest.queries[HARFBUZZ_CASE?'harfbuzz.tex':CYRILLIC_FIXTURE],
+  nativeInputs:pins.filter(p=>BIBER_CASE?/^biber\.(js|wasm|data)$/.test(p.name):HARFBUZZ_CASE?['luatex.js','luatex.wasm','luaotfload-harf-plug.lua'].includes(p.name):['semantic-engine.js','semantic-engine.wasm'].includes(p.name))});
+const FONT_CLOSURE = CASE === 'font-closure';
+const UNICODE_FONTS = CASE === 'unicode-fonts';
+assert.ok(!UNICODE_FONTS || ['xelatex','lualatex'].includes(COMPILER_CHOICE), 'Unicode font control requires a Unicode engine');
+const selectedFontFixture = CASE === 't2a-bundled' ? 't2a-bundled.tex' : FONT_CLOSURE
+  ? 'fonts/' + (['xelatex','lualatex'].includes(COMPILER_CHOICE) ? 'declared-font-commands.tex' : 'declared-faces.tex')
+  : UNICODE_FONTS ? 'fonts/unicode-fontspec.tex' : null;
+const bundledT2a = selectedFontFixture ? fs.readFileSync(path.join(__dirname, '../tests/PackageFontFixtures', selectedFontFixture)) : null;
+function assertFontClosure(log, text) {
+  assert.doesNotMatch(log, /Missing character:|LaTeX Font Warning:|not loadable|File[^\n]*not found/);
+  const norm = text.replace(/\s+/g,' ').trim();
+  if (FONT_CLOSURE) {
+    const expected = [...bundledT2a.toString('utf8').matchAll(/\\Face\{[^}]+\}\{[^}]+\}\{[^}]+\}\{[^}]+\}\{([^}]+)\}/g)].map(m=>m[1]);
+    assert.equal(expected.length,292);
+    const actual = [...log.matchAll(/^R1-FONT:([^:\r\n]+):([^\r\n]+)/gm)];
+    assert.ok(actual.length>=292 && actual.length%292===0, 'complete font witnesses in every genuine TeX pass');
+    for(let i=0;i<actual.length;i+=292)assert.deepEqual(actual.slice(i,i+292).map(m=>m[1]), expected, 'all292 declared face selections in each pass');
+    for(let i=0;i<actual.length;i++) assert.ok(actual[i][2]===expected[i%292] || actual[i][2].startsWith(expected[i%292]+' at '), 'genuine selected metric '+expected[i%292]);
+    assert.equal(norm.split('Київ').length-1,292,'all292 actual page-text samples');
+    return {fixture:selectedFontFixture,sourceSha256:sha256(bundledT2a),directFaces:292,projectFontFiles:0,
+      scope:'declared font resources; original T2A Cyrillic I/i identity is assessed separately'};
+  }
+  const actual = [...log.matchAll(/^R1-UNICODE-FONT:([^\r\n]+)/gm)].map(m=>m[1]);
+  assert.ok(actual.length>=16 && actual.length%16===0, 'complete Unicode style witnesses in every genuine TeX pass');
+  const faces=['DejaVuSerif.ttf','DejaVuSerif-Bold.ttf','DejaVuSerif-Italic.ttf','DejaVuSerif-BoldItalic.ttf'];
+  for(let i=0;i<actual.length;i++)assert.ok(actual[i].includes(faces[i%4]),'genuine Unicode style '+faces[i%4]);
+  assert.equal(norm.split('Привіт').length-1,16);assert.equal(norm.split('Іі').length-1,16);
+  assert.match(norm,/ASCII I i/);
+  return {fixture:selectedFontFixture,sourceSha256:sha256(bundledT2a),directFaces:16,projectFontFiles:0};
+}
 
 // --- PDF resource manifest: verify actual bytes against the supplied manifest.
 // The application independently pins trusted bytes; this harness does NOT
@@ -329,7 +434,9 @@ if (PREFLIGHT_ONLY) {
       .map(([name, bytes]) => ({ name, bytes: bytes.length, sha256: sha256(bytes) })),
     long: entries.map(file => ({ name: file.name, bytes: file.buffer.length, sha256: sha256(file.buffer) })),
     fontAssets: FONT_FILES?.map(file => ({ name: file.name, bytes: file.buffer.length, sha256: sha256(file.buffer) })) || null,
-    fontSourceSelection: fontSourceSelection(),
+    fontSourceSelection: fontSourceSelection(), finalR1: r1Preflight(),
+    sourcePdfChecksEnabled:SOURCE_PDF_CHECKS,packageCompilerOnly:packageCompilerScope(),
+    packageInputs:PACKAGE_CASE?portableFiles.map(f=>({name:f.name,length:f.buffer.length,sha256:sha256(f.buffer)})):null,
   }) + "\n");
   process.exit(0); // BEFORE http.createServer, profile creation, Chromium or runtime execution.
 }
@@ -381,7 +488,9 @@ function chromiumCensus() {
 }
 
 const record = {
-  result: "FAIL", case: CASE, compilerChoice: COMPILER_CHOICE, scope: "local-authoring-compile-pdf-cold-offline", pdfDownloadChecksEnabled: CHECK_DOWNLOADS, bundledRuntime: BUNDLED_RUNTIME,
+  result: "FAIL", case: CASE, compilerChoice: COMPILER_CHOICE,
+  scope: PACKAGE_COMPILER_ONLY ? "local-authoring-compiler-package-cold-offline; native navigation NOT ASSESSED pending R2" : "local-authoring-compile-pdf-cold-offline",
+  pdfDownloadChecksEnabled: CHECK_DOWNLOADS, bundledRuntime: BUNDLED_RUNTIME,
   sourcePdfChecksEnabled: SOURCE_PDF_CHECKS,
   harnessSha256: sha256(fs.readFileSync(__filename)),
   sourcePdfHelperSha256: sha256(fs.readFileSync(path.join(__dirname, 'source-pdf-navigation-ui-checks.cjs'))),
@@ -391,7 +500,7 @@ const record = {
     pdfResources: pdfManifest.resources.length, pdfManifestSha256: sha256(fs.readFileSync(pdfManifestPath)),
     loaderSha256: loaderResource.sha256, wasmSha256: wasmResource.sha256, verifiedAgainstManifest: true,
   },
-  fontSourceSelection: fontSourceSelection(),
+  fontSourceSelection: fontSourceSelection(), finalR1: r1Preflight(),packageCompilerOnly:packageCompilerScope(),
   online: {}, coldOffline: {}, skipped: null, failure: null,
 };
 if (PACKAGE_CASE) record.packagePdfFeatureCoverage = {
@@ -400,6 +509,11 @@ if (PACKAGE_CASE) record.packagePdfFeatureCoverage = {
   bookmarks: { status: 'not-assessed', expectedTitles: ['Compiler suite', 'Included chapter'],
     reason: 'Registered PDF preview and E1 inspection contract do not expose outlines; inspect the exact retained PDF artifacts separately.' },
 };
+if(PACKAGE_COMPILER_ONLY){
+  record.packagePdfFeatureCoverage.nativeNavigation={...record.packageCompilerOnly.nativeNavigation};
+  record.online.nativeNavigation={...record.packageCompilerOnly.nativeNavigation};
+  record.coldOffline.nativeNavigation={...record.packageCompilerOnly.nativeNavigation};
+}
 let phase = "setup";
 function save() {
   if (RESULT_DIR) {
@@ -706,6 +820,184 @@ function assertRepairLatinText(text) {
   }
   return { literal: marker, occurrences: count, cyrillicReplacementsAllowed: false, normalizationApplied: false };
 }
+function assertCapturedR1Head(head, expectedMain, biberEdited=false) {
+  assert.equal(head.files.length,capturedR1Files.length,'exact captured R1 input set');
+  return capturedR1Files.map(input=>{
+    const name=input.name==='main.tex'?MAIN_PATH:input.name,file=head.files.find(f=>f.path===name);
+    assert.ok(file,'captured R1 input '+name);const bytes=Buffer.from(file.bytes);
+    const expected=input.name==='main.tex'?expectedMain:biberEdited&&input.name===BIBER_COLD_EDIT.file?changedBiberBib:input.buffer;
+    assert.deepEqual(bytes,expected,'exact captured R1 input '+name);
+    return {name,length:bytes.length,sha256:sha256(bytes)};
+  });
+}
+async function editBiberBibliography(page,project,before,expectedMain) {
+  assert.ok(BIBER_CASE);assertCapturedR1Head(before,expectedMain);
+  await page.locator('[data-testid="select-file"]',{hasText:BIBER_COLD_EDIT.file}).first().click();
+  await page.locator('.editor-toolbar label',{hasText:BIBER_COLD_EDIT.file}).waitFor();
+  const original=portableFiles.find(f=>f.name===BIBER_COLD_EDIT.file).buffer;
+  assert.equal(await H.$(page,'editor').inputValue(),original.toString('utf8'),'original BIB reopened through real editor');
+  await H.$(page,'editor').fill(changedBiberBib.toString('utf8'));await H.save(page);
+  const saved=await H.head(page,project),expected=before.files.map(f=>f.path===BIBER_COLD_EDIT.file?{...f,bytes:Array.from(changedBiberBib)}:f);
+  assert.deepEqual(saved.files,expected,'BIB Save appends only the new entry and preserves every other input');
+  assert.notEqual(saved.id,before.id,'changed BIB has a new durable project revision');
+  await selectMainInTree(page);assert.equal(await H.$(page,'editor').inputValue(),expectedMain.toString('utf8'));
+  return {file:BIBER_COLD_EDIT.file,key:BIBER_COLD_EDIT.key,marker:BIBER_COLD_EDIT.marker,
+    beforeHeadId:before.id,afterBibSaveHeadId:saved.id,
+    original:{length:original.length,sha256:sha256(original)},changed:{length:changedBiberBib.length,sha256:sha256(changedBiberBib)},
+    action:'real file tree/editor append and explicit Save; no storage writes or generated inputs injected'};
+}
+function captureBiberEdit(head,before,source) {
+  assertCapturedR1Head(head,source,true);
+  const expected=before.files.map(f=>f.path===MAIN_PATH?{...f,bytes:Array.from(source)}:f.path===BIBER_COLD_EDIT.file?{...f,bytes:Array.from(changedBiberBib)}:f);
+  assert.deepEqual(head.files,expected,'only main citation and selected BIB change; all other IDs/paths/bytes preserved');
+  const rows=[];
+  for(const [name,filename]of [[MAIN_PATH,'cold-offline-main.tex'],[BIBER_COLD_EDIT.file,'cold-offline-references-latin.bib']]){
+    const bytes=Buffer.from(head.files.find(f=>f.path===name).bytes);fs.writeFileSync(path.join(RESULT_DIR,filename),bytes);
+    rows.push({name,filename,length:bytes.length,sha256:sha256(bytes),headId:head.id});
+  }
+  return {changedInputs:rows,changedPaths:rows.map(r=>r.name),otherInputsPreserved:true,generatedInputsSupplied:false};
+}
+function assertFinalR1Log(log) {
+  const banners=[...log.matchAll(/(?:^|\n)This is (?:pdfTeX|XeTeX|LuaHBTeX|LuaTeX), Version[^\r\n]*/g)];
+  assert.ok(banners.length>=(BIBER_CASE?3:2),'actual multiple current TeX passes');
+  const final=log.slice(banners.at(-1).index);
+  assert.doesNotMatch(final,/undefined|(?:re)?run (?:LaTeX|Biber)|Please.*rerun|Label\(s\) may have changed|Missing character:|LaTeX Font Warning:|not loadable|File[^\n]*not found/i,'clean final genuine TeX pass');
+  assert.doesNotMatch(log,/Missing character:|LaTeX Font Warning:|not loadable|File[^\n]*not found/,'no missing font/package in any pass');
+  if(BIBER_CASE){assert.match(log,/This is Biber 2\.19/);assert.match(log,/(?:Writing|Output to)[^\n]*\.bbl/i,'genuine Biber wrote the BBL');}
+  return {texPassBanners:banners.map(b=>b[0].trim()),finalPassLog:final.slice(0,16384),finalPassLogSha256:sha256(Buffer.from(final)),finalPassClean:true,
+    bblEvidence:BIBER_CASE?'genuine Biber writing log plus actual rendered bibliography; direct BBL bytes belong to native producer proof':null};
+}
+function assertPackageCompilerLog(log) {
+  const result=assertFinalR1Log(log);
+  assert.ok(result.texPassBanners.length>=3,'explicit BibTeX package regression requires at least three genuine TeX passes');
+  assert.doesNotMatch(log,/This is Biber/,'compiler-only BibTeX fixture cannot substitute Biber');
+  return {...result,bibtexBannerPresent:/This is BibTeX, Version 0\.99d/.test(log),
+    backendProof:'read-only production bridge phase trace; the legacy BibTeX banner is not guaranteed in the merged log'};
+}
+function assertBiberEditRevision(online,offline,details,log) {
+  const old=online.trace.find(r=>r.tag.tool==='biber').tag,current=offline.trace.find(r=>r.tag.tool==='biber').tag;
+  assert.match(old.runtimeIdentity,/^[0-9a-f]{64}$/);assert.equal(current.runtimeIdentity,old.runtimeIdentity,'same installed runtime across whole-browser restart and BIB edit');
+  for(const r of [...online.trace,...offline.trace])assert.equal(r.tag.runtimeIdentity,old.runtimeIdentity);
+  assert.match(current.digest,/^[0-9a-f]{64}$/);assert.notEqual(current.digest,old.digest,'production project-input fingerprint changes with saved source/BIB');
+  const uiDigest=details.match(/Input: ([0-9a-f]{64})/)?.[1];assert.equal(uiDigest,current.digest,'accepted UI revision digest matches actual backend phase');
+  assert.equal(record.online.inputDigest,old.digest);
+  assert.deepEqual(current.snapshot.projectId,old.snapshot.projectId,'same durable project');
+  for(const r of offline.trace)assert.equal(r.tag.digest,current.digest);
+  assert.match(log,/Found 4 citekeys in bib section 0/,'genuine current BCF supplies all four citekeys to Biber');
+  return {onlineRequest:online.request,offlineRequest:offline.request,onlineInputDigest:old.digest,offlineInputDigest:current.digest,
+    runtimeIdentity:current.runtimeIdentity,sameInstalledRuntime:true,projectId:current.snapshot.projectId,
+    onlineCapture:old.capture,offlineCapture:current.capture,productionEvidence:'read-only existing native bridge tags + UI input digest',
+    fingerprintKind:'captured project content digest; internal BCF/backend control fingerprint is not exposed',backendControlFingerprintExposed:false,
+    expectedBibliographyEntries:4,bblEvidence:'genuine Biber four-citekey/BBL-writing log plus subsequent successful TeX, four unique rendered bibliography markers and resolved fourth citation; no direct BBL accessor'};
+}
+async function readProductionNativePhases(page) {
+  const details=await H.$(page,'compile-details').textContent(),request=details.match(/Request: ([0-9a-f]{32});/)?.[1];assert.ok(request);
+  const observations=await page.evaluate(async()=>{
+    const bridge=await import('./js/compile-port-bridge.js');return typeof bridge.observations==='function'?bridge.observations():null;
+  });
+  assert.ok(observations&&Array.isArray(observations.trace),'existing real worker trace is available');
+  return {details,request,trace:observations.trace.filter(r=>r.tag.request===request)};
+}
+function assertPackageCompilerTrace(details,trace,compilerChoice,expectedRuntimeIdentity) {
+  const request=details.match(/Request: ([0-9a-f]{32});/)?.[1],digest=details.match(/Input: ([0-9a-f]{64})/)?.[1],epoch=Number(details.match(/epoch: (\d+)/)?.[1]);
+  assert.ok(request&&digest&&Number.isSafeInteger(epoch)&&epoch>0);assert.match(expectedRuntimeIdentity,/^[0-9a-f]{64}$/);
+  const [engineId,version]={'local-authoring-v4':['pdftex',23],'latex-dvi':['latex-dvi',24],xelatex:['xelatex',21],lualatex:['lualatex',22]}[compilerChoice];
+  const tex=trace.filter(r=>r.tag.tool==='latex'),bib=trace.filter(r=>r.tag.tool==='bibtex'),converted=trace.filter(r=>r.tag.tool==='dvipdfmx');
+  assert.ok(tex.length>=3&&tex.length<=6,'actual successful bounded TeX phase count');assert.ok(bib.length>=1,'actual selected BibTeX phase required');
+  assert.equal(trace[0].tag.tool,'latex','complete current trace starts with TeX');
+  const first=trace[0].tag,nonces=new Set();assert.match(first.job,/^[0-9a-f]{32}$/);
+  for(const [i,r]of trace.entries()){
+    assert.ok(r.posted&&r.entered&&r.terminated);assert.equal(r.outcome,'native-return');assert.equal(r.nativeReturn,0);
+    assert.ok(['latex','bibtex','dvipdfmx'].includes(r.tag.tool),'no Biber or unselected backend substitution');
+    assert.equal(r.tag.request,request);assert.equal(r.tag.digest,digest);assert.equal(r.tag.epoch,epoch);
+    assert.equal(r.tag.profile,13);assert.equal(r.tag.version,version);assert.equal(r.tag.engineId,engineId);
+    assert.equal(r.tag.runtimeIdentity,expectedRuntimeIdentity,'phase uses the exact supplied authenticated P13 runtime');
+    assert.equal(r.tag.job,first.job);assert.equal(r.tag.capture,first.capture);assert.deepEqual(r.tag.snapshot,first.snapshot);
+    assert.ok(r.tag.snapshot&&r.tag.snapshot.captureId===r.tag.capture,'phase snapshot capture is correlated');
+    assert.equal(r.tag.ordinal,i+1,'complete contiguous current-phase ordering');
+    assert.match(r.tag.nonce,/^[0-9a-f]{32}$/);assert.ok(!nonces.has(r.tag.nonce),'distinct native phase nonce');nonces.add(r.tag.nonce);
+    if(r.tag.tool==='bibtex'){
+      assert.equal(trace[i-1]?.tag.tool,'latex','one selected backend after a genuine TeX pass');
+      assert.equal(trace[i+1]?.tag.tool,'latex','genuine TeX consumes every successful backend output');
+    }
+  }
+  assert.ok(tex.at(-1).tag.ordinal>bib.at(-1).tag.ordinal,'final TeX consumes successful BibTeX output');
+  assert.equal(converted.length,['latex-dvi','xelatex'].includes(compilerChoice)?1:0,'only selected DVI/XDV engine converts once');
+  assert.equal(trace.at(-1).tag.tool,converted.length?'dvipdfmx':'latex','conversion follows the final TeX pass');
+  return {request,inputDigest:digest,runtimeIdentity:expectedRuntimeIdentity,engineId,profile:13,texPhases:tex.length,bibtexPhases:bib.length,
+    lastTexAfterLastBibtex:true,selectedBibliographyTool:'Bibtex',trace,source:'read-only existing production bridge observations',bblBytesExposed:false};
+}
+async function observePackageCompilerPhases(page) {
+  assert.ok(PACKAGE_COMPILER_ONLY);
+  assert.equal(await H.$(page,'bibliography-tool').inputValue(),'Bibtex','explicit selected UI backend');
+  assert.equal(await page.locator('select[aria-label="Compile engine"]').inputValue(),COMPILER_CHOICE);
+  const {details,trace}=await readProductionNativePhases(page);
+  const closure=sha256(Buffer.from(pins.slice().sort((a,b)=>a.name<b.name?-1:a.name>b.name?1:0).map(p=>`${p.name}\t${p.length}\t${p.sha256}`).join('\n')));
+  const identity=sha256(Buffer.from('native-runtime-profile-v1\nlocal-compiler-biber-v1\n'+closure));
+  return assertPackageCompilerTrace(details,trace,COMPILER_CHOICE,identity);
+}
+async function observeR1Phases(page) {
+  const {request,trace}=await readProductionNativePhases(page),tex=trace.filter(r=>r.tag.tool==='latex'),bib=trace.filter(r=>r.tag.tool==='biber');
+  assert.ok(tex.length>=(BIBER_CASE?3:2),'actual successful TeX phase count');
+  for(const r of trace){assert.ok(r.posted&&r.entered&&r.terminated);assert.equal(r.outcome,'native-return');assert.equal(r.nativeReturn,0);}
+  assert.ok(trace.every(r=>r.tag.tool!=='bibtex'),'no unexpected BibTeX substitution');
+  if(BIBER_CASE){assert.ok(bib.length>=1,'genuine Biber phase required');for(const r of bib){assert.equal(r.tag.version,10);assert.equal(r.tag.profile,13);}
+    assert.ok(tex.at(-1).tag.ordinal>bib.at(-1).tag.ordinal,'real TeX consumes Biber result after phase10');}
+  if(CYRILLIC_CASE)for(const r of tex){assert.equal(r.tag.profile,13);assert.equal(r.tag.version,COMPILER_CHOICE==='latex-dvi'?24:23);}
+  if(HARFBUZZ_CASE)for(const r of tex){assert.equal(r.tag.profile,13);assert.equal(r.tag.version,22);assert.equal(r.tag.engineId,'lualatex');}
+  return {request,trace,source:'read-only existing production bridge observations',bblBytesExposed:false};
+}
+function assertR1Text(text,biberEdited=false) {
+  const norm=text.replace(/\s+/g,' ').trim(),markers=BIBER_CASE?[...biberManifest.pageMarkers,...biberManifest.bibliographyMarkers]
+    :semanticsManifest.queries[HARFBUZZ_CASE?'harfbuzz.tex':CYRILLIC_FIXTURE];
+  for(const literal of markers)assert.ok((BIBER_CASE?norm:text).includes(literal),'actual literal R1 PDF text '+literal);
+  if(BIBER_CASE)assert.doesNotMatch(norm,/\?\?|\[(?:latin-book|ukrainian-book|latin-article)\]/,'resolved references and citations');
+  if(BIBER_CASE&&biberEdited){
+    for(const marker of [...biberManifest.bibliographyMarkers,BIBER_COLD_EDIT.marker])assert.equal(norm.split(marker).length-1,1,'four distinct rendered bibliography entries: '+marker);
+    assert.ok(norm.includes(BIBER_COLD_EDIT.renderedCitation),'new fourth citation resolves to [4]');
+    assert.doesNotMatch(norm,/\[offline-added-book\]/,'new citation cannot remain an unresolved citekey');
+    markers.push(BIBER_COLD_EDIT.marker,BIBER_COLD_EDIT.renderedCitation);
+  }
+  if(CYRILLIC_CASE){
+    for(const literal of markers)assert.equal(text.split(literal).length-1,CYRILLIC_FIXTURE==='mixed-semantic.tex'&&literal==='ASCII I i.'?4:2,'regular/bold original semantic occurrences '+literal);
+    if(CYRILLIC_FIXTURE==='mixed-semantic.tex')for(const wrong of ['ASCII І i.','ASCII I і.','ASCII І і.'])assert.ok(!text.includes(wrong),'Latin controls cannot be replaced with Cyrillic');
+  }
+  return {markers,whitespaceNormalizationOnly:BIBER_CASE,unicodeNormalizationApplied:false,text:text.slice(0,8192)};
+}
+async function verifyLiteralR1Search(page, project, pdfHash, biberEdited=false) {
+  const before=await H.head(page,project),rows=[],queries=BIBER_CASE?[...biberManifest.bibliographyMarkers,...(biberEdited?[BIBER_COLD_EDIT.marker]:[])]:semanticsManifest.queries[HARFBUZZ_CASE?'harfbuzz.tex':CYRILLIC_FIXTURE];
+  for(const query of queries){
+    await H.$(page,'pdf-pane').locator('input[aria-label="Search PDF"]').fill(query);
+    const generation=await H.$(page,'pdf-pane').getAttribute('data-generation');
+    await page.getByRole('button',{name:'Search document',exact:true}).click();
+    await page.waitForFunction(old=>document.querySelector('[data-testid=pdf-pane]')?.dataset.generation!==old,generation,{timeout:30000});
+    await waitPreviewAvailable(page,90000);
+    await page.waitForFunction(()=>['Complete','Empty','Error','Cancelled'].includes(document.querySelector('[data-testid=search-status]')?.dataset.searchStatus),null,{timeout:30000});
+    const status=H.$(page,'search-status');assert.equal(await status.getAttribute('data-search-status'),'Complete');
+    const matches=Number(await status.getAttribute('data-match-count'));assert.ok(matches>0,'literal original PDF search '+query);
+    assert.equal(await H.$(page,'pdf-pane').getAttribute('data-document'),pdfHash);rows.push({query,matches,normalizationApplied:false});
+  }
+  assert.deepEqual(await H.head(page,project),before,'literal search preserves all project bytes');return rows;
+}
+async function inspectR1Download(filename,biberEdited=false) {
+  // Independent test invocation of the actual pinned E1 ABI over downloaded bytes.
+  const loader=path.join(PDF_DIR,'files',loaderResource.name),wasm=fs.readFileSync(path.join(PDF_DIR,'files',wasmResource.name));
+  const m=await require(loader)({wasmBinary:wasm,print(){},printErr(){}});
+  const ok=(n,...a)=>assert.equal(m['_'+n](...a),0,n);
+  const input=b=>{const h=m._e1_alloc(b.length);assert.ok(h);m.HEAPU8.set(b,m._e1_data(h));return h;};
+  const take=()=>{const h=m._e1_result(),n=m._e1_size(h),d=input(Buffer.alloc(n));ok('e1_copy',h,d);const b=Buffer.from(m.HEAPU8.slice(m._e1_data(d),m._e1_data(d)+n));ok('e1_release',d);ok('e1_release',h);return b;};
+  const raw=Buffer.alloc(36);[1,36,8388608,32,100000,256,4000000,8388608,64].forEach((n,i)=>raw.writeUInt32LE(n,i*4));
+  const bytes=fs.readFileSync(path.join(RESULT_DIR,filename)),data=input(bytes),budget=input(raw);ok('e1_open',data,budget);const doc=m._e1_result();ok('e1_release',data);ok('e1_release',budget);
+  const pages=m._e1_document_pages(doc);assert.ok(pages>0&&pages<=32);const texts=[],search=[];
+  const queries=BIBER_CASE?[...biberManifest.bibliographyMarkers,...(biberEdited?[BIBER_COLD_EDIT.marker]:[])]:semanticsManifest.queries[HARFBUZZ_CASE?'harfbuzz.tex':CYRILLIC_FIXTURE];
+  for(let i=0;i<pages;i++){ok('e1_page',doc,i);const page=m._e1_result();ok('e1_text',page);texts.push(JSON.parse(take()).text);
+    for(const query of queries){const q=input(Buffer.from(query+'\0','utf16le'));ok('e1_search',page,q);const hits=JSON.parse(take());ok('e1_release',q);if(hits.length)search.push({query,page:i+1,matches:hits.length});}
+    ok('e1_close',page);
+  }
+  ok('e1_close',doc);assert.equal(m._e1_live(),0);for(const query of queries)assert.ok(search.some(r=>r.query===query),'actual downloaded PDF literal search '+query);
+  return {filename,length:bytes.length,sha256:sha256(bytes),pages,rendererWasmSha256:wasmResource.sha256,textEvidence:assertR1Text(texts.join('\n'),biberEdited),literalSearch:search};
+}
+
 async function downloadAcceptedPdf(page, project, label, filename, expectedHash) {
   phase = label;
   const headBefore = await H.head(page, project), editorBefore = await H.$(page, "editor").inputValue();
@@ -767,7 +1059,7 @@ const workers = [];
 // (/__oop/native-worker/compile|pdf). An unrelated analyzer worker (e.g. a
 // blob: nested worker) is permitted and must not be counted as a native
 // compile/PDF worker in the install zero-worker assertions.
-const NATIVE_WORKER_RE = /\/__oop\/native-worker\/(?:compile|pdf|synctex|dvi|xetex|luatex)\b/;
+const NATIVE_WORKER_RE = /\/__oop\/native-worker\/(?:compile|pdf|synctex|dvi|xetex|luatex|biber)\b/;
 const nativeWorkersInPhase = (p) => workers.filter((w) => w.phase === p && NATIVE_WORKER_RE.test(w.url));
 const externalAttempts = [];
 const externalSuccesses = [];
@@ -820,7 +1112,7 @@ let profile, base;
     await page.getByRole("button", { name: "Create project", exact: true }).click();
 
     // Import fixture through the real single-file import picker.
-    if (PDF_DOWNLOAD_CHECKS || PACKAGE_CASE) {
+    if (PDF_DOWNLOAD_CHECKS || PACKAGE_CASE || FINAL_R1_CASE) {
       assert.equal(await H.$(page, "download-pdf").isDisabled(), true, "no output: PDF download disabled");
       record.online.initialDownloadDisabled = true;
     }
@@ -829,10 +1121,21 @@ let profile, base;
     if (CASE === "plain") {
       await H.$(page, "import-input").setInputFiles({ name: "main.tex", mimeType: "text/plain", buffer: PLAIN_MAIN });
       expectedMainBytes = PLAIN_MAIN;
-    } else if (CASE === 't2a-bundled') {
+    } else if (['t2a-bundled','font-closure','unicode-fonts'].includes(CASE)) {
       await H.$(page, 'import-input').setInputFiles({name: 'main.tex', mimeType: 'text/plain', buffer: bundledT2a});
       expectedMainBytes = bundledT2a; importedCount = 1;
-    } else if (['portable', 'packages', 'biblatex'].includes(CASE)) {
+    } else if (CYRILLIC_CASE || HARFBUZZ_CASE) {
+      for(const input of semanticFiles){
+        const imported={...input,name:path.posix.basename(input.name)};
+        await H.$(page,'import-input').setInputFiles(imported);
+        if(imported.name!==input.name){
+          await page.locator('[data-testid=select-file]').filter({hasText:imported.name}).first().click();
+          await H.reveal(page,H.$(page,'rename-input'));await H.$(page,'rename-input').fill(input.name);await H.$(page,'rename').click();
+          await page.locator('.editor-toolbar label',{hasText:input.name}).waitFor();
+        }
+      }
+      expectedMainBytes=semanticFiles[0].buffer;importedCount=semanticFiles.length;
+    } else if (['portable', 'packages', 'biblatex'].includes(FIXTURE_CASE) || BIBER_CASE) {
       for (const input of portableFiles) await H.$(page, 'import-input').setInputFiles(input);
       expectedMainBytes = portableFiles[0].buffer; importedCount = portableFiles.length;
     } else if (CASE === "golden") {
@@ -876,6 +1179,7 @@ let profile, base;
     record.online.sourceSha256 = sha256(Buffer.from(savedHead.files.find((f) => f.path === MAIN_PATH).bytes));
     assert.equal(record.online.sourceSha256, sha256(expectedMainBytes), "saved main.tex bytes match imported");
     if (PACKAGE_CASE) record.online.packageInputs = assertPackageHead(savedHead, expectedMainBytes);
+    if (FINAL_R1_CASE) record.online.capturedInputs=assertCapturedR1Head(savedHead,expectedMainBytes);
     if (CASE === "font-assets") record.online.projectAssets = assertFontHead(savedHead, expectedMainBytes);
 
     if (BUNDLED_RUNTIME) {
@@ -954,17 +1258,14 @@ let profile, base;
     await selectMainInTree(page);
     await page.locator('select[aria-label="Compile main file"]').selectOption({ label: MAIN_PATH });
     await page.locator('select[aria-label="Compile engine"]').selectOption(COMPILER_CHOICE);
-    if (["golden", "portable", "packages", "biblatex"].includes(CASE)) {
-      const bibtex = H.$(page, "use-bibtex");
-      await bibtex.waitFor({ state: "visible" });
-      if (!(await bibtex.isChecked())) await bibtex.check();
-      assert.equal(await bibtex.isChecked(), true);
+    if (["golden", "portable", "packages", "biblatex"].includes(FIXTURE_CASE)) {
+      await H.bibliography(page, "Bibtex");
     }
-    if (["font-assets", "t2a-bundled"].includes(CASE)) {
-      const bibtex = H.$(page, "use-bibtex");
-      if (await bibtex.isChecked()) await bibtex.uncheck();
-      assert.equal(await bibtex.isChecked(), false, "font case uses plain LaTeX; no BibTeX");
+    if (["font-assets", "t2a-bundled", "font-closure", "unicode-fonts"].includes(CASE)) {
+      await H.bibliography(page, "None");
     }
+    if (BIBER_CASE) await H.bibliography(page, 'Biber');
+    if (CYRILLIC_CASE || HARFBUZZ_CASE) await H.bibliography(page, 'None');
     await page.waitForFunction(
       () => document.querySelector("[data-testid=compile]")?.disabled === false,
       null,
@@ -1066,16 +1367,32 @@ let profile, base;
         record.online.actualPageText = allText.slice(0, 4096);
         assert.deepEqual(await H.head(page, project), savedHead, 'package compile/render preserve every saved input');
         record.online.download = await downloadAcceptedPdf(page, project, 'online-package-download', 'online.pdf', outputHash);
+        if(PACKAGE_COMPILER_ONLY){record.online.finalTexPass=assertPackageCompilerLog(logText);record.online.realNativePhases=await observePackageCompilerPhases(page);}
+      }
+      if (FINAL_R1_CASE) {
+        record.online.actualPageText=allText.slice(0,8192);
+        assertCapturedR1Head(await H.head(page,project),expectedMainBytes);
+        record.online.download=await downloadAcceptedPdf(page,project,'online-r1-download','online.pdf',outputHash);
+        record.online.downloadInspection=await inspectR1Download('online.pdf');
+        record.online.finalTexPass=assertFinalR1Log(logText);
+        record.online.realNativePhases=await observeR1Phases(page);
+        record.online.literalSearch=await verifyLiteralR1Search(page,project,outputHash);
+        if(BIBER_CASE){assert.match(logText,/Found 3 citekeys in bib section 0/,'original BCF/BIB has exactly the original three citekeys');assert.ok(!allText.includes(BIBER_COLD_EDIT.marker),'offline entry is absent from the original online PDF');}
       }
       assert.ok(allText.trim().length > 0, "page text nonblank");
       record.online.pageTextLen = allText.trim().length;
-      if (CASE === "plain") {
+      if (FINAL_R1_CASE) {
+        record.online.textEvidence=assertR1Text(allText);
+        if(HARFBUZZ_CASE)assert.match(logText,/This is LuaHBTeX, Version/);
+      } else if (FONT_CLOSURE || UNICODE_FONTS) {
+        record.online.fontCoverage = assertFontClosure(logText, allText);
+      } else if (CASE === "plain") {
         // Accepted plain baseline markers: "Modern CSharp pipeline" and the
         // resolved "Section 1 is resolved." (normalize whitespace only).
         const norm = allText.replace(/\s+/g, " ").trim();
         assert.match(norm, /Modern CSharp pipeline/);
         assert.ok(norm.includes("Section 1 is resolved."), "plain section reference resolved");
-      } else if (['portable', 'packages', 'biblatex'].includes(CASE)) {
+      } else if (['portable', 'packages', 'biblatex'].includes(FIXTURE_CASE)) {
         const norm = allText.replace(/\s+/g, ' ').trim();
         assert.match(norm, /Portable compiler fixture/);
         assert.match(norm, /Section 2 is resolved\./);
@@ -1084,8 +1401,8 @@ let profile, base;
         if (['xelatex', 'lualatex'].includes(COMPILER_CHOICE)) {
           assert.match(norm, /Привіт/); assert.match(norm, /Київ/);
         }
-        if (['packages', 'biblatex'].includes(CASE)) {
-          record.online.packageTextEvidence = sourcePdfNavigation.assertPackageText(allText, CASE, COMPILER_CHOICE);
+        if (['packages', 'biblatex'].includes(FIXTURE_CASE)) {
+          record.online.packageTextEvidence = sourcePdfNavigation.assertPackageText(allText, FIXTURE_CASE, COMPILER_CHOICE);
           assert.match(norm, /Hyperlink fixture/);
           assert.match(norm, /Listing marker/);
           assert.match(norm, /Package compatibility entry/);
@@ -1135,7 +1452,7 @@ let profile, base;
       record.online.nativeWorkersDuringPreview = nativeWorkersInPhase("preview").length;
     }
 
-    if (PDF_DOWNLOAD_CHECKS && !PACKAGE_CASE) {
+    if (PDF_DOWNLOAD_CHECKS && !PACKAGE_CASE && !FINAL_R1_CASE) {
       assert.deepEqual(await H.head(page, project), savedHead, "online plain compile/render preserve saved source");
       record.online.download = await downloadAcceptedPdf(page, project, "online-plain-download", "online.pdf", outputHash);
     }
@@ -1148,7 +1465,7 @@ let profile, base;
 
     if (SOURCE_PDF_CHECKS) {
       phase = "online-source-pdf-navigation";
-      record.online.sourcePdfNavigation = await sourcePdfNavigation.verify(page, project, MAIN_PATH, CASE === "portable" || PACKAGE_CASE ? CASE : CASE === "golden", phase);
+      record.online.sourcePdfNavigation = await sourcePdfNavigation.verify(page, project, MAIN_PATH, BIBER_CASE ? "portable" : CASE === "portable" || PACKAGE_CASE ? CASE : CASE === "golden", phase);
     }
     // --- Wait for the offline cache to be genuinely provisioned.
     await page.waitForFunction(() => window.__oopOfflineReady === true, null, { timeout: 90000 });
@@ -1204,6 +1521,7 @@ let profile, base;
     // automatically waits for the async row and clicks normally. No
     // count/isVisible gate, no storage injection.
     await H.open(page, project);
+    if(FINAL_R1_CASE)record.coldOffline.reopenedCapturedInputs=assertCapturedR1Head(await H.head(page,project),expectedMainBytes);
     if (CASE === "font-assets") {
       assert.deepEqual(await H.head(page, project), savedHead, "all7 source/font assets survive entire-browser cold restart");
       record.coldOffline.reopenedProjectAssets = assertFontHead(await H.head(page, project), expectedMainBytes);
@@ -1247,11 +1565,11 @@ let profile, base;
     // that token, and preserve any original following newline.
     const token = "\\end{document}";
     assert.equal(editorContent.split(token).length - 1, 1, "exactly one \\end{document} token");
-    const changedSource = T2A_UNICODE_REPAIR ? editorContent.replace(
+    const changedBaseSource = T2A_UNICODE_REPAIR ? editorContent.replace(
       token,
       "% cold-offline fresh source marker\n" +
         "{\\fontencoding{OT1}\\selectfont\n\\noindent Edited offline proof: Kyiv 456. \\par}\n" + token,
-    ) : ["font-assets", "t2a-bundled"].includes(CASE) ? editorContent.replace(
+    ) : ["font-assets", "t2a-bundled", "font-closure", "unicode-fonts"].includes(CASE) || CYRILLIC_CASE || HARFBUZZ_CASE ? editorContent.replace(
       token,
       "% cold-offline fresh source marker\n" +
         "\\noindent Edited offline proof: Kyiv 456. \\par\n" + token,
@@ -1262,16 +1580,26 @@ let profile, base;
         "Edited offline proof: Kyiv 456. \\par\n" +
         token,
     );
+    let changedSource=changedBaseSource;
+    if(BIBER_CASE){
+      const bibliography='\\printbibliography';assert.equal(changedSource.split(bibliography).length-1,1,'one original bibliography print');
+      changedSource=changedSource.replace(bibliography,BIBER_COLD_EDIT.citation+'\n'+bibliography);
+      phase='cold-offline-bibliography-edit';
+      record.coldOffline.changedBibliography=await editBiberBibliography(page,project,await H.head(page,project),expectedMainBytes);
+    }
     assert.ok(
       changedSource.indexOf("Edited offline") < changedSource.indexOf(token, changedSource.indexOf("Edited offline")),
       "offline marker precedes \\end{document} token",
     );
+    phase='cold-offline-source-edit';
     await H.$(page, "editor").fill(changedSource);
     await H.save(page);
     const offlineSavedHead = await H.head(page, project);
     record.coldOffline.editedHeadId = offlineSavedHead.id;
     record.coldOffline.editedSourceSha256 = sha256(Buffer.from(offlineSavedHead.files.find((f) => f.path === MAIN_PATH).bytes));
     if (PACKAGE_CASE) record.coldOffline.packageInputs = assertPackageHead(offlineSavedHead, Buffer.from(changedSource, 'utf8'));
+    if(FINAL_R1_CASE)record.coldOffline.capturedInputs=assertCapturedR1Head(offlineSavedHead,Buffer.from(changedSource,'utf8'),BIBER_CASE);
+    if(BIBER_CASE)record.coldOffline.changedBibliography={...record.coldOffline.changedBibliography,...captureBiberEdit(offlineSavedHead,savedHead,Buffer.from(changedSource,'utf8'))};
     assert.notEqual(record.coldOffline.editedSourceSha256, record.online.sourceSha256, "source actually changed offline");
     await H.selectKnu(page);
     assert.deepEqual(await H.head(page, project), offlineSavedHead, "analyze did not mutate source");
@@ -1294,16 +1622,14 @@ let profile, base;
     await selectMainInTree(page);
     await page.locator('select[aria-label="Compile main file"]').selectOption({ label: MAIN_PATH });
     await page.locator('select[aria-label="Compile engine"]').selectOption(COMPILER_CHOICE);
-    if (["golden", "portable", "packages", "biblatex"].includes(CASE)) {
-      const bibtex = H.$(page, "use-bibtex");
-      await bibtex.waitFor({ state: "visible" });
-      if (!(await bibtex.isChecked())) await bibtex.check();
+    if (["golden", "portable", "packages", "biblatex"].includes(FIXTURE_CASE)) {
+      await H.bibliography(page, "Bibtex");
     }
-    if (["font-assets", "t2a-bundled"].includes(CASE)) {
-      const bibtex = H.$(page, "use-bibtex");
-      if (await bibtex.isChecked()) await bibtex.uncheck();
-      assert.equal(await bibtex.isChecked(), false, "offline font compile: BibTeX stays off");
+    if (["font-assets", "t2a-bundled", "font-closure", "unicode-fonts"].includes(CASE)) {
+      await H.bibliography(page, "None");
     }
+    if (BIBER_CASE) await H.bibliography(page, 'Biber');
+    if (CYRILLIC_CASE || HARFBUZZ_CASE) await H.bibliography(page, 'None');
     await page.waitForFunction(
       () => document.querySelector("[data-testid=compile]")?.disabled === false,
       null,
@@ -1359,10 +1685,27 @@ let profile, base;
         record.coldOffline.actualPageText = offlineText.slice(0, 4096);
         assert.deepEqual(await H.head(page, project), offlineSavedHead, 'offline package compile/render preserve every saved input');
         record.coldOffline.download = await downloadAcceptedPdf(page, project, 'offline-package-download', 'offline.pdf', offlineOutputHash);
+        if(PACKAGE_COMPILER_ONLY){record.coldOffline.finalTexPass=assertPackageCompilerLog(await H.$(page,'compiler-log').textContent());record.coldOffline.realNativePhases=await observePackageCompilerPhases(page);}
+      }
+      if(FINAL_R1_CASE){
+        record.coldOffline.actualPageText=offlineText.slice(0,8192);
+        const offlineLog=await H.$(page,'compiler-log').textContent();
+        record.coldOffline.finalTexPass=assertFinalR1Log(offlineLog);
+        record.coldOffline.realNativePhases=await observeR1Phases(page);
+        record.coldOffline.textEvidence=assertR1Text(offlineText,BIBER_CASE);
+        record.coldOffline.literalSearch=await verifyLiteralR1Search(page,project,offlineOutputHash,BIBER_CASE);
+        if(BIBER_CASE){
+          record.coldOffline.changedBibliography.productionRevision=assertBiberEditRevision(record.online.realNativePhases,record.coldOffline.realNativePhases,
+            await H.$(page,'compile-details').textContent(),offlineLog);
+          assertCapturedR1Head(await H.head(page,project),Buffer.from(changedSource,'utf8'),true);
+        }
+        if(HARFBUZZ_CASE)assert.match(offlineLog,/This is LuaHBTeX, Version/);
       }
       assert.ok(offlineText.trim().length > 0, "offline page text nonblank");
       assert.match(offlineText, /Edited offline/, "offline edited section rendered");
-      if (CASE === 't2a-bundled') {
+      if (FONT_CLOSURE || UNICODE_FONTS) {
+        record.coldOffline.fontCoverage = assertFontClosure(await H.$(page, 'compiler-log').textContent(), offlineText);
+      } else if (CASE === 't2a-bundled') {
         const norm = offlineText.replace(/\s+/g, ' ').trim();
         assert.equal(norm.split('Україна').length - 1, 2, 'offline bundled regular and bold text');
         assert.match(norm, /Єє Її Ґґ/);
@@ -1374,8 +1717,8 @@ let profile, base;
         record.coldOffline.actualPageText = offlineText.slice(0, 4096);
         record.coldOffline.projectFontFiles = 0;
       }
-      if (['packages', 'biblatex'].includes(CASE)) {
-        record.coldOffline.packageTextEvidence = sourcePdfNavigation.assertPackageText(offlineText, CASE, COMPILER_CHOICE);
+      if (['packages', 'biblatex'].includes(FIXTURE_CASE)) {
+        record.coldOffline.packageTextEvidence = sourcePdfNavigation.assertPackageText(offlineText, FIXTURE_CASE, COMPILER_CHOICE);
         const norm = offlineText.replace(/\s+/g, ' ').trim();
         assert.match(norm, /Hyperlink fixture/);
         assert.match(norm, /Listing marker/);
@@ -1414,7 +1757,7 @@ let profile, base;
 
     if (SOURCE_PDF_CHECKS) {
       phase = "offline-source-pdf-navigation";
-      record.coldOffline.sourcePdfNavigation = await sourcePdfNavigation.verify(page, project, MAIN_PATH, CASE === "portable" || PACKAGE_CASE ? CASE : CASE === "golden", phase);
+      record.coldOffline.sourcePdfNavigation = await sourcePdfNavigation.verify(page, project, MAIN_PATH, BIBER_CASE ? "portable" : CASE === "portable" || PACKAGE_CASE ? CASE : CASE === "golden", phase);
     }
     if (CHECK_DOWNLOADS) {
       assert.equal((await H.$(page, "pdf-hash").textContent()).trim(), offlineOutputHash);
@@ -1423,9 +1766,10 @@ let profile, base;
       if (!PACKAGE_CASE) record.coldOffline.download = await downloadAcceptedPdf(page, project,
         CASE === "font-assets" ? "offline-font-download" : "offline-plain-download",
         CASE === "font-assets" ? "offline-font.pdf" : "offline.pdf", offlineOutputHash);
+      if(FINAL_R1_CASE)record.coldOffline.downloadInspection=await inspectR1Download('offline.pdf',BIBER_CASE);
       record.coldOffline.freshCurrentVerified = true;
       // Deliberately finish stale: never restore/recompile to hide the changed source.
-      // Explicit repair mode establishes a user-save boundary below; other modes keep their original unsaved flow.
+      // Establish an ordinary user-save boundary before testing download; autosave may run during preview refresh.
       phase = CASE === "font-assets" ? "controlled-stale-font-source" : "controlled-stale-plain-source";
       const workingOnly = T2A_UNICODE_REPAIR
         ? changedSource.replace(token, "{\\fontencoding{OT1}\\selectfont\n\\noindent Working edit not compiled. \\par}\n" + token)
@@ -1433,22 +1777,23 @@ let profile, base;
       await H.$(page, "editor").fill(workingOnly);
       await page.waitForFunction(() => document.querySelector('[data-testid=compile-panel]')?.dataset.isCurrent === 'false', null, { timeout: 30000 });
       await page.waitForFunction(() => /Last successful PDF.*out of date/.test(document.querySelector('[data-testid=compiled-pdf-status]')?.textContent || ''), null, { timeout: 30000 });
-      let staleSourceHead;
-      if (T2A_UNICODE_REPAIR) {
-        // Normal autosave may otherwise commit between strict outer head reads.
-        // Use the ordinary Save action before export, not disabled autosave or a hidden restore.
-        phase = "explicit-stale-source-save";
-        await H.save(page);
-        staleSourceHead = await H.head(page, project);
-        assertFontHead(staleSourceHead, Buffer.from(workingOnly, "utf8"));
-        const sourceHash = sha256(Buffer.from(staleSourceHead.files.find(file => file.path === MAIN_PATH).bytes));
-        assert.equal(sourceHash, sha256(Buffer.from(workingOnly, "utf8")), "explicit stale Save persists the exact changed source");
-        assert.notEqual(sourceHash, record.coldOffline.editedSourceSha256, "saved stale source differs from the compiled source");
-        record.coldOffline.explicitStaleSave = { action: "ordinary user Save before export", headId: staleSourceHead.id, sourceSha256: sourceHash };
-        assert.equal(await H.$(page, "compile-panel").getAttribute("data-output-hash"), offlineOutputHash, "explicit source Save does not compile or replace the previous PDF");
-        assert.equal(await H.$(page, "compile-panel").getAttribute("data-is-current"), "false", "source Save keeps the previous PDF stale");
-        assert.match(await H.$(page, "compiled-pdf-status").textContent(), /Last successful PDF.*out of date/);
-      }
+      // Ordinary autosave may commit while the stale preview refreshes. Save
+      // through the real UI first, then prove download makes no further save,
+      // source mutation, native work or promotion of the stale compiled PDF.
+      phase = "explicit-stale-source-save";
+      await H.save(page);
+      const staleSourceHead = await H.head(page, project);
+      const expectedStaleFiles = offlineSavedHead.files.map(file => file.path === MAIN_PATH
+        ? { ...file, bytes: Array.from(Buffer.from(workingOnly, "utf8")) } : file);
+      assert.deepEqual(staleSourceHead.files, expectedStaleFiles, "explicit stale Save changes only the deliberate working edit");
+      if (CASE === "font-assets") assertFontHead(staleSourceHead, Buffer.from(workingOnly, "utf8"));
+      const sourceHash = sha256(Buffer.from(staleSourceHead.files.find(file => file.path === MAIN_PATH).bytes));
+      assert.equal(sourceHash, sha256(Buffer.from(workingOnly, "utf8")), "explicit stale Save persists the exact changed source");
+      assert.notEqual(sourceHash, record.coldOffline.editedSourceSha256, "saved stale source differs from the compiled source");
+      record.coldOffline.explicitStaleSave = { action: "ordinary user Save before export", headId: staleSourceHead.id, sourceSha256: sourceHash };
+      assert.equal(await H.$(page, "compile-panel").getAttribute("data-output-hash"), offlineOutputHash, "explicit source Save does not compile or replace the previous PDF");
+      assert.equal(await H.$(page, "compile-panel").getAttribute("data-is-current"), "false", "source Save keeps the previous PDF stale");
+      assert.match(await H.$(page, "compiled-pdf-status").textContent(), /Last successful PDF.*out of date/);
       // Stale-label propagation schedules a real preview refresh. Let it settle
       // before the download phase so queued rendering cannot masquerade as export work.
       await page.waitForFunction(() => /CallerSaysHistorical/.test(document.querySelector('[data-testid=pdf-provenance]')?.textContent || ''), null, { timeout: 30000 });
@@ -1460,16 +1805,10 @@ let profile, base;
       assert.equal(await H.$(page, "compile-panel").getAttribute("data-is-current"), "false");
       assert.match(await H.$(page, "compiled-pdf-status").textContent(), /Last successful PDF.*out of date/);
       assert.equal(await H.$(page, "editor").inputValue(), workingOnly);
-      if (T2A_UNICODE_REPAIR) {
-        const finalHead = await H.head(page, project);
-        assert.deepEqual(finalHead, staleSourceHead, "stale export preserves the explicit user-save baseline and font bytes");
-        assertFontHead(finalHead, Buffer.from(workingOnly, "utf8"));
-        record.coldOffline.finalState = "changed source explicitly saved; last successful offline PDF retained stale";
-      } else {
-        assert.deepEqual(await H.head(page, project), offlineSavedHead, "stale download does not save the working edit or alter asset bytes");
-        if (CASE === "font-assets") assertFontHead(await H.head(page, project), Buffer.from(changedSource, "utf8"));
-        record.coldOffline.finalState = "controlled-stale-working-source; last successful offline PDF retained";
-      }
+      const finalHead = await H.head(page, project);
+      assert.deepEqual(finalHead, staleSourceHead, "stale export preserves the explicit user-save baseline and asset bytes");
+      if (CASE === "font-assets") assertFontHead(finalHead, Buffer.from(workingOnly, "utf8"));
+      record.coldOffline.finalState = "changed source explicitly saved; last successful offline PDF retained stale";
       record.coldOffline.finalPdfCurrent = false;
     }
 

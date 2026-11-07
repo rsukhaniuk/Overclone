@@ -1,0 +1,23 @@
+% Synthetic portable all-engine Biber fixture, matched to biblatex 3.19/Biber 2.19.
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T2A]{fontenc}
+\usepackage[ukrainian,english]{babel}
+\usepackage{amsmath,graphicx,booktabs}
+\usepackage[backend=biber,style=numeric,sorting=none]{biblatex}
+\addbibresource{references-latin.bib}
+\addbibresource{references-ukrainian.bib}\AtBeginBibliography{\selectlanguage{ukrainian}}
+\begin{document}
+\section{Compiler suite}\label{sec:main}
+Portable compiler fixture. Section~\ref{sec:chapter} is resolved.
+\par
+\selectlanguage{ukrainian}Привіт, Київ! Іі Її Єє Ґґ.\selectlanguage{english}
+\par
+Latin book citation~\cite{latin-book}. Ukrainian book citation~\cite{ukrainian-book}.
+Latin article citation~\cite{latin-article}.
+\begin{center}\begin{tabular}{ll}\toprule Biber table & Marker\\\midrule One & Two\\\bottomrule\end{tabular}\end{center}
+\includegraphics[width=12mm]{figure.png}
+\include{chapter}
+The included equation is~\eqref{eq:identity}.
+\printbibliography
+\end{document}

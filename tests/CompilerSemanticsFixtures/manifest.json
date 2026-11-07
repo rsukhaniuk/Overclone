@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "originalSourcesUnmodified": true,
+  "files": [
+    {
+      "name": "mixed-semantic.tex",
+      "source": "tests/PackageFontFixtures/fonts/mixed-semantic.tex",
+      "length": 603,
+      "sha256": "95090859c1423547dcbddf756f43e829e1f06974451b14466019132a21b7c334"
+    },
+    {
+      "name": "mixed-ligature.tex",
+      "source": "tests/PackageFontFixtures/fonts/mixed-ligature.tex",
+      "length": 257,
+      "sha256": "9288944fa25e4e1cf4922cfaf304bbdf6deca427dbc9b280e16bf6a7b257b547"
+    },
+    {
+      "name": "harfbuzz.tex",
+      "source": "native/tex/luatex-engine/harfbuzz/fixtures/harfbuzz.tex",
+      "length": 254,
+      "sha256": "0b192cb1bff230ca8b16e6da70fcfecc3e7d069d3d26e6616ac3496f9a6dd39c"
+    }
+  ],
+  "amiri": {
+    "source": "fonts/amiri-regular.ttf",
+    "length": 548016,
+    "sha256": "6988222efdde090e0926cabcaf695c5f551269efbf751b29b097eeb3dbf27e39"
+  },
+  "queries": {
+    "mixed-semantic.tex": [
+      "Іі",
+      "ASCII I i."
+    ],
+    "mixed-ligature.tex": [
+      "Latin fi ffi ff",
+      "mixed fі ffі fіlm",
+      "Cyrillic Іі."
+    ],
+    "harfbuzz.tex": [
+      "مرحبا بالعالم"
+    ]
+  }
+}
