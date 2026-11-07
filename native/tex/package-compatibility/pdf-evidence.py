@@ -19,7 +19,7 @@ def number(value):
         raise RuntimeError('Malformed PDF integer') from error
 
 
-def inspect(file):
+def inspect(file, expected_uri='https://example.invalid/'):
     data = file.read_bytes()
     assert data.startswith(b'%PDF-') and len(data) < 8 * 1024 * 1024
     objects = {number(m[1]): m[2] for m in re.finditer(rb'(\d+)\s+0\s+obj\b(.*?)endobj', data, re.S)}
@@ -54,15 +54,35 @@ def inspect(file):
             array_data = array[1]
         annotation_ids.extend(number(n) for n in re.findall(rb'(\d+)\s+0\s+R', array_data))
     links = [n for n in annotation_ids if re.search(rb'/Subtype\s*/Link\b', objects[n])]
-    uri_links = [n for n in links if re.search(rb'/S\s*/URI\b', objects[n]) and b'https://example.invalid/' in objects[n]]
+    uri = rb'/URI\s*\(' + re.escape(expected_uri.encode('ascii')) + rb'\)'
+    uri_links = [n for n in links if re.search(rb'/S\s*/URI\b', objects[n]) and re.search(uri, objects[n])]
     outlines = re.search(rb'/Outlines\s+(\d+)\s+0\s+R', catalog)
     outline_ids = []
+    titles = []
+
+    def title(body):
+        reference = re.search(rb'/Title\s+(\d+)\s+0\s+R', body)
+        raw = objects[number(reference[1])] if reference else body.split(b'/Title', 1)[1]
+        raw = re.sub(rb'^\s*(?:%[^\r\n]*[\r\n]+\s*)*', b'', raw)
+        if raw.startswith(b'<'):
+            value = re.match(rb'<([0-9a-fA-F\s]*)>', raw)
+            assert value and len(value[1]) <= 8192
+            value = bytes.fromhex(value[1].decode('ascii'))
+        else:
+            # This controlled corpus uses simple PDF literal strings and octal
+            # escapes. Refuse nested/general strings rather than guess a title.
+            value = re.match(rb'\(((?:\\[0-7]{1,3}|\\[()\\]|[^()\\])*)\)', raw)
+            assert value and len(value[1]) <= 8192
+            value = re.sub(rb'\\([0-7]{1,3}|[()\\])',
+                lambda m: bytes([int(m[1], 8)]) if m[1][:1].isdigit() else m[1], value[1])
+        return value[2:].decode('utf-16-be') if value.startswith(b'\xfe\xff') else value.decode('ascii')
 
     def walk(n):
         assert n not in outline_ids and len(outline_ids) < 100
         outline_ids.append(n)
         body = objects[n]
         assert b'/Title' in body
+        titles.append(title(body))
         for key in (b'First', b'Next'):
             child = re.search(rb'/' + key + rb'\s+(\d+)\s+0\s+R', body)
             if child:
@@ -74,13 +94,33 @@ def inspect(file):
             walk(number(first[1]))
     return {'file': str(file), 'length': len(data), 'sha256': hashlib.sha256(data).hexdigest(),
             'pages': len(pages), 'pageReferencedLinks': links, 'expectedUriLinks': uri_links,
-            'catalogOutlinesObject': number(outlines[1]) if outlines else None, 'reachableOutlineItems': outline_ids}
+            'catalogOutlinesObject': number(outlines[1]) if outlines else None,
+            'reachableOutlineItems': outline_ids, 'reachableOutlineTitles': titles}
 
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('results', type=Path)
+    parser.add_argument('results', type=Path, nargs='?')
+    parser.add_argument('--pdf', type=Path, action='append', help='Inspect exact retained synthetic PDFs instead of the historical suite directory')
+    parser.add_argument('--expected-uri', default='https://example.invalid/')
+    parser.add_argument('--expected-outline', action='append', default=[])
+    parser.add_argument('--receipt', type=Path)
     args = parser.parse_args()
+    if args.pdf:
+        assert args.results is None and args.expected_outline
+        assert args.receipt is None or not args.receipt.exists()
+        evidence = []
+        for pdf in args.pdf:
+            result = inspect(pdf, args.expected_uri)
+            assert len(result['expectedUriLinks']) == 1
+            assert result['reachableOutlineTitles'] == args.expected_outline
+            evidence.append(result)
+        raw = json.dumps(evidence, indent=2) + '\n'
+        if args.receipt:
+            args.receipt.write_text(raw)
+        print(raw, end='')
+        return
+    assert args.results is not None and args.receipt is None
     evidence = []
     for engine in ('pdftex', 'latex', 'xetex', 'luatex'):
         case = args.results / f'thesis-{engine}-pass3'
