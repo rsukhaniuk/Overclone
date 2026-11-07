@@ -1,0 +1,12 @@
+\documentclass[10pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T2A]{fontenc}
+\begin{document}
+\let\SavedUpper\ocCyrillicI
+\let\SavedLower\occyrillici
+\edef\Expanded{\SavedUpper\SavedLower}
+\noindent Direct \ocCyrillicI\occyrillici; let \SavedUpper\SavedLower;
+edef \Expanded; Latin \char73\char105\space I i.\par
+\def\First#1#2{#1}
+\noindent Futurelet \futurelet\Future\First\occyrillici\relax\Future.
+\end{document}

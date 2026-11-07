@@ -1,0 +1,14 @@
+\documentclass[10pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T2A]{fontenc}
+\begin{document}
+\noindent Original Іі; Latin I i; mixed fі ffі fіlm.\par
+\begingroup\let\SavedI\CYRII\let\Savedi\cyrii
+\noindent Let \SavedI\Savedi; edef \edef\SavedText{Іі fі ffі fіlm}\SavedText.\par
+\endgroup
+\setbox0=\hbox{Іі fі ffі fіlm}
+\noindent Copies \copy0; \copy0; \box0.\par
+\noindent Numeric \char73\char105 і І \char105 і \char73 І.\par
+\noindent \textbf{Іі fі ffі fіlm}; \textit{Іі fі ffі fіlm}.\par
+\noindent Discretionary f\discretionary{і-}{І}{і}lm.\par
+\end{document}

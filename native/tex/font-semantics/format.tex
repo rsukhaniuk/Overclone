@@ -1,0 +1,7 @@
+% Trusted private format hook. Original project bytes are never modified.
+% Two genuine character commands preserve the original T2A glyph slots and
+% participate in both native ligature lookahead branches without input whatsits.
+\AddToHook{package/fontenc/after}{%
+  \DeclareTextCommand{\CYRII}{T2A}{\ocCyrillicI}%
+  \DeclareTextCommand{\cyrii}{T2A}{\occyrillici}%
+}
