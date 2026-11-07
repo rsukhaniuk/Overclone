@@ -1,0 +1,15 @@
+% Synthetic unchanged source control: mixed scripts, directions and ligatures.
+\documentclass{article}
+\usepackage{fontspec}
+\setmainfont{amiri-regular.ttf}[Path=fonts/,Renderer=HarfBuzz,Script=Arabic,Language=Arabic]
+\begin{document}
+\textdir TRT مرحبا بالعالم
+\par
+\textdir TLT Latin office ffi 123.
+\textdir TRT مرحبا بالعالم
+\textdir TLT END.
+\par
+\textdir TRT لا لأ لإ لآ
+\par
+\textdir TLT Latin I i f fi ffi.
+\end{document}

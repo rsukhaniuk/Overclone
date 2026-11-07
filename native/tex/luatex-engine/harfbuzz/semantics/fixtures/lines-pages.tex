@@ -1,0 +1,13 @@
+% Synthetic unchanged source control: wrapped RTL text and a physical pagebreak.
+\documentclass{article}
+\usepackage{fontspec}
+\setmainfont{amiri-regular.ttf}[Path=fonts/,Renderer=HarfBuzz,Script=Arabic,Language=Arabic]
+\setlength{\textwidth}{90pt}
+\begin{document}
+\textdir TRT مرحبا بالعالم مرحبا بالعالم مرحبا بالعالم مرحبا بالعالم مرحبا بالعالم
+\par
+\newpage
+\textdir TRT مرحبا بالعالم
+\par
+\textdir TLT Page 2.
+\end{document}
