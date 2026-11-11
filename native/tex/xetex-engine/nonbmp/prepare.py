@@ -18,6 +18,8 @@ parser.add_argument('--base', type=Path, required=True,
 parser.add_argument('--runtime', type=Path, required=True,
                     help='project-owned xetex-engine/runtime.cpp')
 parser.add_argument('--out', type=Path, required=True)
+parser.add_argument('--work-files', type=int, choices=[192, 256], default=192,
+                    help='explicit new candidate limit; historical P13 generation remains 192')
 args = parser.parse_args()
 base, runtime, out = (p.resolve() for p in (args.base, args.runtime, args.out))
 if out.exists():
@@ -104,6 +106,13 @@ if text.count(before) != 1:
     raise SystemExit('runtime admission preimage mismatch')
 text = text.replace(before, '        // Non-BMP scanning is proved by this explicit candidate ABI.')
 text += '\nextern "C" int oc_xe_nonbmp_abi(void) { return 1; }\n'
+if args.work_files == 256:
+    before = 'scan("/work", 0, count, bytes, 192, 8388608, 33554432)'
+    if text.count(before) != 1:
+        raise SystemExit('exact combined-work file-limit preimage required')
+    text = text.replace(before, 'scan("/work", 0, count, bytes, 256, 8388608, 33554432)')
+    text += '\nextern "C" int oc_xe_work_file_limit(void) { return 256; }\n'
+
 (source / 'oc_nonbmp_runtime.cpp').write_text(text)
 
 tools = {Path(p).name: Path(p) for p in generation['tools']}
@@ -134,7 +143,7 @@ result = {
     'baseGenerationManifestSha256': sha(base / 'generation-inputs.json'),
     'baseCombinedChangeSha256': sha(base / 'regenerate/xetex-final.ch'),
     'recipeSha256': sha(__file__), 'overlaySha256': sha(HERE / 'nonbmp.ch'),
-    'runtimeSourceSha256': sha(runtime),
+    'runtimeSourceSha256': sha(runtime), 'combinedWorkFileLimit': args.work_files,
     'tools': generation['tools'], 'commands': commands,
     'source': {str(p.relative_to(source)): sha(p) for p in sorted(source.rglob('*')) if p.is_file()}
 }

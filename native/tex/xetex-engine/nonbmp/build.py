@@ -29,6 +29,9 @@ def sha(path):
 
 
 preparation = json.loads((prepared / 'manifest.json').read_text())
+work_files = preparation.get('combinedWorkFileLimit', 192)
+if work_files not in (192, 256):
+    raise SystemExit('unsupported explicit work-file contract')
 for name, expected in preparation['source'].items():
     if sha(source / name) != expected:
         raise SystemExit('prepared source mismatch: ' + name)
@@ -101,6 +104,8 @@ with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
 exports = ['compileFormat', 'compileLaTeX', 'compileBibtex', 'setMainEntry', 'malloc', 'free',
            'oc_xe_maps_abi', 'oc_mem_configure', 'oc_synctex_abi', 'oc_synctex_status',
            'oc_synctex_length', 'oc_synctex_copy', 'oc_xe_nonbmp_abi']
+if work_files == 256:
+    exports.append('oc_xe_work_file_limit')
 archives = [deps / (name + '.a') for name in
             ['harfbuzz', 'graphite', 'freetype', 'xpdf', 'icu-i18n', 'icu-common', 'icu-stub']]
 link = run(['em++', '-O2', *sorted(out.glob('*.o')), *archives, '-sUSE_LIBPNG=1',
@@ -113,7 +118,7 @@ link = run(['em++', '-O2', *sorted(out.glob('*.o')), *archives, '-sUSE_LIBPNG=1'
 manifest = {
     'schemaVersion': 1, 'capability': 'candidate-only genuine Xe non-BMP filenames ABI1',
     'recipeSha256': sha(__file__), 'preparationManifestSha256': sha(prepared / 'manifest.json'),
-    'dependencyProofSha256': sha(deps / 'proof.json'),
+    'dependencyProofSha256': sha(deps / 'proof.json'), 'combinedWorkFileLimit': work_files,
     'dependencies': {str(path): sha(path) for path in archives}, 'units': units, 'link': link,
     'outputs': {name: {'length': (out / name).stat().st_size, 'sha256': sha(out / name)}
                 for name in ['engine.js', 'engine.wasm']}}
