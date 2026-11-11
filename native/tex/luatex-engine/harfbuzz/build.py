@@ -27,7 +27,11 @@ def main():
         parser.add_argument("--" + name, required=True, type=Path)
     parser.add_argument("--font-closure", action="store_true",
                         help="candidate-only 128MiB runtime/32MiB work inputs; heap stays 512MiB")
+    parser.add_argument("--output-declarations", type=int, choices=(128, 256), default=128,
+                        help="explicit candidate native name capacity; generated carry quota is separate")
     args = parser.parse_args()
+    if args.output_declarations == 256 and not args.font_closure:
+        parser.error("256 declarations require the explicit full-font candidate")
     values = {name: value.resolve() for name, value in vars(args).items() if isinstance(value, Path)}
     work, out = values["work"], values["out"]
     if work == out or work in out.parents or out in work.parents:
@@ -93,6 +97,8 @@ def main():
     inc += ["-I" + str(path) for path in include_dirs]
     font_flags = ["-DOC_LUA_FONT_CLOSURE=1"] if args.font_closure else []
     inc += font_flags
+    if args.output_declarations == 256:
+        inc.append("-DOC_LUA_OUTPUT_DECLARATIONS=256")
     flags = ["-O1", "-MMD", "-ffile-prefix-map=" + str(work / "overlay") + "=/inputs/texlive/texk/web2c",
              "-Wno-error=incompatible-pointer-types",
              "-Wno-error=incompatible-function-pointer-types", "-Wno-error=implicit-function-declaration"]
@@ -135,6 +141,8 @@ def main():
                "oc_luatex_copy_output", "oc_luatex_error", "oc_luatex_budget_json", "oc_mem_configure",
                "oc_synctex_abi", "oc_synctex_status", "oc_synctex_length", "oc_synctex_copy",
                "oc_synctex_geometry_length", "oc_synctex_geometry_copy"]
+    if args.output_declarations == 256:
+        exports.append("oc_lua_output_declaration_limit")
     vfs_budget = parent / "vfs-budget.js"
     if args.font_closure:
         exports.append("oc_lua_font_closure_abi")
@@ -181,6 +189,7 @@ def main():
                                 "aggregate": 167772160 if args.font_closure else 100663296,
                                 "allocationWork": 67108864 if args.font_closure else 16777216,
                                 "heap": 536870912},
+                "outputDeclarationLimit": args.output_declarations,
                 "vfsBudgetSha256": digest(vfs_budget), "commands": commands,
                 "recipeSha256": digest(__file__), "dependencyProofSha256": digest(hbdeps / "proof.json"),
                 "inputs": {str(path): digest(path) for path in objects + archives if path not in module_objects and work not in path.parents},

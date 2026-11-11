@@ -2,6 +2,15 @@
 #ifndef OC_LUATEX_ABI
 #define OC_LUATEX_ABI 3
 #endif
+#ifndef OC_LUA_OUTPUT_DECLARATIONS
+#define OC_LUA_OUTPUT_DECLARATIONS 128
+#endif
+#if OC_LUA_OUTPUT_DECLARATIONS != 128 && OC_LUA_OUTPUT_DECLARATIONS != 256
+#error Unsupported Lua output declaration contract
+#endif
+#if OC_LUA_OUTPUT_DECLARATIONS == 256
+extern "C" int oc_lua_output_declaration_limit() { return 256; }
+#endif
 #if OC_LUATEX_ABI == 4 || OC_LUATEX_ABI == 5
 #include "../synctex-producer/oc_synctex_internal.h"
 #include "../synctex-producer/oc_synctex_memory_sink.h"
@@ -56,7 +65,7 @@ uint32_t runtimeInputBytes = 0, workInputBytes = 0;
 constexpr uint32_t MaxInput = 96u * 1024u * 1024u;
 #endif
 constexpr uint32_t MaxOutput = 64u * 1024u * 1024u;
-constexpr uint32_t MaxOutputs = 128;
+constexpr uint32_t MaxOutputs = OC_LUA_OUTPUT_DECLARATIONS;
 char declared[MaxOutputs][241] = {};
 uint32_t declaredCount = 0;
 char root[250] = {}, context[129] = {}, message[256] = {};
