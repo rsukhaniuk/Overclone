@@ -222,6 +222,28 @@
       "name": "microtype.doc.tar.xz"
     },
     {
+      "package": "ninecolors",
+      "kind": "run",
+      "url": "https://ftp.math.utah.edu/pub/tex/historic/systems/texlive/2023/tlnet-final/archive/ninecolors.tar.xz",
+      "length": 2648,
+      "sha256": "123789822b0bc8b5d9f31a56234093391140673b9ad2e1d656d7b136288c87b8",
+      "sha512": "f755768830e02aa434432ab4e879646ad43d092f50b7e38e39009c98327c5ddcd23d0b5a7ee8d8afad30e69b6219bb871a14dc7b274ae11a60aec33df2c94ae6",
+      "revision": 62006,
+      "license": "lppl1.3",
+      "name": "ninecolors.tar.xz"
+    },
+    {
+      "package": "ninecolors",
+      "kind": "doc",
+      "url": "https://ftp.math.utah.edu/pub/tex/historic/systems/texlive/2023/tlnet-final/archive/ninecolors.doc.tar.xz",
+      "length": 48184,
+      "sha256": "de9bdf54ebd7f4173c600a9614182e5f7f6454b2dea6734e0d6ef7830aef1e15",
+      "sha512": "0550d7b4a8b7040541edf156c5b82bf61d350a21c732c4ef324c58289eda288b7e30edd1f36d8650d453a590bdeb97b61d0c782f3d945b033b0fb746b6c802f7",
+      "revision": 62006,
+      "license": "lppl1.3",
+      "name": "ninecolors.doc.tar.xz"
+    },
+    {
       "package": "tabularray",
       "kind": "run",
       "url": "https://ftp.math.utah.edu/pub/tex/historic/systems/texlive/2023/tlnet-final/archive/tabularray.tar.xz",
@@ -781,6 +803,13 @@
       "sha256": "3c2cc3b52706c0821542dffdd1b69bea36be6a9092a122429bf78a6662e0560c"
     },
     {
+      "name": "ninecolors.sty",
+      "archive": "ninecolors.tar.xz",
+      "member": "tex/latex/ninecolors/ninecolors.sty",
+      "length": 24994,
+      "sha256": "2c2672c5247304b50a101a622bcf84a331561b22f506cd232fdde8c6991cfbac"
+    },
+    {
       "name": "notices/thesis-packages/amscls/00LICENSE.txt",
       "archive": "amscls.doc.tar.xz",
       "member": "doc/latex/amscls/00LICENSE.txt",
@@ -842,6 +871,13 @@
       "member": "doc/latex/microtype/README.md",
       "length": 3393,
       "sha256": "acb57f813c418c04cb3ee3134c5140140dc446500b9abe07e5a37600f7f0cfaf"
+    },
+    {
+      "name": "notices/thesis-packages/ninecolors/README.txt",
+      "archive": "ninecolors.doc.tar.xz",
+      "member": "doc/latex/ninecolors/README.txt",
+      "length": 231,
+      "sha256": "b0152cc925482b3df4a8251efd1107c2c5cfffa0db8c85319ed5dd93b4ad8362"
     },
     {
       "name": "notices/thesis-packages/tabularray/README.txt",

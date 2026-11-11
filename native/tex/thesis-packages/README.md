@@ -1,7 +1,7 @@
 # Additive thesis packages
 
-`packages.lock.json` pins 13 TeX Live 2023 packages, their 34 original runtime,
-source and documentation archives, and 94 staged resources. The archive inventory
+`packages.lock.json` pins 14 TeX Live 2023 packages, their 36 original runtime,
+source and documentation archives, and 96 staged resources. The archive inventory
 is the final historic 2023 repository. Every selected runtime file and original
 notice is copied byte for byte. No accepted P13 resource is replaced. The
 corresponding source and documentation archives must accompany the dependency
@@ -25,4 +25,7 @@ This closes the static package gaps found in the public KPI thesis pinned by
 `tests/CompilerCompatibilityFixtures/public-kpi-gap.json`; actual compilation may
 reveal more dependencies. Its requested Times New Roman and Courier New are
 separate font dependencies. No Microsoft font or installer is included here.
-Package staging alone does not prove compilation of that thesis.
+A genuine first pass identified the additional `ninecolors` dependency. With
+that package and private original Core Fonts provisioned, the unmodified thesis
+reaches its appendix before a source-level heading error; that failed run is
+retained separately. Package staging alone does not prove thesis acceptance.
