@@ -13,6 +13,35 @@ public sealed class DriveAuthTests
     private static BrowserDriveAuth.TokenReply Ready(string scope = BrowserDriveAuth.Scope) => new()
     { Code = "ready", Token = "synthetic-memory-token", Scope = scope, ExpiresIn = 3600 };
 
+    [Theory]
+    [InlineData("client\n")]
+    [InlineData("key\n")]
+    [InlineData("project\n")]
+    public async Task PublicConfigurationRejectsFinalNewlineBeforeBrowserGesture(string invalid)
+    {
+        var config = invalid.StartsWith("client", StringComparison.Ordinal)
+            ? Config with { ClientId = Config.ClientId + "\n" }
+            : invalid.StartsWith("key", StringComparison.Ordinal)
+                ? Config with { PickerApiKey = Config.PickerApiKey + "\n" }
+                : Config with { ProjectNumber = Config.ProjectNumber + "\n" };
+        Assert.False(config.PickerConfigured);
+        var js = new Interop(); js.Module.Token = () => Task.FromResult(Ready());
+        await using var auth = new BrowserDriveAuth(js);
+        if (!config.OAuthConfigured)
+        {
+            await auth.ConnectAsync(config);
+            Assert.Equal(DriveCode.Unconfigured, auth.Status);
+            Assert.Empty(js.Calls);
+        }
+        else
+        {
+            await auth.ConnectAsync(Config);
+            Assert.Equal(DriveCode.Configuration,
+                (await Assert.ThrowsAsync<DriveFailure>(() => auth.ChooseZipAsync(config))).Code);
+            Assert.DoesNotContain("chooseZip", js.Module.Calls);
+        }
+    }
+
     [Fact]
     public async Task NoInteropBeforeGesture_UnconfiguredDeniedAndExactScope()
     {

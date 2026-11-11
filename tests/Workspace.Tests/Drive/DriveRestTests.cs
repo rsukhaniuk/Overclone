@@ -52,6 +52,7 @@ public sealed class DriveRestTests
     [InlineData("../bad", "x.zip")]
     [InlineData("https://www.googleapis.com/drive/v3/files/id", "x.zip")]
     [InlineData("id?access_token=bad", "x.zip")]
+    [InlineData("id\n", "x.zip")]
     [InlineData("id", "x.pdf")]
     [InlineData("id", "bad\n.zip")]
     public async Task InvalidSelectionDispatchesNothing(string id, string name)
@@ -61,6 +62,38 @@ public sealed class DriveRestTests
         Assert.Equal(DriveCode.InvalidSelection,
             (await Assert.ThrowsAsync<DriveFailure>(() => rest.DownloadAsync(new(id, name), default))).Code);
         Assert.Equal(0, handler.Calls);
+    }
+
+    [Theory]
+    [InlineData("{\"id\":\"first\",\"id\":\"second\"}")]
+    [InlineData("{\"id\":\"first\",\"i\\u0064\":\"second\"}")]
+    [InlineData("{\"id\":\"valid\",\"ignored\":{\"value\":1,\"value\":2}}")]
+    [InlineData("{\"id\":\"valid\\n\"}")]
+    [InlineData("{\"id\":\"\\ud800\"}")]
+    public async Task AmbiguousOrInvalidUploadReceiptRemainsUncertainWithoutRetry(string json)
+    {
+        var handler = new Handler(_ => Response(Encoding.UTF8.GetBytes(json), "application/json"));
+        using var rest = new DriveRestClient(new HttpClient(handler), new Auth());
+        var failure = await Assert.ThrowsAsync<DriveFailure>(() => rest.CreateZipAsync("synthetic.zip", new byte[] { 1 }, default));
+        Assert.Equal(DriveCode.Uncertain, failure.Code);
+        Assert.True(failure.Uncertain);
+        Assert.Equal(1, handler.Calls);
+        Assert.Contains("Check Drive before", rest.UploadNotice);
+        Assert.DoesNotContain("created a NEW ZIP", rest.UploadNotice);
+    }
+
+    [Fact]
+    public async Task InvalidUtf8InIgnoredUploadReceiptPropertyRemainsUncertain()
+    {
+        var bytes = Encoding.UTF8.GetBytes("{\"id\":\"valid\",\"ignored\":\"X\"}");
+        bytes[Array.IndexOf(bytes, (byte)'X')] = 0xff;
+        var handler = new Handler(_ => Response(bytes, "application/json"));
+        using var rest = new DriveRestClient(new HttpClient(handler), new Auth());
+        var failure = await Assert.ThrowsAsync<DriveFailure>(() => rest.CreateZipAsync("synthetic.zip", new byte[] { 1 }, default));
+        Assert.Equal(DriveCode.Uncertain, failure.Code);
+        Assert.True(failure.Uncertain);
+        Assert.Equal(1, handler.Calls);
+        Assert.Contains("Check Drive before", rest.UploadNotice);
     }
 
     [Theory]

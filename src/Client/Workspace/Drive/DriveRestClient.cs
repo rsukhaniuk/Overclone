@@ -11,6 +11,7 @@ namespace Client.Workspace.Drive;
 /// No list-all-files shortcut, arbitrary URL, overwrite, retry or background work.</summary>
 public sealed class DriveRestClient(HttpClient http, IDriveAuthorization auth) : IDisposable
 {
+    private static readonly UTF8Encoding StrictUtf8 = new(false, true);
     public static readonly TimeSpan Deadline = TimeSpan.FromSeconds(90);
     public const int ReceiptBudget = 16 * 1024;
     private int _active;
@@ -50,14 +51,17 @@ public sealed class DriveRestClient(HttpClient http, IDriveAuthorization auth) :
             var reply = await Send(request, ReceiptBudget, true, ct);
             try
             {
+                StrictUtf8.GetCharCount(reply);
                 using var json = JsonDocument.Parse(reply, new JsonDocumentOptions { MaxDepth = 8 });
                 if (json.RootElement.ValueKind != JsonValueKind.Object ||
+                    !UniqueProperties(json.RootElement) ||
                     !json.RootElement.TryGetProperty("id", out var id) || id.ValueKind != JsonValueKind.String ||
                     !DriveSelection.ValidId(id.GetString())) throw new JsonException();
                 RemoteStatus("The confirmed upload created a NEW ZIP in Drive. Local save state is separate.");
                 return id.GetString()!;
             }
-            catch (JsonException) { throw new DriveFailure(DriveCode.Uncertain, true); }
+            catch (Exception error) when (error is JsonException or DecoderFallbackException or InvalidOperationException)
+            { throw new DriveFailure(DriveCode.Uncertain, true); }
         }
         catch (DriveFailure failure)
         {
@@ -65,6 +69,19 @@ public sealed class DriveRestClient(HttpClient http, IDriveAuthorization auth) :
                 RemoteStatus(DriveNotices.For(failure.Uncertain ? DriveCode.Uncertain : failure.Code));
             throw;
         }
+    }
+
+    private static bool UniqueProperties(JsonElement element)
+    {
+        if (element.ValueKind == JsonValueKind.Object)
+        {
+            var names = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var property in element.EnumerateObject())
+                if (!names.Add(property.Name) || !UniqueProperties(property.Value)) return false;
+        }
+        else if (element.ValueKind == JsonValueKind.Array)
+            foreach (var item in element.EnumerateArray()) if (!UniqueProperties(item)) return false;
+        return true;
     }
 
     private async Task<byte[]> Send(HttpRequestMessage request, long budget, bool upload, CancellationToken ct)

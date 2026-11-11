@@ -19,17 +19,17 @@ public sealed class DriveFailure(DriveCode code, bool uncertain = false) : Excep
 public sealed record DriveConfiguration(string ClientId = "", string PickerApiKey = "", string ProjectNumber = "")
 {
     public bool OAuthConfigured => ClientId is { Length: > 0 and <= 256 } &&
-        Regex.IsMatch(ClientId, @"^[A-Za-z0-9._-]+\.apps\.googleusercontent\.com$");
+        Regex.IsMatch(ClientId, @"\A[A-Za-z0-9._-]+\.apps\.googleusercontent\.com\z");
     public bool PickerConfigured => OAuthConfigured && PickerApiKey is { Length: > 0 and <= 256 } &&
-        Regex.IsMatch(PickerApiKey, "^[A-Za-z0-9_-]+$") &&
-        ProjectNumber is { Length: > 0 and <= 30 } && Regex.IsMatch(ProjectNumber, "^[0-9]+$");
+        Regex.IsMatch(PickerApiKey, @"\A[A-Za-z0-9_-]+\z") &&
+        ProjectNumber is { Length: > 0 and <= 30 } && Regex.IsMatch(ProjectNumber, @"\A[0-9]+\z");
     public override string ToString() => "Drive public configuration [redacted]";
 }
 
 public sealed record DriveSelection(string Id, string Name)
 {
     public static bool ValidId(string? id) => id is { Length: > 0 and <= 256 } &&
-        Regex.IsMatch(id, "^[A-Za-z0-9_-]+$");
+        Regex.IsMatch(id, @"\A[A-Za-z0-9_-]+\z");
     public bool Valid => ValidId(Id) && Name is { Length: > 0 and <= 256 } &&
         !Name.Any(char.IsControl) && Name.EndsWith(".zip", StringComparison.OrdinalIgnoreCase);
 }
