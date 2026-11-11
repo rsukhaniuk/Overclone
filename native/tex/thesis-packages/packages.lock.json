@@ -1,0 +1,1050 @@
+{
+  "schemaVersion": 1,
+  "scope": "Additive original TeX Live2023 thesis package resources and notices. No fonts, source substitutions or default adoption. Corresponding source/documentation archives retained separately.",
+  "inventory": {
+    "url": "https://ftp.math.utah.edu/pub/tex/historic/systems/texlive/2023/tlnet-final/tlpkg/texlive.tlpdb.xz",
+    "length": 2553548,
+    "sha256": "c3ed3818114393f3ff5ef5bb4fd3e8b460f49d0b2532457d72875c6b6bab34ae"
+  },
+  "base": {
+    "profile": 13,
+    "pinsLength": 627138,
+    "pinsSha256": "8b00b37ec9fcba8e5dc46fcbd6ef2fdd05376baa44f33eb02536240e096975e8"
+  },
+  "archives": [
+    {
+      "package": "amscls",
+      "kind": "run",
+      "url": "https://ftp.math.utah.edu/pub/tex/historic/systems/texlive/2023/tlnet-final/archive/amscls.tar.xz",
+      "length": 32224,
+      "sha256": "50aa0a4f90d996b3df54d9c4996655c5341f649c3b5b1d0d9eaf5f0ecde09aa3",
+      "sha512": "eb39dc97a860047d764884663a1f541aa95a2d559dd55cb25f6b7c6c46617e6c33fe55a9fdc37b211c613333911df6e260768f43ae9630a208ecc7fb774891e5",
+      "revision": 55378,
+      "license": "lppl1.3c",
+      "name": "amscls.tar.xz"
+    },
+    {
+      "package": "amscls",
+      "kind": "source",
+      "url": "https://ftp.math.utah.edu/pub/tex/historic/systems/texlive/2023/tlnet-final/archive/amscls.source.tar.xz",
+      "length": 365984,
+      "sha256": "f3a8e4c94e4548201654b42437826bc059a06fa3c093a1c0e65353990524a53d",
+      "sha512": "7a96a464f9826a515191174b6e33016c7161c7547ed70ca78cac256cac68b4340a2b3bd9608f79df106c3eb2383b8d6895012a2cc6dee0c76d53d116679f4c6b",
+      "revision": 55378,
+      "license": "lppl1.3c",
+      "name": "amscls.source.tar.xz"
+    },
+    {
+      "package": "amscls",
+      "kind": "doc",
+      "url": "https://ftp.math.utah.edu/pub/tex/historic/systems/texlive/2023/tlnet-final/archive/amscls.doc.tar.xz",
+      "length": 1072480,
+      "sha256": "5727796c763ed3544548d883eede5f0afd5c26669ff22fe6ba8f889c4d75575c",
+      "sha512": "c2e563bd239f36b0db3bdbfe1ccb4a0adec0c22af25b557ed748897a99672f05f36f2bba6e51827c6fdd60b351079809b15c0367d075566c5e48682c23108fe2",
+      "revision": 55378,
+      "license": "lppl1.3c",
+      "name": "amscls.doc.tar.xz"
+    },
+    {
+      "package": "cmap",
+      "kind": "run",
+      "url": "https://ftp.math.utah.edu/pub/tex/historic/systems/texlive/2023/tlnet-final/archive/cmap.tar.xz",
+      "length": 5728,
+      "sha256": "f466a409f749994137c99843dd20c1b79a45c51c2ad5f75b5378bab963ad477b",
+      "sha512": "4857f7ab9719a2b6828582599c98715c61731288899494aed96026dd6ad8bac92028586cb6b008ebaf3fb516d918861f79f544ecd64bca1e6a6183bd8bc398c1",
+      "revision": 57640,
+      "license": "lppl",
+      "name": "cmap.tar.xz"
+    },
+    {
+      "package": "cmap",
+      "kind": "doc",
+      "url": "https://ftp.math.utah.edu/pub/tex/historic/systems/texlive/2023/tlnet-final/archive/cmap.doc.tar.xz",
+      "length": 2284,
+      "sha256": "41cb6757f1e9f0b923834a94a6b5d44581d8c2ce77be906018f60ed962b4f0cd",
+      "sha512": "5a8b1bd0c47bd5b4a3df3d0270c15c0d3c8691c96f2e5ee272ab97362463c2cfc7d1e2a9a19f5aa7ab8b145e9ae63390b1ded80b48dec52f8bf62118dabd6cd3",
+      "revision": 57640,
+      "license": "lppl",
+      "name": "cmap.doc.tar.xz"
+    },
+    {
+      "package": "extsizes",
+      "kind": "run",
+      "url": "https://ftp.math.utah.edu/pub/tex/historic/systems/texlive/2023/tlnet-final/archive/extsizes.tar.xz",
+      "length": 11704,
+      "sha256": "77bde71a40f924c517dc5a7c201f8205d1e0d0cf511f80e86e7931a89aa60808",
+      "sha512": "5b000d25ff594af2895408f0d83eeb0e7d6dd5604c53d5acd835898197e44fb88ed2469039489b75b45678f28182dc88a0af56ed1b1730be2ce41e6e81f13b7c",
+      "revision": 17263,
+      "license": "lppl",
+      "name": "extsizes.tar.xz"
+    },
+    {
+      "package": "extsizes",
+      "kind": "doc",
+      "url": "https://ftp.math.utah.edu/pub/tex/historic/systems/texlive/2023/tlnet-final/archive/extsizes.doc.tar.xz",
+      "length": 195100,
+      "sha256": "7e76d5d0c1d830fe8e93626ca3a8fe9c87384310a05a2758cb299ec485c43e05",
+      "sha512": "9bfa898f7eab416beaee2938902fc0f3a5ddcf1ce972f30d18a683756fb53bc8f66ef1220bd3bbe6ca6a473959a67c55c18a7996eb095ef301da8b594f42d3ae",
+      "revision": 17263,
+      "license": "lppl",
+      "name": "extsizes.doc.tar.xz"
+    },
+    {
+      "package": "float",
+      "kind": "run",
+      "url": "https://ftp.math.utah.edu/pub/tex/historic/systems/texlive/2023/tlnet-final/archive/float.tar.xz",
+      "length": 2712,
+      "sha256": "ceb4b89f382fc03a4fba799f70853d8aa1e42532b76fae511f77688e0501859c",
+      "sha512": "4a5270ca2945915464ba25b7996dfbd4771ca5f477e4bf248183bc340b7051c042d9566908acac881782af74a59154f4163bc7879a21e042e1c31d67237fc6a8",
+      "revision": 15878,
+      "license": "lppl",
+      "name": "float.tar.xz"
+    },
+    {
+      "package": "float",
+      "kind": "source",
+      "url": "https://ftp.math.utah.edu/pub/tex/historic/systems/texlive/2023/tlnet-final/archive/float.source.tar.xz",
+      "length": 12572,
+      "sha256": "5eade18c9148d1d1aa57fa6e050581b9574970eb1060e0e3dc6e44071dfa439d",
+      "sha512": "9e577ba84dcac612e4105e597ca2385da3dafb39327189caf30e5728b85a380b5a90363b8bf9070a0464aca2130bcf9419d030bd6c39d51f9a17b0a7dd578d5f",
+      "revision": 15878,
+      "license": "lppl",
+      "name": "float.source.tar.xz"
+    },
+    {
+      "package": "float",
+      "kind": "doc",
+      "url": "https://ftp.math.utah.edu/pub/tex/historic/systems/texlive/2023/tlnet-final/archive/float.doc.tar.xz",
+      "length": 112620,
+      "sha256": "6c176803f942086c885c6822dca1900875aba243536677a6a9e45c4e5a64e504",
+      "sha512": "6f713c71361c1536bb086e7638b770ffe58e97aa01bd59bbab779f71cb485b9c06322d7d89e7d87cc8f77a0c7f18f4174fd4ec47b62556faa32d82fead0b7377",
+      "revision": 15878,
+      "license": "lppl",
+      "name": "float.doc.tar.xz"
+    },
+    {
+      "package": "hanging",
+      "kind": "run",
+      "url": "https://ftp.math.utah.edu/pub/tex/historic/systems/texlive/2023/tlnet-final/archive/hanging.tar.xz",
+      "length": 1956,
+      "sha256": "be03b0424deff9d9006d2481754fd0d7b3112cbaea86424f3401735e50dedef6",
+      "sha512": "54bd2269c169bfe2a28513354407de22948658e8067cebafa3a3b3d88040acc318f3f3aa375798e36bafacecfa10c4ab5500095b92328e6cbfc12a541a8a7b3e",
+      "revision": 15878,
+      "license": "lppl1.3",
+      "name": "hanging.tar.xz"
+    },
+    {
+      "package": "hanging",
+      "kind": "source",
+      "url": "https://ftp.math.utah.edu/pub/tex/historic/systems/texlive/2023/tlnet-final/archive/hanging.source.tar.xz",
+      "length": 7908,
+      "sha256": "042ebf31ceef0a76365b87a8a34b7bfb5c805fdacce40234c0468642878e712b",
+      "sha512": "d982182e5c6c19d6dfaf527f5ff95c0a1d15cfa3078205c73d9ac894d24ebeea31a636d66356387996fc0faf9815242661c884dd566c0dd1d90779d61ba93c28",
+      "revision": 15878,
+      "license": "lppl1.3",
+      "name": "hanging.source.tar.xz"
+    },
+    {
+      "package": "hanging",
+      "kind": "doc",
+      "url": "https://ftp.math.utah.edu/pub/tex/historic/systems/texlive/2023/tlnet-final/archive/hanging.doc.tar.xz",
+      "length": 145540,
+      "sha256": "6364ec1d417dadd18fa03cee69e31e37b3b7321b2d05efa866f3b7d9efaf9b6d",
+      "sha512": "a1e7e9d0d5b85e43ebd7ad88b39d6d5629807f668040041fd1248239c02394cf3c51aa676065c1d1d9e9ba8d1ad20f00e46d25025ddc0db7ec15148280a5b9c0",
+      "revision": 15878,
+      "license": "lppl1.3",
+      "name": "hanging.doc.tar.xz"
+    },
+    {
+      "package": "lastpage",
+      "kind": "run",
+      "url": "https://ftp.math.utah.edu/pub/tex/historic/systems/texlive/2023/tlnet-final/archive/lastpage.tar.xz",
+      "length": 4484,
+      "sha256": "5f56d1d578d976d0597d20f6e88a6470ec3b807ed216cb4b54b041a29c805f0f",
+      "sha512": "058f7b1e73340b5290beb22054c1bc0b97cd64a3051e90a4359ac7916ba033ce0817e6a1139a8b6b301bc0f68176bd882e8bdc7a7b59a719f0d090dc7cd76242",
+      "revision": 68557,
+      "license": "lppl1.3c",
+      "name": "lastpage.tar.xz"
+    },
+    {
+      "package": "lastpage",
+      "kind": "source",
+      "url": "https://ftp.math.utah.edu/pub/tex/historic/systems/texlive/2023/tlnet-final/archive/lastpage.source.tar.xz",
+      "length": 22408,
+      "sha256": "5cee91013f203d3cf24a8afe258b8cb1beb2c7cf6fe7341b631387de2754b0a3",
+      "sha512": "3b0f6326e815812644493e1a0ff422520e9e555f87f93d1c3f31a3b4a1250254ff0f4161e36785cdefb09833c9a3ae93e005cb4d5a4c3157372f79e00e23a779",
+      "revision": 68557,
+      "license": "lppl1.3c",
+      "name": "lastpage.source.tar.xz"
+    },
+    {
+      "package": "lastpage",
+      "kind": "doc",
+      "url": "https://ftp.math.utah.edu/pub/tex/historic/systems/texlive/2023/tlnet-final/archive/lastpage.doc.tar.xz",
+      "length": 563812,
+      "sha256": "2c685e059b5a3a7391b5dd600860dcfa02e356cc3d1303ac4a55b9c15f72b654",
+      "sha512": "e72576d702e2e76242c18d645351568f4adaa468b5946fca30c9ca7b9d2c36a703ad91df3b898089499c0127aeeef79e904652f35ab6bf98f5126ec6c387baa2",
+      "revision": 68557,
+      "license": "lppl1.3c",
+      "name": "lastpage.doc.tar.xz"
+    },
+    {
+      "package": "microtype",
+      "kind": "run",
+      "url": "https://ftp.math.utah.edu/pub/tex/historic/systems/texlive/2023/tlnet-final/archive/microtype.tar.xz",
+      "length": 57304,
+      "sha256": "afccd7794e0ec7340979d2bafb41c3f44e3c68302bbe895248ef573d1a3b5da2",
+      "sha512": "c80e6bb2c13432ecae2be22622e3bbfe82342ca138f61870cb8f3c2d7ec93f431bee5ae0a9619d4ad6a842b0752ecb73131452d6ac5c5fba7732ad4d5c979fa6",
+      "revision": 66587,
+      "license": "lppl1.3c",
+      "name": "microtype.tar.xz"
+    },
+    {
+      "package": "microtype",
+      "kind": "source",
+      "url": "https://ftp.math.utah.edu/pub/tex/historic/systems/texlive/2023/tlnet-final/archive/microtype.source.tar.xz",
+      "length": 173376,
+      "sha256": "716d229b321c6278f5fae418e28dc74e44dab6139730b73eb7e12a9053ea9970",
+      "sha512": "77d5f0e22a97ac0291e891df206618460a2672fc36c79a91db2b5212092d65acb0e1cbe0ecf82e0a31704baef207a48f817b5fa65abc4d6e6c031acdd85ed602",
+      "revision": 66587,
+      "license": "lppl1.3c",
+      "name": "microtype.source.tar.xz"
+    },
+    {
+      "package": "microtype",
+      "kind": "doc",
+      "url": "https://ftp.math.utah.edu/pub/tex/historic/systems/texlive/2023/tlnet-final/archive/microtype.doc.tar.xz",
+      "length": 2625520,
+      "sha256": "e3ef6023806d6e858964b101efe042048a2feaa4395ee44c67022b6ace6c03f2",
+      "sha512": "6f7eb5d18fc2864c0bff52f7af82b3284766cef64d2ba8f4aa9f2f6d26af3e47e3be9d486f29e646e92ca597cc1129dacb5d1c03dbe155503ae046e4badbecf7",
+      "revision": 66587,
+      "license": "lppl1.3c",
+      "name": "microtype.doc.tar.xz"
+    },
+    {
+      "package": "tabularray",
+      "kind": "run",
+      "url": "https://ftp.math.utah.edu/pub/tex/historic/systems/texlive/2023/tlnet-final/archive/tabularray.tar.xz",
+      "length": 37364,
+      "sha256": "cb5fad5a1a09829d60ea74278788d1d4d46c7d8290a842c5626a11a2e110eed2",
+      "sha512": "bfbce523764d979d0ab24992be6b0c79dcc20dabbdab195496f11e21f01c349fcf0dff8f400b6833dc046a74e27468b496b99fb65d1aeb820d7c4077b21525ee",
+      "revision": 69926,
+      "license": "lppl1.3c",
+      "name": "tabularray.tar.xz"
+    },
+    {
+      "package": "tabularray",
+      "kind": "doc",
+      "url": "https://ftp.math.utah.edu/pub/tex/historic/systems/texlive/2023/tlnet-final/archive/tabularray.doc.tar.xz",
+      "length": 745380,
+      "sha256": "50b8c4846fef7f7606c1c9096a29fc93e1ba4c97fa511532651829739a0da757",
+      "sha512": "2b58577fde437018269468d81a9f50e39b6cd36803874dd2f09e7fe0ed0fc2f63c6bc195fc433b997e65dd43ae15cfbfeaadee8f46fe63bd32bc3ddf91fd8507",
+      "revision": 69926,
+      "license": "lppl1.3c",
+      "name": "tabularray.doc.tar.xz"
+    },
+    {
+      "package": "titlesec",
+      "kind": "run",
+      "url": "https://ftp.math.utah.edu/pub/tex/historic/systems/texlive/2023/tlnet-final/archive/titlesec.tar.xz",
+      "length": 19988,
+      "sha256": "43ea9309e93de0d878fbc23544dee6436edb61a21288e76307412f02cfb5cf36",
+      "sha512": "b738823380d594dcef104e3b7fa05d9df233385ddbadf6fc6bb45e8346311f5f58f5f605dcb4b6541f88b57a27b73236eb77a1d128430c6ede675625e2ec051a",
+      "revision": 68677,
+      "license": "mit",
+      "name": "titlesec.tar.xz"
+    },
+    {
+      "package": "titlesec",
+      "kind": "doc",
+      "url": "https://ftp.math.utah.edu/pub/tex/historic/systems/texlive/2023/tlnet-final/archive/titlesec.doc.tar.xz",
+      "length": 683084,
+      "sha256": "bb0cea99c82ce62b9cd78168d06427531f3266ef25fa32e56df8fb02a46ecf1b",
+      "sha512": "b29c7b4dbeaee946e404166a4b1f4848ecffc4cc238534cf0c7248b1964146893125a9f5f8f87d6c2ea21c1e61304454bf7eb57d95842397363b88d438636363",
+      "revision": 68677,
+      "license": "mit",
+      "name": "titlesec.doc.tar.xz"
+    },
+    {
+      "package": "tocloft",
+      "kind": "run",
+      "url": "https://ftp.math.utah.edu/pub/tex/historic/systems/texlive/2023/tlnet-final/archive/tocloft.tar.xz",
+      "length": 6148,
+      "sha256": "cc9ac9f348afae03224966fe76585e5a5428d5c60d3445aa0c601c473e84eba7",
+      "sha512": "249b50b4dde3c9b14cfd3a7b00c441007643ad6638996b83a0274bf4126ca8a26f6cfff816c5efc9b6516953cfc29c18905138fe137877ae920e82376afeeab7",
+      "revision": 53364,
+      "license": "lppl1.3c",
+      "name": "tocloft.tar.xz"
+    },
+    {
+      "package": "tocloft",
+      "kind": "source",
+      "url": "https://ftp.math.utah.edu/pub/tex/historic/systems/texlive/2023/tlnet-final/archive/tocloft.source.tar.xz",
+      "length": 29068,
+      "sha256": "e079c49e3a453c832f4721e9c2f3721a24f78ce1cb2691f608eb61fe107d0963",
+      "sha512": "a870218b7470962996f5bbab8c15f880d6aa863b8102dfccc67bbe3cdc3895785cc44624bd460d37a96da74d1ef28340535576aa481129e9ccda2e5ee1ee6256",
+      "revision": 53364,
+      "license": "lppl1.3c",
+      "name": "tocloft.source.tar.xz"
+    },
+    {
+      "package": "tocloft",
+      "kind": "doc",
+      "url": "https://ftp.math.utah.edu/pub/tex/historic/systems/texlive/2023/tlnet-final/archive/tocloft.doc.tar.xz",
+      "length": 496680,
+      "sha256": "2a46822a83a4df5589e7e84eb936430e29307b4a8255d17f48b2df2475698350",
+      "sha512": "edd477e3c4b2a9f815c3e57a6b785c2237bc34435dd561d28b3e38bd8da5cc5d4d4de79a10dfbb55e920d69dab90d0a40efd3bcc44cad1c736a723b89f147af9",
+      "revision": 53364,
+      "license": "lppl1.3c",
+      "name": "tocloft.doc.tar.xz"
+    },
+    {
+      "package": "totalcount",
+      "kind": "run",
+      "url": "https://ftp.math.utah.edu/pub/tex/historic/systems/texlive/2023/tlnet-final/archive/totalcount.tar.xz",
+      "length": 1640,
+      "sha256": "3c1a1993dde3b08464b7c2ad18d57f6d40feaa92259c2fcc9a2cd93acd2fd1fd",
+      "sha512": "71523dddd67c44f4ef53c14833d4ea3f70603cc76f0495e5533e68eec99b1006796796b39deb40f6b36dd9ed03102ad859a7032bc6dd65137fd19c23c4027a07",
+      "revision": 67201,
+      "license": "lppl1.3",
+      "name": "totalcount.tar.xz"
+    },
+    {
+      "package": "totalcount",
+      "kind": "source",
+      "url": "https://ftp.math.utah.edu/pub/tex/historic/systems/texlive/2023/tlnet-final/archive/totalcount.source.tar.xz",
+      "length": 4612,
+      "sha256": "aa3722522e2f9eb6a802c6bb50faab7a9add9858800f5f90ac76a62a98f9a009",
+      "sha512": "be9fc65fdcc7999279b5e4c5b495fd7fbab4606fe9f6dc96a5683ef0af41ac8f4fd8c3f5d2470224304a1bc974a6a9b40a7c017049507a7b6ad8db15d2dd2724",
+      "revision": 67201,
+      "license": "lppl1.3",
+      "name": "totalcount.source.tar.xz"
+    },
+    {
+      "package": "totalcount",
+      "kind": "doc",
+      "url": "https://ftp.math.utah.edu/pub/tex/historic/systems/texlive/2023/tlnet-final/archive/totalcount.doc.tar.xz",
+      "length": 74160,
+      "sha256": "a18b031aa9a2adbeb88aff0600edfc9430f849bc95e9d0e53fc772bbb899cdb0",
+      "sha512": "2fb61446efe5fb3ca8c80099d19ecb7a281ea2ebfa756778e4bba8060e9331fd1b712b7b77c66ddbd3a5b60451d6007130803b6138f1eba466a5f210c1d3322d",
+      "revision": 67201,
+      "license": "lppl1.3",
+      "name": "totalcount.doc.tar.xz"
+    },
+    {
+      "package": "was",
+      "kind": "run",
+      "url": "https://ftp.math.utah.edu/pub/tex/historic/systems/texlive/2023/tlnet-final/archive/was.tar.xz",
+      "length": 1856,
+      "sha256": "227c57de96cc8ade23e158b475ccfaa534150f9c63f973454bdc5a30e4ccd0f1",
+      "sha512": "1e434b13cf6cbaabb173b34334e046055366a9ec844207460a852a0066963fbdde6288e94979e873811b4e66140f07b6cf2e8526ec47a050efbfaf4836edfcb1",
+      "revision": 64691,
+      "license": "collection",
+      "name": "was.tar.xz"
+    },
+    {
+      "package": "was",
+      "kind": "source",
+      "url": "https://ftp.math.utah.edu/pub/tex/historic/systems/texlive/2023/tlnet-final/archive/was.source.tar.xz",
+      "length": 4652,
+      "sha256": "e35d59f39816f51b888add840e4fb1cc69339c23880837dc3461db21e0731589",
+      "sha512": "9053fd6524c572ea80670ed9af80780579e6961e326620120f87f809d76f3c23310fb572f39536eee1ee8c20269ecfc1ad5bd5ca195ed986d87c46bc53058a31",
+      "revision": 64691,
+      "license": "collection",
+      "name": "was.source.tar.xz"
+    },
+    {
+      "package": "was",
+      "kind": "doc",
+      "url": "https://ftp.math.utah.edu/pub/tex/historic/systems/texlive/2023/tlnet-final/archive/was.doc.tar.xz",
+      "length": 285328,
+      "sha256": "eaccbdc11d687f2a7068f635727ab5761a734b7d46c4b7212d14c2270b8eb260",
+      "sha512": "fcf5434911390ee8f20f0feced15a627e001471b1867d57a7697edbfee557179250f0a01e9e20e0d442dcb0c4509174c504959e7a991e928e392d27515ff2d0b",
+      "revision": 64691,
+      "license": "collection",
+      "name": "was.doc.tar.xz"
+    },
+    {
+      "package": "xurl",
+      "kind": "run",
+      "url": "https://ftp.math.utah.edu/pub/tex/historic/systems/texlive/2023/tlnet-final/archive/xurl.tar.xz",
+      "length": 1600,
+      "sha256": "d07e9c95d23bbcdec5eaa9fdb45f8e01259e04d713d53c00fd530f50449d1206",
+      "sha512": "df2570d0eefb64df3a0533237ea09f00b9e22be0000134b32de40198649a6e98ee48a31d769dc750847672be7e3577fcd8eabe25e1ae8ee493d77e40ce684147",
+      "revision": 61553,
+      "license": "lppl1.3",
+      "name": "xurl.tar.xz"
+    },
+    {
+      "package": "xurl",
+      "kind": "doc",
+      "url": "https://ftp.math.utah.edu/pub/tex/historic/systems/texlive/2023/tlnet-final/archive/xurl.doc.tar.xz",
+      "length": 49152,
+      "sha256": "76049af70988e571cc2f3723e681614d835506e7f53b2b2ccf4a6ed5ebd5f3d0",
+      "sha512": "e02cceecac468713453432e118dd1cbe3f872a4dc33fcbdfc769861f353ac4ff5c117f51197b297a4eadf295f75f1f0254585ef0a48909aa004f4a598d796491",
+      "revision": 61553,
+      "license": "lppl1.3",
+      "name": "xurl.doc.tar.xz"
+    }
+  ],
+  "resources": [
+    {
+      "name": "amsart.cls",
+      "archive": "amscls.tar.xz",
+      "member": "tex/latex/amscls/amsart.cls",
+      "length": 61881,
+      "sha256": "c8bf939ae935d62d4ced49e4e8f9f4f5ff3dd4a4bc8e0abd4991f5737caee4f7"
+    },
+    {
+      "name": "amsbook.cls",
+      "archive": "amscls.tar.xz",
+      "member": "tex/latex/amscls/amsbook.cls",
+      "length": 61769,
+      "sha256": "fcde288ea3a8a6a6bd55616c9aa59f3b4d5f6d3948ea53e1d79090d766156c49"
+    },
+    {
+      "name": "amsbooka.sty",
+      "archive": "amscls.tar.xz",
+      "member": "tex/latex/amscls/amsbooka.sty",
+      "length": 7967,
+      "sha256": "4bc8a2a43bbccd59d334f54c9edc8aa1dd328521caad57602228769eb277484d"
+    },
+    {
+      "name": "amsdtx.cls",
+      "archive": "amscls.tar.xz",
+      "member": "tex/latex/amscls/amsdtx.cls",
+      "length": 17877,
+      "sha256": "7f997c0c8c8ec9015429908ff74be3b85112183206f31c8f9e6033dc4edb8833"
+    },
+    {
+      "name": "amsldoc.cls",
+      "archive": "amscls.tar.xz",
+      "member": "tex/latex/amscls/amsldoc.cls",
+      "length": 15109,
+      "sha256": "525f15871cbe1619a174dc867da0b4903484b9fd8d9a583e98ef21b3b2af8a4e"
+    },
+    {
+      "name": "amsmidx.sty",
+      "archive": "amscls.tar.xz",
+      "member": "tex/latex/amscls/amsmidx.sty",
+      "length": 3104,
+      "sha256": "20e06888a6b3010dbd91a80a1a08970987e01dd41a90d8aada05e0c36d839d11"
+    },
+    {
+      "name": "amsproc.cls",
+      "archive": "amscls.tar.xz",
+      "member": "tex/latex/amscls/amsproc.cls",
+      "length": 60234,
+      "sha256": "51968c41030a0e9bdb4708463e5147cdfad68ca17c6984d22e0e9d7013b9c1e3"
+    },
+    {
+      "name": "amsthm.sty",
+      "archive": "amscls.tar.xz",
+      "member": "tex/latex/amscls/amsthm.sty",
+      "length": 12594,
+      "sha256": "8d5e2bdb117297385971927b14fe4804314133dc0027b3171249a08280894626"
+    },
+    {
+      "name": "autopagewidth.sty",
+      "archive": "extsizes.tar.xz",
+      "member": "tex/latex/extsizes/autopagewidth.sty",
+      "length": 2201,
+      "sha256": "4a24a51ef596caedd953eaa23303c1d469cd59f7ab7e825e615610a2a5516614"
+    },
+    {
+      "name": "cmap.sty",
+      "archive": "cmap.tar.xz",
+      "member": "tex/latex/cmap/cmap.sty",
+      "length": 3574,
+      "sha256": "67123f5846b014963904c7395605d3521e98e11493be933aacf45e2bb3c12327"
+    },
+    {
+      "name": "extarticle.cls",
+      "archive": "extsizes.tar.xz",
+      "member": "tex/latex/extsizes/extarticle.cls",
+      "length": 20602,
+      "sha256": "eecd21f4e8f178dbe734facf1b43abab85fdfa1d1eac47df85ac347a302e6aa0"
+    },
+    {
+      "name": "extbook.cls",
+      "archive": "extsizes.tar.xz",
+      "member": "tex/latex/extsizes/extbook.cls",
+      "length": 23153,
+      "sha256": "26ef2e6198e5e6f9412a211e0c1f43a80a6114fe66e3ededd15065322504c83d"
+    },
+    {
+      "name": "extletter.cls",
+      "archive": "extsizes.tar.xz",
+      "member": "tex/latex/extsizes/extletter.cls",
+      "length": 14088,
+      "sha256": "d29b4bee0b35602ae04ef6852f68a7528325d0e17a9d6a03fc0928c7117530fe"
+    },
+    {
+      "name": "extproc.cls",
+      "archive": "extsizes.tar.xz",
+      "member": "tex/latex/extsizes/extproc.cls",
+      "length": 2573,
+      "sha256": "f31d8be1c76e08ab08a5d1b0ad64589f3c8fcb15413915f20be7cee06b92b806"
+    },
+    {
+      "name": "extreport.cls",
+      "archive": "extsizes.tar.xz",
+      "member": "tex/latex/extsizes/extreport.cls",
+      "length": 23786,
+      "sha256": "9e719ac328501f8ebaa119b6af82b9c3f7bbc865e9d1e1c243bea86a22d2499c"
+    },
+    {
+      "name": "extsizes.sty",
+      "archive": "extsizes.tar.xz",
+      "member": "tex/latex/extsizes/extsizes.sty",
+      "length": 3240,
+      "sha256": "3d1ac31851c9827072bbb1f61ae25414562a467385c6941a1489aeb57f126f9d"
+    },
+    {
+      "name": "float.sty",
+      "archive": "float.tar.xz",
+      "member": "tex/latex/float/float.sty",
+      "length": 6749,
+      "sha256": "be4a09ab7ded44b4ce97ba20a3a3efbb061d186327d5db61f8de6a3cab5019aa"
+    },
+    {
+      "name": "hanging.sty",
+      "archive": "hanging.tar.xz",
+      "member": "tex/latex/hanging/hanging.sty",
+      "length": 4463,
+      "sha256": "4d35161910906fadb7093302bef6f08126badd6a02ac2a7f44817da3fd41547c"
+    },
+    {
+      "name": "icomma.sty",
+      "archive": "was.tar.xz",
+      "member": "tex/latex/was/icomma.sty",
+      "length": 1018,
+      "sha256": "6d0c972621f1a238a856446206e679a6f3d1c78e691dc0ce73e5ccd8d6c6ce16"
+    },
+    {
+      "name": "lae.cmap",
+      "archive": "cmap.tar.xz",
+      "member": "tex/latex/cmap/lae.cmap",
+      "length": 3293,
+      "sha256": "a17f0d93dcfa51f152358a45e4a16ca8f6dafe6fca70a59c0a6ef6d2c7a0dd6c"
+    },
+    {
+      "name": "lastpage.sty",
+      "archive": "lastpage.tar.xz",
+      "member": "tex/latex/lastpage/lastpage.sty",
+      "length": 2868,
+      "sha256": "335188b23685eb7a68791367bcc15d14f1abfebf202371684a65ce7971d89475"
+    },
+    {
+      "name": "lastpage209.sty",
+      "archive": "lastpage.tar.xz",
+      "member": "tex/latex/lastpage/lastpage209.sty",
+      "length": 2917,
+      "sha256": "2a5deae5e312bb3df73a0ce5dd2f3d077ba802c236ef8b9abb93e3ebf1b78dc9"
+    },
+    {
+      "name": "lastpage2e.sty",
+      "archive": "lastpage.tar.xz",
+      "member": "tex/latex/lastpage/lastpage2e.sty",
+      "length": 2720,
+      "sha256": "a472117660d5cca5372f6c7cffaadeb63740de512bd4d099fa179820bf7920dc"
+    },
+    {
+      "name": "lastpageclassic.sty",
+      "archive": "lastpage.tar.xz",
+      "member": "tex/latex/lastpage/lastpageclassic.sty",
+      "length": 8531,
+      "sha256": "55998707207bd8658e4af8333553cf70b291dd6913808f007a2ddcd36531fe5c"
+    },
+    {
+      "name": "lastpagemodern.sty",
+      "archive": "lastpage.tar.xz",
+      "member": "tex/latex/lastpage/lastpagemodern.sty",
+      "length": 9166,
+      "sha256": "e3f827136c614f52fc0b387f161c9ba89c6fa4e4dab4a92ae38b5169974e6f1a"
+    },
+    {
+      "name": "letterspace.sty",
+      "archive": "microtype.tar.xz",
+      "member": "tex/latex/microtype/letterspace.sty",
+      "length": 16456,
+      "sha256": "be98040646009d7d9e73ac122c9a14043fd07f6adc97fa074635553c637a5403"
+    },
+    {
+      "name": "lfe.cmap",
+      "archive": "cmap.tar.xz",
+      "member": "tex/latex/cmap/lfe.cmap",
+      "length": 3609,
+      "sha256": "2527c655412808c5ce4d630275ab2cf58bbfc582c075432f643f1bd6df65cd4d"
+    },
+    {
+      "name": "lgr.cmap",
+      "archive": "cmap.tar.xz",
+      "member": "tex/latex/cmap/lgr.cmap",
+      "length": 3744,
+      "sha256": "2886fb828896346b914d9a9a28e69e84f1c510437de2af534336eb790aa3637d"
+    },
+    {
+      "name": "microtype-luatex.def",
+      "archive": "microtype.tar.xz",
+      "member": "tex/latex/microtype/microtype-luatex.def",
+      "length": 38850,
+      "sha256": "1dc739c9ce9b42b041a81cc1ae93483e587efc46a7ed94feedc01c5cfc783082"
+    },
+    {
+      "name": "microtype-pdftex.def",
+      "archive": "microtype.tar.xz",
+      "member": "tex/latex/microtype/microtype-pdftex.def",
+      "length": 48246,
+      "sha256": "fd8878fa5816e590ca1bd33610e180b25989d4778118b47caabce988bfab45de"
+    },
+    {
+      "name": "microtype-show.sty",
+      "archive": "microtype.tar.xz",
+      "member": "tex/latex/microtype/microtype-show.sty",
+      "length": 12108,
+      "sha256": "ce0af1b20b08a8ed15671052d491bb9995aa015be2a3735ed2c8cac382c7f8db"
+    },
+    {
+      "name": "microtype-xetex.def",
+      "archive": "microtype.tar.xz",
+      "member": "tex/latex/microtype/microtype-xetex.def",
+      "length": 13236,
+      "sha256": "c77d7d5a28509a153e45432d3de29eef8291a6d45e3b79a2e912784254f3c62d"
+    },
+    {
+      "name": "microtype.cfg",
+      "archive": "microtype.tar.xz",
+      "member": "tex/latex/microtype/microtype.cfg",
+      "length": 26842,
+      "sha256": "a4bd4486751d955ae22f96563e5306c9a45227e5ffd25d19dffda84c4d90a5d5"
+    },
+    {
+      "name": "microtype.lua",
+      "archive": "microtype.tar.xz",
+      "member": "tex/latex/microtype/microtype.lua",
+      "length": 6496,
+      "sha256": "c00e9851526548a2da106da083acffedd12670ae8862d52ad15ecc64661a4c7e"
+    },
+    {
+      "name": "microtype.sty",
+      "archive": "microtype.tar.xz",
+      "member": "tex/latex/microtype/microtype.sty",
+      "length": 98531,
+      "sha256": "1a41c71483a682e5443508d023fc2d01a3b96e8bdf914f0331a39760ef281549"
+    },
+    {
+      "name": "mt-CharisSIL.cfg",
+      "archive": "microtype.tar.xz",
+      "member": "tex/latex/microtype/mt-CharisSIL.cfg",
+      "length": 13607,
+      "sha256": "58cd170d99c29502fe4095b7b0d87c1d0f21a027addd985e29b2eb42a68280b8"
+    },
+    {
+      "name": "mt-EBGaramond.cfg",
+      "archive": "microtype.tar.xz",
+      "member": "tex/latex/microtype/mt-EBGaramond.cfg",
+      "length": 33046,
+      "sha256": "12035db2ebcde6eadb51cb5308aa298fc95a0f447e037b1408e9caf3db9c0577"
+    },
+    {
+      "name": "mt-LatinModernRoman.cfg",
+      "archive": "microtype.tar.xz",
+      "member": "tex/latex/microtype/mt-LatinModernRoman.cfg",
+      "length": 10002,
+      "sha256": "a6c6827b2c2c21589a4efa197af64d07dd68c064ff668e1d6011a3448d664d64"
+    },
+    {
+      "name": "mt-NewComputerModern.cfg",
+      "archive": "microtype.tar.xz",
+      "member": "tex/latex/microtype/mt-NewComputerModern.cfg",
+      "length": 18267,
+      "sha256": "6b99f8762cf98458acb88b1e83bb47ab74f54271db4ba93d180a99c7ddb30dda"
+    },
+    {
+      "name": "mt-Palatino.cfg",
+      "archive": "microtype.tar.xz",
+      "member": "tex/latex/microtype/mt-Palatino.cfg",
+      "length": 12003,
+      "sha256": "c564272bb2a5b5fb69158f20d443efd275a71dbb0f6d12a42da8a5fd2ab338c6"
+    },
+    {
+      "name": "mt-TU-basic.cfg",
+      "archive": "microtype.tar.xz",
+      "member": "tex/latex/microtype/mt-TU-basic.cfg",
+      "length": 2739,
+      "sha256": "94c24242a1ada0115e10958fc81f17b72cd82d5f4cb549e705350d0f54c8d882"
+    },
+    {
+      "name": "mt-TU-empty.cfg",
+      "archive": "microtype.tar.xz",
+      "member": "tex/latex/microtype/mt-TU-empty.cfg",
+      "length": 2361,
+      "sha256": "c12719ffb4b6a537fe58c6a32031c85b8df91a19c3d2b6484beed09d6cf9500c"
+    },
+    {
+      "name": "mt-bch.cfg",
+      "archive": "microtype.tar.xz",
+      "member": "tex/latex/microtype/mt-bch.cfg",
+      "length": 8964,
+      "sha256": "ef5c2d8b075232b9ebc22a62529a6234eea306e7d46fc35c2b1141535cd69a85"
+    },
+    {
+      "name": "mt-blg.cfg",
+      "archive": "microtype.tar.xz",
+      "member": "tex/latex/microtype/mt-blg.cfg",
+      "length": 5814,
+      "sha256": "6e5e94d9bf9284ec22ae6f0251df6adef4d84408eff34fd6c341fc860f409657"
+    },
+    {
+      "name": "mt-cmr.cfg",
+      "archive": "microtype.tar.xz",
+      "member": "tex/latex/microtype/mt-cmr.cfg",
+      "length": 22906,
+      "sha256": "6a5c0877bec790f77af59d4f9d900ca649635640c8c0e65f046ffbc63bced60a"
+    },
+    {
+      "name": "mt-euf.cfg",
+      "archive": "microtype.tar.xz",
+      "member": "tex/latex/microtype/mt-euf.cfg",
+      "length": 3024,
+      "sha256": "a9fbb3eef9b97c9d5f7c45755fa931701a759f8e8935170af82a7fe08f3ce62a"
+    },
+    {
+      "name": "mt-eur.cfg",
+      "archive": "microtype.tar.xz",
+      "member": "tex/latex/microtype/mt-eur.cfg",
+      "length": 3689,
+      "sha256": "c69638e4f992cccfd815fb356677f1011ea7b23901b2e7f904c993304e95f2a5"
+    },
+    {
+      "name": "mt-eus.cfg",
+      "archive": "microtype.tar.xz",
+      "member": "tex/latex/microtype/mt-eus.cfg",
+      "length": 4875,
+      "sha256": "192d6ad40093eca69da6f0183f5f8ed45f1539653042bebf6f75ef73367cd895"
+    },
+    {
+      "name": "mt-msa.cfg",
+      "archive": "microtype.tar.xz",
+      "member": "tex/latex/microtype/mt-msa.cfg",
+      "length": 5929,
+      "sha256": "c4fdf8cbd49203b4086e0340de9e9566b7908e804dc8740fba361767f8472ac5"
+    },
+    {
+      "name": "mt-msb.cfg",
+      "archive": "microtype.tar.xz",
+      "member": "tex/latex/microtype/mt-msb.cfg",
+      "length": 5594,
+      "sha256": "3b7fabb99479f1c970c3d18e1c46de07654d5e3a108c1554fa9ae3026aa72770"
+    },
+    {
+      "name": "mt-mvs.cfg",
+      "archive": "microtype.tar.xz",
+      "member": "tex/latex/microtype/mt-mvs.cfg",
+      "length": 2354,
+      "sha256": "7e8d50070772e4c2be21e70d910a0167ff0305b629ff3ef0c1d002992bd3e807"
+    },
+    {
+      "name": "mt-pmn.cfg",
+      "archive": "microtype.tar.xz",
+      "member": "tex/latex/microtype/mt-pmn.cfg",
+      "length": 16239,
+      "sha256": "9c55fa5a8885ad264b6ef31ab1c134efb59a86feff750c29b42e52175df41c5d"
+    },
+    {
+      "name": "mt-ppl.cfg",
+      "archive": "microtype.tar.xz",
+      "member": "tex/latex/microtype/mt-ppl.cfg",
+      "length": 6374,
+      "sha256": "5242b837fb9e2928a387adf98f570f7873f033fd358f27134e5e95da655e60f6"
+    },
+    {
+      "name": "mt-ptm.cfg",
+      "archive": "microtype.tar.xz",
+      "member": "tex/latex/microtype/mt-ptm.cfg",
+      "length": 12427,
+      "sha256": "e1995a63bf0e7a8690ec6a0ddf0bfb343cfdbbf02499ae7e92e55c10c01099a7"
+    },
+    {
+      "name": "mt-ugm.cfg",
+      "archive": "microtype.tar.xz",
+      "member": "tex/latex/microtype/mt-ugm.cfg",
+      "length": 8311,
+      "sha256": "5218a5e5db6d9e4ba46c0d5714f8ad4a7f900b785b184228db4decfc859f362e"
+    },
+    {
+      "name": "mt-zpeu.cfg",
+      "archive": "microtype.tar.xz",
+      "member": "tex/latex/microtype/mt-zpeu.cfg",
+      "length": 2606,
+      "sha256": "3c2cc3b52706c0821542dffdd1b69bea36be6a9092a122429bf78a6662e0560c"
+    },
+    {
+      "name": "notices/thesis-packages/amscls/00LICENSE.txt",
+      "archive": "amscls.doc.tar.xz",
+      "member": "doc/latex/amscls/00LICENSE.txt",
+      "length": 7364,
+      "sha256": "a91b67a52aabef8fcf376e6eb60392adbb90068c0ac7b480c1dbcab67579eced"
+    },
+    {
+      "name": "notices/thesis-packages/amscls/README",
+      "archive": "amscls.doc.tar.xz",
+      "member": "doc/latex/amscls/README",
+      "length": 7788,
+      "sha256": "35e788fe0787852a0e5bd5ff617442badb46ab1e170f16a5cb5574399c707b5e"
+    },
+    {
+      "name": "notices/thesis-packages/cmap/README",
+      "archive": "cmap.doc.tar.xz",
+      "member": "doc/latex/cmap/README",
+      "length": 4458,
+      "sha256": "898fbcab62a65d7dcceb9f46669d651be709006edf0df5e2dccd39bf8cfbd9db"
+    },
+    {
+      "name": "notices/thesis-packages/extsizes/README",
+      "archive": "extsizes.doc.tar.xz",
+      "member": "doc/latex/extsizes/README",
+      "length": 3517,
+      "sha256": "623b3a5cc9448676adce78b0870589c3fb7be6bd8bc7f6dd78584e27013eb0b7"
+    },
+    {
+      "name": "notices/thesis-packages/extsizes/readme.extsizes",
+      "archive": "extsizes.doc.tar.xz",
+      "member": "doc/latex/extsizes/readme.extsizes",
+      "length": 3516,
+      "sha256": "a5350d516ccb23899ed10c04c75f63e5532555458898d674db82ca1e25fb5ebe"
+    },
+    {
+      "name": "notices/thesis-packages/float/README",
+      "archive": "float.doc.tar.xz",
+      "member": "doc/latex/float/README",
+      "length": 1009,
+      "sha256": "6571eaac36db8d8397072871f230902bffecdaac49554b67d7e8b9609b8c6e29"
+    },
+    {
+      "name": "notices/thesis-packages/hanging/README",
+      "archive": "hanging.doc.tar.xz",
+      "member": "doc/latex/hanging/README",
+      "length": 1933,
+      "sha256": "912a44ab22db53677409c228b1f0c8625b16e58487550d01252f36759f94b363"
+    },
+    {
+      "name": "notices/thesis-packages/lastpage/README",
+      "archive": "lastpage.doc.tar.xz",
+      "member": "doc/latex/lastpage/README",
+      "length": 5200,
+      "sha256": "cdd31eb985347cbdff4e943c0dcfa5e1e70045fb489b94fa67b01c967e44202a"
+    },
+    {
+      "name": "notices/thesis-packages/microtype/README.md",
+      "archive": "microtype.doc.tar.xz",
+      "member": "doc/latex/microtype/README.md",
+      "length": 3393,
+      "sha256": "acb57f813c418c04cb3ee3134c5140140dc446500b9abe07e5a37600f7f0cfaf"
+    },
+    {
+      "name": "notices/thesis-packages/tabularray/README.txt",
+      "archive": "tabularray.doc.tar.xz",
+      "member": "doc/latex/tabularray/README.txt",
+      "length": 285,
+      "sha256": "cee5cf6d40b0559a5294f23e07c92426ace437b64308d58b0a79d9c48751dc7c"
+    },
+    {
+      "name": "notices/thesis-packages/titlesec/README.md",
+      "archive": "titlesec.doc.tar.xz",
+      "member": "doc/latex/titlesec/README.md",
+      "length": 2607,
+      "sha256": "6fd3e343478553ccc1835b0a79de442c788c83b7bc49de0e3798b7dbb0d25712"
+    },
+    {
+      "name": "notices/thesis-packages/tocloft/README",
+      "archive": "tocloft.doc.tar.xz",
+      "member": "doc/latex/tocloft/README",
+      "length": 4395,
+      "sha256": "1efbfc2a339e2652894e4f74f622203e1d732c10bb33cb8572d3521311247043"
+    },
+    {
+      "name": "notices/thesis-packages/totalcount/README",
+      "archive": "totalcount.doc.tar.xz",
+      "member": "doc/latex/totalcount/README",
+      "length": 1210,
+      "sha256": "fecafaa4d81bce6417adab916e5f6c900d1a20d2af39f658fad8a0c124922812"
+    },
+    {
+      "name": "notices/thesis-packages/was/readme.1st",
+      "archive": "was.doc.tar.xz",
+      "member": "doc/latex/was/readme.1st",
+      "length": 2053,
+      "sha256": "d0ece39aaf6649a4d51109cb2ca3157971ce3ea747c1f3fad3ddbefa65c28419"
+    },
+    {
+      "name": "notices/thesis-packages/xurl/README.md",
+      "archive": "xurl.doc.tar.xz",
+      "member": "doc/latex/xurl/README.md",
+      "length": 557,
+      "sha256": "43d3c8a85bdc7949ee1ab0ddcd46455d12d47b50349b58a5d71a660656f2badd"
+    },
+    {
+      "name": "ot1.cmap",
+      "archive": "cmap.tar.xz",
+      "member": "tex/latex/cmap/ot1.cmap",
+      "length": 1207,
+      "sha256": "2c7325ed9ad97da701f43737f0762c181878b8d770b5abf37df8728216f9e646"
+    },
+    {
+      "name": "ot1tt.cmap",
+      "archive": "cmap.tar.xz",
+      "member": "tex/latex/cmap/ot1tt.cmap",
+      "length": 1042,
+      "sha256": "58b4f178ac815587ccf5165cd3cc13816000f1338b05706717bdbc8345d75af3"
+    },
+    {
+      "name": "ot6.cmap",
+      "archive": "cmap.tar.xz",
+      "member": "tex/latex/cmap/ot6.cmap",
+      "length": 1730,
+      "sha256": "d0de1bf81d787e85165c4e4a5b9faf92c0234201f3d3f31bfbdc378aa5343a75"
+    },
+    {
+      "name": "size14.clo",
+      "archive": "extsizes.tar.xz",
+      "member": "tex/latex/extsizes/size14.clo",
+      "length": 6214,
+      "sha256": "04714f19523f3b5b484e7fdbb59a846d884c0ed4e9346dad094dddddf289f6bf"
+    },
+    {
+      "name": "size17.clo",
+      "archive": "extsizes.tar.xz",
+      "member": "tex/latex/extsizes/size17.clo",
+      "length": 6192,
+      "sha256": "cabee0cbc884f51ec21cd1027808f7567bb23566e01ca24c3e8dcf01b9c85965"
+    },
+    {
+      "name": "size20.clo",
+      "archive": "extsizes.tar.xz",
+      "member": "tex/latex/extsizes/size20.clo",
+      "length": 6196,
+      "sha256": "53a4a0090ec29e1c00680e71e1127fadfc3bdd54bdec336406d62707619f57bc"
+    },
+    {
+      "name": "size8.clo",
+      "archive": "extsizes.tar.xz",
+      "member": "tex/latex/extsizes/size8.clo",
+      "length": 6172,
+      "sha256": "747131e27d5839a0271341d53fbefcf3e049b6564410466c1c20f706632a6f45"
+    },
+    {
+      "name": "size9.clo",
+      "archive": "extsizes.tar.xz",
+      "member": "tex/latex/extsizes/size9.clo",
+      "length": 6172,
+      "sha256": "255d91825ecc2ba87e068a94c4a294e8aaa5c3e1756ef30de22dde54ef51f409"
+    },
+    {
+      "name": "t1.cmap",
+      "archive": "cmap.tar.xz",
+      "member": "tex/latex/cmap/t1.cmap",
+      "length": 1938,
+      "sha256": "e43d20b203a25786d101e757d312b3660bc2505d57251db7701cd3f69e6d1f42"
+    },
+    {
+      "name": "t2a.cmap",
+      "archive": "cmap.tar.xz",
+      "member": "tex/latex/cmap/t2a.cmap",
+      "length": 1872,
+      "sha256": "81042f4e0394719e199e6254335af00d1b9d26e3cdd4663b66eb56a593b8b647"
+    },
+    {
+      "name": "t2b.cmap",
+      "archive": "cmap.tar.xz",
+      "member": "tex/latex/cmap/t2b.cmap",
+      "length": 1680,
+      "sha256": "99a3cea4c27a32894f4b268c0f37aa3aad4c6e063c15c57177a28d699fb2b177"
+    },
+    {
+      "name": "t2c.cmap",
+      "archive": "cmap.tar.xz",
+      "member": "tex/latex/cmap/t2c.cmap",
+      "length": 1752,
+      "sha256": "a7db0328dd625d835ca63224581b5c93147b731f49d333d014f9231f5fa419ad"
+    },
+    {
+      "name": "t5.cmap",
+      "archive": "cmap.tar.xz",
+      "member": "tex/latex/cmap/t5.cmap",
+      "length": 2573,
+      "sha256": "d0454643c5bd08f941e127fad0c2748d0589ceaaf158b2984374424e479c5fd1"
+    },
+    {
+      "name": "tabularray-2021.sty",
+      "archive": "tabularray.tar.xz",
+      "member": "tex/latex/tabularray/tabularray-2021.sty",
+      "length": 232080,
+      "sha256": "bf79990dae72156f37f4f1ac845f9f9a39eceab9e1020f8b6f9d42bf88691155"
+    },
+    {
+      "name": "tabularray.sty",
+      "archive": "tabularray.tar.xz",
+      "member": "tex/latex/tabularray/tabularray.sty",
+      "length": 255677,
+      "sha256": "bf2ba4ad656912eec12a155e88ac755cc106d5343ca5d975ee2bc92f28cd53d3"
+    },
+    {
+      "name": "titleps.sty",
+      "archive": "titlesec.tar.xz",
+      "member": "tex/latex/titlesec/titleps.sty",
+      "length": 25336,
+      "sha256": "0186bf3d12d3c16b8f994cf10238be52af5451d332785a3cb3199fa872711981"
+    },
+    {
+      "name": "titlesec.sty",
+      "archive": "titlesec.tar.xz",
+      "member": "tex/latex/titlesec/titlesec.sty",
+      "length": 48766,
+      "sha256": "c78182a0719ca00b7fa6cfbc5d8fbb58c341314954413b8d5b016d67a9e17f41"
+    },
+    {
+      "name": "titletoc.sty",
+      "archive": "titlesec.tar.xz",
+      "member": "tex/latex/titlesec/titletoc.sty",
+      "length": 16869,
+      "sha256": "176f23bccb429adf158847b445eb11257657833339d35027f87cb750fcbe9796"
+    },
+    {
+      "name": "tocloft.sty",
+      "archive": "tocloft.tar.xz",
+      "member": "tex/latex/tocloft/tocloft.sty",
+      "length": 36103,
+      "sha256": "26f057c1673e58d8ee6ce0031c795e24ed638db9a342ca75b7234ec0de439682"
+    },
+    {
+      "name": "totalcount.sty",
+      "archive": "totalcount.tar.xz",
+      "member": "tex/latex/totalcount/totalcount.sty",
+      "length": 3207,
+      "sha256": "df7e586047a5e8919f337bb15f454f3a4113c284271f8ace954ae314640f27fb"
+    },
+    {
+      "name": "upgreek.sty",
+      "archive": "was.tar.xz",
+      "member": "tex/latex/was/upgreek.sty",
+      "length": 5794,
+      "sha256": "d7e844ae83c7f5cea49a7260a82640c08c50f9f471a5b4ff96c0238327d04836"
+    },
+    {
+      "name": "upref.sty",
+      "archive": "amscls.tar.xz",
+      "member": "tex/latex/amscls/upref.sty",
+      "length": 2043,
+      "sha256": "e9befea9363cc9d7ebc2b535441cd3ff17a35f0fea841a3d879a8550fec6102c"
+    },
+    {
+      "name": "xurl.sty",
+      "archive": "xurl.tar.xz",
+      "member": "tex/latex/xurl/xurl.sty",
+      "length": 4675,
+      "sha256": "5cf09de8dd52b5e77a12145d4987ab4df75a304174d224aa9562eed3dd141ef3"
+    }
+  ]
+}
