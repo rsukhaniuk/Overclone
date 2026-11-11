@@ -1,0 +1,460 @@
+{
+  "schemaVersion": 1,
+  "status": "candidate-static-gap-inventory-not-adopted",
+  "synthetic": false,
+  "repository": "https://github.com/KlymentievMaksym/interactive-colorization-kpi-thesis",
+  "commit": "406f8a2474071b23ddd1ef10d74cd5675b506c6b",
+  "license": "CC-BY-SA-4.0",
+  "licenseEvidence": "https://github.com/KlymentievMaksym/interactive-colorization-kpi-thesis/blob/406f8a2474071b23ddd1ef10d74cd5675b506c6b/LICENSE",
+  "readmeEvidence": "https://github.com/KlymentievMaksym/interactive-colorization-kpi-thesis/blob/406f8a2474071b23ddd1ef10d74cd5675b506c6b/README.md",
+  "root": "thesis.tex",
+  "engine": "lualatex",
+  "backend": "biber",
+  "degree": "bachelor",
+  "institution": "National Technical University of Ukraine Igor Sikorsky Kyiv Polytechnic Institute (KPI), per public project description and authored class",
+  "sourceEdited": false,
+  "inventoryMethod": "Static literal includes/localclass/BIB/graphics after comment removal; not a runtime recorder or complete TeX macro proof",
+  "fileCount": 66,
+  "totalBytes": 4486299,
+  "largestFileBytes": 554396,
+  "projectFilePins": [
+    {
+      "name": "bibliography/image_colorization.bib",
+      "length": 59504,
+      "sha256": "7a7ebec29e5342a2c69f8abdc3a5a6d857e47649e13054c81116fcc3b3a57ec2",
+      "upstreamGitBlob": "555a21ac8e481eb24bf7cd064f3053ec9b338e16"
+    },
+    {
+      "name": "chapters/abstract.tex",
+      "length": 5161,
+      "sha256": "08aaf8c3760edabccba120db02137ccd1020ecd1bf44225499bfb8ba47b4be79",
+      "upstreamGitBlob": "193b7b79468d7bacc74c36f4e4928f9132f578b1"
+    },
+    {
+      "name": "chapters/appendix_A.tex",
+      "length": 30186,
+      "sha256": "1a89f90e93475506e741e96b5d9e1e6140827d142350266fe94cf3a3e9842c49",
+      "upstreamGitBlob": "d32deae31c188f8c33cebf2bc487573cd849d8ed"
+    },
+    {
+      "name": "chapters/appendix_B.tex",
+      "length": 4605,
+      "sha256": "a0932bb031622b862332420210837c151a54ed8a995c222787b83144874a6530",
+      "upstreamGitBlob": "986019f51b7af349d125ca4a5625e5819136eb72"
+    },
+    {
+      "name": "chapters/chapter_01.tex",
+      "length": 80626,
+      "sha256": "e1e32511ffa53ab823c059c101810d30ddd0bbe13a9b582c446ec0c48ba8be23",
+      "upstreamGitBlob": "298d50f77ebd2ae461023f876afaeaf76f95e580"
+    },
+    {
+      "name": "chapters/chapter_02.tex",
+      "length": 48129,
+      "sha256": "3af17173618910a79b79593a36a3b6c17b8676db089a8f5380286b44ffcd8b52",
+      "upstreamGitBlob": "3480a28f514ba6601924f004581d69b057f9eb26"
+    },
+    {
+      "name": "chapters/chapter_03.tex",
+      "length": 56584,
+      "sha256": "7f63f944016580a10e9642ddb5efc3f9d71ab51b52ebf6c3c5efc92714e864ce",
+      "upstreamGitBlob": "02c1e77a156e5ee5b98f9df9ef67ffb4842a74d7"
+    },
+    {
+      "name": "chapters/conclusions.tex",
+      "length": 15426,
+      "sha256": "095e6af1a7d02a5594f0d3b99f28fefa832aa6a804989cb60e67260bae368ab5",
+      "upstreamGitBlob": "6dcfd03f5d65a10c5637b7121d4d1a3cb2313cca"
+    },
+    {
+      "name": "chapters/counter.tex",
+      "length": 1009,
+      "sha256": "f6ef75af85cd9e75f5fa659c48d7f96e7a8262ded6aa2e6261b57b15f0a42341",
+      "upstreamGitBlob": "d167448a611ce5196c6e2f9904941b25c14aac75"
+    },
+    {
+      "name": "chapters/introduction.tex",
+      "length": 18070,
+      "sha256": "ed8860917eb21bf7606c60183166921a942aff03b5721a88f9fb378509db91eb",
+      "upstreamGitBlob": "d44f59eca59b96eaadf4e7e773fe8481873141bc"
+    },
+    {
+      "name": "chapters/shortings.tex",
+      "length": 5050,
+      "sha256": "e60b4db4fd1985ed3548b8c4d7b52798f690f929886d94332dd47f985bd864e4",
+      "upstreamGitBlob": "ddc8abe4c80ebb2aa736e1b1893065b96e481c17"
+    },
+    {
+      "name": "chapters/specification.tex",
+      "length": 7434,
+      "sha256": "35a1b1120aa6125c1a5101dcd315b79bdabdeab46906fb7328a65a925d420b02",
+      "upstreamGitBlob": "4ade353b1db0c087f93119c7cc380f08f252aa71"
+    },
+    {
+      "name": "chapters/title.tex",
+      "length": 3488,
+      "sha256": "fc782a354707ee40b0cd59163ae115dcdb881a4d1c78688df7d6d8a6ae118f15",
+      "upstreamGitBlob": "6fc6dbe9f677083fa38715bf8fec4c27932f878e"
+    },
+    {
+      "name": "images/1.jpg",
+      "length": 13498,
+      "sha256": "b3c1568bbb961570185bd6a7e8bd3f39fd04fa8e5c1c8c41ef06a73267e5f216",
+      "upstreamGitBlob": "040fcc38f438f05d7cecf587db4da6d847de3f34"
+    },
+    {
+      "name": "images/2.jpg",
+      "length": 27647,
+      "sha256": "13a9c7ca685f07ee13f2e488aa5140b1d8991d436d80a00afec9e654944d83e3",
+      "upstreamGitBlob": "fec1c3cf28b2a78aa4529f86890c3696f5a9afb6"
+    },
+    {
+      "name": "images/3.jpg",
+      "length": 35172,
+      "sha256": "2df27156338094cfa2fb750ab8bf4dfd7fa34fdc4544fd1b3744681a84f61918",
+      "upstreamGitBlob": "c321957763ef22f7fdff7562c14bed26fd7b2d0d"
+    },
+    {
+      "name": "images/app-image.png",
+      "length": 552274,
+      "sha256": "6a9415fc9979ab92711e6fc39eaa726102b3c0119c7e3b604a1362874ab44cff",
+      "upstreamGitBlob": "e7814d625e88f550a9880708e1b370e07628bc68"
+    },
+    {
+      "name": "images/ddcolor1.jpg",
+      "length": 12396,
+      "sha256": "7d6d609eff46f1174fb1bcd23734ffa7f94de35f53ddc401c52e1569dbc239bd",
+      "upstreamGitBlob": "aec1de76a02e1ee3bc68e60f8f5415b1424c1468"
+    },
+    {
+      "name": "images/ddcolor2.jpg",
+      "length": 24933,
+      "sha256": "b95f66e6600bb6015cfa06f46dd79a34d3de9666528cf242e2b1154b4163686b",
+      "upstreamGitBlob": "030684b3c0621a5c9f82ce97dffe7f805944b9c5"
+    },
+    {
+      "name": "images/ddcolor3.jpg",
+      "length": 35224,
+      "sha256": "c7004ed682e3ef41eddb6d30eb6e80b024ac65781ee1b2cedb9b5a08b9644835",
+      "upstreamGitBlob": "4f127f1b04c0f573e5b75f026b7ff6d138497468"
+    },
+    {
+      "name": "images/eccv161.jpg",
+      "length": 12756,
+      "sha256": "b83ee2177cad3aff40e0004aee11faf097e8b68a3c065ebf3af6c8bac67990f4",
+      "upstreamGitBlob": "93ed9d1280c5ee43d4ebf11da134097ef688b95b"
+    },
+    {
+      "name": "images/eccv162.jpg",
+      "length": 24113,
+      "sha256": "217ffb317db630374824697f7827ee7da8f9fb97f63b181373766ff198d781e6",
+      "upstreamGitBlob": "38fc0eb59284b5f946767c0fb481598ce9023257"
+    },
+    {
+      "name": "images/eccv163.jpg",
+      "length": 32505,
+      "sha256": "822dbddbd0b03820afac63728faea62ce3578c57cda2703b1199091e4db58297",
+      "upstreamGitBlob": "c1befd4c73112ad38ceb87bfaadc384fb677331b"
+    },
+    {
+      "name": "images/example1.png",
+      "length": 44559,
+      "sha256": "6354cebd41981d90f4e9266d64804bab3a23317951cd70d38269e36453b834e5",
+      "upstreamGitBlob": "4392e96e73fe234639ae7d5853ce9919112908d7"
+    },
+    {
+      "name": "images/example2.png",
+      "length": 139191,
+      "sha256": "3e1dc5599aec2fd1f785b49b383dca2b5e76f8124943c69c62071e0284e78b24",
+      "upstreamGitBlob": "e9c9517191a0248e885fd6891c1843cdf4f5d69d"
+    },
+    {
+      "name": "images/example3.png",
+      "length": 132895,
+      "sha256": "20e2306d9a75f09776674f80f926144017cb2246b1f9e47f88b544b89382c3e1",
+      "upstreamGitBlob": "024b63c0f8df2f427233559f6397bb9100d2925b"
+    },
+    {
+      "name": "images/example4.png",
+      "length": 83371,
+      "sha256": "3ad7da1401801242beb39680c3b8fcdf47984d70941de33fa0bce3596eb9d7d6",
+      "upstreamGitBlob": "070da558bf0deb158447f9c02bf38e868c835f13"
+    },
+    {
+      "name": "images/heatmap_ddcolor1.jpg",
+      "length": 19537,
+      "sha256": "f0b571eb49cb336e57ae41807ba3a235df198d28c3394f90bef8647acf53f345",
+      "upstreamGitBlob": "898eeb6f8150c3f73ea727db3e1a36df751afe23"
+    },
+    {
+      "name": "images/heatmap_ddcolor2.jpg",
+      "length": 48447,
+      "sha256": "108089ac1d53722571bba16c6a8dfa93b274ca9b054615b61b099c0285777f3a",
+      "upstreamGitBlob": "97a41c3eaeff09288308a816f03c3fd2945b4bb2"
+    },
+    {
+      "name": "images/heatmap_ddcolor3.jpg",
+      "length": 49741,
+      "sha256": "398da0a99978a058b512182e4bf044ce4d7c2f8d261f961b995ae2f9b62d6b7b",
+      "upstreamGitBlob": "85e40ee9044e2184a4975f4f290e558ba89870a3"
+    },
+    {
+      "name": "images/heatmap_eccv161.jpg",
+      "length": 26852,
+      "sha256": "780a62496bbcbbbc3f19e59d60bea78b8e718510a4d970ff6ff2b9d59c933d17",
+      "upstreamGitBlob": "4fb151dce87e2073ecd8c18b6b5b80ee8f0d8ea2"
+    },
+    {
+      "name": "images/heatmap_eccv162.jpg",
+      "length": 49403,
+      "sha256": "4554b371c9b3f57d1336d0de71f075436f71d7d5f8100a7db6146d6d83d7d852",
+      "upstreamGitBlob": "dfa4c17ca9ec7f6ad7fa9cbee0f324dd7946dad9"
+    },
+    {
+      "name": "images/heatmap_eccv163.jpg",
+      "length": 43287,
+      "sha256": "48ec66b3f2d65ab3e4dd4bb43a1002c47e2509c4808dc69ac480233bc8427938",
+      "upstreamGitBlob": "5d09e1a04fcd49915bf73d318735770ccb189d89"
+    },
+    {
+      "name": "images/heatmap_mamba1.jpg",
+      "length": 25907,
+      "sha256": "f276365e21e8fee84aa83172bb109b3bd3e0bb24be8c2312911ae1ab5345deee",
+      "upstreamGitBlob": "b018f943f4f7d4247f0c6f8fdcb6a6653b8bc80a"
+    },
+    {
+      "name": "images/heatmap_mamba2.jpg",
+      "length": 49438,
+      "sha256": "6902ea26b557f9e864428c97fe1e070e499573f9e8986b15462b959a9224b5fc",
+      "upstreamGitBlob": "bf67cf7b36338c4804381003b9f8af7e0a129acb"
+    },
+    {
+      "name": "images/heatmap_mamba3.jpg",
+      "length": 44834,
+      "sha256": "92314f8ba415a188fdbe7630078678c47c4637b587fb4997a8419ae2f1c654ef",
+      "upstreamGitBlob": "785c3ac8efe3da9d3f8eff2240ad9f9245578def"
+    },
+    {
+      "name": "images/heatmap_pix2pix1.jpg",
+      "length": 33664,
+      "sha256": "dd65e19163f1b7f0aa1c60a0bdaeb1e1675e82cd32580cd1db6ce17e934a6f71",
+      "upstreamGitBlob": "f72891266273be8fe1538679c95821169a41e04c"
+    },
+    {
+      "name": "images/heatmap_pix2pix2.jpg",
+      "length": 57554,
+      "sha256": "055d366e3abbebd57fdae8c97eda1aafd505f1813c75254658d4dba5e280a9b2",
+      "upstreamGitBlob": "8a0d3a3d9281421c06fe68a9320c3194ce70e5e2"
+    },
+    {
+      "name": "images/heatmap_pix2pix3.jpg",
+      "length": 55487,
+      "sha256": "481ccc364019d5aec490cfa1c54c81467e0dde7429b5f33655e1e41b31a39265",
+      "upstreamGitBlob": "0c700dad2e712e130ed86c5e1e7e7f67be305cde"
+    },
+    {
+      "name": "images/heatmap_siggraph171.jpg",
+      "length": 19468,
+      "sha256": "2f6cbc17562e8e44fd3adceb5ca8e53191a013b7117ca7b0240bf751c73711a3",
+      "upstreamGitBlob": "7730ff8a6c077001483e40196bf4b420a81664c0"
+    },
+    {
+      "name": "images/heatmap_siggraph172.jpg",
+      "length": 47823,
+      "sha256": "ed82be48757726374b62a4d8e8d3996a23b16b068ed864e8ca04cd7a5868f618",
+      "upstreamGitBlob": "8ea40acf874853053798a5a3b89c826a67fc3217"
+    },
+    {
+      "name": "images/heatmap_siggraph173.jpg",
+      "length": 43018,
+      "sha256": "5da08e2739454df430886443ad3dd254058068c47ae4175016c54b0d7a1aa3e7",
+      "upstreamGitBlob": "749f7ed0b05a69953977554c4c4bd3baaac00f2e"
+    },
+    {
+      "name": "images/mamba1.jpg",
+      "length": 12578,
+      "sha256": "96548fe24103d117ea72406defb8c399972d4318801b262beab26e649b451524",
+      "upstreamGitBlob": "9e78cbfd9357d55294060d63d97dcd071f985f57"
+    },
+    {
+      "name": "images/mamba2.jpg",
+      "length": 26019,
+      "sha256": "53a61101dd9b4a8d18e7bcbacb40fadc96fbc73fe43292cf1188e1613eb2a877",
+      "upstreamGitBlob": "aa3804afcf5f56de04b68b7b459f9e0aa3651978"
+    },
+    {
+      "name": "images/mamba3.jpg",
+      "length": 33577,
+      "sha256": "69246581a0f52e13ff49e783d33fa93276409945f2a8fa1992eed1c2409b20b4",
+      "upstreamGitBlob": "1ec80bda3c9dadbc737d4ddb5df9fee2799a33f8"
+    },
+    {
+      "name": "images/pix2pix1.jpg",
+      "length": 14608,
+      "sha256": "245bb97d2af4ea3aa45e45409b5c12feb413e43947f510dd04010f1023b9845c",
+      "upstreamGitBlob": "41d26f5fe133a1cceff9ff88d46adcab0693b450"
+    },
+    {
+      "name": "images/pix2pix2.jpg",
+      "length": 28600,
+      "sha256": "a33e796c6e40531f9ee247ce9e76c9de0fca94b720339570e0fb0626e4173b78",
+      "upstreamGitBlob": "a97192b7f911aefb16e9afe553a15ac96147bb33"
+    },
+    {
+      "name": "images/pix2pix3.jpg",
+      "length": 36364,
+      "sha256": "41a744a9d97b7854a17e729e5194b721641dd80b778cb9c40b0ed70a1a4c616a",
+      "upstreamGitBlob": "b9088957aaf8385f4b06efe708dc56665a07434e"
+    },
+    {
+      "name": "images/siggraph171.jpg",
+      "length": 12785,
+      "sha256": "61aa1a8766b2916fde3d157297c6e75290ecacb0275946d7e766939f66be702d",
+      "upstreamGitBlob": "a41ea9d9fcb1ea8ddb735b9133feed1df68e722a"
+    },
+    {
+      "name": "images/siggraph172.jpg",
+      "length": 25399,
+      "sha256": "cb56052625e6bd9ec6596680e7617beef06675d220a2b32e9adf8a4474ab878b",
+      "upstreamGitBlob": "a42f9506edc44bfa1392a23d3b0aa74e80be6b01"
+    },
+    {
+      "name": "images/siggraph173.jpg",
+      "length": 33188,
+      "sha256": "a81e63108776894722c9f015a7a7b9ccf9e0e2604eaefca5c2b49fe2d64876b2",
+      "upstreamGitBlob": "a52ba429d5b4d95ffa297d5e134ded8adf9fde50"
+    },
+    {
+      "name": "images/stage1.png",
+      "length": 327004,
+      "sha256": "7e9f5ef98aa1cb6fbc8d42c99708bda00a00bc7e8dc090ae0bc76cf88f290c14",
+      "upstreamGitBlob": "6310c6ef392256c8c3986198662ba317250ac417"
+    },
+    {
+      "name": "images/stage2.png",
+      "length": 319587,
+      "sha256": "56c190b130a75cb27bac32cfa0345217bb11c27baf7e2ec4d93824bc32fd85fd",
+      "upstreamGitBlob": "91f55d7f327e3be0faecab46efb085c70c276ef7"
+    },
+    {
+      "name": "images/stage3.png",
+      "length": 554396,
+      "sha256": "6f90eb4ff496d67bd506d700a52722928f8eb447e7c135c56ac6edee80234e48",
+      "upstreamGitBlob": "cead94099712203cfa355efb2237343abedd4260"
+    },
+    {
+      "name": "images/Вулиця.png",
+      "length": 377509,
+      "sha256": "3b462e663e241b2bed0ac19701f6023095079eb652e845e65392ee79f7c7138c",
+      "upstreamGitBlob": "a808bce2321f1b8a2965329d94161924b02a1b5b"
+    },
+    {
+      "name": "images/Візуалізація кореляції між об'єктивною похибкою MSE_HINT та відсотком голосів респондентів.png",
+      "length": 35217,
+      "sha256": "d34aa8a98127b0b9114e30b6314522364058fa8e1208fac157a0542dfbe3866c",
+      "upstreamGitBlob": "6a2b93728b8f568ba811602950d61d5f8f97a029"
+    },
+    {
+      "name": "images/Пейзаж.png",
+      "length": 349244,
+      "sha256": "624fafdc172036ec10567f85fad3d7e60b8acf7e97f217c56e12c528689595e1",
+      "upstreamGitBlob": "323c7d7746d8a1be90787b8b1ec3f0504d4d5721"
+    },
+    {
+      "name": "images/Розподіл відповідей респондентів щодо правдоподібності альтернативних варіантів.png",
+      "length": 28590,
+      "sha256": "4719f7fdfe987779734a599d9e18427381fde3225d0d49a626ff0bbd8b49ca24",
+      "upstreamGitBlob": "1677ab5f887a2dbf7d596122c9a1df0d4314386e"
+    },
+    {
+      "name": "images/Розподіл відповідей респондентів щодо реалістичності згенерованих зображень.png",
+      "length": 51374,
+      "sha256": "6dd6e9fbdd8a567ca4a8a3b5e168eae22f4f070e0973c017dd15aa2dbbb6c216",
+      "upstreamGitBlob": "9fde8336062e3bc75e93a753724a0b62c3743362"
+    },
+    {
+      "name": "images/Розподіл відповідей респондентів щодо точності слідування підказкам (Наша модель).png",
+      "length": 33895,
+      "sha256": "5dd163a3236c4c275141b0704d51b301215a06167f5a740d38f94ea6a5feca11",
+      "upstreamGitBlob": "59c7b1fc729b6e726a6c7052e51982fa78023545"
+    },
+    {
+      "name": "images/Розподіл відповідей респондентів щодо точності слідування підказкам детально.png",
+      "length": 30767,
+      "sha256": "4c3299698e4aff5f00bf3861d69c2f3d5097f0cc3802077b80672387e83a4abb",
+      "upstreamGitBlob": "aef64911a3317756852a63edd9c2bcedecdb9659"
+    },
+    {
+      "name": "thesis.tex",
+      "length": 1673,
+      "sha256": "12a6967d2f9b04f0b5824365e41a62afb4615f95183bca9a7485cf7b2e871b09",
+      "upstreamGitBlob": "6c94889b35bb2a684c1e4ac4c84ae0b924906a4c"
+    },
+    {
+      "name": "utils/bachelor_thesis.cls",
+      "length": 26351,
+      "sha256": "ff057d292dad85c96f5f7938b51aaaff4d76b6a9a0d9e6c103394bed0f776226",
+      "upstreamGitBlob": "1be62b73c1eb7a02dbd0f73d4bf5f4b7669e2925"
+    },
+    {
+      "name": "utils/data.tex",
+      "length": 3880,
+      "sha256": "9db0dab06ea01dc53a55449c002a00ad530353c3a5c2dba21e91f6111f39921d",
+      "upstreamGitBlob": "d974e1f50c655a4d094bc74113d5b211c868259b"
+    },
+    {
+      "name": "utils/packages.tex",
+      "length": 1167,
+      "sha256": "3cc47264819eea202d0cdd16581d64a36f3b81067115fba5acaa974ddb530de0",
+      "upstreamGitBlob": "b30aec132011a915b93ff0d7245e3f3fcb0fda20"
+    },
+    {
+      "name": "utils/redefinitions.tex",
+      "length": 2261,
+      "sha256": "f014340d43c8c2d0e28a382f1aca63eea5019d8ffb93250e40fe877b40add1db",
+      "upstreamGitBlob": "b40d2bf9e75c847d23788a8accdabad7f5b1c938"
+    }
+  ],
+  "declaredAppCaptureLimit": {
+    "files": 64,
+    "perFileBytes": 1048576,
+    "totalBytes": 8388608
+  },
+  "staticMissingP13PackageFiles": [
+    "amsthm.sty",
+    "cmap.sty",
+    "float.sty",
+    "hanging.sty",
+    "icomma.sty",
+    "lastpage.sty",
+    "microtype.sty",
+    "tabularray.sty",
+    "titlesec.sty",
+    "tocloft.sty",
+    "totalcount.sty",
+    "xurl.sty"
+  ],
+  "staticMissingP13ClassFiles": [
+    "extreport.cls"
+  ],
+  "requiredFonts": [
+    "Times New Roman",
+    "Courier New"
+  ],
+  "fontsProvidedByProject": false,
+  "fontSubstitutionPerformed": false,
+  "preparedOriginalClosureZip": {
+    "length": 4495587,
+    "sha256": "0e2f6eb9274202de7768fb4e71c7f0b534ed415e650de02b3e303bf8b94e4c15"
+  },
+  "acceptance": "not-run; no native/browser compilation proof",
+  "remainingDecisions": [
+    "representative real-project selection",
+    "legal provisioning of requested proprietary fonts; no redistribution permission inferred"
+  ],
+  "limitations": [
+    "Static literal closure is not proof of actual runtime opens or complete TeX macro resolution",
+    "Do not trim files or rewrite fonts/source to report original-project acceptance",
+    "Candidate is not an available fixture in the executable corpus manifest"
+  ]
+}

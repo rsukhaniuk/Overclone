@@ -66,3 +66,10 @@ The offline fixture deliberately adds a section; include another
 `--expected-outline 'Edited offline'` for that PDF. This bounded structural tool
 checks page-referenced URI actions and reachable outline titles in the actual
 exported bytes. It is not a general PDF security parser or preview link UI.
+
+A separately prepared real, publicly licensed candidate is recorded in
+[public-kpi-gap.json](public-kpi-gap.json). Its exact original source is not an
+available/passing fixture: the static closure has 66 files, requires package/class
+files absent from P13, and requests fonts not included by that project. No source
+or font substitution was made. This inventory is not a native/browser result or
+permission to silently change the accepted compatibility scope.
