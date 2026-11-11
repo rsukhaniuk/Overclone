@@ -1,0 +1,2510 @@
+{
+  "schemaVersion": 1,
+  "milestone": "R1",
+  "workPackage": "R1-F",
+  "scope": "Recipient-repeatable synthetic compatibility corpus; no milestone/adoption/real-thesis claim",
+  "harness": "scripts/test-local-authoring-ui.cjs",
+  "sourceFiles": [
+    {
+      "name": "docker/browser.Dockerfile",
+      "length": 409,
+      "sha256": "c60790a59ee677874b0e7a762abc403ccdde4789c024fb0079e285b30f2d18a6"
+    },
+    {
+      "name": "docs/examples/static-csp-headers.conf",
+      "length": 1265,
+      "sha256": "64a83391a836ee48640e8227e4b44fe3fa597e86488c13711c061ef4891e00ed"
+    },
+    {
+      "name": "native/tex/luatex-engine/harfbuzz/fixtures/harfbuzz.tex",
+      "length": 254,
+      "sha256": "0b192cb1bff230ca8b16e6da70fcfecc3e7d069d3d26e6616ac3496f9a6dd39c"
+    },
+    {
+      "name": "scripts/knu-fixtures.cjs",
+      "length": 1004,
+      "sha256": "6d1eff16d65e6a2575f68eb3491ac12a1c51b6767202e9bd8ef449c00fcd6918"
+    },
+    {
+      "name": "scripts/review-ui-helpers.cjs",
+      "length": 7726,
+      "sha256": "1f5063e1fb36a10b342b9202835dd877e2c4129fa4fd0c6c47e26dd3ddefcd21"
+    },
+    {
+      "name": "scripts/run-compiler-acceptance.py",
+      "length": 22278,
+      "sha256": "1dfcf9078e05da71fa0f99d3dafe12881bc15ca31770d2c2c7bc114c8c3a12ab"
+    },
+    {
+      "name": "scripts/source-pdf-navigation-ui-checks.cjs",
+      "length": 21936,
+      "sha256": "df6d584528f546c97b267b2828f08af09aa36a0d9edeb2e4c0ac55a12d552e5a"
+    },
+    {
+      "name": "scripts/test-csp.cjs",
+      "length": 4820,
+      "sha256": "a71eb2628dc35bf50af3de1e036647370353310879f44a19da3f52a973b2cb46"
+    },
+    {
+      "name": "scripts/test-local-authoring-ui.cjs",
+      "length": 126371,
+      "sha256": "3245256c8c84a42f23d2c617bd1c4de71ea02ad52df7e549bb0175503701717a"
+    },
+    {
+      "name": "src/Client/wwwroot/icons/icon-192.png",
+      "length": 475,
+      "sha256": "0f4ecf9fe47542ddf5f5a1747bd0b97d3595a8081ce2572c63b4f82da0370c0b"
+    },
+    {
+      "name": "tests/CompilerBiberFixtures/chapter.tex",
+      "length": 191,
+      "sha256": "5c36cbd7e18aacd0f42deb8ed3264fa42e3f5e4ae5e8716c331f36431822c20d"
+    },
+    {
+      "name": "tests/CompilerBiberFixtures/main-latin.tex",
+      "length": 1051,
+      "sha256": "06d9f7034c15cfec0418f5c92ef0dea0faa6c19ccac7c999579f86ef942f7cf2"
+    },
+    {
+      "name": "tests/CompilerBiberFixtures/main-unicode.tex",
+      "length": 1023,
+      "sha256": "48a72fd8762d93a9c157732a31387e0e14e783ff3129fef74d31417949eb18ac"
+    },
+    {
+      "name": "tests/CompilerBiberFixtures/manifest.json",
+      "length": 1679,
+      "sha256": "0b0012fb145b5e7e5223796bfab24aa9b8d17694393336fc2482fb166c476b79"
+    },
+    {
+      "name": "tests/CompilerBiberFixtures/references-latin.bib",
+      "length": 323,
+      "sha256": "d5813cad341f3184c0355e93e56f9d545769a255c0a567a94b3ba02f5f5631d8"
+    },
+    {
+      "name": "tests/CompilerBiberFixtures/references-ukrainian.bib",
+      "length": 202,
+      "sha256": "ffcac1827a11e0c0c2796f0bf4ebf0ac1127f8cf54ca0d702a5e37c1d534c3bd"
+    },
+    {
+      "name": "tests/CompilerBibliographyFixtures/main-latin.tex",
+      "length": 916,
+      "sha256": "60a216a59a207bf32856a02361d5d7e92451077f9439eac8d723bbcdda19c625"
+    },
+    {
+      "name": "tests/CompilerBibliographyFixtures/main-unicode.tex",
+      "length": 1419,
+      "sha256": "90d08be7eca88b61f731bf64d88fe5fe373241a67d00bbbfe5f3685a99d27e49"
+    },
+    {
+      "name": "tests/CompilerSemanticsFixtures/manifest.json",
+      "length": 1172,
+      "sha256": "2b265c023a3453959de0a425c3e995bcacb4cf2ce20581deb6689bd90dbf5134"
+    },
+    {
+      "name": "tests/CompilerSuiteFixtures/chapter.tex",
+      "length": 141,
+      "sha256": "6e6cd6dfe10825269ee74d9021f0d93d44b81a5f380940ab600a7e8c120b1b1b"
+    },
+    {
+      "name": "tests/CompilerSuiteFixtures/figure.xbb",
+      "length": 195,
+      "sha256": "e83b377982057945060be39a772f13a5dfa15d56373f641a1da29996a86e2694"
+    },
+    {
+      "name": "tests/CompilerSuiteFixtures/main-latin.tex",
+      "length": 331,
+      "sha256": "932ab5acff68662d94bd421cf0989a9e676ab9eec55bf1f65fa22fc6d25ed1c5"
+    },
+    {
+      "name": "tests/CompilerSuiteFixtures/main-unicode.tex",
+      "length": 488,
+      "sha256": "41633045746742a0d3f629936d6e8f3529ec6ff6dbc83511b27455a004e02620"
+    },
+    {
+      "name": "tests/CompilerSuiteFixtures/references.bib",
+      "length": 138,
+      "sha256": "ea6ffa215d66ed0900157b1b405258ae264e3f40f07aaa486ec18dd726af80b7"
+    },
+    {
+      "name": "tests/ModernCompilerBrowserHarness/AuthoringFixture.cs",
+      "length": 2869,
+      "sha256": "b11fd9f9962282d28f905a74f01c5d5f30b5d5ef26e3931a157132b7986528d1"
+    },
+    {
+      "name": "tests/ModernCompilerBrowserHarness/ModernApi.cs",
+      "length": 10585,
+      "sha256": "f0a05d6d226bb49760b767f172c62cd209a6c25d62eef6754ada54dfccfa12d2"
+    },
+    {
+      "name": "tests/PackageFontFixtures/fonts/declared-faces.tex",
+      "length": 10148,
+      "sha256": "98f64c99acab92aa906aa1f70bf5de914ded427181db7ab88a02b7121bb93572"
+    },
+    {
+      "name": "tests/PackageFontFixtures/fonts/declared-font-commands.tex",
+      "length": 10351,
+      "sha256": "db19f37e9e34bd6911d227445fe19ff179e7a97580b64e937062e7f0d9564db6"
+    },
+    {
+      "name": "tests/PackageFontFixtures/fonts/mixed-ligature.tex",
+      "length": 257,
+      "sha256": "9288944fa25e4e1cf4922cfaf304bbdf6deca427dbc9b280e16bf6a7b257b547"
+    },
+    {
+      "name": "tests/PackageFontFixtures/fonts/mixed-semantic.tex",
+      "length": 603,
+      "sha256": "95090859c1423547dcbddf756f43e829e1f06974451b14466019132a21b7c334"
+    },
+    {
+      "name": "tests/PackageFontFixtures/fonts/unicode-fontspec.tex",
+      "length": 1015,
+      "sha256": "9a3a6ef746932d2d15ef1e25601c91c2caf0a665d6b9aaadc877b4eddb17f155"
+    },
+    {
+      "name": "tests/PackageFontFixtures/main-latin.tex",
+      "length": 857,
+      "sha256": "5f0788e30266234f29ee6e2d11067366ebf8556b4879deec7fc29604628f4ed5"
+    },
+    {
+      "name": "tests/PackageFontFixtures/main-unicode.tex",
+      "length": 1360,
+      "sha256": "175f480b59b3e706e805a8c2a25fb28b4d82d335bffdc7b1f5e42ffd74ef99c4"
+    },
+    {
+      "name": "tests/PackageFontFixtures/t2a-bundled.tex",
+      "length": 590,
+      "sha256": "5951c55bb40405af41ce14869a69f38febf1e21da9872a9a6a7b17c6d7e143a9"
+    },
+    {
+      "name": "toolchains.env",
+      "length": 537,
+      "sha256": "43a5f89f9795334559a6ec88271070f59721cf24594ca7a0567e1c24627fab22"
+    }
+  ],
+  "amiri": {
+    "source": "fonts/amiri-regular.ttf",
+    "length": 548016,
+    "sha256": "6988222efdde090e0926cabcaf695c5f551269efbf751b29b097eeb3dbf27e39"
+  },
+  "engines": {
+    "pdflatex": "local-authoring-v4",
+    "latex-dvi": "latex-dvi",
+    "xelatex": "xelatex",
+    "lualatex": "lualatex"
+  },
+  "fixtures": [
+    {
+      "id": "plain",
+      "status": "available",
+      "kind": "synthetic",
+      "purpose": "plain",
+      "case": "plain",
+      "combinations": [
+        {
+          "engines": [
+            "pdflatex",
+            "latex-dvi",
+            "xelatex",
+            "lualatex"
+          ],
+          "backend": "none"
+        }
+      ],
+      "selectedRoot": "main.tex",
+      "rootRenameAllowed": true,
+      "additionalRootControls": [
+        {
+          "root": "тези/my thesis.tex",
+          "engines": [
+            "latex-dvi",
+            "lualatex",
+            "pdflatex",
+            "xelatex"
+          ]
+        },
+        {
+          "root": "тези/розділ 😀.tex",
+          "engines": [
+            "xelatex"
+          ]
+        }
+      ],
+      "variants": [
+        {
+          "engines": [
+            "pdflatex",
+            "latex-dvi",
+            "xelatex",
+            "lualatex"
+          ],
+          "files": [
+            {
+              "name": "main.tex",
+              "generatorSource": "tests/ModernCompilerBrowserHarness/ModernApi.cs",
+              "generator": "C# var source literal",
+              "length": 251,
+              "sha256": "e8a7dd410a60afab22dca120cd749ed12fb460dd0d337913c5c988b112082b54"
+            }
+          ]
+        }
+      ],
+      "requiredPackages": [
+        "article",
+        "amsmath"
+      ],
+      "fonts": [
+        "Computer Modern"
+      ],
+      "expected": {
+        "literalText": [
+          "Modern CSharp pipeline",
+          "Section 1 is resolved."
+        ],
+        "citations": [],
+        "crossReferences": true,
+        "links": "not-assessed",
+        "bookmarks": "not-assessed",
+        "render": "actual nonblank canvas",
+        "download": "exact displayed PDF identity where harness enables export",
+        "offline": "whole browser closed, origin stopped/refused, fresh saved edit and fresh compile"
+      },
+      "limits": {
+        "appFiles": 64,
+        "appFileBytes": 1048576,
+        "appTotalBytes": 8388608,
+        "nativeTexPassesMaximum": 6,
+        "pdfPagesMaximum": 512,
+        "harnessSeconds": 360
+      },
+      "requiredRuntimeInputs": [],
+      "environment": {
+        "PDF_DOWNLOAD_CHECKS": "1",
+        "SOURCE_PDF_CHECKS": "1"
+      },
+      "knownLimitations": [
+        "Synthetic fixture only; no supplied real-thesis or all-TeX-Live acceptance."
+      ]
+    },
+    {
+      "id": "golden",
+      "status": "available",
+      "kind": "synthetic",
+      "purpose": "golden",
+      "case": "golden",
+      "combinations": [
+        {
+          "engines": [
+            "pdflatex",
+            "latex-dvi"
+          ],
+          "backend": "bibtex"
+        }
+      ],
+      "selectedRoot": "main.tex",
+      "rootRenameAllowed": true,
+      "additionalRootControls": [
+        {
+          "root": "тези/my thesis.tex",
+          "engines": [
+            "latex-dvi",
+            "pdflatex"
+          ]
+        }
+      ],
+      "variants": [
+        {
+          "engines": [
+            "pdflatex",
+            "latex-dvi"
+          ],
+          "files": [
+            {
+              "name": "main.tex",
+              "generatorSource": "tests/ModernCompilerBrowserHarness/AuthoringFixture.cs",
+              "generator": "C# raw constant",
+              "length": 1505,
+              "sha256": "9311f6e211026151d0a241395b239b6940a30ce948db8cbbedf94609439a1798"
+            },
+            {
+              "name": "chapter.tex",
+              "generatorSource": "tests/ModernCompilerBrowserHarness/AuthoringFixture.cs",
+              "generator": "C# raw constant",
+              "length": 246,
+              "sha256": "803d336ebebbe9f5cde06a05d26e7cc60c5c325fcdd0ea704a078b3af2730a91"
+            },
+            {
+              "name": "references.bib",
+              "generatorSource": "tests/ModernCompilerBrowserHarness/AuthoringFixture.cs",
+              "generator": "C# raw constant",
+              "length": 365,
+              "sha256": "8020371a10a37348647a8f1f57dad2256e109c7929886dfa90e3038e7ed067f2"
+            }
+          ]
+        }
+      ],
+      "requiredPackages": [
+        "article",
+        "inputenc",
+        "fontenc",
+        "babel",
+        "amsmath"
+      ],
+      "fonts": [
+        "T2A Computer Modern"
+      ],
+      "expected": {
+        "literalText": [
+          "ASCII context: Kyiv 123.",
+          "Привіт",
+          "Київ"
+        ],
+        "citations": [
+          "book",
+          "article"
+        ],
+        "crossReferences": true,
+        "links": "not-assessed",
+        "bookmarks": "not-assessed",
+        "render": "actual nonblank canvas",
+        "download": "exact displayed PDF identity where harness enables export",
+        "offline": "whole browser closed, origin stopped/refused, fresh saved edit and fresh compile"
+      },
+      "limits": {
+        "appFiles": 64,
+        "appFileBytes": 1048576,
+        "appTotalBytes": 8388608,
+        "nativeTexPassesMaximum": 6,
+        "pdfPagesMaximum": 512,
+        "harnessSeconds": 360
+      },
+      "requiredRuntimeInputs": [],
+      "environment": {
+        "SOURCE_PDF_CHECKS": "1"
+      },
+      "knownLimitations": [
+        "Synthetic fixture only; no supplied real-thesis or all-TeX-Live acceptance.",
+        "Original T2A golden source is declared for pdfLaTeX/DVI; use Unicode portable fixtures for Xe/Lua.",
+        "Golden export is not assessed by its existing harness case."
+      ]
+    },
+    {
+      "id": "portable",
+      "status": "available",
+      "kind": "synthetic",
+      "purpose": "portable",
+      "case": "portable",
+      "combinations": [
+        {
+          "engines": [
+            "pdflatex",
+            "latex-dvi",
+            "xelatex",
+            "lualatex"
+          ],
+          "backend": "bibtex"
+        }
+      ],
+      "selectedRoot": "main.tex",
+      "rootRenameAllowed": true,
+      "additionalRootControls": [
+        {
+          "root": "тези/my thesis.tex",
+          "engines": [
+            "latex-dvi",
+            "lualatex",
+            "pdflatex",
+            "xelatex"
+          ]
+        },
+        {
+          "root": "тези/розділ 😀.tex",
+          "engines": [
+            "xelatex"
+          ]
+        }
+      ],
+      "variants": [
+        {
+          "engines": [
+            "pdflatex",
+            "latex-dvi"
+          ],
+          "files": [
+            {
+              "name": "main.tex",
+              "source": "tests/CompilerSuiteFixtures/main-latin.tex",
+              "length": 331,
+              "sha256": "932ab5acff68662d94bd421cf0989a9e676ab9eec55bf1f65fa22fc6d25ed1c5"
+            },
+            {
+              "name": "chapter.tex",
+              "source": "tests/CompilerSuiteFixtures/chapter.tex",
+              "length": 141,
+              "sha256": "6e6cd6dfe10825269ee74d9021f0d93d44b81a5f380940ab600a7e8c120b1b1b"
+            },
+            {
+              "name": "references.bib",
+              "source": "tests/CompilerSuiteFixtures/references.bib",
+              "length": 138,
+              "sha256": "ea6ffa215d66ed0900157b1b405258ae264e3f40f07aaa486ec18dd726af80b7"
+            },
+            {
+              "name": "figure.xbb",
+              "source": "tests/CompilerSuiteFixtures/figure.xbb",
+              "length": 195,
+              "sha256": "e83b377982057945060be39a772f13a5dfa15d56373f641a1da29996a86e2694"
+            },
+            {
+              "name": "figure.png",
+              "source": "src/Client/wwwroot/icons/icon-192.png",
+              "length": 475,
+              "sha256": "0f4ecf9fe47542ddf5f5a1747bd0b97d3595a8081ce2572c63b4f82da0370c0b"
+            }
+          ]
+        },
+        {
+          "engines": [
+            "xelatex",
+            "lualatex"
+          ],
+          "files": [
+            {
+              "name": "main.tex",
+              "source": "tests/CompilerSuiteFixtures/main-unicode.tex",
+              "length": 488,
+              "sha256": "41633045746742a0d3f629936d6e8f3529ec6ff6dbc83511b27455a004e02620"
+            },
+            {
+              "name": "chapter.tex",
+              "source": "tests/CompilerSuiteFixtures/chapter.tex",
+              "length": 141,
+              "sha256": "6e6cd6dfe10825269ee74d9021f0d93d44b81a5f380940ab600a7e8c120b1b1b"
+            },
+            {
+              "name": "references.bib",
+              "source": "tests/CompilerSuiteFixtures/references.bib",
+              "length": 138,
+              "sha256": "ea6ffa215d66ed0900157b1b405258ae264e3f40f07aaa486ec18dd726af80b7"
+            },
+            {
+              "name": "figure.xbb",
+              "source": "tests/CompilerSuiteFixtures/figure.xbb",
+              "length": 195,
+              "sha256": "e83b377982057945060be39a772f13a5dfa15d56373f641a1da29996a86e2694"
+            },
+            {
+              "name": "figure.png",
+              "source": "src/Client/wwwroot/icons/icon-192.png",
+              "length": 475,
+              "sha256": "0f4ecf9fe47542ddf5f5a1747bd0b97d3595a8081ce2572c63b4f82da0370c0b"
+            }
+          ]
+        }
+      ],
+      "requiredPackages": [
+        "article",
+        "amsmath",
+        "graphicx"
+      ],
+      "fonts": [
+        "Computer Modern (pdf/DVI)",
+        "DejaVu Serif (Xe/Lua)"
+      ],
+      "expected": {
+        "literalText": [
+          "Portable compiler fixture. Section 2 is resolved.",
+          "Included file, reference to Section 1.",
+          "Portable Compiler Reference"
+        ],
+        "citations": [
+          "book"
+        ],
+        "crossReferences": true,
+        "links": "not-assessed",
+        "bookmarks": "not-assessed",
+        "render": "actual nonblank canvas",
+        "download": "exact displayed PDF identity where harness enables export",
+        "offline": "whole browser closed, origin stopped/refused, fresh saved edit and fresh compile"
+      },
+      "limits": {
+        "appFiles": 64,
+        "appFileBytes": 1048576,
+        "appTotalBytes": 8388608,
+        "nativeTexPassesMaximum": 6,
+        "pdfPagesMaximum": 512,
+        "harnessSeconds": 360
+      },
+      "requiredRuntimeInputs": [],
+      "environment": {
+        "PDF_DOWNLOAD_CHECKS": "1",
+        "SOURCE_PDF_CHECKS": "1"
+      },
+      "knownLimitations": [
+        "Synthetic fixture only; no supplied real-thesis or all-TeX-Live acceptance."
+      ]
+    },
+    {
+      "id": "packages",
+      "status": "available",
+      "kind": "synthetic",
+      "purpose": "packages",
+      "case": "packages",
+      "combinations": [
+        {
+          "engines": [
+            "pdflatex",
+            "latex-dvi",
+            "xelatex",
+            "lualatex"
+          ],
+          "backend": "bibtex"
+        }
+      ],
+      "selectedRoot": "main.tex",
+      "rootRenameAllowed": true,
+      "additionalRootControls": [
+        {
+          "root": "тези/my thesis.tex",
+          "engines": [
+            "latex-dvi",
+            "lualatex",
+            "pdflatex",
+            "xelatex"
+          ]
+        },
+        {
+          "root": "тези/розділ 😀.tex",
+          "engines": [
+            "xelatex"
+          ]
+        }
+      ],
+      "variants": [
+        {
+          "engines": [
+            "pdflatex",
+            "latex-dvi"
+          ],
+          "files": [
+            {
+              "name": "main.tex",
+              "source": "tests/PackageFontFixtures/main-latin.tex",
+              "length": 857,
+              "sha256": "5f0788e30266234f29ee6e2d11067366ebf8556b4879deec7fc29604628f4ed5"
+            },
+            {
+              "name": "chapter.tex",
+              "source": "tests/CompilerSuiteFixtures/chapter.tex",
+              "length": 141,
+              "sha256": "6e6cd6dfe10825269ee74d9021f0d93d44b81a5f380940ab600a7e8c120b1b1b"
+            },
+            {
+              "name": "references.bib",
+              "source": "tests/CompilerSuiteFixtures/references.bib",
+              "length": 138,
+              "sha256": "ea6ffa215d66ed0900157b1b405258ae264e3f40f07aaa486ec18dd726af80b7"
+            },
+            {
+              "name": "figure.xbb",
+              "source": "tests/CompilerSuiteFixtures/figure.xbb",
+              "length": 195,
+              "sha256": "e83b377982057945060be39a772f13a5dfa15d56373f641a1da29996a86e2694"
+            },
+            {
+              "name": "figure.png",
+              "source": "src/Client/wwwroot/icons/icon-192.png",
+              "length": 475,
+              "sha256": "0f4ecf9fe47542ddf5f5a1747bd0b97d3595a8081ce2572c63b4f82da0370c0b"
+            }
+          ]
+        },
+        {
+          "engines": [
+            "xelatex",
+            "lualatex"
+          ],
+          "files": [
+            {
+              "name": "main.tex",
+              "source": "tests/PackageFontFixtures/main-unicode.tex",
+              "length": 1360,
+              "sha256": "175f480b59b3e706e805a8c2a25fb28b4d82d335bffdc7b1f5e42ffd74ef99c4"
+            },
+            {
+              "name": "chapter.tex",
+              "source": "tests/CompilerSuiteFixtures/chapter.tex",
+              "length": 141,
+              "sha256": "6e6cd6dfe10825269ee74d9021f0d93d44b81a5f380940ab600a7e8c120b1b1b"
+            },
+            {
+              "name": "references.bib",
+              "source": "tests/CompilerSuiteFixtures/references.bib",
+              "length": 138,
+              "sha256": "ea6ffa215d66ed0900157b1b405258ae264e3f40f07aaa486ec18dd726af80b7"
+            },
+            {
+              "name": "figure.xbb",
+              "source": "tests/CompilerSuiteFixtures/figure.xbb",
+              "length": 195,
+              "sha256": "e83b377982057945060be39a772f13a5dfa15d56373f641a1da29996a86e2694"
+            },
+            {
+              "name": "figure.png",
+              "source": "src/Client/wwwroot/icons/icon-192.png",
+              "length": 475,
+              "sha256": "0f4ecf9fe47542ddf5f5a1747bd0b97d3595a8081ce2572c63b4f82da0370c0b"
+            }
+          ]
+        }
+      ],
+      "requiredPackages": [
+        "article",
+        "amsmath",
+        "graphicx",
+        "hyperref",
+        "bookmark",
+        "cleveref",
+        "listings",
+        "caption",
+        "enumitem",
+        "booktabs",
+        "setspace"
+      ],
+      "fonts": [
+        "Computer Modern (pdf/DVI)",
+        "DejaVu Serif (Xe/Lua)"
+      ],
+      "expected": {
+        "literalText": [
+          "Portable compiler fixture. Section 2 is resolved.",
+          "Included file, reference to Section 1.",
+          "Portable Compiler Reference"
+        ],
+        "citations": [
+          "book"
+        ],
+        "crossReferences": true,
+        "links": "expected https://example.org/; independent artifact inspection pending",
+        "bookmarks": [
+          "Compiler suite",
+          "Included chapter"
+        ],
+        "render": "actual nonblank canvas",
+        "download": "exact displayed PDF identity where harness enables export",
+        "offline": "whole browser closed, origin stopped/refused, fresh saved edit and fresh compile"
+      },
+      "limits": {
+        "appFiles": 64,
+        "appFileBytes": 1048576,
+        "appTotalBytes": 8388608,
+        "nativeTexPassesMaximum": 6,
+        "pdfPagesMaximum": 512,
+        "harnessSeconds": 360
+      },
+      "requiredRuntimeInputs": [],
+      "environment": {
+        "PDF_DOWNLOAD_CHECKS": "1"
+      },
+      "knownLimitations": [
+        "Synthetic fixture only; no supplied real-thesis or all-TeX-Live acceptance.",
+        "Existing strict native navigation remains mandatory. Known R2 geometry/precision gaps may fail this case; they are not skipped.",
+        "URI/bookmark assertions require separate independent inspection of actual retained PDFs."
+      ]
+    },
+    {
+      "id": "biblatex",
+      "status": "available",
+      "kind": "synthetic",
+      "purpose": "biblatex",
+      "case": "biblatex",
+      "combinations": [
+        {
+          "engines": [
+            "pdflatex",
+            "latex-dvi",
+            "xelatex",
+            "lualatex"
+          ],
+          "backend": "bibtex"
+        }
+      ],
+      "selectedRoot": "main.tex",
+      "rootRenameAllowed": true,
+      "additionalRootControls": [
+        {
+          "root": "тези/my thesis.tex",
+          "engines": [
+            "latex-dvi",
+            "lualatex",
+            "pdflatex",
+            "xelatex"
+          ]
+        },
+        {
+          "root": "тези/розділ 😀.tex",
+          "engines": [
+            "xelatex"
+          ]
+        }
+      ],
+      "variants": [
+        {
+          "engines": [
+            "pdflatex",
+            "latex-dvi"
+          ],
+          "files": [
+            {
+              "name": "main.tex",
+              "source": "tests/CompilerBibliographyFixtures/main-latin.tex",
+              "length": 916,
+              "sha256": "60a216a59a207bf32856a02361d5d7e92451077f9439eac8d723bbcdda19c625"
+            },
+            {
+              "name": "chapter.tex",
+              "source": "tests/CompilerSuiteFixtures/chapter.tex",
+              "length": 141,
+              "sha256": "6e6cd6dfe10825269ee74d9021f0d93d44b81a5f380940ab600a7e8c120b1b1b"
+            },
+            {
+              "name": "references.bib",
+              "source": "tests/CompilerSuiteFixtures/references.bib",
+              "length": 138,
+              "sha256": "ea6ffa215d66ed0900157b1b405258ae264e3f40f07aaa486ec18dd726af80b7"
+            },
+            {
+              "name": "figure.xbb",
+              "source": "tests/CompilerSuiteFixtures/figure.xbb",
+              "length": 195,
+              "sha256": "e83b377982057945060be39a772f13a5dfa15d56373f641a1da29996a86e2694"
+            },
+            {
+              "name": "figure.png",
+              "source": "src/Client/wwwroot/icons/icon-192.png",
+              "length": 475,
+              "sha256": "0f4ecf9fe47542ddf5f5a1747bd0b97d3595a8081ce2572c63b4f82da0370c0b"
+            }
+          ]
+        },
+        {
+          "engines": [
+            "xelatex",
+            "lualatex"
+          ],
+          "files": [
+            {
+              "name": "main.tex",
+              "source": "tests/CompilerBibliographyFixtures/main-unicode.tex",
+              "length": 1419,
+              "sha256": "90d08be7eca88b61f731bf64d88fe5fe373241a67d00bbbfe5f3685a99d27e49"
+            },
+            {
+              "name": "chapter.tex",
+              "source": "tests/CompilerSuiteFixtures/chapter.tex",
+              "length": 141,
+              "sha256": "6e6cd6dfe10825269ee74d9021f0d93d44b81a5f380940ab600a7e8c120b1b1b"
+            },
+            {
+              "name": "references.bib",
+              "source": "tests/CompilerSuiteFixtures/references.bib",
+              "length": 138,
+              "sha256": "ea6ffa215d66ed0900157b1b405258ae264e3f40f07aaa486ec18dd726af80b7"
+            },
+            {
+              "name": "figure.xbb",
+              "source": "tests/CompilerSuiteFixtures/figure.xbb",
+              "length": 195,
+              "sha256": "e83b377982057945060be39a772f13a5dfa15d56373f641a1da29996a86e2694"
+            },
+            {
+              "name": "figure.png",
+              "source": "src/Client/wwwroot/icons/icon-192.png",
+              "length": 475,
+              "sha256": "0f4ecf9fe47542ddf5f5a1747bd0b97d3595a8081ce2572c63b4f82da0370c0b"
+            }
+          ]
+        }
+      ],
+      "requiredPackages": [
+        "article",
+        "amsmath",
+        "graphicx",
+        "hyperref",
+        "bookmark",
+        "cleveref",
+        "listings",
+        "caption",
+        "enumitem",
+        "booktabs",
+        "setspace",
+        "biblatex"
+      ],
+      "fonts": [
+        "Computer Modern (pdf/DVI)",
+        "DejaVu Serif (Xe/Lua)"
+      ],
+      "expected": {
+        "literalText": [
+          "Portable compiler fixture. Section 2 is resolved.",
+          "Included file, reference to Section 1.",
+          "Portable Compiler Reference"
+        ],
+        "citations": [
+          "book"
+        ],
+        "crossReferences": true,
+        "links": "expected https://example.org/; independent artifact inspection pending",
+        "bookmarks": [
+          "Compiler suite",
+          "Included chapter"
+        ],
+        "render": "actual nonblank canvas",
+        "download": "exact displayed PDF identity where harness enables export",
+        "offline": "whole browser closed, origin stopped/refused, fresh saved edit and fresh compile"
+      },
+      "limits": {
+        "appFiles": 64,
+        "appFileBytes": 1048576,
+        "appTotalBytes": 8388608,
+        "nativeTexPassesMaximum": 6,
+        "pdfPagesMaximum": 512,
+        "harnessSeconds": 360
+      },
+      "requiredRuntimeInputs": [],
+      "environment": {
+        "PDF_DOWNLOAD_CHECKS": "1"
+      },
+      "knownLimitations": [
+        "Synthetic fixture only; no supplied real-thesis or all-TeX-Live acceptance.",
+        "Existing strict native navigation remains mandatory. Known R2 geometry/precision gaps may fail this case; they are not skipped.",
+        "URI/bookmark assertions require separate independent inspection of actual retained PDFs."
+      ]
+    },
+    {
+      "id": "packages-compiler",
+      "status": "available",
+      "kind": "synthetic",
+      "purpose": "packages compiler",
+      "case": "packages-compiler",
+      "combinations": [
+        {
+          "engines": [
+            "pdflatex",
+            "latex-dvi",
+            "xelatex",
+            "lualatex"
+          ],
+          "backend": "bibtex"
+        }
+      ],
+      "selectedRoot": "main.tex",
+      "rootRenameAllowed": true,
+      "additionalRootControls": [
+        {
+          "root": "тези/my thesis.tex",
+          "engines": [
+            "latex-dvi",
+            "lualatex",
+            "pdflatex",
+            "xelatex"
+          ]
+        },
+        {
+          "root": "тези/розділ 😀.tex",
+          "engines": [
+            "xelatex"
+          ]
+        }
+      ],
+      "variants": [
+        {
+          "engines": [
+            "pdflatex",
+            "latex-dvi"
+          ],
+          "files": [
+            {
+              "name": "main.tex",
+              "source": "tests/PackageFontFixtures/main-latin.tex",
+              "length": 857,
+              "sha256": "5f0788e30266234f29ee6e2d11067366ebf8556b4879deec7fc29604628f4ed5"
+            },
+            {
+              "name": "chapter.tex",
+              "source": "tests/CompilerSuiteFixtures/chapter.tex",
+              "length": 141,
+              "sha256": "6e6cd6dfe10825269ee74d9021f0d93d44b81a5f380940ab600a7e8c120b1b1b"
+            },
+            {
+              "name": "references.bib",
+              "source": "tests/CompilerSuiteFixtures/references.bib",
+              "length": 138,
+              "sha256": "ea6ffa215d66ed0900157b1b405258ae264e3f40f07aaa486ec18dd726af80b7"
+            },
+            {
+              "name": "figure.xbb",
+              "source": "tests/CompilerSuiteFixtures/figure.xbb",
+              "length": 195,
+              "sha256": "e83b377982057945060be39a772f13a5dfa15d56373f641a1da29996a86e2694"
+            },
+            {
+              "name": "figure.png",
+              "source": "src/Client/wwwroot/icons/icon-192.png",
+              "length": 475,
+              "sha256": "0f4ecf9fe47542ddf5f5a1747bd0b97d3595a8081ce2572c63b4f82da0370c0b"
+            }
+          ]
+        },
+        {
+          "engines": [
+            "xelatex",
+            "lualatex"
+          ],
+          "files": [
+            {
+              "name": "main.tex",
+              "source": "tests/PackageFontFixtures/main-unicode.tex",
+              "length": 1360,
+              "sha256": "175f480b59b3e706e805a8c2a25fb28b4d82d335bffdc7b1f5e42ffd74ef99c4"
+            },
+            {
+              "name": "chapter.tex",
+              "source": "tests/CompilerSuiteFixtures/chapter.tex",
+              "length": 141,
+              "sha256": "6e6cd6dfe10825269ee74d9021f0d93d44b81a5f380940ab600a7e8c120b1b1b"
+            },
+            {
+              "name": "references.bib",
+              "source": "tests/CompilerSuiteFixtures/references.bib",
+              "length": 138,
+              "sha256": "ea6ffa215d66ed0900157b1b405258ae264e3f40f07aaa486ec18dd726af80b7"
+            },
+            {
+              "name": "figure.xbb",
+              "source": "tests/CompilerSuiteFixtures/figure.xbb",
+              "length": 195,
+              "sha256": "e83b377982057945060be39a772f13a5dfa15d56373f641a1da29996a86e2694"
+            },
+            {
+              "name": "figure.png",
+              "source": "src/Client/wwwroot/icons/icon-192.png",
+              "length": 475,
+              "sha256": "0f4ecf9fe47542ddf5f5a1747bd0b97d3595a8081ce2572c63b4f82da0370c0b"
+            }
+          ]
+        }
+      ],
+      "requiredPackages": [
+        "article",
+        "amsmath",
+        "graphicx",
+        "hyperref",
+        "bookmark",
+        "cleveref",
+        "listings",
+        "caption",
+        "enumitem",
+        "booktabs",
+        "setspace"
+      ],
+      "fonts": [
+        "Computer Modern (pdf/DVI)",
+        "DejaVu Serif (Xe/Lua)"
+      ],
+      "expected": {
+        "literalText": [
+          "Portable compiler fixture. Section 2 is resolved.",
+          "Included file, reference to Section 1.",
+          "Portable Compiler Reference"
+        ],
+        "citations": [
+          "book"
+        ],
+        "crossReferences": true,
+        "links": "not-assessed",
+        "bookmarks": "not-assessed",
+        "render": "actual nonblank canvas",
+        "download": "exact displayed PDF identity where harness enables export",
+        "offline": "whole browser closed, origin stopped/refused, fresh saved edit and fresh compile"
+      },
+      "limits": {
+        "appFiles": 64,
+        "appFileBytes": 1048576,
+        "appTotalBytes": 8388608,
+        "nativeTexPassesMaximum": 6,
+        "pdfPagesMaximum": 512,
+        "harnessSeconds": 360
+      },
+      "requiredRuntimeInputs": [],
+      "environment": {
+        "PDF_DOWNLOAD_CHECKS": "1",
+        "SOURCE_PDF_CHECKS": "0"
+      },
+      "knownLimitations": [
+        "Synthetic fixture only; no supplied real-thesis or all-TeX-Live acceptance.",
+        "Compiler-only regression; native navigation is explicitly not assessed and remains an R2 gate. Existing strict packages/biblatex cases are separate."
+      ]
+    },
+    {
+      "id": "biblatex-compiler",
+      "status": "available",
+      "kind": "synthetic",
+      "purpose": "biblatex compiler",
+      "case": "biblatex-compiler",
+      "combinations": [
+        {
+          "engines": [
+            "pdflatex",
+            "latex-dvi",
+            "xelatex",
+            "lualatex"
+          ],
+          "backend": "bibtex"
+        }
+      ],
+      "selectedRoot": "main.tex",
+      "rootRenameAllowed": true,
+      "additionalRootControls": [
+        {
+          "root": "тези/my thesis.tex",
+          "engines": [
+            "latex-dvi",
+            "lualatex",
+            "pdflatex",
+            "xelatex"
+          ]
+        },
+        {
+          "root": "тези/розділ 😀.tex",
+          "engines": [
+            "xelatex"
+          ]
+        }
+      ],
+      "variants": [
+        {
+          "engines": [
+            "pdflatex",
+            "latex-dvi"
+          ],
+          "files": [
+            {
+              "name": "main.tex",
+              "source": "tests/CompilerBibliographyFixtures/main-latin.tex",
+              "length": 916,
+              "sha256": "60a216a59a207bf32856a02361d5d7e92451077f9439eac8d723bbcdda19c625"
+            },
+            {
+              "name": "chapter.tex",
+              "source": "tests/CompilerSuiteFixtures/chapter.tex",
+              "length": 141,
+              "sha256": "6e6cd6dfe10825269ee74d9021f0d93d44b81a5f380940ab600a7e8c120b1b1b"
+            },
+            {
+              "name": "references.bib",
+              "source": "tests/CompilerSuiteFixtures/references.bib",
+              "length": 138,
+              "sha256": "ea6ffa215d66ed0900157b1b405258ae264e3f40f07aaa486ec18dd726af80b7"
+            },
+            {
+              "name": "figure.xbb",
+              "source": "tests/CompilerSuiteFixtures/figure.xbb",
+              "length": 195,
+              "sha256": "e83b377982057945060be39a772f13a5dfa15d56373f641a1da29996a86e2694"
+            },
+            {
+              "name": "figure.png",
+              "source": "src/Client/wwwroot/icons/icon-192.png",
+              "length": 475,
+              "sha256": "0f4ecf9fe47542ddf5f5a1747bd0b97d3595a8081ce2572c63b4f82da0370c0b"
+            }
+          ]
+        },
+        {
+          "engines": [
+            "xelatex",
+            "lualatex"
+          ],
+          "files": [
+            {
+              "name": "main.tex",
+              "source": "tests/CompilerBibliographyFixtures/main-unicode.tex",
+              "length": 1419,
+              "sha256": "90d08be7eca88b61f731bf64d88fe5fe373241a67d00bbbfe5f3685a99d27e49"
+            },
+            {
+              "name": "chapter.tex",
+              "source": "tests/CompilerSuiteFixtures/chapter.tex",
+              "length": 141,
+              "sha256": "6e6cd6dfe10825269ee74d9021f0d93d44b81a5f380940ab600a7e8c120b1b1b"
+            },
+            {
+              "name": "references.bib",
+              "source": "tests/CompilerSuiteFixtures/references.bib",
+              "length": 138,
+              "sha256": "ea6ffa215d66ed0900157b1b405258ae264e3f40f07aaa486ec18dd726af80b7"
+            },
+            {
+              "name": "figure.xbb",
+              "source": "tests/CompilerSuiteFixtures/figure.xbb",
+              "length": 195,
+              "sha256": "e83b377982057945060be39a772f13a5dfa15d56373f641a1da29996a86e2694"
+            },
+            {
+              "name": "figure.png",
+              "source": "src/Client/wwwroot/icons/icon-192.png",
+              "length": 475,
+              "sha256": "0f4ecf9fe47542ddf5f5a1747bd0b97d3595a8081ce2572c63b4f82da0370c0b"
+            }
+          ]
+        }
+      ],
+      "requiredPackages": [
+        "article",
+        "amsmath",
+        "graphicx",
+        "hyperref",
+        "bookmark",
+        "cleveref",
+        "listings",
+        "caption",
+        "enumitem",
+        "booktabs",
+        "setspace",
+        "biblatex"
+      ],
+      "fonts": [
+        "Computer Modern (pdf/DVI)",
+        "DejaVu Serif (Xe/Lua)"
+      ],
+      "expected": {
+        "literalText": [
+          "Portable compiler fixture. Section 2 is resolved.",
+          "Included file, reference to Section 1.",
+          "Portable Compiler Reference"
+        ],
+        "citations": [
+          "book"
+        ],
+        "crossReferences": true,
+        "links": "not-assessed",
+        "bookmarks": "not-assessed",
+        "render": "actual nonblank canvas",
+        "download": "exact displayed PDF identity where harness enables export",
+        "offline": "whole browser closed, origin stopped/refused, fresh saved edit and fresh compile"
+      },
+      "limits": {
+        "appFiles": 64,
+        "appFileBytes": 1048576,
+        "appTotalBytes": 8388608,
+        "nativeTexPassesMaximum": 6,
+        "pdfPagesMaximum": 512,
+        "harnessSeconds": 360
+      },
+      "requiredRuntimeInputs": [],
+      "environment": {
+        "PDF_DOWNLOAD_CHECKS": "1",
+        "SOURCE_PDF_CHECKS": "0"
+      },
+      "knownLimitations": [
+        "Synthetic fixture only; no supplied real-thesis or all-TeX-Live acceptance.",
+        "Compiler-only regression; native navigation is explicitly not assessed and remains an R2 gate. Existing strict packages/biblatex cases are separate."
+      ]
+    },
+    {
+      "id": "biber",
+      "status": "available",
+      "kind": "synthetic",
+      "purpose": "biber",
+      "case": "biber",
+      "combinations": [
+        {
+          "engines": [
+            "pdflatex",
+            "latex-dvi",
+            "xelatex",
+            "lualatex"
+          ],
+          "backend": "biber"
+        }
+      ],
+      "selectedRoot": "main.tex",
+      "rootRenameAllowed": true,
+      "additionalRootControls": [
+        {
+          "root": "тези/my thesis.tex",
+          "engines": [
+            "latex-dvi",
+            "lualatex",
+            "pdflatex",
+            "xelatex"
+          ]
+        },
+        {
+          "root": "тези/розділ 😀.tex",
+          "engines": [
+            "xelatex"
+          ]
+        }
+      ],
+      "variants": [
+        {
+          "engines": [
+            "pdflatex",
+            "latex-dvi"
+          ],
+          "files": [
+            {
+              "name": "main.tex",
+              "source": "tests/CompilerBiberFixtures/main-latin.tex",
+              "length": 1051,
+              "sha256": "06d9f7034c15cfec0418f5c92ef0dea0faa6c19ccac7c999579f86ef942f7cf2"
+            },
+            {
+              "name": "chapter.tex",
+              "source": "tests/CompilerBiberFixtures/chapter.tex",
+              "length": 191,
+              "sha256": "5c36cbd7e18aacd0f42deb8ed3264fa42e3f5e4ae5e8716c331f36431822c20d"
+            },
+            {
+              "name": "references-latin.bib",
+              "source": "tests/CompilerBiberFixtures/references-latin.bib",
+              "length": 323,
+              "sha256": "d5813cad341f3184c0355e93e56f9d545769a255c0a567a94b3ba02f5f5631d8"
+            },
+            {
+              "name": "references-ukrainian.bib",
+              "source": "tests/CompilerBiberFixtures/references-ukrainian.bib",
+              "length": 202,
+              "sha256": "ffcac1827a11e0c0c2796f0bf4ebf0ac1127f8cf54ca0d702a5e37c1d534c3bd"
+            },
+            {
+              "name": "figure.xbb",
+              "source": "tests/CompilerSuiteFixtures/figure.xbb",
+              "length": 195,
+              "sha256": "e83b377982057945060be39a772f13a5dfa15d56373f641a1da29996a86e2694"
+            },
+            {
+              "name": "figure.png",
+              "source": "src/Client/wwwroot/icons/icon-192.png",
+              "length": 475,
+              "sha256": "0f4ecf9fe47542ddf5f5a1747bd0b97d3595a8081ce2572c63b4f82da0370c0b"
+            }
+          ]
+        },
+        {
+          "engines": [
+            "xelatex",
+            "lualatex"
+          ],
+          "files": [
+            {
+              "name": "main.tex",
+              "source": "tests/CompilerBiberFixtures/main-unicode.tex",
+              "length": 1023,
+              "sha256": "48a72fd8762d93a9c157732a31387e0e14e783ff3129fef74d31417949eb18ac"
+            },
+            {
+              "name": "chapter.tex",
+              "source": "tests/CompilerBiberFixtures/chapter.tex",
+              "length": 191,
+              "sha256": "5c36cbd7e18aacd0f42deb8ed3264fa42e3f5e4ae5e8716c331f36431822c20d"
+            },
+            {
+              "name": "references-latin.bib",
+              "source": "tests/CompilerBiberFixtures/references-latin.bib",
+              "length": 323,
+              "sha256": "d5813cad341f3184c0355e93e56f9d545769a255c0a567a94b3ba02f5f5631d8"
+            },
+            {
+              "name": "references-ukrainian.bib",
+              "source": "tests/CompilerBiberFixtures/references-ukrainian.bib",
+              "length": 202,
+              "sha256": "ffcac1827a11e0c0c2796f0bf4ebf0ac1127f8cf54ca0d702a5e37c1d534c3bd"
+            },
+            {
+              "name": "figure.xbb",
+              "source": "tests/CompilerSuiteFixtures/figure.xbb",
+              "length": 195,
+              "sha256": "e83b377982057945060be39a772f13a5dfa15d56373f641a1da29996a86e2694"
+            },
+            {
+              "name": "figure.png",
+              "source": "src/Client/wwwroot/icons/icon-192.png",
+              "length": 475,
+              "sha256": "0f4ecf9fe47542ddf5f5a1747bd0b97d3595a8081ce2572c63b4f82da0370c0b"
+            }
+          ]
+        }
+      ],
+      "requiredPackages": [
+        "article",
+        "babel",
+        "amsmath",
+        "graphicx",
+        "booktabs",
+        "biblatex 3.19"
+      ],
+      "fonts": [
+        "T2A Computer Modern (pdf/DVI)",
+        "DejaVu Serif (Xe/Lua)"
+      ],
+      "expected": {
+        "literalText": [
+          "Portable compiler fixture. Section 2 is resolved.",
+          "Included file, reference to Section 1.",
+          "Biber included chapter marker.",
+          "Latin book citation [1]. Ukrainian book citation [2].",
+          "Latin article citation [3].",
+          "The included equation is (1).",
+          "Biber table",
+          "Привіт, Київ!",
+          "Biber Latin Book Marker",
+          "Українська бібліографія Київ",
+          "Biber Latin Article Marker"
+        ],
+        "citations": [
+          "latin-book",
+          "ukrainian-book",
+          "latin-article"
+        ],
+        "crossReferences": true,
+        "links": "not-assessed",
+        "bookmarks": "not-assessed",
+        "render": "actual nonblank canvas",
+        "download": "exact displayed PDF identity where harness enables export",
+        "offline": "whole browser closed, origin stopped/refused, fresh saved edit and fresh compile",
+        "biberVersion": "2.19",
+        "nativePhase": 10,
+        "changedBibliography": "actual UI BIB addition/citation must rerun genuine Biber and produce changed offline bibliography"
+      },
+      "limits": {
+        "appFiles": 64,
+        "appFileBytes": 1048576,
+        "appTotalBytes": 8388608,
+        "nativeTexPassesMaximum": 6,
+        "pdfPagesMaximum": 512,
+        "harnessSeconds": 360
+      },
+      "requiredRuntimeInputs": [
+        "biber.js",
+        "biber.wasm",
+        "biber.data"
+      ],
+      "environment": {
+        "SOURCE_PDF_CHECKS": "1"
+      },
+      "knownLimitations": [
+        "Synthetic fixture only; no supplied real-thesis or all-TeX-Live acceptance.",
+        "Navigation is not assessed unless SOURCE_PDF_CHECKS is explicitly requested in the existing harness.",
+        "Direct BBL bytes are established by native producer proof; this browser case uses genuine phase10, BBL-writing log and actual formatted PDF content.",
+        "Optional XSLT/legacy encodings/XML/untested Biber formats remain gaps."
+      ]
+    },
+    {
+      "id": "cyrillic-semantic",
+      "status": "available",
+      "kind": "synthetic",
+      "purpose": "cyrillic semantic",
+      "case": "cyrillic-semantics",
+      "combinations": [
+        {
+          "engines": [
+            "pdflatex",
+            "latex-dvi"
+          ],
+          "backend": "none"
+        }
+      ],
+      "selectedRoot": "main.tex",
+      "rootRenameAllowed": true,
+      "additionalRootControls": [
+        {
+          "root": "тези/my thesis.tex",
+          "engines": [
+            "latex-dvi",
+            "pdflatex"
+          ]
+        }
+      ],
+      "variants": [
+        {
+          "engines": [
+            "pdflatex",
+            "latex-dvi"
+          ],
+          "files": [
+            {
+              "name": "main.tex",
+              "source": "tests/PackageFontFixtures/fonts/mixed-semantic.tex",
+              "length": 603,
+              "sha256": "95090859c1423547dcbddf756f43e829e1f06974451b14466019132a21b7c334"
+            }
+          ]
+        }
+      ],
+      "requiredPackages": [
+        "article",
+        "inputenc",
+        "fontenc",
+        "babel"
+      ],
+      "fonts": [
+        "T2A CM regular/bold10pt",
+        "OT1 Latin control"
+      ],
+      "expected": {
+        "literalText": [
+          "Іі",
+          "ASCII I i."
+        ],
+        "citations": [],
+        "crossReferences": false,
+        "links": "not-assessed",
+        "bookmarks": "not-assessed",
+        "render": "actual nonblank canvas",
+        "download": "exact displayed PDF identity where harness enables export",
+        "offline": "whole browser closed, origin stopped/refused, fresh saved edit and fresh compile",
+        "occurrences": {
+          "Іі": 2,
+          "ASCII I i.": 4
+        }
+      },
+      "limits": {
+        "appFiles": 64,
+        "appFileBytes": 1048576,
+        "appTotalBytes": 8388608,
+        "nativeTexPassesMaximum": 6,
+        "pdfPagesMaximum": 512,
+        "harnessSeconds": 360
+      },
+      "requiredRuntimeInputs": [
+        "semantic-engine.js",
+        "semantic-engine.wasm"
+      ],
+      "environment": {
+        "CYRILLIC_FIXTURE": "mixed-semantic.tex"
+      },
+      "knownLimitations": [
+        "Synthetic fixture only; no supplied real-thesis or all-TeX-Live acceptance.",
+        "Original source is unchanged online; offline uses the harness explicit visible edit.",
+        "Custom/reflected tagged ligatures and wider math/font semantics are not established by this original-source case."
+      ]
+    },
+    {
+      "id": "cyrillic-ligature",
+      "status": "available",
+      "kind": "synthetic",
+      "purpose": "cyrillic ligature",
+      "case": "cyrillic-semantics",
+      "combinations": [
+        {
+          "engines": [
+            "pdflatex",
+            "latex-dvi"
+          ],
+          "backend": "none"
+        }
+      ],
+      "selectedRoot": "main.tex",
+      "rootRenameAllowed": true,
+      "additionalRootControls": [
+        {
+          "root": "тези/my thesis.tex",
+          "engines": [
+            "latex-dvi",
+            "pdflatex"
+          ]
+        }
+      ],
+      "variants": [
+        {
+          "engines": [
+            "pdflatex",
+            "latex-dvi"
+          ],
+          "files": [
+            {
+              "name": "main.tex",
+              "source": "tests/PackageFontFixtures/fonts/mixed-ligature.tex",
+              "length": 257,
+              "sha256": "9288944fa25e4e1cf4922cfaf304bbdf6deca427dbc9b280e16bf6a7b257b547"
+            }
+          ]
+        }
+      ],
+      "requiredPackages": [
+        "article",
+        "inputenc",
+        "fontenc"
+      ],
+      "fonts": [
+        "T2A CM regular/bold10pt",
+        "original mixed ligatures"
+      ],
+      "expected": {
+        "literalText": [
+          "Latin fi ffi ff",
+          "mixed fі ffі fіlm",
+          "Cyrillic Іі."
+        ],
+        "citations": [],
+        "crossReferences": false,
+        "links": "not-assessed",
+        "bookmarks": "not-assessed",
+        "render": "actual nonblank canvas",
+        "download": "exact displayed PDF identity where harness enables export",
+        "offline": "whole browser closed, origin stopped/refused, fresh saved edit and fresh compile",
+        "occurrences": {
+          "Latin fi ffi ff": 2,
+          "mixed fі ffі fіlm": 2,
+          "Cyrillic Іі.": 2
+        }
+      },
+      "limits": {
+        "appFiles": 64,
+        "appFileBytes": 1048576,
+        "appTotalBytes": 8388608,
+        "nativeTexPassesMaximum": 6,
+        "pdfPagesMaximum": 512,
+        "harnessSeconds": 360
+      },
+      "requiredRuntimeInputs": [
+        "semantic-engine.js",
+        "semantic-engine.wasm"
+      ],
+      "environment": {
+        "CYRILLIC_FIXTURE": "mixed-ligature.tex"
+      },
+      "knownLimitations": [
+        "Synthetic fixture only; no supplied real-thesis or all-TeX-Live acceptance.",
+        "Original source is unchanged online; offline uses the harness explicit visible edit.",
+        "Custom/reflected tagged ligatures and wider math/font semantics are not established by this original-source case."
+      ]
+    },
+    {
+      "id": "harfbuzz",
+      "status": "available",
+      "kind": "synthetic",
+      "purpose": "harfbuzz",
+      "case": "harfbuzz",
+      "combinations": [
+        {
+          "engines": [
+            "lualatex"
+          ],
+          "backend": "none"
+        }
+      ],
+      "selectedRoot": "main.tex",
+      "rootRenameAllowed": true,
+      "additionalRootControls": [
+        {
+          "root": "тези/my thesis.tex",
+          "engines": [
+            "lualatex"
+          ]
+        }
+      ],
+      "variants": [
+        {
+          "engines": [
+            "lualatex"
+          ],
+          "files": [
+            {
+              "name": "main.tex",
+              "source": "native/tex/luatex-engine/harfbuzz/fixtures/harfbuzz.tex",
+              "length": 254,
+              "sha256": "0b192cb1bff230ca8b16e6da70fcfecc3e7d069d3d26e6616ac3496f9a6dd39c"
+            },
+            {
+              "name": "fonts/amiri-regular.ttf",
+              "generatorSource": "tests/CompilerSemanticsFixtures/manifest.json",
+              "generator": "explicit approved external original font",
+              "length": 548016,
+              "sha256": "6988222efdde090e0926cabcaf695c5f551269efbf751b29b097eeb3dbf27e39"
+            }
+          ]
+        }
+      ],
+      "requiredPackages": [
+        "article",
+        "fontspec Renderer=HarfBuzz"
+      ],
+      "fonts": [
+        "Amiri original TTF"
+      ],
+      "expected": {
+        "literalText": [
+          "مرحبا بالعالم"
+        ],
+        "citations": [],
+        "crossReferences": false,
+        "links": "not-assessed",
+        "bookmarks": "not-assessed",
+        "render": "actual nonblank canvas",
+        "download": "exact displayed PDF identity where harness enables export",
+        "offline": "whole browser closed, origin stopped/refused, fresh saved edit and fresh compile"
+      },
+      "limits": {
+        "appFiles": 64,
+        "appFileBytes": 1048576,
+        "appTotalBytes": 8388608,
+        "nativeTexPassesMaximum": 6,
+        "pdfPagesMaximum": 512,
+        "harnessSeconds": 360
+      },
+      "requiredRuntimeInputs": [
+        "luatex.js",
+        "luatex.wasm",
+        "luaotfload-harf-plug.lua"
+      ],
+      "environment": {},
+      "knownLimitations": [
+        "Synthetic fixture only; no supplied real-thesis or all-TeX-Live acceptance.",
+        "Original project TTF is explicit external input; no download or embedded substitute.",
+        "Nested boxes, mixed math and other scripts remain outside this native semantic corpus."
+      ],
+      "externalFont": true
+    },
+    {
+      "id": "font-closure",
+      "status": "available",
+      "kind": "synthetic",
+      "purpose": "font closure",
+      "case": "font-closure",
+      "combinations": [
+        {
+          "engines": [
+            "pdflatex",
+            "latex-dvi",
+            "xelatex",
+            "lualatex"
+          ],
+          "backend": "none"
+        }
+      ],
+      "selectedRoot": "main.tex",
+      "rootRenameAllowed": true,
+      "additionalRootControls": [
+        {
+          "root": "тези/my thesis.tex",
+          "engines": [
+            "latex-dvi",
+            "lualatex",
+            "pdflatex",
+            "xelatex"
+          ]
+        },
+        {
+          "root": "тези/розділ 😀.tex",
+          "engines": [
+            "xelatex"
+          ]
+        }
+      ],
+      "variants": [
+        {
+          "engines": [
+            "pdflatex",
+            "latex-dvi"
+          ],
+          "files": [
+            {
+              "name": "main.tex",
+              "source": "tests/PackageFontFixtures/fonts/declared-faces.tex",
+              "length": 10148,
+              "sha256": "98f64c99acab92aa906aa1f70bf5de914ded427181db7ab88a02b7121bb93572"
+            }
+          ]
+        },
+        {
+          "engines": [
+            "xelatex",
+            "lualatex"
+          ],
+          "files": [
+            {
+              "name": "main.tex",
+              "source": "tests/PackageFontFixtures/fonts/declared-font-commands.tex",
+              "length": 10351,
+              "sha256": "db19f37e9e34bd6911d227445fe19ff179e7a97580b64e937062e7f0d9564db6"
+            }
+          ]
+        }
+      ],
+      "requiredPackages": [
+        "article",
+        "fontenc"
+      ],
+      "fonts": [
+        "292 actual declared CM-Super/LH faces/sizes"
+      ],
+      "expected": {
+        "literalText": [
+          "Київ"
+        ],
+        "citations": [],
+        "crossReferences": false,
+        "links": "not-assessed",
+        "bookmarks": "not-assessed",
+        "render": "actual nonblank canvas",
+        "download": "exact displayed PDF identity where harness enables export",
+        "offline": "whole browser closed, origin stopped/refused, fresh saved edit and fresh compile",
+        "fontWitnessesPerTexPass": 292
+      },
+      "limits": {
+        "appFiles": 64,
+        "appFileBytes": 1048576,
+        "appTotalBytes": 8388608,
+        "nativeTexPassesMaximum": 6,
+        "pdfPagesMaximum": 512,
+        "harnessSeconds": 360
+      },
+      "requiredRuntimeInputs": [],
+      "environment": {
+        "PDF_DOWNLOAD_CHECKS": "1"
+      },
+      "knownLimitations": [
+        "Synthetic fixture only; no supplied real-thesis or all-TeX-Live acceptance.",
+        "Xe/Lua fixture uses explicit literal Cyrillic commands for resource selection; this is not an original Unicode/T2A source fix."
+      ]
+    },
+    {
+      "id": "unicode-fonts",
+      "status": "available",
+      "kind": "synthetic",
+      "purpose": "unicode fonts",
+      "case": "unicode-fonts",
+      "combinations": [
+        {
+          "engines": [
+            "xelatex",
+            "lualatex"
+          ],
+          "backend": "none"
+        }
+      ],
+      "selectedRoot": "main.tex",
+      "rootRenameAllowed": true,
+      "additionalRootControls": [
+        {
+          "root": "тези/my thesis.tex",
+          "engines": [
+            "lualatex",
+            "xelatex"
+          ]
+        },
+        {
+          "root": "тези/розділ 😀.tex",
+          "engines": [
+            "xelatex"
+          ]
+        }
+      ],
+      "variants": [
+        {
+          "engines": [
+            "xelatex",
+            "lualatex"
+          ],
+          "files": [
+            {
+              "name": "main.tex",
+              "source": "tests/PackageFontFixtures/fonts/unicode-fontspec.tex",
+              "length": 1015,
+              "sha256": "9a3a6ef746932d2d15ef1e25601c91c2caf0a665d6b9aaadc877b4eddb17f155"
+            }
+          ]
+        }
+      ],
+      "requiredPackages": [
+        "article",
+        "fontspec"
+      ],
+      "fonts": [
+        "DejaVu Serif regular/bold/italic/bold-italic across16 controls"
+      ],
+      "expected": {
+        "literalText": [
+          "Привіт",
+          "Іі",
+          "ASCII I i"
+        ],
+        "citations": [],
+        "crossReferences": false,
+        "links": "not-assessed",
+        "bookmarks": "not-assessed",
+        "render": "actual nonblank canvas",
+        "download": "exact displayed PDF identity where harness enables export",
+        "offline": "whole browser closed, origin stopped/refused, fresh saved edit and fresh compile",
+        "fontWitnessesPerTexPass": 16
+      },
+      "limits": {
+        "appFiles": 64,
+        "appFileBytes": 1048576,
+        "appTotalBytes": 8388608,
+        "nativeTexPassesMaximum": 6,
+        "pdfPagesMaximum": 512,
+        "harnessSeconds": 360
+      },
+      "requiredRuntimeInputs": [],
+      "environment": {
+        "PDF_DOWNLOAD_CHECKS": "1"
+      },
+      "knownLimitations": [
+        "Synthetic fixture only; no supplied real-thesis or all-TeX-Live acceptance."
+      ]
+    },
+    {
+      "id": "t2a-bundled",
+      "status": "available",
+      "kind": "synthetic",
+      "purpose": "t2a bundled",
+      "case": "t2a-bundled",
+      "combinations": [
+        {
+          "engines": [
+            "pdflatex",
+            "latex-dvi"
+          ],
+          "backend": "none"
+        }
+      ],
+      "selectedRoot": "main.tex",
+      "rootRenameAllowed": true,
+      "additionalRootControls": [
+        {
+          "root": "тези/my thesis.tex",
+          "engines": [
+            "latex-dvi",
+            "pdflatex"
+          ]
+        }
+      ],
+      "variants": [
+        {
+          "engines": [
+            "pdflatex",
+            "latex-dvi"
+          ],
+          "files": [
+            {
+              "name": "main.tex",
+              "source": "tests/PackageFontFixtures/t2a-bundled.tex",
+              "length": 590,
+              "sha256": "5951c55bb40405af41ce14869a69f38febf1e21da9872a9a6a7b17c6d7e143a9"
+            }
+          ]
+        }
+      ],
+      "requiredPackages": [
+        "article",
+        "inputenc",
+        "fontenc",
+        "babel"
+      ],
+      "fonts": [
+        "T2A CM regular/bold10pt"
+      ],
+      "expected": {
+        "literalText": [
+          "Україна",
+          "Єє Її Ґґ",
+          "ASCII I i 123."
+        ],
+        "citations": [],
+        "crossReferences": false,
+        "links": "not-assessed",
+        "bookmarks": "not-assessed",
+        "render": "actual nonblank canvas",
+        "download": "exact displayed PDF identity where harness enables export",
+        "offline": "whole browser closed, origin stopped/refused, fresh saved edit and fresh compile"
+      },
+      "limits": {
+        "appFiles": 64,
+        "appFileBytes": 1048576,
+        "appTotalBytes": 8388608,
+        "nativeTexPassesMaximum": 6,
+        "pdfPagesMaximum": 512,
+        "harnessSeconds": 360
+      },
+      "requiredRuntimeInputs": [],
+      "environment": {
+        "PDF_DOWNLOAD_CHECKS": "1"
+      },
+      "knownLimitations": [
+        "Synthetic fixture only; no supplied real-thesis or all-TeX-Live acceptance."
+      ]
+    },
+    {
+      "id": "long",
+      "status": "available",
+      "kind": "synthetic",
+      "purpose": "long",
+      "case": "long",
+      "combinations": [
+        {
+          "engines": [
+            "pdflatex",
+            "latex-dvi",
+            "xelatex",
+            "lualatex"
+          ],
+          "backend": "none"
+        }
+      ],
+      "selectedRoot": "main.tex",
+      "rootRenameAllowed": false,
+      "additionalRootControls": [],
+      "variants": [
+        {
+          "engines": [
+            "pdflatex",
+            "latex-dvi",
+            "xelatex",
+            "lualatex"
+          ],
+          "files": [
+            {
+              "name": "main.tex",
+              "generatorSource": "scripts/test-local-authoring-ui.cjs",
+              "generator": "longFixture()",
+              "length": 1468,
+              "sha256": "11717b6fc4b03d8b37c8676588336b2fd2efa7042a7b24dc5f13fb691febafd0"
+            },
+            {
+              "name": "chapter00.tex",
+              "generatorSource": "scripts/test-local-authoring-ui.cjs",
+              "generator": "longFixture()",
+              "length": 58,
+              "sha256": "1888b1ea19fa163f2d1a41ae42d7da542a03bf79910c7b810ca28959eb3ef1c1"
+            },
+            {
+              "name": "chapter01.tex",
+              "generatorSource": "scripts/test-local-authoring-ui.cjs",
+              "generator": "longFixture()",
+              "length": 58,
+              "sha256": "d890fa215e4330bdc81449ab896b28f8a95df8261b9c3fc866065c113989059e"
+            },
+            {
+              "name": "chapter02.tex",
+              "generatorSource": "scripts/test-local-authoring-ui.cjs",
+              "generator": "longFixture()",
+              "length": 58,
+              "sha256": "2f22920f90c515bb6df65d35fc2c80b96beacd716b3e0ba77a9b94ea36161bff"
+            },
+            {
+              "name": "chapter03.tex",
+              "generatorSource": "scripts/test-local-authoring-ui.cjs",
+              "generator": "longFixture()",
+              "length": 58,
+              "sha256": "e38aeb81ecdb0ddfbc039e012b05dfd9908af06adba361f5eccf98555222797c"
+            },
+            {
+              "name": "chapter04.tex",
+              "generatorSource": "scripts/test-local-authoring-ui.cjs",
+              "generator": "longFixture()",
+              "length": 58,
+              "sha256": "9bc32bc398352a58189c36a66f9ff6a3fe75ab273b2b505ef8f4f7bc4ad63d9f"
+            },
+            {
+              "name": "chapter05.tex",
+              "generatorSource": "scripts/test-local-authoring-ui.cjs",
+              "generator": "longFixture()",
+              "length": 58,
+              "sha256": "643c009c606f70501dcc8706cdc4c7e0a67990581ae16633cd3693e67354fa47"
+            },
+            {
+              "name": "chapter06.tex",
+              "generatorSource": "scripts/test-local-authoring-ui.cjs",
+              "generator": "longFixture()",
+              "length": 58,
+              "sha256": "ac87248958c7805ca1112dfae4cb4cac3992f540f7a657adc7f396c4e101c14e"
+            },
+            {
+              "name": "chapter07.tex",
+              "generatorSource": "scripts/test-local-authoring-ui.cjs",
+              "generator": "longFixture()",
+              "length": 58,
+              "sha256": "fbf92532ef8040fcd5acec589d18a45f360f64dd76789223933e2f0f4af7b26d"
+            },
+            {
+              "name": "chapter08.tex",
+              "generatorSource": "scripts/test-local-authoring-ui.cjs",
+              "generator": "longFixture()",
+              "length": 58,
+              "sha256": "f584cdc666c3207ff39146a3740a438fc89a57dc54cad44286e42ca1c1ac2c3e"
+            },
+            {
+              "name": "chapter09.tex",
+              "generatorSource": "scripts/test-local-authoring-ui.cjs",
+              "generator": "longFixture()",
+              "length": 58,
+              "sha256": "e186239bee47ce56ea4d8a00fee5af17a5aa46a981a100097cb25981d11a766f"
+            },
+            {
+              "name": "chapter10.tex",
+              "generatorSource": "scripts/test-local-authoring-ui.cjs",
+              "generator": "longFixture()",
+              "length": 62,
+              "sha256": "6646e2ce034d651b9e12d9be3182d547c3b37d39d0e751a8d0d96dbd71e52e33"
+            },
+            {
+              "name": "chapter11.tex",
+              "generatorSource": "scripts/test-local-authoring-ui.cjs",
+              "generator": "longFixture()",
+              "length": 62,
+              "sha256": "e97825237433cd1198214d14cc6e707f913ae701bb19dbdc4715d437a7d6c2bf"
+            },
+            {
+              "name": "chapter12.tex",
+              "generatorSource": "scripts/test-local-authoring-ui.cjs",
+              "generator": "longFixture()",
+              "length": 62,
+              "sha256": "d2ebac2f9653a01607f76ece6da061d61eddbaceca9a7a519957b8e8247fa4ca"
+            },
+            {
+              "name": "chapter13.tex",
+              "generatorSource": "scripts/test-local-authoring-ui.cjs",
+              "generator": "longFixture()",
+              "length": 62,
+              "sha256": "55324c293bf34405ffa7474cbc22c968df88240738f778a287b3f48aca793e23"
+            },
+            {
+              "name": "chapter14.tex",
+              "generatorSource": "scripts/test-local-authoring-ui.cjs",
+              "generator": "longFixture()",
+              "length": 62,
+              "sha256": "ad3144799378ad417d341817637d7d1a83a0a1e99c7f88132db3e805e6416844"
+            },
+            {
+              "name": "chapter15.tex",
+              "generatorSource": "scripts/test-local-authoring-ui.cjs",
+              "generator": "longFixture()",
+              "length": 62,
+              "sha256": "722dea35e440d84db5963916d37bf4918a7d21a8535a1f3b1d8d930f5fa2538d"
+            },
+            {
+              "name": "chapter16.tex",
+              "generatorSource": "scripts/test-local-authoring-ui.cjs",
+              "generator": "longFixture()",
+              "length": 62,
+              "sha256": "f330dc1bb1e6dd894fb9543f10476dd5416318074d4fb662c33d4b3a20fc10ea"
+            },
+            {
+              "name": "chapter17.tex",
+              "generatorSource": "scripts/test-local-authoring-ui.cjs",
+              "generator": "longFixture()",
+              "length": 62,
+              "sha256": "fa85c57d105d18bd91f92ddc44fd18811380f6d8b65f03e24843046f31f4cd47"
+            },
+            {
+              "name": "chapter18.tex",
+              "generatorSource": "scripts/test-local-authoring-ui.cjs",
+              "generator": "longFixture()",
+              "length": 62,
+              "sha256": "78c7db59726a4edc3db7b25633359c1bf9b650d0906725f521d63fa839f3eae2"
+            },
+            {
+              "name": "chapter19.tex",
+              "generatorSource": "scripts/test-local-authoring-ui.cjs",
+              "generator": "longFixture()",
+              "length": 62,
+              "sha256": "7c75601dc1d59c8914708db8e2f81977b860a9328bc55708d9bbba3bb592effd"
+            },
+            {
+              "name": "chapter20.tex",
+              "generatorSource": "scripts/test-local-authoring-ui.cjs",
+              "generator": "longFixture()",
+              "length": 62,
+              "sha256": "f1968fe7dc57a8ee84fcc9ef707f620072c3cb01ab4c4398e80cdb27386323d2"
+            },
+            {
+              "name": "chapter21.tex",
+              "generatorSource": "scripts/test-local-authoring-ui.cjs",
+              "generator": "longFixture()",
+              "length": 62,
+              "sha256": "f02c4b2de51aacc6d2ec42d116bd63e680527a65c5c66fd0357aaf63a0e10e6a"
+            },
+            {
+              "name": "chapter22.tex",
+              "generatorSource": "scripts/test-local-authoring-ui.cjs",
+              "generator": "longFixture()",
+              "length": 62,
+              "sha256": "1e9055c4fe7cbe7cbb88aba57c57f561dbf768694756771b07ac1e22d42d105e"
+            },
+            {
+              "name": "chapter23.tex",
+              "generatorSource": "scripts/test-local-authoring-ui.cjs",
+              "generator": "longFixture()",
+              "length": 62,
+              "sha256": "c30f348cd36341517d0fbd8d39a4262cb963e9ce7348356fdf791b8b30d33cf0"
+            },
+            {
+              "name": "chapter24.tex",
+              "generatorSource": "scripts/test-local-authoring-ui.cjs",
+              "generator": "longFixture()",
+              "length": 62,
+              "sha256": "a11979168fe606c7c5af1a52b06af417bf5b3a3f39ba5f3b3c01d56129405c17"
+            },
+            {
+              "name": "chapter25.tex",
+              "generatorSource": "scripts/test-local-authoring-ui.cjs",
+              "generator": "longFixture()",
+              "length": 62,
+              "sha256": "1094cd4e6b58573663bc76cee5946b29c178f7d67350f418bf858c83768e5915"
+            },
+            {
+              "name": "chapter26.tex",
+              "generatorSource": "scripts/test-local-authoring-ui.cjs",
+              "generator": "longFixture()",
+              "length": 62,
+              "sha256": "f04be6bbc8e4ce2483eae1a8fef8458916486fdb3fe2d5c3da04875ebced54b8"
+            },
+            {
+              "name": "chapter27.tex",
+              "generatorSource": "scripts/test-local-authoring-ui.cjs",
+              "generator": "longFixture()",
+              "length": 62,
+              "sha256": "77ce5a9f411986eeabb6692550ac940860f29d7c73d7e906c2b9032858673489"
+            },
+            {
+              "name": "chapter28.tex",
+              "generatorSource": "scripts/test-local-authoring-ui.cjs",
+              "generator": "longFixture()",
+              "length": 62,
+              "sha256": "1895819871990c5c4c06751949bf29f8d865bbecab1824494ae4d1736fb135e4"
+            },
+            {
+              "name": "chapter29.tex",
+              "generatorSource": "scripts/test-local-authoring-ui.cjs",
+              "generator": "longFixture()",
+              "length": 62,
+              "sha256": "dd8b39ce0cd56378e7d060e6f64128479e5dcb3204b2e4971e4a6fbd24c1164f"
+            },
+            {
+              "name": "chapter30.tex",
+              "generatorSource": "scripts/test-local-authoring-ui.cjs",
+              "generator": "longFixture()",
+              "length": 62,
+              "sha256": "fd686aa22d5b204a52b4846ad35d96fd89acc1dc235b5bef88671b535e761acc"
+            },
+            {
+              "name": "chapter31.tex",
+              "generatorSource": "scripts/test-local-authoring-ui.cjs",
+              "generator": "longFixture()",
+              "length": 62,
+              "sha256": "93746f1ecc1501cb999594fc032be1daee39c3400e02d7262c2151f73fde5ecb"
+            },
+            {
+              "name": "chapter32.tex",
+              "generatorSource": "scripts/test-local-authoring-ui.cjs",
+              "generator": "longFixture()",
+              "length": 62,
+              "sha256": "00019f11fe81f27f620f61b821c9a9419be4c3d209ccb3bad415057d71164f33"
+            },
+            {
+              "name": "chapter33.tex",
+              "generatorSource": "scripts/test-local-authoring-ui.cjs",
+              "generator": "longFixture()",
+              "length": 62,
+              "sha256": "4437db3d8160e016c09529aa9e0b8359868b68237586b1320ae27f07f145c849"
+            },
+            {
+              "name": "chapter34.tex",
+              "generatorSource": "scripts/test-local-authoring-ui.cjs",
+              "generator": "longFixture()",
+              "length": 62,
+              "sha256": "b20c0b2cd045e0d1049a099363547d0d5aef10c8b831f56ca734d98194bc005e"
+            },
+            {
+              "name": "chapter35.tex",
+              "generatorSource": "scripts/test-local-authoring-ui.cjs",
+              "generator": "longFixture()",
+              "length": 62,
+              "sha256": "286d20bef4dabdef6fbb31bc06e0e63abf83666d42a551944cd7beab7f6c60e5"
+            },
+            {
+              "name": "chapter36.tex",
+              "generatorSource": "scripts/test-local-authoring-ui.cjs",
+              "generator": "longFixture()",
+              "length": 62,
+              "sha256": "a86f7ca49ea8edd828ced27906ff2bfad7019495ae5e860fa4c6be78d7eaee71"
+            },
+            {
+              "name": "chapter37.tex",
+              "generatorSource": "scripts/test-local-authoring-ui.cjs",
+              "generator": "longFixture()",
+              "length": 62,
+              "sha256": "a53c030350c63686b2fd3da4800fab5fe37b22e2757180b16570ff3fedc1ce37"
+            },
+            {
+              "name": "chapter38.tex",
+              "generatorSource": "scripts/test-local-authoring-ui.cjs",
+              "generator": "longFixture()",
+              "length": 62,
+              "sha256": "cbc08c143311082a8b3e459ae886b304b74e0af207780cb9acc1b798bd79a68b"
+            },
+            {
+              "name": "chapter39.tex",
+              "generatorSource": "scripts/test-local-authoring-ui.cjs",
+              "generator": "longFixture()",
+              "length": 62,
+              "sha256": "1a06eba4e3df4c9e3159c6b401a49baa58176aa3e8104f08150c67aa58758f46"
+            },
+            {
+              "name": "chapter40.tex",
+              "generatorSource": "scripts/test-local-authoring-ui.cjs",
+              "generator": "longFixture()",
+              "length": 62,
+              "sha256": "8a38462c3cf7da178e56d296c5d068372444db6f661b9c15eca9395fd819be9f"
+            },
+            {
+              "name": "chapter41.tex",
+              "generatorSource": "scripts/test-local-authoring-ui.cjs",
+              "generator": "longFixture()",
+              "length": 62,
+              "sha256": "0c8b9976881c078377a9d9e1d8c91de61bc30e68eb4f964a333ebdd3539cfd17"
+            },
+            {
+              "name": "chapter42.tex",
+              "generatorSource": "scripts/test-local-authoring-ui.cjs",
+              "generator": "longFixture()",
+              "length": 62,
+              "sha256": "5e884c32b24633d158da7ac1bc6f6aefa9d49694c8e3d9e41ce5dd5534606a07"
+            },
+            {
+              "name": "chapter43.tex",
+              "generatorSource": "scripts/test-local-authoring-ui.cjs",
+              "generator": "longFixture()",
+              "length": 62,
+              "sha256": "52195411665faf42236f5587b59dbe09e2a28566b9c4ed07acf903b0a9801439"
+            },
+            {
+              "name": "chapter44.tex",
+              "generatorSource": "scripts/test-local-authoring-ui.cjs",
+              "generator": "longFixture()",
+              "length": 62,
+              "sha256": "f98675cdefc373d4454a9aa16348708afb033e4d0d36308c726923ff53b61374"
+            },
+            {
+              "name": "chapter45.tex",
+              "generatorSource": "scripts/test-local-authoring-ui.cjs",
+              "generator": "longFixture()",
+              "length": 62,
+              "sha256": "cbf21ccb5454e28bf48f02514804aa2326599c37dad999ab62e36696a04adb76"
+            },
+            {
+              "name": "chapter46.tex",
+              "generatorSource": "scripts/test-local-authoring-ui.cjs",
+              "generator": "longFixture()",
+              "length": 62,
+              "sha256": "92950e05bfb3614c67aec5d6ace900351ae8e5536d78644e2a5b30c2092a9025"
+            },
+            {
+              "name": "chapter47.tex",
+              "generatorSource": "scripts/test-local-authoring-ui.cjs",
+              "generator": "longFixture()",
+              "length": 62,
+              "sha256": "7ffc7e8c8cd0792596e5e418b0b6fe12722a963cbb494ae00054b3a43222fdf5"
+            },
+            {
+              "name": "chapter48.tex",
+              "generatorSource": "scripts/test-local-authoring-ui.cjs",
+              "generator": "longFixture()",
+              "length": 62,
+              "sha256": "9b5d93e7ff73e65507ced3736c48123e9e7321060cd2d202f3a8931d6b08ec4f"
+            },
+            {
+              "name": "chapter49.tex",
+              "generatorSource": "scripts/test-local-authoring-ui.cjs",
+              "generator": "longFixture()",
+              "length": 62,
+              "sha256": "dd08d78befd2c2e6f4cab9dc8bdf02bd3b3d133ffeebbb8a0142bee3ef417c55"
+            },
+            {
+              "name": "chapter50.tex",
+              "generatorSource": "scripts/test-local-authoring-ui.cjs",
+              "generator": "longFixture()",
+              "length": 62,
+              "sha256": "b272fbbd8dac58fef38260ab8de8438846a12a6318034b792d68c75a5c6b8039"
+            },
+            {
+              "name": "chapter51.tex",
+              "generatorSource": "scripts/test-local-authoring-ui.cjs",
+              "generator": "longFixture()",
+              "length": 62,
+              "sha256": "ebe205df054e26e7326b79ccc475b8fc9944e0d93a8c9e7a0959256890b5d7e6"
+            },
+            {
+              "name": "chapter52.tex",
+              "generatorSource": "scripts/test-local-authoring-ui.cjs",
+              "generator": "longFixture()",
+              "length": 62,
+              "sha256": "2870c9b83ed6ddf2513d7b53a0170305c9e444700ce6dd023cea3330b54b632b"
+            },
+            {
+              "name": "chapter53.tex",
+              "generatorSource": "scripts/test-local-authoring-ui.cjs",
+              "generator": "longFixture()",
+              "length": 62,
+              "sha256": "914630361de379f65c3282c9011953dce8598ab849d465ad34df07775411ed8c"
+            },
+            {
+              "name": "chapter54.tex",
+              "generatorSource": "scripts/test-local-authoring-ui.cjs",
+              "generator": "longFixture()",
+              "length": 62,
+              "sha256": "9788df07bcb5a6e335db54d7658571b1c652ad97d0ac8347944a8dcf3a7e54f1"
+            },
+            {
+              "name": "chapter55.tex",
+              "generatorSource": "scripts/test-local-authoring-ui.cjs",
+              "generator": "longFixture()",
+              "length": 62,
+              "sha256": "68a0b63ec27f392adaef6046b0936317bf58eaebd603c639f503231d8b335595"
+            },
+            {
+              "name": "chapter56.tex",
+              "generatorSource": "scripts/test-local-authoring-ui.cjs",
+              "generator": "longFixture()",
+              "length": 62,
+              "sha256": "a67b3fbd508783952130a93cbcda8d5231bda94cfe70a7dff7b51fa6eafbff99"
+            },
+            {
+              "name": "chapter57.tex",
+              "generatorSource": "scripts/test-local-authoring-ui.cjs",
+              "generator": "longFixture()",
+              "length": 62,
+              "sha256": "e1f2d8aa9273785b3feab2aa8fa44647dc714fc7040cbe1aaf998e17f5b64ac8"
+            },
+            {
+              "name": "chapter58.tex",
+              "generatorSource": "scripts/test-local-authoring-ui.cjs",
+              "generator": "longFixture()",
+              "length": 62,
+              "sha256": "f10bb92db1a9356305d58d986760dfe4e0b7ae7ef794e60b386bf1966b047c61"
+            },
+            {
+              "name": "chapter59.tex",
+              "generatorSource": "scripts/test-local-authoring-ui.cjs",
+              "generator": "longFixture()",
+              "length": 62,
+              "sha256": "f17fcf29c8932f0247e15a4044af7a2d39d9b9f383ad6dcf3f81acc62fe84314"
+            },
+            {
+              "name": "chapter60.tex",
+              "generatorSource": "scripts/test-local-authoring-ui.cjs",
+              "generator": "longFixture()",
+              "length": 62,
+              "sha256": "e4ad55a57382859002e6fc82e3f39818f8de4acc5faabbd2a97e2d526eed4ad4"
+            },
+            {
+              "name": "chapter61.tex",
+              "generatorSource": "scripts/test-local-authoring-ui.cjs",
+              "generator": "longFixture()",
+              "length": 62,
+              "sha256": "45667e737e3e167b4bf9bd3e5107dc5ca10ccd9397d705fbea9c63e25fccc1d3"
+            },
+            {
+              "name": "appendix.tex",
+              "generatorSource": "scripts/test-local-authoring-ui.cjs",
+              "generator": "longFixture()",
+              "length": 59,
+              "sha256": "590b6bdbfdcfd026715980e06220f573f3f628658e6ad7f97e454fb50ecd0f29"
+            }
+          ]
+        }
+      ],
+      "requiredPackages": [
+        "article",
+        "inputenc"
+      ],
+      "fonts": [
+        "Computer Modern 11pt"
+      ],
+      "expected": {
+        "literalText": [
+          "Long TOC fixed-point proof: Kyiv 000.",
+          "Kyiv end."
+        ],
+        "citations": [],
+        "crossReferences": false,
+        "links": "not-assessed",
+        "bookmarks": "not-assessed",
+        "render": "actual nonblank canvas",
+        "download": "exact displayed PDF identity where harness enables export",
+        "offline": "whole browser closed, origin stopped/refused, fresh saved edit and fresh compile",
+        "longSearch": "explicit32-page batches; original final marker must be reached"
+      },
+      "limits": {
+        "appFiles": 64,
+        "appFileBytes": 1048576,
+        "appTotalBytes": 8388608,
+        "nativeTexPassesMaximum": 6,
+        "pdfPagesMaximum": 512,
+        "harnessSeconds": 360
+      },
+      "requiredRuntimeInputs": [],
+      "environment": {},
+      "knownLimitations": [
+        "Synthetic fixture only; no supplied real-thesis or all-TeX-Live acceptance.",
+        "64-file/TOC control; historical67online/68offline observations are not maximum512-page stress proof."
+      ]
+    },
+    {
+      "id": "supplied-real-thesis",
+      "kind": "supplied-real",
+      "status": "not-supplied",
+      "purpose": "Representative licensed diploma/thesis corpus with explicit degree/work-type",
+      "externalDigestReference": null,
+      "combinations": [],
+      "knownLimitations": [
+        "No personal project is included or silently replaced with a synthetic fixture."
+      ]
+    }
+  ],
+  "runtimeProfile": {
+    "profile": 13,
+    "resources": 4357,
+    "totalBytes": 259559615,
+    "closureSha256": "34540765dfd1b5d46666841378221cce0b40204014c4a8c2dc25ddddbe56d1ed"
+  },
+  "pdfRuntime": {
+    "resources": [
+      {
+        "role": "loader",
+        "name": "e1.js",
+        "length": 13562,
+        "sha256": "040bdfac50656b3993f622614b73feaaba31d8253d077ff50f925f316c2f5f6b"
+      },
+      {
+        "role": "wasm",
+        "name": "e1.wasm",
+        "length": 3434939,
+        "sha256": "1637c1a7798cab443334e559045d88f33864d89e0ff02eeb57b3da4f08f37c20"
+      }
+    ]
+  },
+  "limitations": [
+    "Supplied representative real thesis corpus is not supplied.",
+    "No finite source corpus establishes complete TeX Live, all-format Biber or full Overleaf parity.",
+    "Compiler-only package rows do not clear R2 navigation or independent URI/bookmark gates.",
+    "Limits are declared test bounds, not measured peaks or proof of maximum stress.",
+    "Wrapper preflight never starts Docker/browser/native compilation."
+  ],
+  "usage": [
+    "AUTHORING_RUNTIME_DIR=RUNTIME_ROOT PDF_RUNTIME_DIR=PDF_ROOT python3 scripts/run-compiler-acceptance.py --help",
+    "--preflight --fixture biber --engine xelatex --backend biber --publication PUBLIC_WWWROOT --publication-id SDK_VERSION --results FRESH_RESULTS --authoring-runtime RUNTIME_ROOT --pdf-runtime PDF_ROOT",
+    "--fixture harfbuzz --engine lualatex --backend none --publication PUBLIC_WWWROOT --publication-id SDK_VERSION --results FRESH_RESULTS --authoring-runtime RUNTIME_ROOT --pdf-runtime PDF_ROOT --lua-harfbuzz-source APPROVED_SOURCE_ROOT"
+  ],
+  "explicitInputs": [
+    "AUTHORING_RUNTIME_DIR or --authoring-runtime",
+    "PDF_RUNTIME_DIR or --pdf-runtime",
+    "RESULT_DIR or --results",
+    "--publication; --publication-id for actual browser execution"
+  ],
+  "versioning": "Recheck and review sourceFiles after any harness/fixture change; never silently refresh hashes during execution."
+}
