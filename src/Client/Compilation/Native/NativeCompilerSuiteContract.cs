@@ -16,7 +16,7 @@ public static class NativeCompilerSuiteContract
     public static string EngineId(NativeCompilerEngine engine) => engine switch
     { NativeCompilerEngine.PdfLaTeX => "pdftex", NativeCompilerEngine.LaTeXDvi => "latex-dvi", NativeCompilerEngine.XeLaTeX => "xelatex", NativeCompilerEngine.LuaLaTeX => "lualatex", _ => "" };
     public static int Phase(NativeRuntimeProfile profile, NativeCompilerEngine engine) => !NativeRuntimeProfiles.IsSuite(profile) ? 0
-        : profile == NativeBiberCompilerContract.Profile ? engine switch
+        : NativeRuntimeProfiles.SupportsBiber(profile) ? engine switch
         { NativeCompilerEngine.PdfLaTeX => NativeBiberCompilerContract.PdfPhase, NativeCompilerEngine.LaTeXDvi => NativeBiberCompilerContract.DviPhase, NativeCompilerEngine.XeLaTeX => NativeUnicodeCompilerContract.XePhase, NativeCompilerEngine.LuaLaTeX => NativeUnicodeCompilerContract.LuaPhase, _ => 0 }
         : profile == NativeUnicodeCompilerContract.Profile ? engine switch
         { NativeCompilerEngine.PdfLaTeX => 6, NativeCompilerEngine.LaTeXDvi => NativeGraphicsNavigationContract.DviPhase, NativeCompilerEngine.XeLaTeX => NativeUnicodeCompilerContract.XePhase, NativeCompilerEngine.LuaLaTeX => NativeUnicodeCompilerContract.LuaPhase, _ => 0 }
@@ -38,7 +38,7 @@ public static class NativeCompilerSuiteContract
     public static bool MatchesOptions(IEnumerable<CompilationOption> options) => Enum.GetValues<NativeCompilerEngine>().Any(e => MatchesOptions(options, e));
     public static NativeCompilePlan CreatePlan(NativeCompilerEngine engine, int maxLatexPasses = 6, TimeSpan? deadline = null,
         NativeRuntimeProfile profile = NativeRuntimeProfile.LocalCompilerSuite) => new(false,
-        maxLatexPasses, deadline ?? JobDeadline, Files + 192, TotalBytes, FileBytes,
+        maxLatexPasses, deadline ?? JobDeadline, Files + NativeRuntimeProfiles.PhaseFileAllowance(profile), TotalBytes, FileBytes,
         UseSelectionTools: true, Profile: profile, PhaseProtocolVersion: Phase(profile, engine),
         DviOutput: engine == NativeCompilerEngine.LaTeXDvi, Engine: engine);
     public static CompileOutputDescriptor DviOutputAdapter => new("native-latex-dvi", "dvi-v1", new(NativeCompilerSuitePins.ConverterWasmHash));
@@ -61,7 +61,7 @@ public static class NativeCompilerSuiteContract
         if (Phase(profile, engine) == 0) { error = "unsupported-suite-engine"; return null; }
         error = NativeSelectedEntryContract.ValidateEntry(selected, profile, engine);
         if (error is not null) return null;
-        if (engine == NativeCompilerEngine.XeLaTeX && profile is not (NativeUnicodeCompilerContract.Profile or NativeBiberCompilerContract.Profile) && selected.Any(char.IsSurrogate))
+        if (engine == NativeCompilerEngine.XeLaTeX && profile is not (NativeUnicodeCompilerContract.Profile or NativeBiberCompilerContract.Profile or NativeThesisCompilerContract.Profile) && selected.Any(char.IsSurrogate))
         { error = "xetex-non-bmp-main-unsupported"; return null; }
         if (engine != NativeCompilerEngine.LuaLaTeX)
         {

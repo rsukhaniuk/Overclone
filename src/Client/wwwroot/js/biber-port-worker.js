@@ -1,3 +1,4 @@
+const pB=p=>p===13||p===14;
 // Browser/WASM/owned-byte glue only. C# selects the backend and admits BCF.
 // Genuine Perl/Biber, filesystem confinement and output limits live in C++/WASM.
 const send=self.postMessage.bind(self),encode=new TextEncoder(),decode=new TextDecoder('utf-8',{fatal:true});
@@ -12,7 +13,7 @@ const path=n=>typeof n==='string'&&n.length>0&&n.length<=249&&n.isWellFormed()&&
 const alias=n=>n.normalize('NFC').toUpperCase();
 function validate(d){
  const t=d?.tag;
- if(!t||t.profile!==13||t.version!==10||t.tool!=='biber'||d.operation!=='biber'||d.bibliographyTool!=='biber'
+ if(!t||!pB(t.profile)||t.version!==10||t.tool!=='biber'||d.operation!=='biber'||d.bibliographyTool!=='biber'
   ||!['pdftex','latex-dvi','xelatex','lualatex'].includes(t.engineId)||!Number.isSafeInteger(t.ordinal)||t.ordinal<1||t.ordinal>4294967295
   ||typeof t.nonce!=='string'||t.nonce.length<1||t.nonce.length>128||!t.nonce.isWellFormed()
   ||typeof t.runtimeIdentity!=='string'||!/^[0-9a-f]{64}$/.test(t.runtimeIdentity)

@@ -103,7 +103,7 @@ public sealed class NativeCompilationWorkerFactory : ICompilationWorkerFactory
                 bool convertingOutput = dviOutput || xe;
                 bool measuredMapping = NativeNavigationContract.IsMapped(factory._plan.Profile, factory._plan.EffectivePhaseVersion, engine);
                 bool sourceMapping = measuredMapping || factory._plan.EffectivePhaseVersion == NativeSyncTeXContract.Version
-                    || factory._plan.Profile == NativeBiberCompilerContract.Profile && engine == NativeCompilerEngine.PdfLaTeX;
+                    || NativeRuntimeProfiles.SupportsBiber(factory._plan.Profile) && engine == NativeCompilerEngine.PdfLaTeX;
                 bool selectedEntry = suite || dviOutput || sourceMapping || factory._plan.EffectivePhaseVersion == NativeSelectedEntryContract.Version;
                 bool v4 = selectedEntry || factory._plan.EffectivePhaseVersion == NativeAuthoringV4Contract.Version;
                 if (v4 && !(suite ? NativeCompilerSuiteContract.MatchesOptions(context.Snapshot.Selection.Options, factory._plan.Profile, engine)
@@ -112,7 +112,7 @@ public sealed class NativeCompilationWorkerFactory : ICompilationWorkerFactory
                     : selectedEntry ? NativeSelectedEntryContract.MatchesOptions(context.Snapshot.Selection.Options)
                     : NativeAuthoringV4Contract.MatchesOptions(context.Snapshot.Selection.Options)))
                     return Finish(CompileOutputStatus.Unsupported, "unsupported-selection");
-                if (v4 && context.Snapshot.Files.Length > NativeAuthoringV4Contract.ProjectFiles)
+                if (v4 && context.Snapshot.Files.Length > NativeRuntimeProfiles.ProjectFileLimit(factory._plan.Profile))
                     return Finish(CompileOutputStatus.Failed, "v4-project-count-limit");
                 if (factory._provider is null || factory._transport is null) return Finish(CompileOutputStatus.Unsupported, "runtime-unavailable");
                 var runtime = await factory.Operations.RunAsync(factory._provider.GetAsync, token).ConfigureAwait(false);
@@ -179,7 +179,8 @@ public sealed class NativeCompilationWorkerFactory : ICompilationWorkerFactory
                     : new[] { "main.pdf", "main.aux", "main.bbl", "main.blg", "main.log" }
                     .Concat(snapshot.Files.Where(f => f.RelativePath.EndsWith(".tex", StringComparison.Ordinal) && f.RelativePath != "main.tex")
                         .Select(f => f.RelativePath[..^4] + ".aux")).Distinct(StringComparer.Ordinal).ToArray();
-                if (outputs.Length > (v4 ? NativeAuthoringV4Contract.Outputs : 64)
+                if (outputs.Length > (v4 ? NativeRuntimeProfiles.OutputDeclarationLimit(factory._plan.Profile) : 64)
+                    || factory._plan.Profile == NativeThesisCompilerContract.Profile && lua && !NativeThesisCompilerContract.LuaOutputDeclarationsFit(outputs)
                     || snapshot.Files.Any(f => outputs.Contains(f.RelativePath, StringComparer.Ordinal)))
                     return Finish(CompileOutputStatus.Failed, "generated-input-collision");
                 var generated = new Dictionary<string, byte[]>(StringComparer.Ordinal);
@@ -404,7 +405,7 @@ public sealed class NativeCompilationWorkerFactory : ICompilationWorkerFactory
                             || lengths.Sum(f => (long)f.Item2) > factory._plan.MaxInputBytes) throw new NativeResourceLimitException();
                         if (suite)
                         {
-                            int resourceCap = tool == "bibtex" ? NativeCompilerSuiteContract.TotalBytes : lua ? factory._plan.Profile is NativeUnicodeCompilerContract.Profile or NativeBiberCompilerContract.Profile ? NativeUnicodeCompilerContract.LuaResourceBytes : 96 * 1024 * 1024 : xe ? 160 * 1024 * 1024 : NativeCompilerSuiteContract.TotalBytes;
+                            int resourceCap = tool == "bibtex" ? NativeCompilerSuiteContract.TotalBytes : lua ? factory._plan.Profile is NativeUnicodeCompilerContract.Profile or NativeBiberCompilerContract.Profile or NativeThesisCompilerContract.Profile ? NativeUnicodeCompilerContract.LuaResourceBytes : 96 * 1024 * 1024 : xe ? 160 * 1024 * 1024 : NativeCompilerSuiteContract.TotalBytes;
                             int resourceCount = tool == "latex" && lua ? 4608 : NativeCompilerSuiteContract.Files;
                             if (phaseLengths.Length > resourceCount || phaseLengths.Sum(f => (long)f.Length) > resourceCap
                                 || snapshot.Files.Sum(f => f.ByteLength) + generated.Sum(f => (long)f.Value.Length) > 32 * 1024 * 1024)
@@ -430,7 +431,7 @@ public sealed class NativeCompilationWorkerFactory : ICompilationWorkerFactory
                     var sent = all.OrderBy(x => x.Key, StringComparer.Ordinal).Select(x => new NativeInputFact(x.Key, x.Value.Length, NativeRuntimePackage.Digest(x.Value).Hex)).ToArray();
                     string component = biberPhase ? "biber" : converting ? runtime.ConverterStemFor(engine) : suite && tool == "latex" && xe ? "xetex" : suite && tool == "latex" && lua ? "luatex" : "engine";
                     var selectedComponent = suite && !converting && !biberPhase
-                        ? tool == "bibtex" && runtime.Profile == NativeBiberCompilerContract.Profile ? NativeBiberCompilerContract.BibtexComponent
+                        ? tool == "bibtex" && NativeRuntimeProfiles.SupportsBiber(runtime.Profile) ? NativeBiberCompilerContract.BibtexComponent
                             : runtime.ComponentFor(tool == "bibtex" ? NativeCompilerEngine.PdfLaTeX : engine) : null;
                     if (selectedComponent is not null) component = Path.GetFileNameWithoutExtension(selectedComponent.LoaderName);
                     string loaderHash = biberPhase ? NativeCompilerBiberPins.BiberLoaderHash : converting ? runtime.ConverterLoaderHashFor(engine)
@@ -443,7 +444,7 @@ public sealed class NativeCompilationWorkerFactory : ICompilationWorkerFactory
                         Math.Min(limits.MaxLogBytes, 256 * 1024), biberPhase ? Math.Min(limits.MaxPayloadBytes, NativeBiberCompilerContract.OutputBytes)
                             : converting || lua ? Math.Min(limits.MaxPayloadBytes, NativeLatexDviContract.PdfBytes) : limits.MaxPayloadBytes,
                         entry?.SelectedPath, resourceNames, generatedNames, biberPhase ? runtime.Copy("biber.data") : null,
-                        runtime.Profile == NativeBiberCompilerContract.Profile ? bibliographyTool : null);
+                        NativeRuntimeProfiles.SupportsBiber(runtime.Profile) ? bibliographyTool : null);
                     var reply = await factory.Operations.RunAsync(() => { lock (_dispatch) { Check(); return factory._transport.ExecuteAsync(request); } }, token).ConfigureAwait(false);
                     Check();
                     if (reply is { Outcome: "transport-timeout", NativeReturn: null, Files.Length: 0, SourceMapPayload: null, SourceMapGeometryPayload: null } && reply.Tag == tag)
@@ -457,7 +458,7 @@ public sealed class NativeCompilationWorkerFactory : ICompilationWorkerFactory
                         || reply.Log.Length > request.MaxLogBytes || Encoding.UTF8.GetByteCount(reply.Log) > request.MaxLogBytes) return null;
                     if (reply.Outcome == "native-return" && (!reply.Entered || reply.NativeReturn is null)
                         || reply.Outcome == "wasm-abort" && (!reply.Entered || reply.NativeReturn is not null)) return null;
-                    if (reply.Outcome == "font-semantics-unsupported" && (runtime.Profile != NativeBiberCompilerContract.Profile || tool != "latex"
+                    if (reply.Outcome == "font-semantics-unsupported" && (!NativeRuntimeProfiles.SupportsBiber(runtime.Profile) || tool != "latex"
                         || engine is not (NativeCompilerEngine.PdfLaTeX or NativeCompilerEngine.LaTeXDvi) || !reply.Entered || reply.NativeReturn != 0
                         || reply.Files.Length != 0 || reply.SourceMapPayload is not null || reply.SourceMapGeometryPayload is not null)) return null;
                     bool successful = reply.Outcome == "native-return" && reply.NativeReturn == 0;

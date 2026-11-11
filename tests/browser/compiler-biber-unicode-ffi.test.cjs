@@ -7,6 +7,7 @@ const pairs={lua:['3ebd6f09571509648e6ce88de8f1229f4709514f5fbc9a1b1029b8c59a3cb
  xe:['38ba92890c5de6e957254dcda1c1345a75b35dabaa46d77fc4835f3ad4f33601','5a08c4d0a2109adc43e087889be208deb71cf4ba55692b41d58da2c8284f1e8e'],
  dvi:['2975efeae6dc759ccdce984f68350a250ed8bb8bedaa6584329de5901db23caf','4f4e13b462772c15184bf4279b533d598d446fa7a44c0b2bafda276baf91701f'],
  xecvt:['a961144a37546755175dfda0687c22bb79e67ebef495aa84c3922b01af6f2c57','ca030fe4077fc02338e4d92cdc5c0ef1b89c73bcb629b9d44f59708993fa15ef']};
+const thesisPairs={...pairs,lua:['0cba8f1f2f5a71d703fe80300521dbc4c21d54d016845fa2181cc77f666bb224','406aa23eb3c799b7c1cc0cbb3fa46ab1681880705ed30de35dd288c14576a4d9'],xe:['3969fa53aa5b3cb42ca3b8cea1adb6e841d83c897f41d2d0b66f352d7d1142f7','d2886ff867abc73386b733839f5e0a9b9855723cc3b19aa8686649fd0c3139c8']};
 const oldLua=['b66ac597a51b06a97598c95db54329005db54ff5631e461e36f1a841bec86d90','7122d44f4d63a4626a3bcc55bb6bb404cfb8d78fd5419dda38849e991e23b7c6'];
 const encode=s=>new TextEncoder().encode(s),prefix='__oop_runtime__/';
 async function attempt(kind,options={},mutate=()=>{}){
@@ -20,11 +21,12 @@ async function attempt(kind,options={},mutate=()=>{}){
   outputs:converter?[job+'.pdf']:[artifact,...(kind==='xe'?[job+'.pdf']:[]),job+'.aux',job+'.log',...(backend==='biber'?[job+'.bcf',job+'.run.xml']:[job.replaceAll(' ','_')+'-blx.bib'])],
   maxLogBytes:65536,maxOutputBytes:8388608};
  if(converter)frame.files.push({name:frame.mainEntry,bytes:new Uint8Array([247,xe?7:2,0])});
- if(frame.tag.profile!==13)delete frame.bibliographyTool;
+ if(![13,14].includes(frame.tag.profile))delete frame.bibliographyTool;
  mutate(frame);
  const calls=[],messages=[],heap=new Uint8Array(65536),store=new Map(),map=encode('native-model-map'),geo=encode('{"schemaVersion":1,"pages":[]}'),pdf=encode('%PDF-model');let next=1024;
  heap.set(pdf,32768);
  const model={HEAPU8:heap,_malloc(n){const p=next;next+=n+8;assert.ok(next<32768);return p;},_free(){},
+  _oc_xe_work_file_limit:()=>options.workLimit??256,_oc_lua_output_declaration_limit:()=>options.outputLimit??256,
   _oc_xe_nonbmp_abi:()=>options.nonbmp??1,_oc_lua_harfbuzz_abi:()=>options.harfbuzz??1,_oc_lua_font_closure_abi:()=>options.fonts??1,
   _oc_lua_text_semantics_abi:()=>options.text??1,_oc_lua_graphics_abi:()=>options.graphics??1,_oc_dvi_graphics_abi:()=>options.graphics??1,
   _oc_xe_maps_abi:()=>options.maps??1,_oc_synctex_abi:()=>options.synctex??65536,_oc_synctex_status:()=>1,
@@ -46,7 +48,7 @@ async function attempt(kind,options={},mutate=()=>{}){
   _oc_dvi_geometry_data:()=>0,_oc_dvi_geometry_size:()=>geo.length,_oc_dvi_geometry_length(n){calls.push(['geometry-length',n]);return geo.length;},
   _oc_dvi_geometry_copy(n,p){calls.push(['geometry-copy',n]);heap.set(geo,p);return geo.length;}};
  for(const name of options.missing??[])delete model[name];
- const hashes=options.hashes??pairs[kind],crypto={subtle:{digest(a,b){return b.length===1&&[1,2].includes(b[0])?Promise.resolve(Uint8Array.from(Buffer.from(hashes[b[0]-1],'hex')).buffer):webcrypto.subtle.digest(a,b);}}};
+ const hashes=options.hashes??(options.profile===14?thesisPairs:pairs)[kind],crypto={subtle:{digest(a,b){return b.length===1&&[1,2].includes(b[0])?Promise.resolve(Uint8Array.from(Buffer.from(hashes[b[0]-1],'hex')).buffer):webcrypto.subtle.digest(a,b);}}};
  const self={postMessage:m=>messages.push(m)};
  vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../../src/Client/wwwroot/js',converter?'dvi-port-worker.js':'unicode-tex-port-worker.js'),'utf8'),
   {self,Uint8Array,TextEncoder,TextDecoder,WebAssembly,crypto,performance,importScripts(){self[converter?'createOcDvi':xe?'createXeMaps':'createLuaTeX']=async()=>model;}});
@@ -57,12 +59,31 @@ async function attempt(kind,options={},mutate=()=>{}){
 module.exports={attempt};
 if(require.main===module)(async()=>{
  let count=0;
+ for(const kind of ['lua','xe','dvi','xecvt']) {
+  for(const backend of ['none','bibtex','biber']) {
+   const r=await attempt(kind,{profile:14,backend});assert.equal(r.messages.at(-1).reply.outcome,'native-return');assert.equal(r.calls.filter(c=>c[0]==='native').length,1);count++;
+  }
+  if(['lua','xe'].includes(kind)) {
+   for(const options of [{hashes:pairs[kind]},kind==='xe'?{workLimit:192}:{outputLimit:128}, {missing:[kind==='xe'?'_oc_xe_work_file_limit':'_oc_lua_output_declaration_limit']}]) {
+    const r=await attempt(kind,{profile:14,...options});assert.ok(!r.calls.some(c=>c[0]==='native'));count++;
+   }
+   for(const profile of [13,14])for(const countFiles of (profile===14?[127,128,129]:[63,64,65])) {
+    const maximum=profile===14?128:64;
+    const r=await attempt(kind,{profile},f=>{for(let i=1;i<countFiles;i++)f.files.push({name:'asset-'+i+'.txt',bytes:encode('a')});});
+    assert.equal(r.calls.some(c=>c[0]==='native'),countFiles<=maximum,kind+' profile'+profile+' captured'+countFiles);count++;
+   }
+   for(const carried of [127,128,129]) {
+    const r=await attempt(kind,{profile:14},f=>{for(let i=1;i<128;i++)f.files.push({name:'asset-'+i+'.txt',bytes:encode('a')});for(let i=0;i<carried;i++){const name='carry-'+i+'.aux';f.files.push({name,bytes:encode('a')});f.generatedInputNames.push(name);f.outputs.push(name);}});
+    assert.equal(r.calls.some(c=>c[0]==='native'),carried<=128,kind+' generated'+carried);count++;
+   }
+  }
+ }
  for(const kind of ['lua','xe','dvi','xecvt']){
   for(const backend of ['none','bibtex','biber']){
    const r=await attempt(kind,{backend,replay:true}),reply=r.messages.at(-1).reply;assert.equal(reply.outcome,'native-return');assert.equal(r.calls.filter(c=>c[0]==='native').length,1);
    for(const c of r.calls.filter(c=>/^(map|geometry)-(length|copy)$/.test(c[0])))assert.equal(c[1],7);count++;
   }
-  const negatives=[{profile:11},{profile:14},{version:10},{version:23},{version:kind==='dvi'?21:24},{hashes:[pairs[kind][0],'0'.repeat(64)]},
+  const negatives=[{profile:11},{profile:15},{version:10},{version:23},{version:kind==='dvi'?21:24},{hashes:[pairs[kind][0],'0'.repeat(64)]},
    {hashes:['0'.repeat(64),pairs[kind][1]]}, ...(kind==='xe'?[]:[{nativeAbi:kind==='lua'?3:kind==='dvi'?3:2}])];
   if(kind==='lua')negatives.push({text:0},{text:2},{missing:['_oc_lua_text_semantics_abi']},{fonts:0},{harfbuzz:0},{graphics:0},{hashes:oldLua});
   if(kind==='xe')negatives.push({nonbmp:0},{missing:['_oc_xe_nonbmp_abi']},{maps:0});

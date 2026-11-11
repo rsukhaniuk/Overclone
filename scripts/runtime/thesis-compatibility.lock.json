@@ -1,0 +1,98 @@
+{
+  "schemaVersion": 1,
+  "profile": 14,
+  "base": {
+    "profile": 13,
+    "resourceCount": 4357,
+    "totalBytes": 259559615,
+    "closureSha256": "34540765dfd1b5d46666841378221cce0b40204014c4a8c2dc25ddddbe56d1ed",
+    "pins": {
+      "length": 627138,
+      "sha256": "8b00b37ec9fcba8e5dc46fcbd6ef2fdd05376baa44f33eb02536240e096975e8"
+    }
+  },
+  "overlay": {
+    "resourceCount": 96,
+    "totalBytes": 1594526,
+    "closureSha256": "e7d95a54ba10e62480ec73ed901056313555f79904562f6aa6372e1f30fbfc67",
+    "pins": {
+      "length": 13737,
+      "sha256": "01f50a79650fc242f08da782c7d92ab0f8c761bf6f064820600c936cf6bb3f89"
+    },
+    "recipeLock": {
+      "length": 42400,
+      "sha256": "fd1fab5badf906d9045fc4685cbad52a2bc8ecf67533e587213ed09d44545088"
+    }
+  },
+  "components": [
+    {
+      "name": "xetex.js",
+      "length": 70018,
+      "sha256": "3969fa53aa5b3cb42ca3b8cea1adb6e841d83c897f41d2d0b66f352d7d1142f7",
+      "group": "xe",
+      "source": "engine.js"
+    },
+    {
+      "name": "xetex.wasm",
+      "length": 3302304,
+      "sha256": "d2886ff867abc73386b733839f5e0a9b9855723cc3b19aa8686649fd0c3139c8",
+      "group": "xe",
+      "source": "engine.wasm"
+    },
+    {
+      "name": "luatex.js",
+      "length": 193516,
+      "sha256": "0cba8f1f2f5a71d703fe80300521dbc4c21d54d016845fa2181cc77f666bb224",
+      "group": "lua",
+      "source": "luatex.js"
+    },
+    {
+      "name": "luatex.wasm",
+      "length": 6013393,
+      "sha256": "406aa23eb3c799b7c1cc0cbb3fa46ab1681880705ed30de35dd288c14576a4d9",
+      "group": "lua",
+      "source": "luatex.wasm"
+    },
+    {
+      "name": "luaotfload-harf-plug.lua",
+      "length": 45083,
+      "sha256": "726563b3936eb23badd8fdafdf6e8d901f96e73aa9f3970987ce614bfc9b6b0b",
+      "group": "lua_resource",
+      "source": "luaotfload-harf-plug.lua"
+    }
+  ],
+  "target": {
+    "resourceCount": 4453,
+    "totalBytes": 261154796,
+    "closureSha256": "f0c9ff2492565b273130a4596ea608d646728cacf5dd73294c88e0d03c6e86a6",
+    "pins": {
+      "length": 640872,
+      "sha256": "41472c987634a016b970acf3ca8359f7277021792bf5e6adf6f33cb446b5036e"
+    },
+    "package": {
+      "length": 262345260,
+      "sha256": "e550e41c2fc3b99f46c3f7cba57adfcb34d0f54605a5eb7cec3cc0155588a84f"
+    }
+  },
+  "limits": {
+    "manifestBytes": 2097152,
+    "resourceCount": 8192,
+    "fileBytes": 67108864,
+    "totalBytes": 268435456
+  },
+  "phases": {
+    "pdftex": 23,
+    "latex-dvi": 24,
+    "xelatex": 21,
+    "lualatex": 22,
+    "biber": 10
+  },
+  "projectLimits": {
+    "capturedFiles": 128,
+    "capturedBytes": 8388608,
+    "fileBytes": 1048576,
+    "generatedCarryFiles": 128,
+    "declarations": 256
+  },
+  "scope": "Exact additive thesis compatibility closure. Original profiles remain immutable. Core Fonts remain private project provisioning and are not included."
+}

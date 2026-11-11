@@ -1,4 +1,5 @@
 // Native compiler/VFS glue.
+const pB=p=>p===13||p===14;
 const emit=self.postMessage.bind(self);let phase='boot',lookups=[],wasmSha256=null,loaderSha256=null;
 let dviModule=null,dviWriteGuard=null,semanticModule=false;
 const semanticLoader='735c17494d6ec61c1b2f000f437f343ece9af3258f2f354f11745b7b5836dde2';
@@ -9,7 +10,7 @@ self.onmessage=async({data:d})=>{
 try{
 if(d.operation!=='boot')throw new Error('boot');
 wasmSha256=await sha(d.wasm);loaderSha256=await sha(d.loader);
-self.fetch=async url=>{if(phase==='boot'&&String(url).endsWith('swiftlatexpdftex.wasm'))return new Response(d.wasm,{headers:{'Content-Type':'application/wasm'}});throw new Error('no loader request available');};
+self.fetch=async url=>{if(phase==='boot'&&String(url).endsWith('swiftlatexpdftex.wasm'))return new Response(d.wasm,{headers:{'Content-Type':'application/wasm'}});throw new Error('loader request denied');};
 self.XMLHttpRequest=class{constructor(){this.status=301;this.response=null;}open(_method,url){this.url=String(url);}send(){if(lookups.length>=128)throw new Error('lookup log cap');lookups.push(this.url);}getResponseHeader(){return null;}};
 importScripts(d.loaderUrl);console.log=()=>{};console.error=()=>{};
 semanticModule=typeof self.createFontSemantics==='function'||loaderSha256===semanticLoader;
@@ -18,8 +19,8 @@ const factory=semanticModule?self.createFontSemantics:self.createDviMaps;
 if(typeof factory!=='function'||(semanticModule?loaderSha256!==semanticLoader||d.loader.byteLength!==141918||d.wasm.byteLength!==1952801
 ||wasmSha256!=='e3136893e75d5b6b3a7b4297349c28f51423dee2c014a607d9c1cd20f75357c3'
 :loaderSha256!=='980bcf858794dc4679124df6fbf76a503d3020d96a7081537e9d1a4a5e7bb6f1'
-||wasmSha256!=='6ad6db6625d28bdfaf83eba48b44a4202582fd84118c1e8ece3857535722a1b9'))throw new Error('module identity');
-self.fetch=()=>Promise.reject(new Error('Compiler network unavailable'));
+||wasmSha256!=='6ad6db6625d28bdfaf83eba48b44a4202582fd84118c1e8ece3857535722a1b9'))throw new Error('module hash');
+self.fetch=()=>Promise.reject(new Error('Network denied'));
 dviModule=await new Promise((resolve,reject)=>{
 Promise.resolve(factory({noInitialRun:true,print:captureDviLog,printErr:captureDviLog,
 instantiateWasm(imports,receive){
@@ -252,7 +253,7 @@ if(phase!=='boot')return;phase='running';
 const m=dviModule,F=m.FS;let entered=false,nativeReturn=null,elapsedMs=null,budget=null,sourceMapPayload=null;
 let files=[],inputs=[],outcome='setup-failure';
 try{
-const t=d.tag,s=t?.profile===13;
+const t=d.tag,s=pB(t?.profile);
 if((semanticModule?!s||!(t.version===23&&t.engineId==='pdftex'||t.version===24&&t.engineId==='latex-dvi')
 :![8,9,10,12].includes(t?.profile)||t.version!==([10,12].includes(t.profile)?15:12)||t.engineId!=='latex-dvi')||t.tool!=='latex'||d.operation!=='latex'
 ||!Number.isSafeInteger(t.ordinal)||t.ordinal<1||t.ordinal>4294967295
@@ -269,10 +270,10 @@ for(const f of d.files){
 if(resources.has(f.name)){if(f.bytes.length>67108864)throw 0;resourceBytes+=f.bytes.length;}
 else{if(f.name.startsWith(prefix)||f.bytes.length>8388608)throw 0;workBytes+=f.bytes.length;if(!generated.has(f.name))captured++;}
 }
-if(resourceBytes>(s?134217728:167772160)||workBytes>33554432||resourceBytes+workBytes>167772160||captured>64)throw 0;
+if(resourceBytes>(s?134217728:167772160)||workBytes>33554432||resourceBytes+workBytes>167772160||captured>(t.profile===14?128:64))throw 0;
 if(s){const name=prefix+'swiftlatexpdftex.fmt',fmt=d.files.find(f=>f.name===name),pdf=t.version===23;
 if(!resources.has(name)||!fmt||fmt.bytes.length!==(pdf?22404123:22404979)
-||await sha(fmt.bytes)!==(pdf?'69e67945852ac84675d043b3f7a5ef02adce773e64129427edb8ce0ebdd84deb':'729d02f1e2cd5b63886cf03520634b8fc319fdabe3ff61dd224134b8baf40605'))throw new Error('format identity');}
+||await sha(fmt.bytes)!==(pdf?'69e67945852ac84675d043b3f7a5ef02adce773e64129427edb8ce0ebdd84deb':'729d02f1e2cd5b63886cf03520634b8fc319fdabe3ff61dd224134b8baf40605'))throw new Error('format hash');}
 dviLog='';dviLogBytes=0;dviMaxLog=d.maxLogBytes;dviLogLimited=false;
 F.mkdir('/tex');F.mkdir('/work');F.chdir('/work');
 for(const f of d.files){
@@ -316,24 +317,24 @@ emit({kind:'done',reply:{tag:d.tag,outcome,nativeReturn,entered,log:dviLog,files
 heapBytes:m.HEAPU8.byteLength,wasmSha256,loaderSha256,sourceMapPayload}});
 }
 function validateAuthoringV4Frame(d){
-const bad=()=>{throw new Error('v4 FFI namespace/frame');};
+const bad=()=>{throw new Error('v4 FFI');};
 const key=n=>d.tag.version>=5?n.normalize('NFC').toUpperCase():n.normalize('NFC').replace(/[a-z]/g,c=>c.toUpperCase());
-const p13=d.tag.profile===13,backend=d.bibliographyTool;
+const p13=[13,14].includes(d.tag.profile),backend=d.bibliographyTool;
 if(p13?!['none','bibtex','biber'].includes(backend)||d.operation==='bibtex'&&backend!=='bibtex':backend!=null)bad();
-const suite=[5,6,7,8,9,10,12,13].includes(d.tag.profile),lua=suite&&[9,14,17,22].includes(d.tag.version);
+const suite=[5,6,7,8,9,10,12,13,14].includes(d.tag.profile),lua=suite&&[9,14,17,22].includes(d.tag.version);
 const selected=d.tag.version>=5,root=selected?d.selectedRoot:'main.tex';
 if(typeof root!=='string')bad();
 const leaf=root.slice(root.lastIndexOf('/')+1),job=lua?'result':leaf.slice(0,-4);
-if(selected&&(!([12,13].includes(d.tag.profile)&&d.tag.engineId==='xelatex'?/^[\p{L}\p{Nd}\p{Mn}\p{Mc}\u{10000}-\u{10FFFF}._/ -]+$/u:/^[\p{L}\p{Nd}\p{Mn}\p{Mc}._/ -]+$/u).test(root)||!/^.+\.tex$/i.test(leaf)||/^[.-]/.test(leaf)||leaf.startsWith(' ')||job.endsWith(' ')))bad();
+if(selected&&(!([12,13,14].includes(d.tag.profile)&&d.tag.engineId==='xelatex'?/^[\p{L}\p{Nd}\p{Mn}\p{Mc}\u{10000}-\u{10FFFF}._/ -]+$/u:/^[\p{L}\p{Nd}\p{Mn}\p{Mc}._/ -]+$/u).test(root)||!/^.+\.tex$/i.test(leaf)||/^[.-]/.test(leaf)||leaf.startsWith(' ')||job.endsWith(' ')))bad();
 const latexEntry=selected&&root.includes(' ')?'"'+root+'"':root;
-const bibliography=[7,8,9,10,12,13].includes(d.tag.profile),blx=job.replaceAll(' ','_')+'-blx.bib',blxEnabled=bibliography&&!(p13&&backend==='biber');
+const bibliography=[7,8,9,10,12,13,14].includes(d.tag.profile),blx=job.replaceAll(' ','_')+'-blx.bib',blxEnabled=bibliography&&!(p13&&backend==='biber');
 const state=n=>n.endsWith('.aux')||['.bbl','.toc','.lof','.lot','.out'].some(ext=>n===job+ext)||blxEnabled&&n===blx;
 const fixed=['.pdf','.aux','.bbl','.blg','.log','.toc','.lof','.lot','.out',...([7,12,15,24].includes(d.tag.version)?['.dvi']:[]),...([8,13,16,21].includes(d.tag.version)?['.xdv']:[]),...(p13&&backend==='biber'&&d.operation==='latex'?['.bcf','.run.xml']:[])].map(ext=>job+ext).concat(blxEnabled?[blx]:[]);
 const valid=n=>typeof n==='string'&&n.length>0&&n===n.trim()&&new TextEncoder().encode(n).length<=249
 &&!/[\u0000-\u001f\u007f-\u009f<>:"|?*\\\\]/.test(n)&&!Array.from(n).some(c=>c.length===1&&c.charCodeAt(0)>=55296&&c.charCodeAt(0)<=57343)
 &&n.split('/').length<=32&&n.split('/').every(s=>s&&s!=='.'&&s!=='..'&&!/[. ]$/.test(s)
 &&!['.GIT','.SVN','.HG','.SSH','.AWS'].includes(s.toUpperCase())&&!/^(CON|PRN|AUX|NUL|COM[1-4]|COM[5-9]|LPT[1-4]|LPT[5-9])(?:\.|$)/i.test(s));
-if(!Array.isArray(d.files)||!Array.isArray(d.outputs)||d.files.length<1||d.files.length>(suite?8384:768)||d.outputs.length>128
+if(!Array.isArray(d.files)||!Array.isArray(d.outputs)||d.files.length<1||d.files.length>(suite?(d.tag.profile===14?8448:8384):768)||d.outputs.length>(d.tag.profile===14?256:128)
 ||d.mainEntry!==(selected&&d.operation==='bibtex'?(lua?'result.tex':leaf):latexEntry)||d.tag.tool!==d.operation||!Number.isSafeInteger(d.maxOutputBytes)||d.maxOutputBytes<1||d.maxOutputBytes>8388608
 ||!Number.isSafeInteger(d.maxLogBytes)||d.maxLogBytes<0||d.maxLogBytes>8388608)bad();
 const carried=bibliography&&Array.isArray(d.generatedInputNames)?new Set(d.generatedInputNames):null;
@@ -353,13 +354,13 @@ if(fixed.some(n=>!d.outputs.includes(n)))bad();
 for(const n of all)for(let i=n.indexOf('/');i>=0;i=n.indexOf('/',i+1))if(all.has(n.slice(0,i)))bad();
 }
 async function execute({data:d}){
-if(d.tag?.profile===13){if(phase!=='boot')return;phase='running';}
+if(pB(d.tag?.profile)){if(phase!=='boot')return;phase='running';}
 let entered=false,nativeReturn=null,elapsedMs=null,capturedLog=self.memlog,limited=false,budget=null;const files=[],inputs=[];
 try{
 const legacy=d.tag.version===1&&(d.tag.profile===undefined||d.tag.profile===0)&&d.tag.runtimeIdentity==null;
 const modern=d.tag.version===2&&d.tag.profile===1&&identified(d.tag);
 const authoring=d.tag.version===3&&d.tag.profile===2&&identified(d.tag);
-const identity=identified(d.tag),suite=[5,6,7,8,9,10,12,13].includes(d.tag.profile),p13=d.tag.profile===13;
+const identity=identified(d.tag),suite=[5,6,7,8,9,10,12,13,14].includes(d.tag.profile),p13=pB(d.tag.profile);
 const p13Bibtex=p13&&d.operation==='bibtex'&&[[23,'pdftex'],[24,'latex-dvi'],[21,'xelatex'],[22,'lualatex']].some(([v,e])=>d.tag.version===v&&d.tag.engineId===e)&&identity;
 const mapped=d.tag.version===6&&([3,4].includes(d.tag.profile)&&d.tag.engineId==null
 ||suite&&!p13&&d.tag.engineId==='pdftex')&&identity;
@@ -367,22 +368,22 @@ const dvi=d.tag.version===7&&[4,5,6,7].includes(d.tag.profile)&&d.tag.engineId==
 const unicodeBibtex=suite&&d.operation==='bibtex'&&((d.tag.version===8&&[5,6,7,8].includes(d.tag.profile)||d.tag.version===(d.tag.profile===12?21:d.tag.profile===10?16:13)&&[9,10,12].includes(d.tag.profile))&&d.tag.engineId==='xelatex'||(d.tag.version===9&&[5,6,7].includes(d.tag.profile)||d.tag.version===(d.tag.profile===12?22:d.tag.profile===10?17:14)&&[8,9,10,12].includes(d.tag.profile))&&d.tag.engineId==='lualatex')&&identity;
 const navigationBibtex=[8,9,10,12].includes(d.tag.profile)&&d.tag.version===([10,12].includes(d.tag.profile)?15:12)&&d.tag.engineId==='latex-dvi'&&d.operation==='bibtex'&&identity;
 const v4=p13Bibtex||mapped||dvi||unicodeBibtex||navigationBibtex||[4,5].includes(d.tag.version)&&d.tag.profile===2&&identity;
-if((!legacy&&!modern&&!authoring&&!v4)||!['latex','bibtex'].includes(d.operation)||d.files.length>(suite?8384:v4?768:512)||d.outputs.length>(v4?128:64))throw new Error('FFI frame');
-if([8,9,10,12,13].includes(d.tag.profile)&&(loaderSha256!=='b514d2b72aa44ec47923735f8f1be43a93351931beb183d57a7429b73e74a9a9'
+if((!legacy&&!modern&&!authoring&&!v4)||!['latex','bibtex'].includes(d.operation)||d.files.length>(suite?(d.tag.profile===14?8448:8384):v4?768:512)||d.outputs.length>(d.tag.profile===14?256:v4?128:64))throw new Error('FFI frame');
+if([8,9,10,12,13,14].includes(d.tag.profile)&&(loaderSha256!=='b514d2b72aa44ec47923735f8f1be43a93351931beb183d57a7429b73e74a9a9'
 ||wasmSha256!=='70008f66d8acb88ee40e8c17b5a48dc81003852e569833444dd3cda7539ce235'
-||cwrap('oc_synctex_abi','number',[])()!==65536))throw new Error('P8 legacy component identity');
+||cwrap('oc_synctex_abi','number',[])()!==65536))throw new Error('legacy identity');
 if(v4)validateAuthoringV4Frame(d);
 const maxTotal=suite?167772160:modern||authoring||v4?67108864:16777216,maxFile=suite?67108864:modern||authoring||v4?33554432:8388608;
-let total=0;for(const f of d.files){total+=f.bytes.byteLength;if(total>maxTotal||f.bytes.byteLength>maxFile)throw new Error('VFS transport bound');}
+let total=0;for(const f of d.files){total+=f.bytes.byteLength;if(total>maxTotal||f.bytes.byteLength>maxFile)throw new Error('VFS bound');}
 if(suite&&(!Array.isArray(d.runtimeResourceNames)||d.runtimeResourceNames.length>8192
-||!Array.isArray(d.generatedInputNames)||d.generatedInputNames.length>128))throw new Error('resource/generated projection');
+||!Array.isArray(d.generatedInputNames)||d.generatedInputNames.length>128))throw new Error('generated projection');
 const resourceNames=suite?new Set(d.runtimeResourceNames):new Set(),prefix='__oop_runtime__/';
 const generatedNames=suite?new Set(d.generatedInputNames):new Set();
 if(suite&&(generatedNames.size!==d.generatedInputNames.length||generatedNames.has(d.selectedRoot)
-||d.generatedInputNames.some(n=>typeof n!=='string'||resourceNames.has(n)||!d.files.some(f=>f.name===n))))throw new Error('resource/generated projection');
+||d.generatedInputNames.some(n=>typeof n!=='string'||resourceNames.has(n)||!d.files.some(f=>f.name===n))))throw new Error('generated projection');
 if(suite&&(!Array.isArray(d.runtimeResourceNames)||resourceNames.size!==d.runtimeResourceNames.length
 ||resourceNames.size>8192||d.runtimeResourceNames.some(n=>!n.startsWith(prefix)||!d.files.some(f=>f.name===n))
-||d.files.some(f=>!resourceNames.has(f.name)&&f.name.startsWith(prefix))))throw new Error('resource projection');
+||d.files.some(f=>!resourceNames.has(f.name)&&f.name.startsWith(prefix))))throw new Error('resources');
 const destination=f=>resourceNames.has(f.name)?'/tex/'+f.name.slice(prefix.length):'/work/'+f.name;
 for(const f of d.files){const p=destination(f);const slash=p.lastIndexOf('/');FS.mkdirTree(p.slice(0,slash));FS.writeFile(p,f.bytes);}
 if(suite)for(const f of d.files)if(resourceNames.has(f.name)){
@@ -394,28 +395,28 @@ const parent=alias.slice(0,n);if(FS.analyzePath(parent).exists&&!FS.isDir(FS.sta
 if(!blocked){FS.mkdirTree(alias.slice(0,alias.lastIndexOf('/')));FS.symlink(destination(f),alias);}
 }
 }
-Object.defineProperty(self,'memlog',{configurable:true,get:()=>capturedLog,set:value=>{if(value.length>Math.floor(d.maxLogBytes/3)){limited=true;throw new Error('log transport bound');}capturedLog=value;}});
+Object.defineProperty(self,'memlog',{configurable:true,get:()=>capturedLog,set:value=>{if(value.length>Math.floor(d.maxLogBytes/3)){limited=true;throw new Error('log bound');}capturedLog=value;}});
 prepareExecutionContext();phase=d.operation;
 for(const f of d.files){const b=FS.readFile(destination(f)),hash=new Uint8Array(await crypto.subtle.digest('SHA-256',b));inputs.push({name:f.name,length:b.length,sha256:[...hash].map(v=>v.toString(16).padStart(2,'0')).join('')});}
-budget=await installNativeVfsBudget(FS,MEMFS,d.maxOutputBytes,d.maxLogBytes,v4?128:64,null,[12,13].includes(d.tag.profile)?12288:8192);
+budget=await installNativeVfsBudget(FS,MEMFS,d.maxOutputBytes,d.maxLogBytes,v4?128:64,null,[12,13,14].includes(d.tag.profile)?12288:8192);
 if((mapped||dvi)&&d.operation==='latex'){
 if(!Number.isSafeInteger(d.tag.ordinal)||d.tag.ordinal<1||d.tag.ordinal>4294967295
 ||cwrap('oc_synctex_abi','number',[])()!==65536
-||cwrap('oc_mem_configure','number',['number','number','number'])(mapped?1:0,mapped?1048575:0,d.tag.ordinal)!==1)throw new Error('native map configuration');
+||cwrap('oc_mem_configure','number',['number','number','number'])(mapped?1:0,mapped?1048575:0,d.tag.ordinal)!==1)throw new Error('map configuration');
 }
 cwrap('setMainEntry','number',['string'])(d.mainEntry);emit({kind:'entered'});entered=true;const start=performance.now();
 nativeReturn=d.operation==='latex'?_compileLaTeX():_compileBibtex();elapsedMs=performance.now()-start;
-if(limited||budget.failed)throw new Error('latched resource quota');
-if(!Number.isInteger(nativeReturn))throw new Error('native return');
-let size=0;for(const name of d.outputs){const p='/work/'+name;if(!FS.analyzePath(p).exists)continue;const n=FS.stat(p).size;if(n>d.maxOutputBytes||n>2*d.maxOutputBytes-size){limited=true;throw new Error('output transport bound');}size+=n;files.push({name,bytes:FS.readFile(p)});}
+if(limited||budget.failed)throw new Error('latched quota');
+if(!Number.isInteger(nativeReturn))throw new Error('native result');
+let size=0;for(const name of d.outputs){const p='/work/'+name;if(!FS.analyzePath(p).exists)continue;const n=FS.stat(p).size;if(n>d.maxOutputBytes||n>2*d.maxOutputBytes-size){limited=true;throw new Error('output bound');}size+=n;files.push({name,bytes:FS.readFile(p)});}
 let sourceMapPayload=null;
 if(mapped&&d.operation==='latex'&&nativeReturn===0){
 const n=cwrap('oc_synctex_length','number',['number'])(d.tag.ordinal);
-if(!Number.isInteger(n)||n<0||n>1048575)throw new Error('native map length');
+if(!Number.isInteger(n)||n<0||n>1048575)throw new Error('map length');
 if(cwrap('oc_synctex_status','number',[])()===1){
-if(n<1)throw new Error('native map length');
-const p=cwrap('malloc','number',['number'])(n);if(!p)throw new Error('native map allocation');
-try{if(cwrap('oc_synctex_copy','number',['number','number','number'])(d.tag.ordinal,p,n)!==n)throw new Error('native map copy');sourceMapPayload=HEAPU8.slice(p,p+n);}
+if(n<1)throw new Error('map length');
+const p=cwrap('malloc','number',['number'])(n);if(!p)throw new Error('map allocation');
+try{if(cwrap('oc_synctex_copy','number',['number','number','number'])(d.tag.ordinal,p,n)!==n)throw new Error('map copy');sourceMapPayload=HEAPU8.slice(p,p+n);}
 finally{cwrap('free',null,['number'])(p);}
 }else if(n!==0)throw new Error('unsealed native map');
 }

@@ -62,7 +62,7 @@ public static class AuthoringWorkspaceRegistration
                 HistoricalOutputAdapters());
             var index = new CompileHistoryIndex(new JsHistoryIndexBackend(js));
             return new(workspace, compile, store, index,
-                new(new(64, 1048576, 8388608, 131072), 8388608, 262144,
+                new(new(NativeThesisCompilerContract.ProjectFiles, 1048576, 8388608, 131072), 8388608, 262144,
                     new(new(2, 256, 8388608, 16777216, 65536, 256, 256), 16384, 64, 128, 15000)),
                 new(64, 65536, 15000),
                 (provider.GetRequiredService<ICompileWorkspaceConfiguration>() as LocalCompileWorkspaceConfiguration)?.PdfInspector);

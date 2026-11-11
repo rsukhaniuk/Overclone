@@ -31,7 +31,7 @@ public sealed class UnicodeContractTests
                 NativeNavigationContract.IsMapped(P, plan.EffectivePhaseVersion, e));
             Assert.False(NativeNavigationContract.IsMapped(P, 23, e));
         }
-        foreach (var p in new[] { (NativeRuntimeProfile)11, (NativeRuntimeProfile)14, (NativeRuntimeProfile)int.MaxValue })
+        foreach (var p in new[] { (NativeRuntimeProfile)11, (NativeRuntimeProfile)15, (NativeRuntimeProfile)int.MaxValue })
         {
             Assert.False(NativeRuntimeProfiles.Known(p)); Assert.False(NativeRuntimeProfiles.IsSuite(p));
             Assert.Equal(0, NativeCompilerSuiteContract.Phase(p, NativeCompilerEngine.XeLaTeX));
@@ -80,7 +80,7 @@ public sealed class UnicodeContractTests
     }
 
     [Fact]
-    public void Historical_registry_preserves_P12_and_adds_only_exact_P13_output_identities()
+    public void Historical_registry_preserves_P12_and_adds_only_exact_P13_P14_output_identities()
     {
         var old = new[] { NativeSyncTeXContract.OutputAdapter, NativeLatexDviContract.OutputAdapter }
             .Concat(Enumerable.Range(5, 6).SelectMany(p => Enum.GetValues<NativeCompilerEngine>()
@@ -89,8 +89,10 @@ public sealed class UnicodeContractTests
         var current = Client.Compilation.Presentation.AuthoringWorkspaceRegistration.HistoricalOutputAdapters();
         var added = current.Except(old).ToArray();
         var expected = new[] { NativeUnicodeCompilerContract.Component(NativeCompilerEngine.LuaLaTeX).OutputAdapter }
-            .Concat(Enum.GetValues<NativeCompilerEngine>().Select(NativeBiberCompilerContract.Component).Select(c => c.OutputAdapter)).Except(old).Distinct().ToArray();
-        Assert.Equal(4, added.Length); Assert.Equal(expected.Length, added.Length);
+            .Concat(Enum.GetValues<NativeCompilerEngine>().Select(NativeBiberCompilerContract.Component).Select(c => c.OutputAdapter))
+            .Concat(NativeCompilerThesisPins.Ready ? Enum.GetValues<NativeCompilerEngine>().Select(NativeThesisCompilerContract.Component).Select(c => c.OutputAdapter) : [])
+            .Except(old).Distinct().ToArray();
+        Assert.InRange(added.Length, 4, 5); Assert.Equal(expected.Length, added.Length);
         Assert.All(expected, adapter => Assert.Contains(adapter, added));
         Assert.All(old, adapter => Assert.Contains(adapter, current));
         Assert.All(added, adapter => Assert.DoesNotContain(adapter with { Hash = new(new string('0', 64)) }, current));
@@ -102,14 +104,15 @@ public sealed class UnicodeContractTests
     [InlineData("😀/тези.tex")]
     [InlineData("тези/\U00010000.tex")]
     [InlineData("тези/\U0010ffff.tex")]
-    public void Only_exact_P12_and_P13_Xe_admit_original_supplementary_root(string selected)
+    public void Only_exact_P12_P13_and_P14_Xe_admit_original_supplementary_root(string selected)
     {
         var entry = Assert.IsType<NativeSelectedEntry>(NativeCompilerSuiteContract.CreateEntry(selected, [selected], NativeCompilerEngine.XeLaTeX, out var error, P));
         Assert.Null(error); Assert.Equal(selected, entry.SelectedPath); Assert.Equal(selected, entry.LatexEntry);
         var job = selected[(selected.LastIndexOf('/') + 1)..^4];
         Assert.Equal(job, entry.JobName); Assert.Contains(job + ".xdv", entry.Outputs);
         Assert.NotNull(NativeCompilerSuiteContract.CreateEntry(selected, [selected], NativeCompilerEngine.XeLaTeX, out _, NativeBiberCompilerContract.Profile));
-        foreach (var profile in Enumerable.Range(0, 15).Where(n => n is not (12 or 13)).Select(n => (NativeRuntimeProfile)n))
+        Assert.NotNull(NativeCompilerSuiteContract.CreateEntry(selected, [selected], NativeCompilerEngine.XeLaTeX, out _, NativeThesisCompilerContract.Profile));
+        foreach (var profile in Enumerable.Range(0, 16).Where(n => n is not (12 or 13 or 14)).Select(n => (NativeRuntimeProfile)n))
             Assert.Null(NativeCompilerSuiteContract.CreateEntry(selected, [selected], NativeCompilerEngine.XeLaTeX, out _, profile));
         Assert.Null(NativeCompilerSuiteContract.CreateEntry(selected, [selected], NativeCompilerEngine.XeLaTeX, out _));
     }

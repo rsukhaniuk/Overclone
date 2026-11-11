@@ -38,7 +38,7 @@ public static class NativeSelectedEntryContract
             if (rune.Value is '/' or '.' or '_' or '-' or ' ') continue;
             // Exact native capability/profile only. Path validation above still
             // refuses malformed UTF-16 and unsafe project/native boundaries.
-            if (profile is NativeUnicodeCompilerContract.Profile or NativeBiberCompilerContract.Profile && engine == NativeCompilerEngine.XeLaTeX
+            if (profile is NativeUnicodeCompilerContract.Profile or NativeBiberCompilerContract.Profile or NativeThesisCompilerContract.Profile && engine == NativeCompilerEngine.XeLaTeX
                 && rune.Value > 0xffff) continue;
             if (!Rune.IsLetterOrDigit(rune) && Rune.GetUnicodeCategory(rune) is not
                 (UnicodeCategory.NonSpacingMark or UnicodeCategory.SpacingCombiningMark)) return "selected-entry-syntax";

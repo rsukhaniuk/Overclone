@@ -27,7 +27,7 @@ function csharp(file, pattern) {
 const csPdf = 'src/Client/Pdf/PdfContracts.cs';
 const limits = {
     files: csharp('src/Client/Compilation/Native/NativeCompilerSuiteContract.cs', /Files = (\d+)/) + 192,
-    outputCount: Number(source('compile-port-worker.js').match(/d\.outputs\.length>128/)[0].match(/\d+/)[0]),
+    outputCount: csharp('src/Client/Compilation/Native/NativeAuthoringV4Contract.cs', /Outputs = (\d+)/),
     output: csharp(csPdf, /InputBytes = (\d+)/),
     pdfOutput: csharp(csPdf, /OutputBytes = (\d+)/),
     pdfPages: csharp(csPdf, /MaxDocumentPages = (\d+)/),

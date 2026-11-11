@@ -62,13 +62,14 @@ public sealed class CompileWorkspaceSession(WorkspaceCoordinator workspace, ICom
         || NativeCompilerSuiteContract.MatchesOptions(options, NativeGraphicsNavigationContract.Profile)
         || NativeCompilerSuiteContract.MatchesOptions(options, NativeUnicodeCompilerContract.Profile)
         || NativeCompilerSuiteContract.MatchesOptions(options, NativeBiberCompilerContract.Profile);
-    private CompileLifecycleOptions Options => new(new(64, 1048576, 8388608, 131072),
+    private int ProjectFileLimit => NativeRuntimeProfiles.ProjectFileLimit(_ports?.NativeProfile ?? NativeRuntimeProfile.Legacy);
+    private CompileLifecycleOptions Options => new(new(ProjectFileLimit, 1048576, 8388608, 131072),
         new(8388608, 2097152, 64, 128, 4096, 1048576), 65536,
         _ports?.SelectionOptions is { } options && SuiteOptions(options)
             ? NativeCompilerSuiteContract.LifecycleDeadline : TimeSpan.FromSeconds(30), NativeRuntimePackage.Pdf,
         _ports?.OutputAdapter ?? NativeRuntimePackage.Adapter);
     private static CompileAttemptPresentationBudget LogBudget => new(1048576, 2097152,
-        new(64, 8388608, 131072, 1048576, 8192, 10000, 128, 4096, 32, 200000, 8000000, 2097152));
+        new(NativeThesisCompilerContract.ProjectFiles, 8388608, 131072, 1048576, 8192, 10000, 128, 4096, 32, 200000, 8000000, 2097152));
     public void AttachRenderer(Func<Action, Task> renderer)
     {
         if (_disposed) throw new ObjectDisposedException(nameof(CompileWorkspaceSession));
@@ -145,7 +146,10 @@ public sealed class CompileWorkspaceSession(WorkspaceCoordinator workspace, ICom
                 || configuredEngine == new CompilationDescriptor("xelatex", NativeBiberCompilerContract.Component(NativeCompilerEngine.XeLaTeX).EngineVersion,
                     new(NativeCompilerUnicodePins.XeWasmHash))
                     && NativeCompilerBiberPins.Ready
-                    && NativeCompilerSuiteContract.MatchesOptions(configuredOptions, NativeBiberCompilerContract.Profile, NativeCompilerEngine.XeLaTeX));
+                    && NativeCompilerSuiteContract.MatchesOptions(configuredOptions, NativeBiberCompilerContract.Profile, NativeCompilerEngine.XeLaTeX)
+                || _ports.NativeProfile == NativeThesisCompilerContract.Profile && NativeCompilerThesisPins.Ready
+                    && configuredEngine == new CompilationDescriptor("xelatex", NativeThesisCompilerContract.Component(NativeCompilerEngine.XeLaTeX).EngineVersion, new(NativeCompilerThesisPins.XeWasmHash))
+                    && NativeCompilerSuiteContract.MatchesOptions(configuredOptions, NativeThesisCompilerContract.Profile, NativeCompilerEngine.XeLaTeX));
         var entryError = main is null ? null : selectedEntry ? unicodeXe
             ? NativeSelectedEntryContract.ValidateEntry(main.RelativePath, NativeUnicodeCompilerContract.Profile, NativeCompilerEngine.XeLaTeX)
             : NativeSelectedEntryContract.ValidateEntry(main.RelativePath)
