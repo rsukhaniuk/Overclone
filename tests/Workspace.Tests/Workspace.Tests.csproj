@@ -17,6 +17,7 @@
     <EmbeddedResource Include="Fixtures/GeometryPackage/*.json" />
     <EmbeddedResource Include="Fixtures/SourceReferences/*.json" />
     <EmbeddedResource Include="Fixtures/RenderedSections/*.json" />
+    <EmbeddedResource Include="Fixtures/RenderedReview/*.json" />
     <EmbeddedResource Include="Fixtures/ThesisSource/*.json" />
     <EmbeddedResource Include="../CompilerCompatibilityFixtures/public-kpi-gap.json" Link="Fixtures/CompilerThesis/public-kpi-gap.json" />
     <EmbeddedResource Include="Fixtures/SourceMapGeometry/**/*" />

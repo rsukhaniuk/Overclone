@@ -3,6 +3,7 @@ use wasm_bindgen::prelude::*;
 pub mod analysis;
 pub mod authoring;
 pub mod rendered_extent;
+pub mod rendered_review;
 pub mod thesis_catalog;
 
 /// Counts words separated by ASCII whitespace, matching the C++ example.
@@ -44,6 +45,13 @@ pub fn authoring_assist(metadata_json: &str, packed_bytes: &[u8]) -> String {
 #[wasm_bindgen]
 pub fn evaluate_rendered_extent(request_json: &str) -> String {
     rendered_extent::evaluate(request_json)
+}
+
+/// Bounded observations over measured PDF facts. The caller authenticates facts
+/// and revision authority; unsupported measurements remain explicit.
+#[wasm_bindgen]
+pub fn evaluate_rendered_review(request_json: &str, facts_json: &str) -> String {
+    rendered_review::evaluate(request_json, facts_json)
 }
 
 #[cfg(test)]
