@@ -1,0 +1,868 @@
+{
+  "facts": {
+    "documentSha256": "1853f090cb5c39915abc5b41cbd15b863a71a563ed777cd33a2c23b8f083b67f",
+    "pages": [
+      {
+        "capabilities": {
+          "coordinateSpace": "pdf-raw-unrotated-bottom-left",
+          "glyphInk": "unsupported",
+          "lineGrouping": "unsupported",
+          "maxCharacters": 100000,
+          "nominalSizeMethod": "pdfium-font-size",
+          "nominalSizeUnit": "raw-user-units",
+          "physicalScale": "available",
+          "schemaVersion": 1,
+          "textStyle": "indeterminate"
+        },
+        "facts": {
+          "characters": [
+            {
+              "advance": null,
+              "fontFlags": 524320,
+              "fontName": "SyntheticInk",
+              "index": 0,
+              "inkBox": null,
+              "inkStatus": "unsupported",
+              "matrix": [
+                1,
+                0,
+                0,
+                1,
+                10.0,
+                20
+              ],
+              "nominalSize": 12,
+              "origin": [
+                10.0,
+                20
+              ],
+              "renderMode": 0,
+              "styleStatus": "indeterminate",
+              "unicode": 49
+            },
+            {
+              "advance": null,
+              "fontFlags": 524320,
+              "fontName": "SyntheticInk",
+              "index": 1,
+              "inkBox": null,
+              "inkStatus": "unsupported",
+              "matrix": [
+                1,
+                0,
+                0,
+                1,
+                18.0,
+                20
+              ],
+              "nominalSize": 12,
+              "origin": [
+                18.0,
+                20
+              ],
+              "renderMode": 0,
+              "styleStatus": "indeterminate",
+              "unicode": 46
+            },
+            {
+              "advance": null,
+              "fontFlags": 524320,
+              "fontName": "SyntheticInk",
+              "index": 2,
+              "inkBox": null,
+              "inkStatus": "unsupported",
+              "matrix": [
+                1,
+                0,
+                0,
+                1,
+                26.0,
+                20
+              ],
+              "nominalSize": 12,
+              "origin": [
+                26.0,
+                20
+              ],
+              "renderMode": 0,
+              "styleStatus": "indeterminate",
+              "unicode": 49
+            },
+            {
+              "advance": null,
+              "fontFlags": 524320,
+              "fontName": "SyntheticInk",
+              "index": 3,
+              "inkBox": null,
+              "inkStatus": "unsupported",
+              "matrix": [
+                1,
+                0,
+                0,
+                1,
+                34.0,
+                20
+              ],
+              "nominalSize": 12,
+              "origin": [
+                34.0,
+                20
+              ],
+              "renderMode": 0,
+              "styleStatus": "indeterminate",
+              "unicode": 32
+            },
+            {
+              "advance": null,
+              "fontFlags": 524320,
+              "fontName": "SyntheticInk",
+              "index": 4,
+              "inkBox": null,
+              "inkStatus": "unsupported",
+              "matrix": [
+                1,
+                0,
+                0,
+                1,
+                42.0,
+                20
+              ],
+              "nominalSize": 12,
+              "origin": [
+                42.0,
+                20
+              ],
+              "renderMode": 0,
+              "styleStatus": "indeterminate",
+              "unicode": 1031
+            },
+            {
+              "advance": null,
+              "fontFlags": 524320,
+              "fontName": "SyntheticInk",
+              "index": 5,
+              "inkBox": null,
+              "inkStatus": "unsupported",
+              "matrix": [
+                1,
+                0,
+                0,
+                1,
+                50.0,
+                20
+              ],
+              "nominalSize": 12,
+              "origin": [
+                50.0,
+                20
+              ],
+              "renderMode": 0,
+              "styleStatus": "indeterminate",
+              "unicode": 1078
+            },
+            {
+              "advance": null,
+              "fontFlags": 524320,
+              "fontName": "SyntheticInk",
+              "index": 6,
+              "inkBox": null,
+              "inkStatus": "unsupported",
+              "matrix": [
+                1,
+                0,
+                0,
+                1,
+                58.0,
+                20
+              ],
+              "nominalSize": 12,
+              "origin": [
+                58.0,
+                20
+              ],
+              "renderMode": 0,
+              "styleStatus": "indeterminate",
+              "unicode": 1072
+            },
+            {
+              "advance": null,
+              "fontFlags": 524320,
+              "fontName": "SyntheticInk",
+              "index": 7,
+              "inkBox": null,
+              "inkStatus": "unsupported",
+              "matrix": [
+                1,
+                0,
+                0,
+                1,
+                66.0,
+                20
+              ],
+              "nominalSize": 12,
+              "origin": [
+                66.0,
+                20
+              ],
+              "renderMode": 0,
+              "styleStatus": "indeterminate",
+              "unicode": 32
+            },
+            {
+              "advance": null,
+              "fontFlags": 524320,
+              "fontName": "SyntheticInk",
+              "index": 8,
+              "inkBox": null,
+              "inkStatus": "unsupported",
+              "matrix": [
+                1,
+                0,
+                0,
+                1,
+                74.0,
+                20
+              ],
+              "nominalSize": 12,
+              "origin": [
+                74.0,
+                20
+              ],
+              "renderMode": 0,
+              "styleStatus": "indeterminate",
+              "unicode": 1169
+            },
+            {
+              "advance": null,
+              "fontFlags": 524320,
+              "fontName": "SyntheticInk",
+              "index": 9,
+              "inkBox": null,
+              "inkStatus": "unsupported",
+              "matrix": [
+                1,
+                0,
+                0,
+                1,
+                82.0,
+                20
+              ],
+              "nominalSize": 12,
+              "origin": [
+                82.0,
+                20
+              ],
+              "renderMode": 0,
+              "styleStatus": "indeterminate",
+              "unicode": 1088
+            },
+            {
+              "advance": null,
+              "fontFlags": 524320,
+              "fontName": "SyntheticInk",
+              "index": 10,
+              "inkBox": null,
+              "inkStatus": "unsupported",
+              "matrix": [
+                1,
+                0,
+                0,
+                1,
+                90.0,
+                20
+              ],
+              "nominalSize": 12,
+              "origin": [
+                90.0,
+                20
+              ],
+              "renderMode": 0,
+              "styleStatus": "indeterminate",
+              "unicode": 1091
+            },
+            {
+              "advance": null,
+              "fontFlags": 524320,
+              "fontName": "SyntheticInk",
+              "index": 11,
+              "inkBox": null,
+              "inkStatus": "unsupported",
+              "matrix": [
+                1,
+                0,
+                0,
+                1,
+                98.0,
+                20
+              ],
+              "nominalSize": 12,
+              "origin": [
+                98.0,
+                20
+              ],
+              "renderMode": 0,
+              "styleStatus": "indeterminate",
+              "unicode": 1085
+            },
+            {
+              "advance": null,
+              "fontFlags": 524320,
+              "fontName": "SyntheticInk",
+              "index": 12,
+              "inkBox": null,
+              "inkStatus": "unsupported",
+              "matrix": [
+                1,
+                0,
+                0,
+                1,
+                106.0,
+                20
+              ],
+              "nominalSize": 12,
+              "origin": [
+                106.0,
+                20
+              ],
+              "renderMode": 0,
+              "styleStatus": "indeterminate",
+              "unicode": 1090
+            }
+          ],
+          "complete": true,
+          "crop": null,
+          "effective": [
+            0,
+            0,
+            72,
+            144
+          ],
+          "limitations": [
+            "glyph-ink-conservative-subset",
+            "effective-style-not-measured",
+            "advance-not-measured",
+            "semantic-roles-not-classified"
+          ],
+          "media": [
+            0,
+            0,
+            72,
+            144
+          ],
+          "pageCount": 1,
+          "pageIndex": 0,
+          "rotation": 0,
+          "schemaVersion": 1,
+          "userUnit": {
+            "method": "default-userunit",
+            "status": "available",
+            "value": 1
+          }
+        }
+      }
+    ],
+    "schemaVersion": 1
+  },
+  "request": {
+    "operation": "evaluateRenderedReview",
+    "payload": {
+      "annotationVersion": 2,
+      "annotations": [
+        {
+          "annotationId": 1,
+          "certainty": "confirmedObservation",
+          "characterEnd": 13,
+          "characterStart": 0,
+          "pageIndex": 0,
+          "provenance": "authorLabel",
+          "role": "headingMinor",
+          "sourceFileId": null,
+          "sourceSpan": null
+        }
+      ],
+      "captureId": "12345678-1234-1234-1234-123456789abc",
+      "compileEpoch": 3,
+      "compileRequestId": "cccccccccccccccccccccccccccccccc",
+      "factsSha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "inputDigest": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "pageCount": 1,
+      "pdfSha256": "1853f090cb5c39915abc5b41cbd15b863a71a563ed777cd33a2c23b8f083b67f",
+      "profile": {
+        "id": "knu-csc-2025-rendered-review",
+        "version": "1.0.0"
+      },
+      "requestedPages": [
+        0
+      ],
+      "workType": "masterQualification"
+    },
+    "protocolVersion": 1,
+    "requestId": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+  },
+  "response": {
+    "payload": {
+      "annotationVersion": 2,
+      "captureId": "12345678-1234-1234-1234-123456789abc",
+      "compileEpoch": 3,
+      "compileRequestId": "cccccccccccccccccccccccccccccccc",
+      "coverage": {
+        "complete": true,
+        "pagesEvaluated": 1,
+        "standardsComplete": false
+      },
+      "factsSha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "guidelineSha256": "8be4d724ac108488e6b1766322e7fd6b3646412aa2b6de12b6945f48fb380714",
+      "inputDigest": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "limitations": [
+        "finite-catalog-not-compliance-certificate",
+        "unassessed-guideline-categories"
+      ],
+      "pageCount": 1,
+      "pdfSha256": "1853f090cb5c39915abc5b41cbd15b863a71a563ed777cd33a2c23b8f083b67f",
+      "profile": {
+        "id": "knu-csc-2025-rendered-review",
+        "version": "1.0.0"
+      },
+      "requestedPages": [
+        0
+      ],
+      "results": [
+        {
+          "citation": {
+            "pdfPages": [
+              18
+            ],
+            "printedPages": [
+              18
+            ],
+            "section": "3.1"
+          },
+          "domain": "renderedObservation",
+          "evidence": [
+            {
+              "characterEnd": null,
+              "characterStart": null,
+              "expected": "A4 210 x 297; A3 297 x 420 only for necessary illustrations",
+              "measured": "25.400000000 x 50.800000000",
+              "method": "native-page-box",
+              "pageIndex": 0,
+              "rawBox": [
+                0.0,
+                0.0,
+                72.0,
+                144.0
+              ],
+              "roleProvenance": null,
+              "sourceLocation": null,
+              "uncertainty": {
+                "absoluteError": 6.055832131224292e-6,
+                "limitations": [
+                  "nominal-paper-tolerance-unspecified"
+                ],
+                "method": "pdfium-float32-roundoff-bound"
+              },
+              "unit": "mm"
+            }
+          ],
+          "limitations": [
+            "single-sided-printing-not-observable"
+          ],
+          "outcome": "indeterminate",
+          "reason": "measured-page-differs-from-nominal-paper-review-required",
+          "ruleId": "KNU-PAPER-001",
+          "ruleVersion": "1.0.0",
+          "severity": "warning",
+          "supportState": "partial"
+        },
+        {
+          "citation": {
+            "pdfPages": [
+              18
+            ],
+            "printedPages": [
+              18
+            ],
+            "section": "3.1"
+          },
+          "domain": "renderedObservation",
+          "evidence": [],
+          "limitations": [
+            "headers-and-illustrations-need-separate-roles"
+          ],
+          "outcome": "unavailable",
+          "reason": "glyph-ink-unavailable",
+          "ruleId": "KNU-MARGINS-001",
+          "ruleVersion": "1.0.0",
+          "severity": "warning",
+          "supportState": "unsupported"
+        },
+        {
+          "citation": {
+            "pdfPages": [
+              18,
+              26,
+              27
+            ],
+            "printedPages": [
+              18,
+              26,
+              27
+            ],
+            "section": "3.1;3.10;3.11"
+          },
+          "domain": "renderedObservation",
+          "evidence": [],
+          "limitations": [
+            "measurement-definition-unresolved",
+            "usual-font-is-advisory",
+            "notes-have-separate-policy"
+          ],
+          "outcome": "indeterminate",
+          "reason": "measurement-definition-unresolved",
+          "ruleId": "KNU-TYPOGRAPHY-001",
+          "ruleVersion": "1.0.0",
+          "severity": "warning",
+          "supportState": "partial"
+        },
+        {
+          "citation": {
+            "pdfPages": [
+              18
+            ],
+            "printedPages": [
+              18
+            ],
+            "section": "3.1"
+          },
+          "domain": "renderedObservation",
+          "evidence": [],
+          "limitations": [
+            "all-body-paragraphs-required-for-uniformity"
+          ],
+          "outcome": "unavailable",
+          "reason": "glyph-ink-unavailable",
+          "ruleId": "KNU-PARAGRAPH-RENDERED-001",
+          "ruleVersion": "1.0.0",
+          "severity": "warning",
+          "supportState": "unsupported"
+        },
+        {
+          "citation": {
+            "pdfPages": [
+              18,
+              19,
+              20
+            ],
+            "printedPages": [
+              18,
+              19,
+              20
+            ],
+            "section": "3.2;3.4"
+          },
+          "domain": "renderedObservation",
+          "evidence": [
+            {
+              "characterEnd": 13,
+              "characterStart": 0,
+              "expected": "literal heading case and punctuation; visual style and text alignment require proof",
+              "measured": "1.1 Їжа ґрунт",
+              "method": "annotation-scoped-native-text",
+              "observation": {
+                "asciiDigitValue": null,
+                "captionPrefix": "none",
+                "finalFullStop": false,
+                "kind": "heading",
+                "oneBasedPdfPage": 1,
+                "placement": null,
+                "placementReason": "glyph-ink-uncertainty-unavailable",
+                "relativeOrder": null,
+                "textOrder": "native-index",
+                "unicodeCase": "mixed"
+              },
+              "pageIndex": 0,
+              "rawBox": null,
+              "roleProvenance": {
+                "annotationId": 1,
+                "certainty": "confirmedObservation",
+                "provenance": "authorLabel",
+                "role": "headingMinor"
+              },
+              "sourceLocation": null,
+              "uncertainty": {
+                "absoluteError": null,
+                "limitations": [
+                  "conditional-role-scope-only",
+                  "extracted-text-not-visual-glyph-proof",
+                  "role-and-document-order-not-established",
+                  "page-centre-not-text-layout-centre"
+                ],
+                "method": "native-character-unicode"
+              },
+              "unit": "text"
+            }
+          ],
+          "limitations": [
+            "subordinate-page-start-exception",
+            "source-case-is-not-rendered-case",
+            "extracted-text-not-visual-glyph-proof",
+            "visual-style-and-text-alignment-unestablished"
+          ],
+          "outcome": "indeterminate",
+          "reason": "conditional-heading-literal",
+          "ruleId": "KNU-HEADINGS-RENDERED-001",
+          "ruleVersion": "1.0.0",
+          "severity": "warning",
+          "supportState": "partial"
+        },
+        {
+          "citation": {
+            "pdfPages": [
+              19
+            ],
+            "printedPages": [
+              19
+            ],
+            "section": "3.3"
+          },
+          "domain": "renderedObservation",
+          "evidence": [],
+          "limitations": [
+            "empty-text-does-not-prove-number-absence",
+            "extracted-text-not-visual-glyph-proof",
+            "document-numbering-and-role-unestablished"
+          ],
+          "outcome": "indeterminate",
+          "reason": "confirmed-page-number-and-title-roles-required",
+          "ruleId": "KNU-PAGINATION-001",
+          "ruleVersion": "1.0.0",
+          "severity": "warning",
+          "supportState": "partial"
+        },
+        {
+          "citation": {
+            "pdfPages": [
+              11,
+              12,
+              13,
+              14,
+              15,
+              16,
+              17
+            ],
+            "printedPages": [
+              11,
+              12,
+              13,
+              14,
+              15,
+              16,
+              17
+            ],
+            "section": "2;2.1-2.9"
+          },
+          "domain": "renderedObservation",
+          "evidence": [],
+          "limitations": [
+            "semantic-content-needs-human-review",
+            "qualification-title-extra-signatures"
+          ],
+          "outcome": "indeterminate",
+          "reason": "confirmed-source-and-rendered-structure-required",
+          "ruleId": "KNU-STRUCTURE-001",
+          "ruleVersion": "1.0.0",
+          "severity": "warning",
+          "supportState": "partial"
+        },
+        {
+          "citation": {
+            "pdfPages": [
+              12,
+              13
+            ],
+            "printedPages": [
+              12,
+              13
+            ],
+            "section": "2.2"
+          },
+          "domain": "renderedObservation",
+          "evidence": [],
+          "limitations": [
+            "usual-keyword-count-advisory",
+            "semantic-content-needs-human-review"
+          ],
+          "outcome": "indeterminate",
+          "reason": "confirmed-abstract-and-reading-order-required",
+          "ruleId": "KNU-ABSTRACT-001",
+          "ruleVersion": "1.0.0",
+          "severity": "warning",
+          "supportState": "partial"
+        },
+        {
+          "citation": {
+            "pdfPages": [
+              11
+            ],
+            "printedPages": [
+              11
+            ],
+            "section": "2"
+          },
+          "domain": "renderedObservation",
+          "evidence": [],
+          "limitations": [
+            "delegates-existing-rendered-extent"
+          ],
+          "outcome": "notApplicable",
+          "reason": "delegated-to-existing-rendered-extent-evaluation",
+          "ruleId": "KNU-LENGTH-001",
+          "ruleVersion": "1.0.0",
+          "severity": "warning",
+          "supportState": "partial"
+        },
+        {
+          "citation": {
+            "pdfPages": [
+              16,
+              17,
+              30,
+              31,
+              32,
+              50,
+              51,
+              52,
+              53,
+              54
+            ],
+            "printedPages": [
+              16,
+              17,
+              30,
+              31,
+              32,
+              50,
+              51,
+              52,
+              53,
+              54
+            ],
+            "section": "2.8;3.15;3.16;appendixD"
+          },
+          "domain": "renderedObservation",
+          "evidence": [],
+          "limitations": [
+            "end-text-placement-recommended",
+            "no-external-dstu-certification"
+          ],
+          "outcome": "indeterminate",
+          "reason": "compiled-bibliography-and-citation-order-required",
+          "ruleId": "KNU-REFERENCES-001",
+          "ruleVersion": "1.0.0",
+          "severity": "warning",
+          "supportState": "partial"
+        },
+        {
+          "citation": {
+            "pdfPages": [
+              17,
+              31,
+              32
+            ],
+            "printedPages": [
+              17,
+              31,
+              32
+            ],
+            "section": "2.9;3.16"
+          },
+          "domain": "renderedObservation",
+          "evidence": [],
+          "limitations": [
+            "optional-appendix-absence-not-failure",
+            "copied-document-cover-exception"
+          ],
+          "outcome": "indeterminate",
+          "reason": "appendix-presence-and-designations-unknown",
+          "ruleId": "KNU-APPENDIX-001",
+          "ruleVersion": "1.0.0",
+          "severity": "warning",
+          "supportState": "partial"
+        },
+        {
+          "citation": {
+            "pdfPages": [
+              21,
+              22,
+              23
+            ],
+            "printedPages": [
+              21,
+              22,
+              23
+            ],
+            "section": "3.7;3.8"
+          },
+          "domain": "renderedObservation",
+          "evidence": [],
+          "limitations": [
+            "continued-figure-caption-exception",
+            "semantic-caption-content-needs-human-review",
+            "illustration-geometry-unavailable",
+            "extracted-text-not-visual-glyph-proof"
+          ],
+          "outcome": "indeterminate",
+          "reason": "confirmed-caption-and-illustration-roles-required",
+          "ruleId": "KNU-CAPTION-RENDERED-001",
+          "ruleVersion": "1.0.0",
+          "severity": "warning",
+          "supportState": "partial"
+        },
+        {
+          "citation": {
+            "pdfPages": [
+              16,
+              17,
+              30,
+              31,
+              32,
+              50,
+              51,
+              52,
+              53,
+              54
+            ],
+            "printedPages": [
+              16,
+              17,
+              30,
+              31,
+              32,
+              50,
+              51,
+              52,
+              53,
+              54
+            ],
+            "section": "2.8;3.15;3.16;appendixD"
+          },
+          "domain": "renderedObservation",
+          "evidence": [],
+          "limitations": [
+            "delegates-reference-predicates"
+          ],
+          "outcome": "notApplicable",
+          "reason": "delegated-to-reference-predicates",
+          "ruleId": "KNU-BIBLIOGRAPHY-RENDERED-001",
+          "ruleVersion": "1.0.0",
+          "severity": "warning",
+          "supportState": "partial"
+        }
+      ],
+      "workType": "masterQualification"
+    },
+    "protocolVersion": 1,
+    "requestId": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "status": "completed"
+  }
+}

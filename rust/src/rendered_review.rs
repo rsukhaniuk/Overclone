@@ -4,11 +4,14 @@
 pub mod catalog;
 mod classify;
 mod dto;
+mod roles;
 mod rules;
 #[cfg(test)]
 mod tests;
 #[cfg(test)]
 mod tests_metrics;
+#[cfg(test)]
+mod tests_roles;
 
 use dto::*;
 use serde_json::{json, Value};

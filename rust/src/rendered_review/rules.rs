@@ -1,4 +1,4 @@
-use super::{catalog, classify, dto::*};
+use super::{catalog, classify, dto::*, roles};
 use serde_json::{json, Value};
 
 fn metrics(
@@ -146,7 +146,6 @@ pub fn evaluate(request: &Request, batch: &FactBatch) -> Vec<Value> {
     for descriptor in catalog::RULES {
         for page in &batch.pages {
             let f = &page.facts;
-            let c = &page.capabilities;
             let mut evidence = Vec::new();
             let (support, outcome, reason) = match descriptor.rule_id {
                 "KNU-PAPER-001" => {
@@ -238,14 +237,11 @@ pub fn evaluate(request: &Request, batch: &FactBatch) -> Vec<Value> {
                     evidence = measured.3;
                     (measured.0, measured.1, measured.2)
                 }
-                "KNU-HEADINGS-RENDERED-001" if c.text_style != "available" => {
-                    ("unsupported", "unavailable", "effective-style-unavailable")
+                "KNU-HEADINGS-RENDERED-001" => {
+                    let observed = roles::evaluate(request, page, descriptor.rule_id);
+                    evidence = observed.3;
+                    (observed.0, observed.1, observed.2)
                 }
-                "KNU-HEADINGS-RENDERED-001" => (
-                    "partial",
-                    "indeterminate",
-                    "confirmed-heading-neighbors-required",
-                ),
                 "KNU-LENGTH-001" => (
                     "partial",
                     "notApplicable",
@@ -256,11 +252,11 @@ pub fn evaluate(request: &Request, batch: &FactBatch) -> Vec<Value> {
                     "notApplicable",
                     "delegated-to-reference-predicates",
                 ),
-                "KNU-PAGINATION-001" => (
-                    "partial",
-                    "indeterminate",
-                    "confirmed-page-number-and-title-roles-required",
-                ),
+                "KNU-PAGINATION-001" | "KNU-CAPTION-RENDERED-001" => {
+                    let observed = roles::evaluate(request, page, descriptor.rule_id);
+                    evidence = observed.3;
+                    (observed.0, observed.1, observed.2)
+                }
                 "KNU-STRUCTURE-001" => (
                     "partial",
                     "indeterminate",
