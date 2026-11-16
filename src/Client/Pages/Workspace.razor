@@ -474,6 +474,8 @@ else
                 SourceMatch="@CurrentSyncMatch" SourceMatchPdfHash="@(_syncResult?.Output.OutputHash?.Hex)"
                 SourceMatchTransform="@CurrentSyncTransform" SourceMatchUsesNativeTransform="@(_syncResult?.Geometry is not null)" />
 
+            <RenderedReviewPanel />
+
         </div>
 
         <div class="secondary-tools" aria-label="Project tools">

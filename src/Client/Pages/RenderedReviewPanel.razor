@@ -1,0 +1,331 @@
+@using System.Globalization
+@using System.Text.Json
+@using Client.Analysis.RenderedExtent
+@using Client.Analysis.RenderedReview
+@using Client.Compilation.Presentation
+@using Client.Workspace
+@implements IDisposable
+@inject WorkspaceCoordinator Workspace
+@inject CompileWorkspaceSession Compile
+@inject IRenderedReviewEvaluator Evaluator
+
+<details class="tool-disclosure" data-testid="rendered-review-panel">
+    <summary>Rendered layout review</summary>
+    <div class="tool-content">
+        <p>Inspect measured pages of the current compiled PDF locally. KNU Faculty of Computer Science and Cybernetics, 2025. Coverage is partial: unknown or unavailable checks remain open, and this review does not certify overall compliance.</p>
+        <label>Work type
+            <select data-testid="rendered-review-work-type" value="@_controller.WorkType" @onchange="WorkTypeChanged">
+                <option value="unspecified">Unspecified — applicability may be unknown</option>
+                <option value="coursework">Coursework</option>
+                <option value="bachelorQualification">Bachelor qualification</option>
+                <option value="masterQualification">Master qualification</option>
+            </select>
+        </label>
+
+        <details data-testid="rendered-review-labels">
+            <summary>Identify page roles for this PDF</summary>
+            <p>These are your labels, not verified structural classifications. They apply only to the compiled PDF you confirm them against. Reconfirm after recompiling or reopening. Source text is never changed.</p>
+            <fieldset disabled="@(!CanBindLabels)">
+                <legend>Add a page role</legend>
+                <label>Role
+                    <select data-testid="rendered-role" @bind="_role" @bind:after="DraftChanged">
+                        @foreach (var role in Roles) { <option value="@role.Id">@role.Label</option> }
+                    </select>
+                </label>
+                <label>First PDF page (one-based)
+                    <input data-testid="rendered-role-first" inputmode="numeric" maxlength="3" @bind="_firstPage" @bind:event="oninput" @bind:after="DraftChanged" />
+                </label>
+                <label>Last PDF page, inclusive (optional)
+                    <input data-testid="rendered-role-last" inputmode="numeric" maxlength="3" @bind="_lastPage" @bind:event="oninput" @bind:after="DraftChanged" />
+                </label>
+                <label>Scope
+                    <select data-testid="rendered-role-scope" @bind="_rangeKind" @bind:after="DraftChanged">
+                        <option value="page">Whole page or page range</option>
+                        <option value="characters">Character range on one PDF page</option>
+                    </select>
+                </label>
+                @if (_rangeKind == "characters")
+                {
+                    <p>Use the PDF inspector's zero-based character indexes, with an exclusive end. Source-editor positions and UTF-16 offsets are different. Leave the last-page field empty for this scope.</p>
+                    <label>First native character index
+                        <input data-testid="rendered-role-start" inputmode="numeric" maxlength="6" @bind="_characterStart" @bind:event="oninput" @bind:after="DraftChanged" />
+                    </label>
+                    <label>Exclusive last native character index
+                        <input data-testid="rendered-role-end" inputmode="numeric" maxlength="6" @bind="_characterEnd" @bind:event="oninput" @bind:after="DraftChanged" />
+                    </label>
+                }
+                <label>Certainty
+                    <select data-testid="rendered-role-certainty" @bind="_certainty" @bind:after="DraftChanged">
+                        <option value="tentative">Tentative label</option>
+                        <option value="confirmedObservation">I have confirmed this role in the PDF</option>
+                    </select>
+                </label>
+                <button type="button" data-testid="rendered-role-add" @onclick="AddLabels" disabled="@(_controller.Annotations.Count >= LabelLimit || !_controller.AnnotationsCurrent)">Add and confirm for the current PDF</button>
+                <button type="button" data-testid="rendered-role-discard" @onclick="DiscardDraft" disabled="@(!_draftChanged)">Discard pending label input</button>
+            </fieldset>
+            @if (_draftChanged)
+            { <p role="status" data-testid="rendered-role-pending">Label input has not been confirmed. Add it or discard it before checking; any previous review is shown as stale.</p> }
+            @if (_controller.Annotations.Count == 0)
+            { <p data-testid="rendered-role-empty">No page roles confirmed. Role-dependent checks remain unknown.</p> }
+            else
+            {
+                <p>@_controller.Annotations.Count of @LabelLimit available labels; annotation version @_controller.AnnotationVersion.</p>
+                <ul data-testid="rendered-role-list">
+                    @foreach (var annotation in _controller.Annotations.Skip(_labelPage * LabelPageSize).Take(LabelPageSize))
+                    {
+                        <li @key="annotation.AnnotationId" data-testid="rendered-role-row" data-annotation-id="@annotation.AnnotationId">
+                            Page @(annotation.PageIndex + 1): @RoleLabel(annotation.Role), @AnnotationRange(annotation), @CertaintyLabel(annotation.Certainty).
+                            <button type="button" @onclick="() => RemoveLabel(annotation.AnnotationId)" disabled="@(!CanBindLabels || !_controller.AnnotationsCurrent)" aria-label="@($"Remove {RoleLabel(annotation.Role)} label on page {annotation.PageIndex + 1}")">Remove label</button>
+                        </li>
+                    }
+                </ul>
+                @if (_controller.Annotations.Count > LabelPageSize)
+                {
+                    <nav aria-label="Page role labels">
+                        <button type="button" @onclick="() => MoveLabelPage(-1)" disabled="@(_labelPage == 0)">Previous labels</button>
+                        <span>Label page @(_labelPage + 1) of @PageTotal(_controller.Annotations.Count, LabelPageSize).</span>
+                        <button type="button" @onclick="() => MoveLabelPage(1)" disabled="@((_labelPage + 1) * LabelPageSize >= _controller.Annotations.Count)">Next labels</button>
+                    </nav>
+                }
+                @if (!_controller.AnnotationsCurrent)
+                { <p role="status" data-testid="rendered-role-stale">These labels belong to an earlier PDF. Review their pages before confirming them for the current compiled PDF.</p> }
+                <button type="button" data-testid="rendered-role-confirm" @onclick="ReconfirmLabels" disabled="@(!CanBindLabels || _draftChanged)">Confirm listed labels for the current PDF</button>
+                <button type="button" data-testid="rendered-role-clear" @onclick="ClearLabels" disabled="@(!CanBindLabels)">Clear confirmed labels</button>
+            }
+        </details>
+
+        <fieldset disabled="@_controller.Busy">
+            <legend>Pages to inspect</legend>
+            <label><input type="checkbox" data-testid="rendered-review-all-pages" @bind="_allPages" /> Inspect all PDF pages sequentially</label>
+            @if (!_allPages)
+            {
+                <label>First PDF page <input data-testid="rendered-review-first" inputmode="numeric" maxlength="3" @bind="_checkFirst" @bind:event="oninput" /></label>
+                <label>Last PDF page, inclusive (optional) <input data-testid="rendered-review-last" inputmode="numeric" maxlength="3" @bind="_checkLast" @bind:event="oninput" /></label>
+            }
+            <p>At most 512 pages per review. If collection stops early, explicitly check the remaining pages; uninspected pages do not pass.</p>
+        </fieldset>
+        <button type="button" data-testid="rendered-review-check" @onclick="Check" disabled="@(!_controller.CanCheck || _draftChanged)">Check current compiled PDF</button>
+        <button type="button" data-testid="rendered-review-cancel" @onclick="Cancel" disabled="@(!_controller.CanCancel)">Cancel rendered review</button>
+        <p role="status" data-testid="rendered-review-status" data-busy="@_controller.Busy.ToString().ToLowerInvariant()">@_controller.Notice</p>
+        @if (_inputError is not null) { <p role="alert" data-testid="rendered-review-input-error">@_inputError</p> }
+        @if (_controller.Busy && !_controller.CanCancel)
+        { <p>Finishing the active inspection or evaluation. Another review starts after it settles.</p> }
+
+        @if (_shown is { } report)
+        {
+            <section aria-label="Measured rendered observations" data-testid="rendered-review-report" data-current="@ShownCurrent.ToString().ToLowerInvariant()"
+                     data-complete="@report.Complete.ToString().ToLowerInvariant()" data-pdf-sha256="@report.Evidence.Compilation.PdfSha256"
+                     data-annotation-version="@report.Evidence.AnnotationVersion">
+                <h3>Measured observations — partial standards coverage</h3>
+                @if (!ShownCurrent) { <p role="status" data-testid="rendered-review-stale">Previous review — stale. PDF, source, work type or labels changed. Check the current compiled PDF again.</p> }
+                <p data-testid="rendered-review-coverage">Inspected @report.EvaluatedPages of @report.RequestedPages requested pages. @(report.Complete ? "The requested page collection is complete." : "Page coverage is incomplete.") Overall compliance is not assessed.</p>
+                <p>Work type for these observations: @WorkTypeLabel(_shownWorkType).</p>
+                @if (report.Results.Count == 0)
+                { <p>No rule observations were returned. No checks have been established.</p> }
+                @foreach (var result in report.Results)
+                {
+                    <article data-testid="rendered-review-rule" data-rule-id="@result.RuleId" data-outcome="@result.Outcome" data-support="@result.SupportState">
+                        <h4>@result.RuleId — @RuleLabel(result.RuleId)</h4>
+                        <p>Observation: @OutcomeLabel(result.Outcome). Support: @result.SupportState. Severity: @result.Severity.</p>
+                        <p data-testid="rendered-review-reason">@result.Reason.Replace('-', ' ')</p>
+                        <p><a href="@RenderedExtentContract.SourceUrl" target="_blank" rel="noopener noreferrer">KNU CSC 2025, @CitationLabel(result.Citation)</a></p>
+                        @if (result.Evidence.Count > 0)
+                        {
+                            <ul aria-label="@($"Measured evidence for {result.RuleId}")">
+                                @foreach (var evidence in VisibleEvidence(result))
+                                {
+                                    <li data-testid="rendered-review-measurement">
+                                        @if (EvidencePage(evidence) is { } page)
+                                        {
+                                            <span>PDF page @(page + 1). </span>
+                                            <button type="button" @onclick="() => ShowPage(page)" disabled="@(!CanShowPage(page))">Show page @(page + 1) in PDF preview</button>
+                                        }
+                                        <p>Measured: @JsonText(evidence, "measured"). Expected observation: @JsonText(evidence, "expected"). Unit: @JsonText(evidence, "unit"). Method: @JsonText(evidence, "method").</p>
+                                        <details><summary>Exact measurement evidence</summary><pre style="white-space:pre-wrap">@evidence.GetRawText()</pre></details>
+                                    </li>
+                                }
+                            </ul>
+                            @if (result.Evidence.Count > EvidencePageSize)
+                            {
+                                <nav aria-label="@($"Evidence pages for {result.RuleId}")">
+                                    <button type="button" @onclick="() => MoveEvidence(result, -1)" disabled="@(EvidencePageNumber(result.RuleId) == 0)">Previous measurements</button>
+                                    <span>Measurement page @(EvidencePageNumber(result.RuleId) + 1) of @PageTotal(result.Evidence.Count, EvidencePageSize).</span>
+                                    <button type="button" @onclick="() => MoveEvidence(result, 1)" disabled="@((EvidencePageNumber(result.RuleId) + 1) * EvidencePageSize >= result.Evidence.Count)">Next measurements</button>
+                                </nav>
+                            }
+                        }
+                        else { <p>No measured page evidence establishes this category. Its reported outcome remains @(OutcomeLabel(result.Outcome).ToLowerInvariant()).</p> }
+                        @if (result.Limitations.Count > 0)
+                        { <ul aria-label="Limitations">@foreach (var limitation in result.Limitations) { <li>@limitation.Replace('-', ' ')</li> }</ul> }
+                    </article>
+                }
+                <details data-testid="rendered-review-identity"><summary>Compiled revision and measurement identity</summary>
+                    <p>PDF SHA256: @report.Evidence.Compilation.PdfSha256; @report.Evidence.Compilation.PdfBytes bytes.</p>
+                    <p>Compile request: @report.Evidence.Compilation.CompileRequestId; epoch: @report.Evidence.Compilation.CompileEpoch; capture: @report.Evidence.Compilation.CaptureId.</p>
+                    <p>Input digest: @report.Evidence.Compilation.InputDigest. Artifact digest: @report.Evidence.ContentIdentity.Digest.Hex.</p>
+                    <p>Annotation version: @report.Evidence.AnnotationVersion; profile: @RenderedReviewContract.ProfileId @RenderedReviewContract.ProfileVersion.</p>
+                    <p>Inspector loader SHA256: @report.Evidence.Compilation.Runtime.LoaderSha256; WASM SHA256: @report.Evidence.Compilation.Runtime.WasmSha256.</p>
+                    <p>@report.Evidence.Pages.Count pages have recorded inspection, facts-hash and evaluation identities. These identify the observations; they do not establish unassessed rules.</p>
+                    <ul>
+                        @foreach (var identity in report.Evidence.Pages.Skip(_identityPage * EvidencePageSize).Take(EvidencePageSize))
+                        { <li>PDF page @(identity.PageIndex + 1): inspection @identity.InspectionRequestId / epoch @identity.InspectionEpoch; facts SHA256 @identity.FactsSha256; evaluation @identity.EvaluationRequestId / epoch @identity.EvaluationEpoch.</li> }
+                    </ul>
+                    @if (report.Evidence.Pages.Count > EvidencePageSize)
+                    {
+                        <nav aria-label="Measurement identities">
+                            <button type="button" @onclick="() => MoveIdentity(-1)" disabled="@(_identityPage == 0)">Previous page identities</button>
+                            <button type="button" @onclick="() => MoveIdentity(1)" disabled="@((_identityPage + 1) * EvidencePageSize >= report.Evidence.Pages.Count)">Next page identities</button>
+                        </nav>
+                    }
+                </details>
+                <p>No source fixes, automatic edits or PDF replacement are offered by rendered review.</p>
+            </section>
+        }
+    </div>
+</details>
+
+@code {
+    [Parameter] public CompiledReviewController? Session { get; set; }
+    private CompiledReviewController _controller = default!;
+    private bool _ownsController, _disposed, _draftChanged, _allPages = true;
+    private RenderedReviewReport? _shown;
+    private Client.Workspace.Domain.ProjectId? _shownProject;
+    private Guid _shownSession;
+    private string _shownWorkType = "unspecified";
+    private string _role = "body", _firstPage = "1", _lastPage = "", _rangeKind = "page", _characterStart = "", _characterEnd = "", _certainty = "tentative";
+    private string _checkFirst = "1", _checkLast = "";
+    private string? _inputError;
+    private int _labelPage, _identityPage;
+    private readonly Dictionary<string, int> _evidencePages = new(StringComparer.Ordinal);
+    private const int LabelLimit = 512, LabelPageSize = 16, EvidencePageSize = 8;
+    private static readonly (string Id, string Label)[] Roles = [
+        ("title", "Title page"), ("abstract", "Abstract"), ("contents", "Contents"), ("introduction", "Introduction"),
+        ("body", "Main body"), ("conclusions", "Conclusions"), ("references", "References"), ("appendix", "Appendix"),
+        ("headingMajor", "Major heading"), ("headingMinor", "Minor heading"), ("paragraph", "Paragraph"),
+        ("pageNumber", "Page number"), ("figureCaption", "Figure caption"), ("tableCaption", "Table caption"),
+        ("footnote", "Footnote"), ("note", "Note"), ("illustration", "Illustration")];
+    private bool CanBindLabels => !_controller.Busy && Compile.State is { IsCurrent: true, LastSuccessful: not null };
+    private bool ShownCurrent => !_draftChanged && _shown is not null && ReferenceEquals(_controller.Report, _shown) && _controller.ReportCurrent;
+    protected override void OnInitialized()
+    {
+        _ownsController = Session is null;
+        _controller = Session ?? new(Workspace, Compile, Evaluator, action => InvokeAsync(action));
+        _shown = _controller.Report;
+        _shownProject = Workspace.Project?.Id; _shownSession = Workspace.SessionId; _shownWorkType = _controller.WorkType;
+        _controller.Changed += Changed;
+    }
+    private void DraftChanged() { _draftChanged = true; _inputError = null; _controller.Cancel(); }
+    private void DiscardDraft() { _firstPage = "1"; _lastPage = _characterStart = _characterEnd = ""; _rangeKind = "page"; _draftChanged = false; _inputError = null; }
+    private static bool Number(string text, int minimum, int maximum, out int number)
+    {
+        number = 0;
+        return text.Length is > 0 and <= 6 && text.All(char.IsAsciiDigit)
+            && int.TryParse(text, NumberStyles.None, CultureInfo.InvariantCulture, out number) && number >= minimum && number <= maximum;
+    }
+    private static bool PageRange(string first, string last, out int start, out int end)
+    {
+        start = end = 0;
+        return Number(first, 1, 512, out start) && (last.Length == 0 ? (end = start) > 0 : Number(last, start, 512, out end));
+    }
+    private void AddLabels()
+    {
+        if (!CanBindLabels) return;
+        if (!_controller.AnnotationsCurrent) { _inputError = "Confirm or clear labels from the earlier PDF before adding labels to this one."; return; }
+        if (!PageRange(_firstPage, _lastPage, out var first, out var last) || !Roles.Any(role => role.Id == _role)
+            || _certainty is not ("tentative" or "confirmedObservation") || _rangeKind is not ("page" or "characters"))
+        { _inputError = "Choose a supported role and ordered PDF pages from 1 to 512."; return; }
+        int? begin = null, end = null;
+        if (_rangeKind == "characters")
+        {
+            if (_lastPage.Length != 0 || !Number(_characterStart, 0, 99999, out var s) || !Number(_characterEnd, s + 1, 100000, out var e))
+            { _inputError = "Character labels need one PDF page, a zero-based start and a larger exclusive end within the 100000-character inspection limit."; return; }
+            begin = s; end = e;
+        }
+        if (last - first + 1 > LabelLimit - _controller.Annotations.Count)
+        { _inputError = "The combined page labels exceed the 512-label limit. Remove labels before adding this range."; return; }
+        var labels = _controller.Annotations.Concat(Enumerable.Range(first - 1, last - first + 1)
+            .Select(page => new RenderedRoleAnnotation(0, _role, page, begin, end, null, null, "authorLabel", _certainty))).ToArray();
+        long version = _controller.AnnotationVersion;
+        _controller.SelectAnnotations(labels);
+        if (_controller.AnnotationVersion == version)
+        { _inputError = "Labels were refused. Check for incompatible overlapping roles; previously confirmed labels remain unchanged."; return; }
+        _draftChanged = false; _inputError = null; _labelPage = (_controller.Annotations.Count - 1) / LabelPageSize;
+    }
+    private void RemoveLabel(long id)
+    {
+        if (!CanBindLabels || !_controller.AnnotationsCurrent) return;
+        _controller.SelectAnnotations(_controller.Annotations.Where(label => label.AnnotationId != id).ToArray());
+        _labelPage = Math.Min(_labelPage, Math.Max(0, PageTotal(_controller.Annotations.Count, LabelPageSize) - 1)); _inputError = null;
+    }
+    private void ClearLabels() { if (CanBindLabels) { _controller.SelectAnnotations([]); _labelPage = 0; _inputError = null; } }
+    private void ReconfirmLabels() { if (CanBindLabels && !_draftChanged) { _controller.SelectAnnotations(_controller.Annotations); _inputError = null; } }
+    private async Task Check()
+    {
+        if (!_controller.CanCheck || _draftChanged) return;
+        _inputError = null;
+        if (_allPages) await _controller.CheckAsync();
+        else if (PageRange(_checkFirst, _checkLast, out var start, out var end))
+            await _controller.CheckAsync(Enumerable.Range(start - 1, end - start + 1).ToArray());
+        else _inputError = "Choose ordered PDF pages from 1 to 512. No inspection was started.";
+    }
+    private void Cancel() => _controller.Cancel();
+    private void WorkTypeChanged(ChangeEventArgs args) { _controller.SelectWorkType(args.Value as string ?? ""); _inputError = null; }
+    private void Changed() { if (!_disposed) _ = Render(); }
+    private async Task Render()
+    {
+        try
+        {
+            await InvokeAsync(() =>
+            {
+                if (_disposed) return;
+                if (_shownProject != Workspace.Project?.Id || _shownSession != Workspace.SessionId)
+                { _shown = null; _identityPage = 0; _evidencePages.Clear(); }
+                if (_controller.Report is { } report && !ReferenceEquals(_shown, report))
+                {
+                    _shown = report; _shownWorkType = _controller.WorkType; _shownProject = Workspace.Project?.Id;
+                    _shownSession = Workspace.SessionId; _identityPage = 0; _evidencePages.Clear();
+                }
+                StateHasChanged();
+            }).ConfigureAwait(false);
+        }
+        catch (ObjectDisposedException) { }
+        catch (InvalidOperationException) when (_disposed) { }
+    }
+    private static int PageTotal(int count, int size) => Math.Max(1, (count + size - 1) / size);
+    private void MoveLabelPage(int delta) => _labelPage = Math.Clamp(_labelPage + delta, 0, PageTotal(_controller.Annotations.Count, LabelPageSize) - 1);
+    private int EvidencePageNumber(string rule) => _evidencePages.GetValueOrDefault(rule);
+    private IEnumerable<JsonElement> VisibleEvidence(RenderedRuleResult result) => result.Evidence.Skip(EvidencePageNumber(result.RuleId) * EvidencePageSize).Take(EvidencePageSize);
+    private void MoveEvidence(RenderedRuleResult result, int delta) => _evidencePages[result.RuleId] = Math.Clamp(EvidencePageNumber(result.RuleId) + delta, 0, PageTotal(result.Evidence.Count, EvidencePageSize) - 1);
+    private void MoveIdentity(int delta) => _identityPage = Math.Clamp(_identityPage + delta, 0, PageTotal(_shown?.Evidence.Pages.Count ?? 0, EvidencePageSize) - 1);
+    private bool CanShowPage(int page) => ShownCurrent && Compile.Preview.State.DocumentSha256 == _shown!.Evidence.Compilation.PdfSha256 && page >= 0 && page < Compile.Preview.State.PageCount;
+    private void ShowPage(int page) { if (CanShowPage(page) && !Compile.Preview.GoToPage(page + 1)) _inputError = "The PDF preview cannot show this page yet. The recorded observation remains separate."; }
+    private static int? EvidencePage(JsonElement evidence) => evidence.ValueKind == JsonValueKind.Object && evidence.TryGetProperty("pageIndex", out var page) && page.TryGetInt32(out var index) && index >= 0 ? index : null;
+    private static string JsonText(JsonElement value, string property) => value.ValueKind == JsonValueKind.Object && value.TryGetProperty(property, out var part) && part.ValueKind == JsonValueKind.String ? part.GetString() ?? "Not provided" : "Not provided";
+    private static string CitationLabel(JsonElement citation)
+    {
+        var section = JsonText(citation, "section");
+        var pages = citation.ValueKind == JsonValueKind.Object && citation.TryGetProperty("printedPages", out var values) && values.ValueKind == JsonValueKind.Array
+            ? string.Join(", ", values.EnumerateArray().Select(value => value.ToString())) : "not provided";
+        return $"§{section}; printed pages {pages}";
+    }
+    private static string RoleLabel(string role) => Roles.FirstOrDefault(item => item.Id == role).Label ?? role;
+    private static string CertaintyLabel(string certainty) => certainty == "confirmedObservation" ? "author-confirmed observation" : "tentative";
+    private static string WorkTypeLabel(string type) => type switch { "coursework" => "Coursework", "bachelorQualification" => "Bachelor qualification", "masterQualification" => "Master qualification", _ => "Unspecified" };
+    private static string AnnotationRange(RenderedRoleAnnotation value) => value.CharacterStart is null ? "whole page" : $"native characters [{value.CharacterStart}, {value.CharacterEnd})";
+    private static string OutcomeLabel(string outcome) => outcome switch { "pass" => "consistent with this measured observation", "fail" => "review needed", "indeterminate" => "unknown", "unavailable" => "unavailable", "notApplicable" => "not applicable", _ => "unassessed" };
+    private static string RuleLabel(string id) => id switch
+    {
+        "KNU-PAPER-001" => "Paper dimensions", "KNU-MARGINS-001" => "Margins", "KNU-TYPOGRAPHY-001" => "Typography",
+        "KNU-PARAGRAPH-RENDERED-001" => "Paragraph layout", "KNU-HEADINGS-RENDERED-001" => "Headings", "KNU-PAGINATION-001" => "Pagination",
+        "KNU-STRUCTURE-001" => "Document structure", "KNU-ABSTRACT-001" => "Abstract", "KNU-LENGTH-001" => "Length",
+        "KNU-REFERENCES-001" => "References", "KNU-APPENDIX-001" => "Appendices", "KNU-CAPTION-RENDERED-001" => "Captions",
+        "KNU-BIBLIOGRAPHY-RENDERED-001" => "Bibliography", _ => id
+    };
+    public void Dispose()
+    {
+        if (_disposed) return;
+        _disposed = true; _controller.Changed -= Changed;
+        if (_ownsController) _controller.Dispose();
+        _shown = null;
+    }
+}

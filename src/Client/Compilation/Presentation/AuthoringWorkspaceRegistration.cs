@@ -48,6 +48,7 @@ public static class AuthoringWorkspaceRegistration
         services.AddScoped<Client.Compilation.Provisioning.NativeRuntimeSetupFactory>();
         services.AddScoped<Client.Compilation.Provisioning.PdfRuntimeSetupFactory>();
         services.AddScoped<CompileWorkspaceSession>();
+        services.AddTransient<Client.Analysis.RenderedReview.IRenderedReviewEvaluator, Client.Analysis.RenderedReview.RustRenderedReviewEvaluator>();
         services.AddScoped<IPdfDownloadBrowser, PdfDownloadBrowser>();
         services.AddScoped<CompileHistoryUiSession>(provider =>
         {
