@@ -26,6 +26,7 @@ export function createPdfPort() {
         wasmSha256: request.wasmSha256,
         actionState: null, hasCapabilitiesApi: false, hasActionsApi: false,
         capabilitiesJson: null, actionsJson: null,
+        layoutState: null, layoutCapabilitiesJson: null, layoutFactsJson: null,
         requestId: request.requestId,
         documentSha256: request.documentSha256,
         epoch: request.epoch,
@@ -73,6 +74,8 @@ export function createPdfPort() {
     function validPdfRequest(r) {
         const b=r?.budget, positive=(v,max)=>Number.isSafeInteger(v)&&v>0&&v<=max;
         if(!r||r.version!==2||typeof r.inspectActions!=='boolean'||typeof r.raster!=='boolean'
+            ||r.inspectLayout!==undefined&&typeof r.inspectLayout!=='boolean'
+            ||r.inspectLayout&&(r.raster||r.inspectActions||r.search!==null)
             ||typeof r.requestId!=='string'||r.requestId.length<1||r.requestId.length>64
             ||!Number.isSafeInteger(r.epoch)||r.epoch<1
             ||![r.documentSha256,r.loaderSha256,r.wasmSha256].every(v=>typeof v==='string'&&/^[0-9a-f]{64}$/.test(v))

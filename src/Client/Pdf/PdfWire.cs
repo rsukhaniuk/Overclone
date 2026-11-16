@@ -19,6 +19,9 @@ public sealed class PdfWireReply
     public bool HasActionsApi { get; set; }
     public string? CapabilitiesJson { get; set; }
     public string? ActionsJson { get; set; }
+    public string? LayoutState { get; set; }
+    public string? LayoutCapabilitiesJson { get; set; }
+    public string? LayoutFactsJson { get; set; }
     public string Status { get; set; } = "";
     public int? NativeStatus { get; set; }
     public uint NativeError { get; set; }
@@ -58,12 +61,29 @@ public static class PdfWireParser
             if (status == PdfInspectionStatus.InvalidResponse) return Invalid();
             if (status != PdfInspectionStatus.Completed)
             {
-                if (wire.ActionState is not null || wire.CapabilitiesJson is not null || wire.ActionsJson is not null || wire.HasActionsApi || wire.HasCapabilitiesApi || wire.FactsJson is not null || wire.TextJson is not null || wire.SearchJson is not null || wire.Raster is not null || wire.PageCount != 0) return Invalid();
+                if (wire.LayoutState is not null || wire.LayoutCapabilitiesJson is not null || wire.LayoutFactsJson is not null || wire.ActionState is not null || wire.CapabilitiesJson is not null || wire.ActionsJson is not null || wire.HasActionsApi || wire.HasCapabilitiesApi || wire.FactsJson is not null || wire.TextJson is not null || wire.SearchJson is not null || wire.Raster is not null || wire.PageCount != 0) return Invalid();
                 if (status == PdfInspectionStatus.NativeFailure && (wire.NativeStatus is < 1 or > 8 || wire.NativeStatus is null || wire.EnteredNative != true)) return Invalid();
                 if (status != PdfInspectionStatus.NativeFailure && wire.NativeStatus is not null) return Invalid();
                 return new(status, id, request.Document.Sha256, epoch, wire.NativeStatus, wire.NativeError, wire.EnteredNative, Code: wire.Status, NativeCalls: calls, Runtime: runtime);
             }
             if (wire.NativeStatus != 0 || wire.NativeError != 0 || wire.EnteredNative != true || wire.PageCount < 1 || wire.PageCount > request.Budget.Pages || request.PageIndex >= wire.PageCount) return Invalid();
+            if (request.InspectLayout)
+            {
+                if (wire.FactsJson is not null || wire.TextJson is not null || wire.SearchJson is not null || wire.Raster is not null
+                    || wire.ActionState is not null || wire.HasActionsApi || wire.HasCapabilitiesApi || wire.CapabilitiesJson is not null || wire.ActionsJson is not null
+                    || new[] { "e1_version", "e1_open", "e1_page", "e1_reset" }.Any(s => !calls.Contains(s))) return Invalid();
+                if (wire.LayoutState == "unsupported" && wire.LayoutCapabilitiesJson is null && wire.LayoutFactsJson is null)
+                    return new(PdfInspectionStatus.Unavailable, id, request.Document.Sha256, epoch, Runtime: runtime, Code: "LayoutApiAbsent");
+                if (wire.LayoutState != "available" || wire.LayoutCapabilitiesJson is null || wire.LayoutFactsJson is null
+                    || Encoding.UTF8.GetByteCount(wire.LayoutCapabilitiesJson) + (long)Encoding.UTF8.GetByteCount(wire.LayoutFactsJson) > request.Budget.OutputBytes
+                    || !calls.Contains("e1_layout_capabilities") || !calls.Contains("e1_layout_facts")) return Invalid();
+                var (capabilities, layoutFacts) = PdfLayoutJson.Parse(wire.LayoutCapabilitiesJson, wire.LayoutFactsJson,
+                    new(request.Document, request.PageIndex, request.Budget));
+                if (layoutFacts.PageCount != wire.PageCount) return Invalid();
+                return new(PdfInspectionStatus.Completed, id, request.Document.Sha256, epoch, 0, 0, true,
+                    NativeCalls: calls, Runtime: runtime, Layout: new(capabilities, layoutFacts, ""));
+            }
+            if (wire.LayoutState is not null || wire.LayoutCapabilitiesJson is not null || wire.LayoutFactsJson is not null) return Invalid();
             string[] required = ["e1_version", "e1_open", "e1_page", "e1_facts", "e1_text", "e1_reset"];
             if (required.Any(s => !calls.Contains(s)) || request.Search is not null && !calls.Contains("e1_search") || request.Raster && !calls.Contains("e1_raster")) return Invalid();
             long total = wire.Raster?.Length ?? 0;

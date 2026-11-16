@@ -33,17 +33,19 @@ public sealed record PdfInspectionBudget(int InputBytes = 8388608, int Pages = 3
 public sealed class PdfInspectRequest
 {
     public PdfInspectRequest(PdfDocument document, int pageIndex, PdfInspectionBudget budget, string? search = null,
-        bool raster = true, int rasterWidth = 240, int rasterHeight = 340, bool inspectActions = false)
-    { Document = document; PageIndex = pageIndex; Budget = budget; Search = search; Raster = raster; RasterWidth = rasterWidth; RasterHeight = rasterHeight; InspectActions = inspectActions; }
+        bool raster = true, int rasterWidth = 240, int rasterHeight = 340, bool inspectActions = false, bool inspectLayout = false)
+    { Document = document; PageIndex = pageIndex; Budget = budget; Search = search; Raster = raster; RasterWidth = rasterWidth; RasterHeight = rasterHeight; InspectActions = inspectActions; InspectLayout = inspectLayout; }
     public PdfDocument Document { get; }
     public int PageIndex { get; }
     public PdfInspectionBudget Budget { get; }
     public string? Search { get; }
     public bool Raster { get; }
     public bool InspectActions { get; }
+    public bool InspectLayout { get; }
     public int RasterWidth { get; }
     public int RasterHeight { get; }
     public bool IsValid => Document is not null && Budget is not null && Budget.IsValid && Document.Length <= Budget.InputBytes
+        && (!InspectLayout || !Raster && !InspectActions && Search is null)
         && PageIndex >= 0 && PageIndex < Budget.Pages && RasterWidth is > 0 and <= 16384 && RasterHeight is > 0 and <= 16384
         && (long)RasterWidth * RasterHeight <= Budget.RasterPixels
         && (!Raster || (long)RasterWidth * RasterHeight * 4 + 16 <= Budget.OutputBytes)
@@ -123,7 +125,7 @@ public sealed class PdfPageInspection
 public sealed record PdfInspectionOutcome(PdfInspectionStatus Status, string RequestId, string DocumentSha256, long WorkerEpoch,
     int? NativeStatus = null, uint NativeError = 0, bool? EnteredNative = null, PdfPageInspection? Page = null,
     string Code = "", IReadOnlyList<string>? NativeCalls = null,
-    PdfRuntimeIdentity? Runtime = null, PdfActionInspection? Actions = null);
+    PdfRuntimeIdentity? Runtime = null, PdfActionInspection? Actions = null, PdfLayoutInspection? Layout = null);
 
 public sealed record PdfRuntimeIdentity(string LoaderSha256, string WasmSha256);
 public enum PdfActionAvailability { NotRequested, Unsupported, Available }

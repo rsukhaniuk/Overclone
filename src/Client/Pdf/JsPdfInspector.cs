@@ -5,7 +5,7 @@ namespace Client.Pdf;
 
 // Deliberately unregistered. Caller explicitly supplies provisioning; absence does
 // not import a module, launch a worker or select/download a renderer dependency.
-public sealed class JsPdfInspector : IPdfInspector
+public sealed class JsPdfInspector : IPdfInspector, IPdfLayoutInspector
 {
     private readonly IJSRuntime _js;
     private readonly IPdfRuntimeProvider _runtime;
@@ -20,6 +20,15 @@ public sealed class JsPdfInspector : IPdfInspector
     private int _busy;
     private long _sequence;
     public JsPdfInspector(IJSRuntime js, IPdfRuntimeProvider runtime) { _js = js; _runtime = runtime; }
+
+    public async Task<PdfLayoutOutcome> InspectLayoutAsync(PdfLayoutRequest request, CancellationToken cancellationToken = default)
+    {
+        var result = await InspectAsync(request is { IsValid: true }
+            ? new PdfInspectRequest(request.Document, request.PageIndex, request.Budget, raster: false,
+                rasterWidth: 1, rasterHeight: 1, inspectLayout: true) : null!, cancellationToken).ConfigureAwait(false);
+        return new(result.Status, result.RequestId, result.DocumentSha256, result.WorkerEpoch, result.Runtime,
+            result.Layout?.Capabilities, result.Layout?.Facts, result.Layout?.Code ?? result.Code);
+    }
 
     public async Task<PdfInspectionOutcome> InspectAsync(PdfInspectRequest request, CancellationToken cancellationToken = default)
     {
@@ -65,6 +74,7 @@ public sealed class JsPdfInspector : IPdfInspector
             {
                 version = 2,
                 inspectActions = request.InspectActions,
+                inspectLayout = request.InspectLayout,
                 requestId = id,
                 documentSha256 = sha,
                 epoch,

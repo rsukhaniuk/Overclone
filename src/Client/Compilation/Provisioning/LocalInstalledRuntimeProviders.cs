@@ -13,6 +13,8 @@ public sealed class LocalInstalledRuntimeProviders : INativeRuntimeProvider, IPd
 {
     public const string PdfLoaderHash = "040bdfac50656b3993f622614b73feaaba31d8253d077ff50f925f316c2f5f6b";
     public const string PdfWasmHash = "1637c1a7798cab443334e559045d88f33864d89e0ff02eeb57b3da4f08f37c20";
+    public const string LayoutPdfLoaderHash = "968aae4935523f528e2314c4dbd831b2dd326ac8d3de3444fd033b73463b0225";
+    public const string LayoutPdfWasmHash = "463b434e64eeb265af97d974d81d05e11cc683df6095727d6ec5c4e6bf3717bc";
     private readonly RuntimeAssetStore _compilerStore, _pdfStore;
     private readonly ILocalRuntimeSelectionStore _compilerSelection;
     private readonly IPdfRuntimeSelectionStore _pdfSelection;
@@ -73,8 +75,12 @@ public sealed class LocalInstalledRuntimeProviders : INativeRuntimeProvider, IPd
         finally { await _pdfStore.WhenSettled.ConfigureAwait(false); }
     }, PdfFailure, token);
     private static bool TrustedPdf(PdfResourceInstallation selection) => selection.Resources.Length == 2
-        && selection.Resources.Any(r => r.Role == "loader" && r.Name == "e1.js" && r.Length == 13562 && r.Sha256 == PdfLoaderHash)
-        && selection.Resources.Any(r => r.Role == "wasm" && r.Name == "e1.wasm" && r.Length == 3434939 && r.Sha256 == PdfWasmHash);
+        && (Pair(selection, 13562, PdfLoaderHash, 3434939, PdfWasmHash)
+            || Pair(selection, 14103, LayoutPdfLoaderHash, 3698843, LayoutPdfWasmHash));
+
+    private static bool Pair(PdfResourceInstallation selection, int loaderLength, string loaderHash, int wasmLength, string wasmHash) =>
+        selection.Resources.Any(r => r.Role == "loader" && r.Name == "e1.js" && r.Length == loaderLength && r.Sha256 == loaderHash)
+        && selection.Resources.Any(r => r.Role == "wasm" && r.Name == "e1.wasm" && r.Length == wasmLength && r.Sha256 == wasmHash);
     private async Task<T> RunAsync<T>(NativeForeignOperations operations, Func<CancellationToken, Task<T>> read,
         Func<RuntimeAssetStatus, T> failure, CancellationToken caller)
     {
@@ -139,7 +145,7 @@ public sealed class LocalInstalledRuntimeProviders : INativeRuntimeProvider, IPd
 
 /// <summary>One app-lifetime inspector, borrowed by project preview controllers. Status probe is
 /// per admitted inspection; neither a cached package nor a positive readiness flag.</summary>
-internal sealed class LocalPdfInspector : IPdfInspector
+internal sealed class LocalPdfInspector : IPdfInspector, IPdfLayoutInspector
 {
     private sealed class Attempt { public RuntimeAssetStatus Status = RuntimeAssetStatus.Missing; }
     private sealed class Probe(LocalInstalledRuntimeProviders resources) : IPdfRuntimeProvider
@@ -157,6 +163,14 @@ internal sealed class LocalPdfInspector : IPdfInspector
     private readonly JsPdfInspector _inner;
     private int _disposed;
     public LocalPdfInspector(IJSRuntime js, LocalInstalledRuntimeProviders resources) { _probe = new(resources); _inner = new(js, _probe); }
+    public async Task<PdfLayoutOutcome> InspectLayoutAsync(PdfLayoutRequest request, CancellationToken token = default)
+    {
+        var result = await InspectAsync(request is { IsValid: true }
+            ? new PdfInspectRequest(request.Document, request.PageIndex, request.Budget, raster: false,
+                rasterWidth: 1, rasterHeight: 1, inspectLayout: true) : null!, token).ConfigureAwait(false);
+        return new(result.Status, result.RequestId, result.DocumentSha256, result.WorkerEpoch, result.Runtime,
+            result.Layout?.Capabilities, result.Layout?.Facts, result.Layout?.Code ?? result.Code);
+    }
     public async Task<PdfInspectionOutcome> InspectAsync(PdfInspectRequest request, CancellationToken token = default)
     {
         // Per-async-call status preserves inner request/epoch/Busy/cancellation ownership.

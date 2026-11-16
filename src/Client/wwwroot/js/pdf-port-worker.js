@@ -4,6 +4,8 @@ function pdfWorkerMain() {
     function validPdfRequest(r) {
         const b=r?.budget, positive=(v,max)=>Number.isSafeInteger(v)&&v>0&&v<=max;
         if(!r||r.version!==2||typeof r.inspectActions!=='boolean'||typeof r.raster!=='boolean'
+            ||r.inspectLayout!==undefined&&typeof r.inspectLayout!=='boolean'
+            ||r.inspectLayout&&(r.raster||r.inspectActions||r.search!==null)
             ||typeof r.requestId!=='string'||r.requestId.length<1||r.requestId.length>64
             ||!Number.isSafeInteger(r.epoch)||r.epoch<1
             ||![r.documentSha256,r.loaderSha256,r.wasmSha256].every(v=>typeof v==='string'&&/^[0-9a-f]{64}$/.test(v))
@@ -44,6 +46,7 @@ function pdfWorkerMain() {
             actionState: null,
             hasCapabilitiesApi: false,
             hasActionsApi: false,
+            layoutState: null, layoutCapabilitiesJson: null, layoutFactsJson: null,
             capabilitiesJson: null,
             actionsJson: null,
             requestId,
@@ -166,6 +169,16 @@ function pdfWorkerMain() {
             checked("e1_page", document, request.pageIndex);
             page = m._e1_result();
             const decoder = new TextDecoder("utf-8", { fatal: true });
+            if (request.inspectLayout) {
+                const supported = typeof m._e1_layout_capabilities === "function" && typeof m._e1_layout_facts === "function";
+                let layoutCapabilitiesJson = null, layoutFactsJson = null;
+                if (supported) {
+                    checked("e1_layout_capabilities", page); layoutCapabilitiesJson = decoder.decode(take());
+                    checked("e1_layout_facts", page); layoutFactsJson = decoder.decode(take());
+                }
+                response = { ...envelope("completed"), layoutState: supported ? "available" : "unsupported",
+                    layoutCapabilitiesJson, layoutFactsJson, nativeStatus: 0, enteredNative: true, pageCount: pages };
+            } else {
             checked("e1_facts", page);
             const factsJson = decoder.decode(take());
             checked("e1_text", page);
@@ -214,6 +227,7 @@ function pdfWorkerMain() {
                 searchJson,
                 raster,
             };
+            }
         } catch (error) {
             response = envelope(
                 error && Number.isInteger(error.nativeStatus) && entered
