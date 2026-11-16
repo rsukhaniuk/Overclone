@@ -31,7 +31,14 @@ E1_PDFIUM_SOURCE=/build/source E1_PDFIUM_GENERATED=/build/source/out/r2/gen \
 
 The standalone overrides enable upstream's existing WASM toolchain as the
 default, select the container Python, and expose POSIX declarations required by
-OpenJPEG. `pdfium_wasm_platform.cpp` implements the missing WASM platform hook:
+OpenJPEG. `actualtext.py` applies an exact-source-hash guarded PDFium text fix:
+parsed logical `/ActualText` owner spans remain atomic during native bidi line
+ordering. Normal visual glyph text retains its previous bidi path. This prevents
+double reordering Arabic words and unwanted mirroring of logical replacement
+punctuation. It changes neither PDF/source bytes nor JavaScript text.
+`../actualtext-lineage.json` records the repaired pair and its real-PDF
+text/UTF-16/character/search/raster comparison against the accepted baseline.
+`pdfium_wasm_platform.cpp` implements the missing WASM platform hook:
 embedded/document fonts and PDFium's built-in fallbacks work; no host font search
 or filesystem access is introduced. A public-headers-only old archive cannot
 build this source-specific hook or establish physical units.
@@ -53,3 +60,19 @@ never rewrites legacy geometry or claims `FPDFText_GetCharBox` measures painted
 ink. Font flags/nominal size/matrix/render mode are observations; visual style
 and ink remain explicitly unsupported until transforms, clipping, substitution,
 Type3 and synthetic styles have a validated measurement path.
+
+Generate complete synthetic ActualText/control PDFs into a separate output
+directory, then run the literal extraction/search controls on the repaired pair:
+
+```sh
+python3 native/pdf/fixtures/actualtext/make_fixtures.py /outputs/actualtext
+node native/pdf/fixtures/actualtext/test.cjs /build/e1 /outputs/actualtext /outputs/actualtext-result.json
+```
+
+The controls retain two observed pre-existing limitations explicitly: this
+upstream revision drops supplementary Unicode from ActualText, and the literal
+emoji search control also misses in the accepted older renderer. They remain
+failing expectations in the receipt, separate from the repaired RTL controls;
+the test does not claim full Unicode/search compatibility. Normal Latin,
+Ukrainian/emoji extraction and unmarked Arabic retain identical text, UTF-16,
+character facts and raster bytes compared with the unpatched source build.

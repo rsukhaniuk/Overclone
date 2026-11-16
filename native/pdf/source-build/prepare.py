@@ -4,7 +4,10 @@ from pathlib import Path
 import shutil
 import sys
 
+from actualtext import apply as repair_actualtext
+
 source = Path(sys.argv[1]).resolve()
+repair_actualtext(source)
 def replace(relative, before, after):
     path = source / relative
     text = path.read_text()
