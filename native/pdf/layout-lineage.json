@@ -1,0 +1,230 @@
+{
+  "schemaVersion": 1,
+  "status": "source-associated-candidate-native-validated-release-browser-adoption-pending",
+  "pdfiumRevision": "6688c576fd851f4159c6fae39396da50939de110",
+  "inputManifestSha256": "c50af317b0509d9962c2136a1d6fd2126c4544e3c09965408d819f869709be5b",
+  "acquiredDecodedBytes": 134262596,
+  "abiVersion": 1,
+  "budgetBytes": 36,
+  "layoutSchemaVersion": 1,
+  "projectSources": {
+    "e1.cpp": {
+      "bytes": 18208,
+      "sha256": "5b21214f70c6124ea1d006392ca3b34db5201accdfe6149ac55c154c3fc15e08"
+    },
+    "e1.h": {
+      "bytes": 4777,
+      "sha256": "f89ec2273343aaafd37f1a62e9b6e54edf0f21554a1130d6c2f5edba811a8043"
+    },
+    "layout.inc": {
+      "bytes": 7055,
+      "sha256": "0a3523009093f17e24ccb914d37f6ffa11601b14baa0c95ede1fa65ff36470a5"
+    },
+    "actions.inc": {
+      "bytes": 7564,
+      "sha256": "c6af6a2ed0cdcb9483b592b31bb2e864ac11bd3fe405c2becdfdfd09f2df943a"
+    },
+    "build.sh": {
+      "bytes": 1851,
+      "sha256": "e85f7a68b96e4f55bedea96bab8137a0909466a0880b31f0be553bed8cd84a38"
+    },
+    "pdfium_wasm_platform.cpp": {
+      "bytes": 703,
+      "sha256": "9ab0d120909bce63be6c005e99ef34829696ccc91d2ee89556e1178ae5be1fae"
+    }
+  },
+  "candidate": {
+    "e1.js": {
+      "bytes": 14103,
+      "sha256": "968aae4935523f528e2314c4dbd831b2dd326ac8d3de3444fd033b73463b0225"
+    },
+    "e1.wasm": {
+      "bytes": 3698843,
+      "sha256": "463b434e64eeb265af97d974d81d05e11cc683df6095727d6ec5c4e6bf3717bc"
+    },
+    "e1.map": {
+      "bytes": 2067273,
+      "sha256": "933566b3c866e3a8f9186377d118030780cd83545d810a581ad0166205bee445"
+    },
+    "libpdfium.a": {
+      "bytes": 18059304,
+      "sha256": "37cbca1e3cd1bfb0bd79555469fe8cc683b033f11962e4a869b6a77e7b3d3bc9"
+    }
+  },
+  "build": {
+    "image": "emscripten/emsdk:6.0.13@sha256:fb7864e398acfda863dfcea78b8bc8adad359fa60c6a0bbeb845931de64aa68a",
+    "network": "none",
+    "memoryBytes": 6442450944,
+    "cpus": 4,
+    "v8": false,
+    "xfa": false,
+    "externalSystemFonts": false,
+    "instructions": "source-build/README.md",
+    "argsSha256": "e6dc74dcf65b249a2eb33b8572a582087ca67441c6dc8b111f336d6a4e7fee6a"
+  },
+  "nativeVerification": {
+    "script": "fixtures/layout/test.cjs",
+    "scriptSha256": "ea1c1c51a2e5a047f94704b8f0549e2e2546a708eb7d123fd1c35af80135d7dd",
+    "result": {
+      "status": "passed",
+      "cases": 23,
+      "measurement": "parsed-page-dictionary-and-native-text",
+      "glyphInk": "unsupported",
+      "textStyle": "unsupported",
+      "fixtures": [
+        {
+          "sha256": "be252d5050a2d5051ece12096811aed2b6f3c45ec9c8813d688e0e09e617c3fa",
+          "bytes": 587,
+          "outputBudget": 16777216,
+          "status": 0
+        },
+        {
+          "sha256": "c788e93a2f17244382293c2ba5b84ce1f4f020f4e825e96b4f4553ebcb536e45",
+          "bytes": 598,
+          "outputBudget": 16777216,
+          "status": 0
+        },
+        {
+          "sha256": "2ceb37aa02cd769b6e2d2bf2fb9ed1e149527999000bd5aa9167d698d7fe1535",
+          "bytes": 639,
+          "outputBudget": 16777216,
+          "status": 0
+        },
+        {
+          "sha256": "914d09c0045b2380c13c568a5b4a81c82497ce9785ce5bc1a9c75410e7696588",
+          "bytes": 598,
+          "outputBudget": 16777216,
+          "status": 0
+        },
+        {
+          "sha256": "e5e91285f089a73ae42b8f8fb1f113efaacabd4f8ff944551120bdd36e0c64ff",
+          "bytes": 598,
+          "outputBudget": 16777216,
+          "status": 0
+        },
+        {
+          "sha256": "3b1e727d5232a3e3e1e77772c0458204baaead4fd7f8f7307aa2125001620179",
+          "bytes": 599,
+          "outputBudget": 16777216,
+          "status": 0
+        },
+        {
+          "sha256": "87d60e54e065ea0e52aed2b57ecd22319260c4877be6ecc0075254a7c962d2d0",
+          "bytes": 602,
+          "outputBudget": 16777216,
+          "status": 0
+        },
+        {
+          "sha256": "175d0640665060e3e66a53df98d6506c996dbbc36fd2ffd65812947a766f5342",
+          "bytes": 600,
+          "outputBudget": 16777216,
+          "status": 0
+        },
+        {
+          "sha256": "7603fddd2112ca0290baa440dccb7f129d7785f4665b6dd491e4059279716ca8",
+          "bytes": 601,
+          "outputBudget": 16777216,
+          "status": 0
+        },
+        {
+          "sha256": "27a38369583744c5a2893fcf08c807ff1e370b39973191fc2df4428a17b1a519",
+          "bytes": 600,
+          "outputBudget": 16777216,
+          "status": 0
+        },
+        {
+          "sha256": "636ad648cc8ee51686fbc4f52b195ca99fec475eb621cdf9d5a611e9227d2731",
+          "bytes": 601,
+          "outputBudget": 16777216,
+          "status": 0
+        },
+        {
+          "sha256": "6102bd150dcb9aacd74056d0349a5a1bb1e30b239b83010efd4bd6ec0374ba8d",
+          "bytes": 623,
+          "outputBudget": 16777216,
+          "status": 0
+        },
+        {
+          "sha256": "130c1fd41d440ef4969b967881196aee626ab73ada66338a5d0dac4b2d2df2aa",
+          "bytes": 624,
+          "outputBudget": 16777216,
+          "status": 0
+        },
+        {
+          "sha256": "773b8fe3845a63e071c9ee8dc4df5417c067f549b7f732824f9dddd7c6851fe6",
+          "bytes": 625,
+          "outputBudget": 16777216,
+          "status": 0
+        },
+        {
+          "sha256": "ef4a5940278d0b1a23901dd390ee34d0cfbb507e9cc67026c0a4afc3cb932b4b",
+          "bytes": 625,
+          "outputBudget": 16777216,
+          "status": 0
+        },
+        {
+          "sha256": "388cf2b133fd6bf6a1e3cc9e69c3deb43f37de7c88ac1db260aa56d82d8ddd66",
+          "bytes": 100692,
+          "outputBudget": 16777216,
+          "status": 3
+        },
+        {
+          "sha256": "399a3d64c1839364a65275534955e9c8877fe0ae9974ac24bc4ecbce72f949f3",
+          "bytes": 790,
+          "outputBudget": 4096,
+          "status": 3
+        },
+        {
+          "sha256": "a152206e2e4af7977a0e66f35883d44b3fb3d0963e79a320d855b91576356e64",
+          "bytes": 606,
+          "outputBudget": 16777216,
+          "status": 0
+        },
+        {
+          "sha256": "612f251e8edf1382c52e189077d8b088e2b53bb9ac7959db5a817fd2c362840a",
+          "bytes": 606,
+          "outputBudget": 16777216,
+          "status": 0
+        },
+        {
+          "sha256": "da8631837c372c5c23e411b81499ce1c561729e5c413d14b1e5fdaf69532571e",
+          "bytes": 592,
+          "outputBudget": 16777216,
+          "status": 0
+        },
+        {
+          "sha256": "19b9b51bbca1067253bf8cde870448ee38a86a849dbd4a1b754cb8e6c1cf7d68",
+          "bytes": 596,
+          "outputBudget": 16777216,
+          "status": 0
+        },
+        {
+          "sha256": "7d10f233fec3cdf990d4dea4d0afbe0320f1b4876ab18d0372706ddf34e89b87",
+          "bytes": 856,
+          "outputBudget": 16777216,
+          "status": 0
+        },
+        {
+          "sha256": "be252d5050a2d5051ece12096811aed2b6f3c45ec9c8813d688e0e09e617c3fa",
+          "bytes": 587,
+          "outputBudget": 16777216,
+          "status": 0
+        }
+      ]
+    },
+    "scope": "real PDFium unit/object/raster fixtures only; not browser cancellation, thesis conformity or broad renderer compatibility"
+  },
+  "physicalScale": {
+    "method": "parsed non-inherited page dictionary via exact pinned PDFium source",
+    "missing": "default1",
+    "invalid": "indeterminate",
+    "maximum": 75000
+  },
+  "limitations": [
+    "painted-glyph-ink-unavailable",
+    "effective-text-style-unavailable",
+    "advance-unavailable",
+    "semantic-role-classification-unavailable",
+    "release-notice-inventory-and-broad-browser-acceptance-pending"
+  ]
+}

@@ -1,0 +1,198 @@
+{
+  "schemaVersion": 1,
+  "pdfiumRevision": "6688c576fd851f4159c6fae39396da50939de110",
+  "downloadCapBytes": 1073741824,
+  "workingCapBytes": 8589934592,
+  "inputs": [
+    {
+      "path": "../tools/ninja",
+      "url": "https://chrome-infra-packages.appspot.com/dl/infra/3pp/tools/ninja/linux-amd64/+/version:3@1.12.1.chromium.4",
+      "bytes": 182403,
+      "sha256": "3f1f1cc0f69a1bcfdf67fb6c2bc7419b1dd812bb8d0e79afa9bfa8a3553b5082",
+      "format": "zip"
+    },
+    {
+      "path": "../tools/gn",
+      "url": "https://chrome-infra-packages.appspot.com/dl/gn/gn/linux-amd64/+/git_revision:98f6dd2be85d0eba8f31ee3ad1def5402383cff3",
+      "bytes": 3621641,
+      "sha256": "6f05a2ad3d2d2343e2b0bda27651dc6416c6e55e194059866cde86ff0d5de3fa",
+      "format": "zip"
+    },
+    {
+      "path": ".",
+      "url": "https://pdfium.googlesource.com/pdfium/+archive/6688c576fd851f4159c6fae39396da50939de110.tar.gz",
+      "bytes": 10798729,
+      "sha256": "2401e258231ca737753d6d0a43c05f07ec9413d163ce233c89c2094e1969b635",
+      "format": "tar.gz"
+    },
+    {
+      "path": "buildtools",
+      "repository": "https://chromium.googlesource.com/chromium/src/buildtools.git",
+      "revision": "d0d4c192e3c718016b3a0c5d44ccec632bccfe96",
+      "url": "https://chromium.googlesource.com/chromium/src/buildtools.git/+archive/d0d4c192e3c718016b3a0c5d44ccec632bccfe96.tar.gz",
+      "bytes": 64176,
+      "sha256": "ed4e8f9b1fd0a3f7a84bb4ef07803764306bf16d3b4f0b84fb06043a85503bd6",
+      "format": "tar.gz"
+    },
+    {
+      "path": "third_party/brotli",
+      "repository": "https://chromium.googlesource.com/chromium/src/third_party/brotli.git",
+      "revision": "803ac71664ad62af1de39ff55e63ebbe07006fc8",
+      "url": "https://chromium.googlesource.com/chromium/src/third_party/brotli.git/+archive/803ac71664ad62af1de39ff55e63ebbe07006fc8.tar.gz",
+      "bytes": 494072,
+      "sha256": "4a836d6a10dd209d7577effda12055a0cefcb7170bac23e98c7047672cb17df3",
+      "format": "tar.gz"
+    },
+    {
+      "path": "build",
+      "repository": "https://chromium.googlesource.com/chromium/src/build.git",
+      "revision": "0c62137b8623a3fab2c6aa5d7c94f719b3aa31f6",
+      "url": "https://chromium.googlesource.com/chromium/src/build.git/+archive/0c62137b8623a3fab2c6aa5d7c94f719b3aa31f6.tar.gz",
+      "bytes": 2022674,
+      "sha256": "ed95d93b3010edea5329dd7e63ae672ed1f654001623bda4d1da8db9b96c35c5",
+      "format": "tar.gz"
+    },
+    {
+      "path": "third_party/fast_float/src",
+      "repository": "https://chromium.googlesource.com/external/github.com/fastfloat/fast_float.git",
+      "revision": "42f254836ee416ffcf2f4e6576260003ac33d48c",
+      "url": "https://chromium.googlesource.com/external/github.com/fastfloat/fast_float.git/+archive/42f254836ee416ffcf2f4e6576260003ac33d48c.tar.gz",
+      "bytes": 158175,
+      "sha256": "14d61544a11eeb88507f77e680566e1ebdd01813df7230bcff6677248e4ab83b",
+      "format": "tar.gz"
+    },
+    {
+      "path": "third_party/dragonbox/src",
+      "repository": "https://chromium.googlesource.com/external/github.com/jk-jeon/dragonbox.git",
+      "revision": "beeeef91cf6fef89a4d4ba5e95d47ca64ccb3a44",
+      "url": "https://chromium.googlesource.com/external/github.com/jk-jeon/dragonbox.git/+archive/beeeef91cf6fef89a4d4ba5e95d47ca64ccb3a44.tar.gz",
+      "bytes": 4235081,
+      "sha256": "f908928f2b6821a42456b353c28e590a3ef5597609f35348d1aa32bb18947e19",
+      "format": "tar.gz"
+    },
+    {
+      "path": "third_party/abseil-cpp",
+      "repository": "https://chromium.googlesource.com/chromium/src/third_party/abseil-cpp.git",
+      "revision": "56722f9eb6f40fb1a140caffd36e8f1f61b57aaf",
+      "url": "https://chromium.googlesource.com/chromium/src/third_party/abseil-cpp.git/+archive/56722f9eb6f40fb1a140caffd36e8f1f61b57aaf.tar.gz",
+      "bytes": 3287339,
+      "sha256": "955633890913f33dc811cf82032aeaeb9fa4bcda3a85471d89145994fe49016b",
+      "format": "tar.gz"
+    },
+    {
+      "path": "third_party/depot_tools",
+      "repository": "https://chromium.googlesource.com/chromium/tools/depot_tools.git",
+      "revision": "a03dfbf7f2d1cefa2795d81d59ca4f16c8616a8f",
+      "url": "https://chromium.googlesource.com/chromium/tools/depot_tools.git/+archive/a03dfbf7f2d1cefa2795d81d59ca4f16c8616a8f.tar.gz",
+      "bytes": 1736596,
+      "sha256": "968edfe214a6c8347c9978e3396de4d4540a5eb93de3d73f4c73b156f35975a1",
+      "format": "tar.gz"
+    },
+    {
+      "path": "third_party/freetype/src",
+      "repository": "https://chromium.googlesource.com/chromium/src/third_party/freetype2.git",
+      "revision": "25167984d2435930f9178e8d9d2ca3bdfa71a4e7",
+      "url": "https://chromium.googlesource.com/chromium/src/third_party/freetype2.git/+archive/25167984d2435930f9178e8d9d2ca3bdfa71a4e7.tar.gz",
+      "bytes": 2628070,
+      "sha256": "dae41faf8df95cfdfd5700866bfcf0121d2325b743838f85db292b4bfdd48baf",
+      "format": "tar.gz"
+    },
+    {
+      "path": "third_party/googletest/src",
+      "repository": "https://chromium.googlesource.com/external/github.com/google/googletest.git",
+      "revision": "0b656495436f57212be8700794a3d5fb14000c5f",
+      "url": "https://chromium.googlesource.com/external/github.com/google/googletest.git/+archive/0b656495436f57212be8700794a3d5fb14000c5f.tar.gz",
+      "bytes": 901370,
+      "sha256": "53a68d8cd89c5d7b1a9fd79d9f72b51e6f64b1690e978fbcb8d0ad75efb33a18",
+      "format": "tar.gz"
+    },
+    {
+      "path": "third_party/highway/src",
+      "repository": "https://chromium.googlesource.com/external/github.com/google/highway.git",
+      "revision": "2607d3b5b0113992fe84d3848859eae13b3b52c1",
+      "url": "https://chromium.googlesource.com/external/github.com/google/highway.git/+archive/2607d3b5b0113992fe84d3848859eae13b3b52c1.tar.gz",
+      "bytes": 3704488,
+      "sha256": "40d6cd6ccaea3e8d25c10b083fe7d0c4cdccf4f2f6778b7daf6f907cc1cd83e8",
+      "format": "tar.gz"
+    },
+    {
+      "path": "third_party/libjpeg_turbo",
+      "repository": "https://chromium.googlesource.com/chromium/deps/libjpeg_turbo.git",
+      "revision": "640f254ad0fa03f6b1f29f89b7dd9366f2f6e533",
+      "url": "https://chromium.googlesource.com/chromium/deps/libjpeg_turbo.git/+archive/640f254ad0fa03f6b1f29f89b7dd9366f2f6e533.tar.gz",
+      "bytes": 2624671,
+      "sha256": "a42cdf3d58df0f57ab04e588de8834e162fda99331a7d0731da32e6fe9ce1fc2",
+      "format": "tar.gz"
+    },
+    {
+      "path": "third_party/libpng",
+      "repository": "https://chromium.googlesource.com/chromium/src/third_party/libpng.git",
+      "revision": "0179a807421cf96731cdfa10008bba04fda243c1",
+      "url": "https://chromium.googlesource.com/chromium/src/third_party/libpng.git/+archive/0179a807421cf96731cdfa10008bba04fda243c1.tar.gz",
+      "bytes": 350620,
+      "sha256": "a984338cd7da868f134208584d1ec31a86684c9bead4920f15a36aa5fde9f9d8",
+      "format": "tar.gz"
+    },
+    {
+      "path": "third_party/libyuv",
+      "repository": "https://chromium.googlesource.com/libyuv/libyuv.git",
+      "revision": "1e2e3a35993609da1d89ac170b907719d555f4b3",
+      "url": "https://chromium.googlesource.com/libyuv/libyuv.git/+archive/1e2e3a35993609da1d89ac170b907719d555f4b3.tar.gz",
+      "bytes": 722833,
+      "sha256": "79ce851aea6d12e7314927af3470e53f63c5e3d15a40cfa889b3b7e0417cb5f0",
+      "format": "tar.gz"
+    },
+    {
+      "path": "third_party/simdutf",
+      "repository": "https://chromium.googlesource.com/chromium/src/third_party/simdutf",
+      "revision": "f7356eed293f8208c40b3c1b344a50bd70971983",
+      "url": "https://chromium.googlesource.com/chromium/src/third_party/simdutf/+archive/f7356eed293f8208c40b3c1b344a50bd70971983.tar.gz",
+      "bytes": 425713,
+      "sha256": "7f7540aa4dafb949a77f8a38bbc70fa920b1fb9cf781f2bbf87c0ee0fd14c4b9",
+      "format": "tar.gz"
+    },
+    {
+      "path": "tools/clang",
+      "repository": "https://chromium.googlesource.com/chromium/src/tools/clang",
+      "revision": "7ea1bdeeaf498a513c77b66667e56f6f41f9f0b3",
+      "url": "https://chromium.googlesource.com/chromium/src/tools/clang/+archive/7ea1bdeeaf498a513c77b66667e56f6f41f9f0b3.tar.gz",
+      "bytes": 728220,
+      "sha256": "356f8cf26bb3e4070a1435b6f1fc1e840190eaf2f75d171d68934e9b3032ebf9",
+      "format": "tar.gz"
+    },
+    {
+      "path": "third_party/zlib",
+      "repository": "https://chromium.googlesource.com/chromium/src/third_party/zlib.git",
+      "revision": "9f9f52c60a14e8e772fb561029ae0a121fef7609",
+      "url": "https://chromium.googlesource.com/chromium/src/third_party/zlib.git/+archive/9f9f52c60a14e8e772fb561029ae0a121fef7609.tar.gz",
+      "bytes": 1394233,
+      "sha256": "61fd54f7bed79a311ecc88c614d45fac63dd62a7d97e92e306ba5527fd2c0f51",
+      "format": "tar.gz"
+    },
+    {
+      "path": "third_party/harfbuzz/src",
+      "repository": "https://chromium.googlesource.com/external/github.com/harfbuzz/harfbuzz.git",
+      "revision": "ff36703b95013ec1d437e6038e1aa7c881275f4e",
+      "url": "https://chromium.googlesource.com/external/github.com/harfbuzz/harfbuzz.git/+archive/ff36703b95013ec1d437e6038e1aa7c881275f4e.tar.gz",
+      "bytes": 38884325,
+      "sha256": "b666e8501310003a96a724df37916bf3a09618ce81fb3cd4071db0dc886d68d2",
+      "format": "tar.gz"
+    },
+    {
+      "path": "third_party/icu",
+      "repository": "https://chromium.googlesource.com/chromium/deps/icu.git",
+      "revision": "a0ea93436c528ca316a6e698e483e258839101a5",
+      "url": "https://chromium.googlesource.com/chromium/deps/icu.git/+archive/a0ea93436c528ca316a6e698e483e258839101a5.tar.gz",
+      "bytes": 55295732,
+      "sha256": "94257bc953f475d0bf421ffffda1942356a5d4837daae2a943344042c25e3584",
+      "format": "tar.gz"
+    },
+    {
+      "path": "third_party/test_fonts/BUILD.gn",
+      "url": "https://chromium.googlesource.com/chromium/src/third_party/test_fonts.git/+/7f51783942943e965cd56facf786544ccfc07713/BUILD.gn?format=TEXT",
+      "bytes": 1435,
+      "sha256": "ebe7bc2106e64f6f7062908611724c65a69f2fd5c0c472fcb939fdbfa885e6eb",
+      "format": "base64"
+    }
+  ]
+}

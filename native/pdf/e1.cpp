@@ -171,7 +171,7 @@ API uint32_t e1_page(uint32_t h,uint32_t index){
  start();auto* d=get(h,DOC);if(!d)return fail(E1_HANDLE);if(index>=d->count)return fail(E1_ARGUMENT);
  uint32_t pages=0;for(auto& s:slots)pages+=s.kind==PAGE;if(pages>=8)return fail(E1_LIMIT);
  auto* s=fresh(PAGE,d->budget.live_handles);if(!s)return status;s->budget=d->budget;s->parent=h;s->page=FPDF_LoadPage(d->doc,static_cast<int>(index));
- if(!s->page){dispose(*s);return fail(E1_PDF);}result=handle(*s);return E1_OK;
+ if(!s->page){dispose(*s);return fail(E1_PDF);}s->count=index;result=handle(*s);return E1_OK;
 }
 API uint32_t e1_close(uint32_t h){
  start();if(auto* s=get(h,PAGE)){dispose(*s);return E1_OK;}
@@ -268,3 +268,4 @@ API void e1_reset(){
  if(initialized){FPDF_DestroyLibrary();initialized=false;}
 }
 #include "actions.inc"
+#include "layout.inc"

@@ -69,6 +69,10 @@ uint32_t e1_capabilities(uint32_t page);
 // getter integers. Only local GoTo1 or absent-action link destinations can be
 // available locally; unrelated/unknown action kinds cannot supply local pages.
 uint32_t e1_actions(uint32_t page);
+// Optional additive layout schema1; legacy ABI/budget remain unchanged. These
+// immutable outputs never reinterpret character boxes as painted glyph ink.
+uint32_t e1_layout_capabilities(uint32_t page);
+uint32_t e1_layout_facts(uint32_t page);
 void e1_reset(void);
 #ifdef __cplusplus
 }
