@@ -76,6 +76,8 @@ pub struct Capabilities {
     pub max_characters: usize,
     pub nominal_size_unit: String,
     pub nominal_size_method: String,
+    #[serde(default)]
+    pub glyph_ink_method: Option<String>,
 }
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -112,8 +114,16 @@ pub struct Character {
     pub font_flags: Option<u32>,
     pub render_mode: Option<i32>,
     pub ink_box: Option<[f64; 4]>,
+    #[serde(default)]
+    pub ink_uncertainty: Option<InkUncertainty>,
     pub ink_status: String,
     pub style_status: String,
+}
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct InkUncertainty {
+    pub absolute_error_raw: f64,
+    pub method: String,
 }
 pub fn hex(s: &str, n: usize) -> bool {
     s.len() == n
@@ -297,7 +307,7 @@ impl Page {
     fn validate(&self, index: u16, pages: u16) -> Result<(), &'static str> {
         let c = &self.capabilities;
         let f = &self.facts;
-        if c.schema_version != 1
+        if !matches!(c.schema_version, 1 | 2)
             || c.coordinate_space != "pdf-raw-unrotated-bottom-left"
             || !capability(&c.physical_scale)
             || !capability(&c.glyph_ink)
@@ -306,7 +316,11 @@ impl Page {
             || c.max_characters != 100000
             || c.nominal_size_unit != "raw-user-units"
             || c.nominal_size_method != "pdfium-font-size"
-            || f.schema_version != 1
+            || (c.schema_version == 1 && c.glyph_ink_method.is_some())
+            || (c.schema_version == 2
+                && c.glyph_ink_method.as_deref()
+                    != Some("embedded-static-font-outline-opaque-fill"))
+            || f.schema_version != c.schema_version
             || f.page_index != index
             || f.page_count != pages
             || !f.complete
@@ -335,6 +349,9 @@ impl Page {
         }
         let u = &f.user_unit;
         if !state(&u.status)
+            || c.schema_version == 2
+                && ((c.physical_scale == "available") != (u.status == "available")
+                    || u.method == "default-userunit" && u.value != Some(1.0))
             || if u.status == "available" {
                 c.physical_scale != "available"
                     || !u
@@ -351,6 +368,17 @@ impl Page {
             return Err("InvalidFacts");
         }
         for (i, ch) in f.characters.iter().enumerate() {
+            if c.schema_version == 1 && ch.ink_uncertainty.is_some()
+                || c.schema_version == 2
+                    && ((ch.ink_status == "available") != ch.ink_uncertainty.is_some())
+                || ch.ink_uncertainty.as_ref().is_some_and(|u| {
+                    !number(u.absolute_error_raw)
+                        || u.absolute_error_raw < 0.0
+                        || u.method != "native-outline-fill-witness"
+                })
+            {
+                return Err("InvalidFacts");
+            }
             if ch.index != i
                 || ch.unicode > 0x10ffff
                 || (0xd800..=0xdfff).contains(&ch.unicode)
@@ -405,6 +433,7 @@ pub fn object_shapes(request: &Value, facts: &Value) -> Result<(), &'static str>
         || !facts["pages"].as_array().is_some_and(|a| {
             a.iter().all(|p| {
                 p.is_object()
+                    && layout_version_shape(p)
                     && p["capabilities"].is_object()
                     && p["facts"].is_object()
                     && p["facts"]["userUnit"].is_object()
@@ -417,4 +446,76 @@ pub fn object_shapes(request: &Value, facts: &Value) -> Result<(), &'static str>
         return Err("InvalidInput");
     }
     Ok(())
+}
+
+// The optional serde fields distinguish versions, not absent-vs-null wire
+// fields. Require every native field explicitly, including v2 uncertainty:null.
+fn layout_version_shape(page: &Value) -> bool {
+    fn exact(value: &Value, keys: &[&str]) -> bool {
+        value
+            .as_object()
+            .is_some_and(|o| o.len() == keys.len() && keys.iter().all(|key| o.contains_key(*key)))
+    }
+    let c = &page["capabilities"];
+    let f = &page["facts"];
+    let v = c["schemaVersion"].as_u64();
+    let mut cap = vec![
+        "schemaVersion",
+        "coordinateSpace",
+        "physicalScale",
+        "glyphInk",
+        "textStyle",
+        "lineGrouping",
+        "maxCharacters",
+        "nominalSizeUnit",
+        "nominalSizeMethod",
+    ];
+    let mut character = vec![
+        "index",
+        "unicode",
+        "origin",
+        "advance",
+        "matrix",
+        "nominalSize",
+        "fontName",
+        "fontFlags",
+        "renderMode",
+        "inkBox",
+        "inkStatus",
+        "styleStatus",
+    ];
+    if v == Some(2) {
+        cap.push("glyphInkMethod");
+        character.push("inkUncertainty");
+    }
+    if !matches!(v, Some(1 | 2))
+        || !exact(c, &cap)
+        || !exact(
+            f,
+            &[
+                "schemaVersion",
+                "pageIndex",
+                "pageCount",
+                "media",
+                "crop",
+                "effective",
+                "rotation",
+                "userUnit",
+                "characters",
+                "complete",
+                "limitations",
+            ],
+        )
+        || !exact(&f["userUnit"], &["status", "value", "method"])
+    {
+        return false;
+    }
+    f["characters"].as_array().is_some_and(|chars| {
+        chars.iter().all(|ch| {
+            exact(ch, &character)
+                && (v != Some(2)
+                    || ch["inkUncertainty"].is_null()
+                    || exact(&ch["inkUncertainty"], &["absoluteErrorRaw", "method"]))
+        })
+    })
 }

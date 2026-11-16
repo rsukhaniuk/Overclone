@@ -2,10 +2,13 @@
 //! the isolated PDF worker; compile/revision authority is checked by C#.
 //! This module performs no IO, fixes, macro execution or compliance certification.
 pub mod catalog;
+mod classify;
 mod dto;
 mod rules;
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod tests_metrics;
 
 use dto::*;
 use serde_json::{json, Value};

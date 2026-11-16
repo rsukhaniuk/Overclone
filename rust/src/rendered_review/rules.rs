@@ -1,5 +1,146 @@
-use super::{catalog, dto::*};
+use super::{catalog, classify, dto::*};
 use serde_json::{json, Value};
+
+fn metrics(
+    request: &Request,
+    page: &Page,
+    paragraph: bool,
+) -> (&'static str, &'static str, &'static str, Vec<Value>) {
+    let none = |support, outcome, reason| (support, outcome, reason, Vec::new());
+    if page.capabilities.glyph_ink != "available" {
+        return none("unsupported", "unavailable", "glyph-ink-unavailable");
+    }
+    if page.capabilities.schema_version != 2 {
+        return none(
+            "unsupported",
+            "unavailable",
+            "glyph-ink-uncertainty-unavailable",
+        );
+    }
+    let f = &page.facts;
+    let Some(unit) = f
+        .user_unit
+        .value
+        .filter(|_| f.user_unit.status == "available")
+    else {
+        return none("unsupported", "unavailable", "physical-scale-unavailable");
+    };
+    let role = if paragraph { "paragraph" } else { "body" };
+    let labels: Vec<_> = request
+        .payload
+        .annotations
+        .iter()
+        .filter(|a| a.page_index == f.page_index && a.role == role)
+        .collect();
+    if labels.is_empty() {
+        return none(
+            "partial",
+            "indeterminate",
+            if paragraph {
+                "confirmed-paragraph-starts-required"
+            } else {
+                "confirmed-body-boundaries-required"
+            },
+        );
+    }
+    if labels.len() > 8 {
+        return none("partial", "indeterminate", "metric-evidence-quota");
+    }
+    let mut evidence = Vec::new();
+    for a in labels {
+        // Explicit other roles prevent treating their ink as body. A whole-page
+        // author label alone still cannot establish absent headers/other paint.
+        if request.payload.annotations.iter().any(|other| {
+            other.annotation_id != a.annotation_id
+                && other.page_index == a.page_index
+                && !matches!(other.role.as_str(), "body" | "paragraph")
+                && a.character_start.unwrap_or(0)
+                    < other.character_end.unwrap_or(f.characters.len())
+                && other.character_start.unwrap_or(0)
+                    < a.character_end.unwrap_or(f.characters.len())
+        }) {
+            return none("partial", "indeterminate", "metric-role-scope-overlap");
+        }
+        let measured = match classify::measure(page, a) {
+            Ok(v) => v,
+            Err(reason) => return none("partial", "indeterminate", reason),
+        };
+        let b = measured.bounds;
+        let classification = json!({"lineCount":measured.lines.len(),"characterCount":measured.characters,
+            "firstBaselineRaw":measured.lines[0].baseline,
+            "continuationBaselineRaw":measured.lines.get(1).map(|line|line.baseline)});
+        let provenance = json!({"annotationId":a.annotation_id,"role":a.role,"provenance":a.provenance,"certainty":a.certainty});
+        let mut add = |metric: &str,
+                       raw: f64,
+                       raw_error: f64,
+                       coordinates: &[f64],
+                       expected: f64| {
+            let error = classify::physical_error(page, raw, raw_error, coordinates);
+            evidence.push(json!({"pageIndex":f.page_index,"characterStart":a.character_start,"characterEnd":a.character_end,
+                "rawBox":b,"measured":raw*unit*25.4/72.0,"expected":expected,"unit":"mm",
+                "method":if paragraph {"classified-paragraph-start"} else {"native-glyph-ink"},"metric":metric,
+                "classification":classification,"uncertainty":{"absoluteError":error,"method":"native-outline-and-float32-bound",
+                    "limitations":["conditional-role-scope-only","other-page-paint-not-established","ink-extents-not-layout-box"]},
+                "roleProvenance":provenance,"sourceLocation":null}));
+        };
+        if paragraph {
+            let (indent, error) = match measured.indent() {
+                Ok(v) => v,
+                Err(reason) => return none("partial", "indeterminate", reason),
+            };
+            add(
+                "paragraph-indent",
+                indent,
+                error,
+                &[measured.lines[0].bounds[0], measured.lines[1].bounds[0]],
+                catalog::PARAGRAPH_INDENT_MM,
+            );
+        } else {
+            for (metric, raw, coordinates, expected) in [
+                (
+                    "margin-left",
+                    b[0] - f.media[0],
+                    [b[0], f.media[0]],
+                    catalog::MARGINS_MM[0],
+                ),
+                (
+                    "margin-top",
+                    f.media[3] - b[3],
+                    [f.media[3], b[3]],
+                    catalog::MARGINS_MM[1],
+                ),
+                (
+                    "margin-right",
+                    f.media[2] - b[2],
+                    [f.media[2], b[2]],
+                    catalog::MARGINS_MM[2],
+                ),
+                (
+                    "margin-bottom",
+                    b[1] - f.media[1],
+                    [b[1], f.media[1]],
+                    catalog::MARGINS_MM[3],
+                ),
+            ] {
+                add(metric, raw, measured.error, &coordinates, expected);
+            }
+        }
+    }
+    // No source binding or independently validated semantic classifier is part
+    // of this operation. Even a caller claiming machine provenance cannot mint
+    // normative proof; these remain conditional measured observations.
+    (
+        "partial",
+        "indeterminate",
+        if paragraph {
+            "conditional-paragraph-indent"
+        } else {
+            "conditional-body-ink-margins"
+        },
+        evidence,
+    )
+}
+
 pub fn evaluate(request: &Request, batch: &FactBatch) -> Vec<Value> {
     let mut results = Vec::new();
     for descriptor in catalog::RULES {
@@ -82,27 +223,21 @@ pub fn evaluate(request: &Request, batch: &FactBatch) -> Vec<Value> {
                         ("unsupported", "unavailable", "physical-scale-unavailable")
                     }
                 }
-                "KNU-MARGINS-001" if c.glyph_ink != "available" => {
-                    ("unsupported", "unavailable", "glyph-ink-unavailable")
+                "KNU-MARGINS-001" => {
+                    let measured = metrics(request, page, false);
+                    evidence = measured.3;
+                    (measured.0, measured.1, measured.2)
                 }
-                "KNU-MARGINS-001" => (
-                    "partial",
-                    "indeterminate",
-                    "confirmed-body-boundaries-required",
-                ),
                 "KNU-TYPOGRAPHY-001" => (
                     "partial",
                     "indeterminate",
                     "measurement-definition-unresolved",
                 ),
-                "KNU-PARAGRAPH-RENDERED-001" if c.glyph_ink != "available" => {
-                    ("unsupported", "unavailable", "glyph-ink-unavailable")
+                "KNU-PARAGRAPH-RENDERED-001" => {
+                    let measured = metrics(request, page, true);
+                    evidence = measured.3;
+                    (measured.0, measured.1, measured.2)
                 }
-                "KNU-PARAGRAPH-RENDERED-001" => (
-                    "partial",
-                    "indeterminate",
-                    "confirmed-paragraph-starts-required",
-                ),
                 "KNU-HEADINGS-RENDERED-001" if c.text_style != "available" => {
                     ("unsupported", "unavailable", "effective-style-unavailable")
                 }

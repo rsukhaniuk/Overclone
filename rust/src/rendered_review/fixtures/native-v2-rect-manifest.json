@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "kind": "genuine native v2 static-outline fixture; not diploma or browser acceptance",
+  "producerFixture": "rect",
+  "pdfSha256": "1853f090cb5c39915abc5b41cbd15b863a71a563ed777cd33a2c23b8f083b67f",
+  "factsSha256": "7e33123840008f9809cbd8a53d7cddee8851947275c0c58160fd8be195bc164b",
+  "origin": "native PDF worker source-built instrument; author: repository-owned synthetic embedded TrueType outline",
+  "limitations": [
+    "No real thesis role classification",
+    "No typography/spacing compliance",
+    "Extended multiline vectors alter fixture coordinates and are synthetic consumer tests",
+    "Private v2 producer is a fixture source only; known unrelated Arabic bidi regression prevents adoption until corrected and reaccepted."
+  ],
+  "producer": {
+    "pdfiumRevision": "6688c576",
+    "loaderBytes": 14103,
+    "loaderSha256": "968aae4935523f528e2314c4dbd831b2dd326ac8d3de3444fd033b73463b0225",
+    "wasmBytes": 3714941,
+    "wasmSha256": "5369631dae420aad15cb7aa5deaf229936b6e9452087900eeb480ceb78859e74",
+    "archiveBytes": 18059304,
+    "archiveSha256": "37cbca1e3cd1bfb0bd79555469fe8cc683b033f11962e4a869b6a77e7b3d3bc9",
+    "emsdk": "6.0.13",
+    "inkSourceSha256": "d706061d864d71b8cff20dd73f7c6a34b6a2b9fdc2920f524fe3c39c46c654f7",
+    "layoutSourceSha256": "550b952b21a3c2743fdb749b321362d486922e25cb64e129c99251c8ee890944"
+  }
+}

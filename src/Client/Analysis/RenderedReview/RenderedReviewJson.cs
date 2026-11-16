@@ -18,7 +18,10 @@ public static class RenderedReviewJson
         "measurement-definition-unresolved", "confirmed-paragraph-starts-required", "effective-style-unavailable", "confirmed-heading-neighbors-required",
         "delegated-to-existing-rendered-extent-evaluation", "delegated-to-reference-predicates", "confirmed-page-number-and-title-roles-required",
         "confirmed-source-and-rendered-structure-required", "confirmed-abstract-and-reading-order-required", "compiled-bibliography-and-citation-order-required",
-        "appendix-presence-and-designations-unknown", "confirmed-caption-and-illustration-roles-required" };
+        "appendix-presence-and-designations-unknown", "confirmed-caption-and-illustration-roles-required",
+        "glyph-ink-uncertainty-unavailable", "metric-horizontal-frame-required", "metric-classification-quota", "metric-no-measured-glyphs",
+        "metric-painted-whitespace-ambiguous", "metric-incomplete-glyph-coverage", "metric-ambiguous-line-order", "metric-ambiguous-columns", "metric-continuation-not-established",
+        "metric-evidence-quota", "metric-role-scope-overlap", "conditional-paragraph-indent", "conditional-body-ink-margins" };
     public static string Pack(RenderedReviewRequest request)
     {
         if (request is not { IsValid: true }) throw new ArgumentException("Invalid rendered review request.");
@@ -31,6 +34,12 @@ public static class RenderedReviewJson
         return result;
     }
     public static RenderedReviewObservation Parse(RenderedReviewRequest expected, string json)
+    {
+        try { return ParseCore(expected, json); }
+        catch (Exception error) when (error is InvalidOperationException or FormatException or OverflowException)
+        { throw new JsonException("Invalid rendered review response shape.", error); }
+    }
+    private static RenderedReviewObservation ParseCore(RenderedReviewRequest expected, string json)
     {
         if (!expected.IsValid || json.Length > RenderedReviewContract.ResponseMaxBytes || !PdfHashes.ValidUtf16(json)
             || Encoding.UTF8.GetByteCount(json) > RenderedReviewContract.ResponseMaxBytes) throw new JsonException();
@@ -67,10 +76,21 @@ public static class RenderedReviewJson
             var printed = citation.GetProperty("printedPages").EnumerateArray().Select(v => v.GetInt32()).ToArray();
             Require(printed.Length is > 0 and <= 16 && printed.All(i => i is >= 1 and <= 54)
                 && printed.SequenceEqual(citation.GetProperty("pdfPages").EnumerateArray().Select(v => v.GetInt32())));
-            var evidence = item.GetProperty("evidence"); Require(evidence.ValueKind == JsonValueKind.Array && evidence.GetArrayLength() <= expected.RequestedPages.Count);
+            var evidence = item.GetProperty("evidence"); Require(evidence.ValueKind == JsonValueKind.Array && evidence.GetArrayLength() <= (id is "KNU-MARGINS-001" or "KNU-PARAGRAPH-RENDERED-001" ? 32 : expected.RequestedPages.Count));
             var owned = new List<JsonElement>();
             foreach (var e in evidence.EnumerateArray()) { ValidateEvidence(e, expected, id); owned.Add(e.Clone()); }
-            Require(id == "KNU-PAPER-001" || owned.Count == 0);
+            Require(id is "KNU-PAPER-001" or "KNU-MARGINS-001" or "KNU-PARAGRAPH-RENDERED-001" || owned.Count == 0);
+            if (reason is "conditional-body-ink-margins" or "conditional-paragraph-indent") Require(owned.Count > 0);
+            if (owned.Count > 0 && id != "KNU-PAPER-001")
+            {
+                Require(support == "partial" && outcome == "indeterminate"
+                    && reason == (id == "KNU-MARGINS-001" ? "conditional-body-ink-margins" : "conditional-paragraph-indent"));
+                Require(owned.Select(e => e.GetProperty("pageIndex").GetInt32()).Distinct().Count() == 1);
+                Require(owned.Select(e => (e.GetProperty("roleProvenance").GetProperty("annotationId").GetInt64(), Text(e, "metric"))).Distinct().Count() == owned.Count);
+                if (id == "KNU-MARGINS-001")
+                    foreach (var group in owned.GroupBy(e => e.GetProperty("roleProvenance").GetProperty("annotationId").GetInt64()))
+                        Require(group.Select(e => Text(e, "metric")).Order().SequenceEqual(new[] { "margin-bottom", "margin-left", "margin-right", "margin-top" }));
+            }
             Require(outcome is not ("pass" or "fail") || id == "KNU-PAPER-001" && owned.Count > 0);
             results.Add(new(id, "1.0.0", "renderedObservation", support, outcome, reason, "warning", citation.Clone(), owned.AsReadOnly(), Codes(item.GetProperty("limitations"))));
         }
@@ -79,6 +99,7 @@ public static class RenderedReviewJson
     }
     private static void ValidateEvidence(JsonElement e, RenderedReviewRequest request, string id)
     {
+        if (id != "KNU-PAPER-001") { ValidateMetricEvidence(e, request, id); return; }
         Keys(e, "pageIndex", "characterStart", "characterEnd", "rawBox", "measured", "expected", "unit", "method", "uncertainty", "roleProvenance", "sourceLocation");
         Require(id == "KNU-PAPER-001" && request.RequestedPages.Contains(e.GetProperty("pageIndex").GetInt32())
             && e.GetProperty("characterStart").ValueKind == JsonValueKind.Null && e.GetProperty("characterEnd").ValueKind == JsonValueKind.Null
@@ -90,6 +111,41 @@ public static class RenderedReviewJson
         var u = e.GetProperty("uncertainty"); Keys(u, "absoluteError", "method", "limitations");
         double error = u.GetProperty("absoluteError").GetDouble(); Require(double.IsFinite(error) && error >= 0 && Text(u, "method") == "pdfium-float32-roundoff-bound"
             && Codes(u.GetProperty("limitations")).SequenceEqual(new[] { "nominal-paper-tolerance-unspecified" }));
+    }
+    private static void ValidateMetricEvidence(JsonElement e, RenderedReviewRequest request, string id)
+    {
+        Keys(e, "pageIndex", "characterStart", "characterEnd", "rawBox", "measured", "expected", "unit", "method", "metric", "classification", "uncertainty", "roleProvenance", "sourceLocation");
+        bool paragraph = id == "KNU-PARAGRAPH-RENDERED-001";
+        Require(paragraph || id == "KNU-MARGINS-001");
+        int page = e.GetProperty("pageIndex").GetInt32();
+        Require(request.RequestedPages.Contains(page) && Text(e, "unit") == "mm" && e.GetProperty("sourceLocation").ValueKind == JsonValueKind.Null
+            && Text(e, "method") == (paragraph ? "classified-paragraph-start" : "native-glyph-ink")
+            && (paragraph ? Text(e, "metric") == "paragraph-indent" : Text(e, "metric") is "margin-left" or "margin-top" or "margin-right" or "margin-bottom"));
+        var box = PdfWireParser.Box(e.GetProperty("rawBox"));
+        Require(new[] { box.Left, box.Bottom, box.Right, box.Top }.All(v => double.IsFinite(v) && Math.Abs(v) <= 1000000));
+        foreach (string field in new[] { "measured", "expected" })
+        { double value = e.GetProperty(field).GetDouble(); Require(double.IsFinite(value) && Math.Abs(value) <= 1000000000000); }
+        var provenance = e.GetProperty("roleProvenance"); Keys(provenance, "annotationId", "role", "provenance", "certainty");
+        var matches = request.Annotations.Where(a => a.AnnotationId == provenance.GetProperty("annotationId").GetInt64()).ToArray();
+        Require(matches.Length == 1); var annotation = matches[0];
+        Require(annotation.PageIndex == page && annotation.Role == (paragraph ? "paragraph" : "body")
+            && Text(provenance, "role") == annotation.Role && Text(provenance, "provenance") == annotation.Provenance
+            && Text(provenance, "certainty") == annotation.Certainty
+            && (annotation.Provenance is "authorLabel" or "literalSourceAndNativeMap" or "validatedNativeClassification")
+            && (annotation.Certainty is "confirmedObservation" or "tentative"));
+        foreach (var pair in new[] { ("characterStart", annotation.CharacterStart), ("characterEnd", annotation.CharacterEnd) })
+            Require(pair.Item2 is null ? e.GetProperty(pair.Item1).ValueKind == JsonValueKind.Null : e.GetProperty(pair.Item1).GetInt32() == pair.Item2);
+        var classification = e.GetProperty("classification"); Keys(classification, "lineCount", "characterCount", "firstBaselineRaw", "continuationBaselineRaw");
+        int lines = classification.GetProperty("lineCount").GetInt32(), characters = classification.GetProperty("characterCount").GetInt32();
+        Require(lines is >= 1 and <= 256 && characters is >= 1 and <= 8192 && characters >= lines);
+        double baseline = classification.GetProperty("firstBaselineRaw").GetDouble(); Require(double.IsFinite(baseline) && Math.Abs(baseline) <= 1000000);
+        var next = classification.GetProperty("continuationBaselineRaw");
+        Require(lines == 1 ? next.ValueKind == JsonValueKind.Null : next.ValueKind == JsonValueKind.Number && double.IsFinite(next.GetDouble()) && Math.Abs(next.GetDouble()) <= 1000000 && next.GetDouble() < baseline);
+        Require(!paragraph || lines >= 2 && characters >= 4);
+        var u = e.GetProperty("uncertainty"); Keys(u, "absoluteError", "method", "limitations");
+        double error = u.GetProperty("absoluteError").GetDouble();
+        Require(double.IsFinite(error) && error >= 0 && error <= 1000000000000 && Text(u, "method") == "native-outline-and-float32-bound"
+            && Codes(u.GetProperty("limitations")).SequenceEqual(new[] { "conditional-role-scope-only", "other-page-paint-not-established", "ink-extents-not-layout-box" }));
     }
     private static string[] Codes(JsonElement value)
     {
