@@ -66,7 +66,7 @@ test('fixed admitted entry, exact bytes, selected fields only, every result term
     assert.deepEqual([...worker.sent.map], [1, 2]);
     assert.equal(worker.sent.request.file, 'розділ/🙂.tex');
     assert.equal('credentials' in worker.sent.request, false); assert.equal('project' in worker.sent.request, false);
-    assert.equal('loader' in worker.sent, false); assert.equal(worker.sent.loaderUrl, 'blob:owned-0');
+    assert.deepEqual([...worker.sent.loader], [3, 4]); assert.equal(worker.sent.loaderUrl, 'blob:owned-0');
     assert.deepEqual([...new Uint8Array(await h.created[0].blob.arrayBuffer())], [3, 4]);
     h.reply(worker, 1, { nativeLog: 'UNTRUSTED' }); const result = await promise;
     assert.equal(result.status, 'native'); assert.equal('nativeLog' in result, false);
@@ -158,6 +158,7 @@ async function workerHarness(options = {}) {
         _malloc(size) { const p = pointer; pointer += size; calls.push(['malloc', size]); return p; },
         _free(p) { calls.push(['free', p]); },
         _sq_version() { return 1; },
+        _sq_area64_abi() { return options.area64 ?? 1; },
         _sq_load(p, n) { calls.push(['load', [...heap.slice(p, p + n)]]); return options.load ?? 0; },
         _sq_forward(p, n, line, column, page) { calls.push(['forward', new TextDecoder().decode(heap.slice(p, p + n)), line, column, page]); return options.query ?? 0; },
         _sq_inverse(page, h, v) { calls.push(['inverse', page, h, v]); return options.query ?? 0; },
@@ -173,7 +174,13 @@ async function workerHarness(options = {}) {
         assert.equal(Object.keys(immediate).length, 0);
     }),
         postMessage(value) { messages.push(value); } };
-    const context = vm.createContext({ self, Uint8Array, ArrayBuffer, TextEncoder,
+    const input=bytes(), origins=options.request?.queryProfile===15;
+    const pair=options.hashes??(origins
+        ? ['42f9467bb0d03dc488decab6baec00c2a78f4f524dc18a5a1b912ca55cdcaafd','974212d6edbdad96e9733d854e427883a7b16fc09202e8468baa9d3cdda410b8']
+        : ['94fb846cc1c474b2ee2c8334b060f108a6c4fc31def740022a7768767039eb33','502f46777a8864280adc110dacea40b0bd842aaa785542dc7447e4789839d485']);
+    // Explicit digest MODEL; native real-pair execution is a separate test gate.
+    const crypto={subtle:{async digest(_algorithm,value){return Uint8Array.from(Buffer.from(pair[value===input[1]?0:1],'hex')).buffer;}}};
+    const context = vm.createContext({ self, Uint8Array, ArrayBuffer, TextEncoder, crypto,
         WebAssembly: { async instantiate(binary, actualImports) {
             calls.push(['instantiate', [...binary]]); assert.equal(actualImports, imports);
             if (options.instantiateFailure) throw new Error('synthetic WASM initialization failure');
@@ -182,7 +189,7 @@ async function workerHarness(options = {}) {
         importScripts(url) { assert.equal(url, 'blob:approved'); calls.push(['import']); } });
     vm.runInContext(workerSource, context);
     const request = { version: 1, requestId: id(1), direction: 'forward', file: 'розділ/🙂.tex', line: 100, page: 0, h: 12.5, v: -5, ...options.request };
-    const event = { data: { request, loaderUrl: 'blob:approved', map: bytes()[0], wasm: bytes()[2] } };
+    const event = { data: { request, loaderUrl: 'blob:approved', map: input[0], loader: input[1], wasm: input[2] } };
     await self.onmessage(event); await self.onmessage(event); // one-use even after errors
     return { calls, messages, output, factoryOptions };
 }
@@ -220,4 +227,25 @@ for (const [options, status, native] of [
     assert.equal(result.status, status); assert.equal(result.nativeStatus, native); assert.equal(result.json, null);
     assert.equal(h.calls.filter(v => v[0] === 'close').length, 1);
     assert.equal(h.calls.filter(v => v[0] === 'malloc').length, h.calls.filter(v => v[0] === 'free').length);
+});
+
+
+test('P15 query metadata is explicit and invalid profiles never create workers', async () => {
+    const h=await harness(), p=h.port.query(meta(1,{queryProfile:15}),...bytes());
+    await tick(); assert.equal(h.workers[0].sent.request.queryProfile,15);
+    h.reply(h.workers[0]); assert.equal((await p).status,'native');
+    for(const queryProfile of [null,14,16,'15',0]) {
+        const v=await harness();assert.equal((await v.port.query(meta(1,{queryProfile}),...bytes())).status,'failed');assert.equal(v.provisions,0);
+    }
+});
+
+test('query native admission requires a complete closed pair and P15 area64 getter', async () => {
+    const good=await workerHarness({request:{queryProfile:15}});
+    assert.equal(good.messages[0].response.status,'native');
+    for(const options of [{request:{queryProfile:15},area64:0},{request:{queryProfile:15},area64:2},
+        {request:{queryProfile:15},hashes:['42f9467bb0d03dc488decab6baec00c2a78f4f524dc18a5a1b912ca55cdcaafd','502f46777a8864280adc110dacea40b0bd842aaa785542dc7447e4789839d485']},
+        {hashes:['94fb846cc1c474b2ee2c8334b060f108a6c4fc31def740022a7768767039eb33','974212d6edbdad96e9733d854e427883a7b16fc09202e8468baa9d3cdda410b8']},
+        {request:{queryProfile:14}},{request:{queryProfile:null}}]) {
+        const h=await workerHarness(options);assert.equal(h.messages[0].response.status,'failed');assert.equal(h.calls.some(x=>x[0]==='load'),false);
+    }
 });

@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 using Client.Compilation;
 using Client.Compilation.Lifecycle;
+using Client.Compilation.Native;
 using Client.Compilation.Presentation;
 using Client.Compilation.SyncTeX;
 using Client.Workspace;
@@ -24,10 +25,10 @@ internal sealed class NavigationFixture : IAsyncDisposable
     internal WorkspaceCoordinator Workspace => Storage.Workspace;
     internal FileId Main => Storage.Main;
 
-    internal static async Task<NavigationFixture> Open(bool readOnly = false, string engine = "synthetic-engine")
+    internal static async Task<NavigationFixture> Open(bool readOnly = false, string engine = "synthetic-engine", NativeRuntimeProfile? nativeProfile = null, CompilationDescriptor? bundle = null)
     {
         var f = new NavigationFixture { Storage = await CompilationTestWorkspace.Open(readOnly: readOnly) };
-        f.Config.Engine = engine;
+        f.Config.Engine = engine; f.Config.NativeProfile = nativeProfile; f.Config.Bundle = bundle;
         if (readOnly)
         {
             var revision = f.Storage.Repo.Revision!;
@@ -130,10 +131,12 @@ internal sealed class NavigationFixture : IAsyncDisposable
     {
         internal string Engine = "synthetic-engine";
         internal bool Ready = true;
+        internal NativeRuntimeProfile? NativeProfile;
+        internal CompilationDescriptor? Bundle;
         internal readonly Workers Workers = new();
         public Task<CompileWorkspaceConfigurationResult> OpenAsync() => Task.FromResult(new CompileWorkspaceConfigurationResult(
-            new(Ready, "Ready", "Contract only"), new("contract", "Contract only", CompilationTestWorkspace.Descriptor(Engine), [], [],
-                Workers, null, () => Task.FromResult(new CompileReadiness(Ready, "Ready", "Contract only")))));
+            new(Ready, "Ready", "Contract only"), new("contract", "Contract only", CompilationTestWorkspace.Descriptor(Engine), Bundle is null ? [] : [Bundle], [],
+                Workers, null, () => Task.FromResult(new CompileReadiness(Ready, "Ready", "Contract only")), NativeProfile: NativeProfile)));
     }
 
     internal sealed class Queries : ISyncTeXQuery

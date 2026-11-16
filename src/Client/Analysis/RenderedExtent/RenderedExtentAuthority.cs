@@ -46,6 +46,8 @@ internal sealed class RenderedExtentAuthority
                     .Any(engine => Output.OutputAdapter == NativeBiberCompilerContract.Component(engine).OutputAdapter))
                 && !(NativeCompilerThesisPins.Ready && Enum.GetValues<NativeCompilerEngine>()
                     .Any(engine => Output.OutputAdapter == NativeThesisCompilerContract.Component(engine).OutputAdapter))
+                && !(NativeCompilerOriginPins.Ready && Enum.GetValues<NativeCompilerEngine>()
+                    .Any(engine => Output.OutputAdapter == NativeOriginCompilerContract.Component(engine).OutputAdapter))
             || Output.OutputLength is < 1 or > 8388608 || !PdfHashes.IsSha(Output.OutputHash?.Hex)
             || Output.WorkerEpoch <= 0 || Output.RequestId.Value == Guid.Empty) return false;
         var snapshot = Output.Snapshot; var identity = snapshot.Identity;

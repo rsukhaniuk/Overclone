@@ -41,7 +41,7 @@ public sealed class ThesisProfileTests
             Assert.Equal(NativeCompilerSuiteContract.Files + 192, old.MaxPhaseFiles);
             Assert.False((old with { MaxPhaseFiles = NativeCompilerSuiteContract.Files + 256 }).IsValid);
         }
-        foreach (var unknown in new[] { (NativeRuntimeProfile)11, (NativeRuntimeProfile)15, (NativeRuntimeProfile)int.MaxValue })
+        foreach (var unknown in new[] { (NativeRuntimeProfile)11, (NativeRuntimeProfile)16, (NativeRuntimeProfile)int.MaxValue })
         {
             Assert.False(NativeRuntimeProfiles.Known(unknown));
             Assert.Equal(64, NativeRuntimeProfiles.ProjectFileLimit(unknown));
@@ -105,6 +105,9 @@ public sealed class ThesisProfileTests
     [InlineData(127, 14, true)]
     [InlineData(128, 14, true)]
     [InlineData(129, 14, false)]
+    [InlineData(127, 15, true)]
+    [InlineData(128, 15, true)]
+    [InlineData(129, 15, false)]
     public async Task Worker_project_count_is_bound_to_the_trusted_plan(int count, int profile, bool admitted)
     {
         await using var f = await WithCount(count);
@@ -139,10 +142,13 @@ public sealed class ThesisProfileTests
     [InlineData(64, null, true)]
     [InlineData(65, null, false)]
     [InlineData(65, 13, false)]
-    [InlineData(65, 15, false)]
+    [InlineData(65, 16, false)]
     [InlineData(127, 14, true)]
     [InlineData(128, 14, true)]
     [InlineData(129, 14, false)]
+    [InlineData(127, 15, true)]
+    [InlineData(128, 15, true)]
+    [InlineData(129, 15, false)]
     public void Ui_capture_never_infers_larger_capacity_from_phase23_or_caller_descriptors(int count, int? profile, bool admitted) => LifecycleTestHost.Run(async () =>
     {
         await using var fixture = await WithCount(count);

@@ -20,7 +20,7 @@ function frame(extra={}){
   runtimeResourceNames:[prefix+'swiftlatexpdftex.fmt'],generatedInputNames:[],maxLogBytes:262144,maxOutputBytes:8388608};
  if(backend==='biber'&&tool==='latex')value.outputs.push(selectedJob+'.bcf',selectedJob+'.run.xml');else value.outputs.push(selectedJob.replaceAll(' ','_')+'-blx.bib');
  if(tool==='bibtex'){value.files.push({name:selectedJob+'.aux',bytes:bytes('actual controlled AUX')});value.generatedInputNames.push(selectedJob+'.aux');}
- if(![13,14].includes(value.tag.profile))delete value.bibliographyTool;
+ if(![13,14,15].includes(value.tag.profile))delete value.bibliographyTool;
  return value;
 }
 async function attempt(options={},mutate=()=>{}){
@@ -55,20 +55,20 @@ async function attempt(options={},mutate=()=>{}){
 }
 (async()=>{
  let count=0;
- for(const profile of [13,14])for(const version of [23,24])for(const backend of ['none','bibtex','biber']){
+ for(const profile of [13,14,15])for(const version of [23,24])for(const backend of ['none','bibtex','biber']){
   const good=await attempt({profile,version,backend,replay:true});assert.equal(good.messages.at(-1).reply.outcome,'native-return');
   assert.equal(good.calls.filter(c=>c[0]==='latex').length,1);assert.equal(good.entry,'"'+root+'"');
   assert.ok(good.messages.at(-1).reply.sourceMapPayload);assert.ok(good.calls.some(c=>c[0]==='map-copy'&&c[1]===3));count++;
  }
- for(const profile of [13,14])for(const countFiles of (profile===14?[127,128,129]:[63,64,65])) {
+ for(const profile of [13,14,15])for(const countFiles of (profile>=14?[127,128,129]:[63,64,65])) {
   const r=await attempt({profile},f=>{for(let i=1;i<countFiles;i++)f.files.push({name:'asset-'+i+'.txt',bytes:bytes('a')});});
-  assert.equal(r.calls.some(c=>c[0]==='latex'),countFiles<=(profile===14?128:64),'captured count'+countFiles+' profile'+profile);count++;
+  assert.equal(r.calls.some(c=>c[0]==='latex'),countFiles<=(profile>=14?128:64),'captured count'+countFiles+' profile'+profile);count++;
  }
  for(const options of [{maps:0},{synctex:0},{semantic:0},{semantic:2},{missing:['_oc_font_semantics_abi']},{missing:['_oc_font_semantics_status']},
   {missingFactory:true},{badWasmLength:true},{hashes:[semantic[0],'0'.repeat(64)]},{hashes:['0'.repeat(64),semantic[1]]}]){
   const r=await attempt(options);assert.ok(r.messages.some(m=>m.kind==='boot-error'));assert.equal(r.writes,0);assert.equal(r.calls.length,0);count++;
  }
- for(const extra of [{profile:12},{profile:11},{profile:15},{version:6},{version:15},{version:10},{version:21,engine:'xelatex'},
+ for(const extra of [{profile:12},{profile:11},{profile:16},{version:6},{version:15},{version:10},{version:21,engine:'xelatex'},
   {version:22,engine:'lualatex'},{version:23,engine:'latex-dvi'},{version:24,engine:'pdftex'},{operation:'bibtex'},
   {module:'dvi'},{module:'legacy'},{module:'legacy',operation:'bibtex',backend:'biber'}]){
   const r=await attempt(extra);assert.ok(!r.calls.some(c=>c[0]==='latex'||c[0]==='bibtex'));assert.equal(r.writes,0);count++;

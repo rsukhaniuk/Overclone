@@ -1,5 +1,6 @@
 import { createRestrictedWorkerAdmission } from './restricted-worker-admission.js';
-const pB=p=>p===13||p===14;
+const pB=p=>p===13||p===14||p===15;
+const pT=p=>p===14||p===15;
 // Browser/worker/byte transport ONLY. Tool/pass selection belongs to C#.
 let disposed=false;
 const roles=new Map(['compile','dvi','xetex','luatex','biber'].map(kind=>[kind,{admission:null,preparing:null,admitter:null}]));
@@ -84,7 +85,7 @@ function transportFrame(frame){
   ||t.ordinal!==undefined&&(!Number.isSafeInteger(t.ordinal)||t.ordinal<1||t.ordinal>4294967295)
   ||!['latex','bibtex','biber','dvipdfmx'].includes(t.tool)
   ||!Array.isArray(frame.files)||frame.files.length<1||!Array.isArray(frame.outputs)
-  ||frame.outputs.length<1||frame.outputs.length>(t.profile===14?256:128)
+  ||frame.outputs.length<1||frame.outputs.length>(pT(t.profile)?256:128)
   ||!Number.isSafeInteger(frame.maxLogBytes)||frame.maxLogBytes<0||frame.maxLogBytes>262144
   ||!Number.isSafeInteger(frame.maxOutputBytes)||frame.maxOutputBytes<1||frame.maxOutputBytes>8388608)return false;
  const opaque=v=>typeof v==='string'&&v.length>0&&v.length<=128;
@@ -95,9 +96,9 @@ function transportFrame(frame){
   ||['workingGeneration','localWorkspaceEpoch','selectionVersion'].some(k=>!Number.isSafeInteger(s[k])||s[k]<0)))return false;
  if(t.tool==='biber')return biberTransportFrame(frame);
  if(frame.bootstrapData!=null||(pB(t.profile)?!['none','bibtex','biber'].includes(frame.bibliographyTool):frame.bibliographyTool!=null))return false;
- const suite=[5,6,7,8,9,10,12,13,14].includes(t.profile),conversion=t.tool==='dvipdfmx',modern=t.version!==1;
+ const suite=[5,6,7,8,9,10,12,13,14,15].includes(t.profile),conversion=t.tool==='dvipdfmx',modern=t.version!==1;
  if(conversion&&!(t.version===7&&t.engineId==='latex-dvi'||[8,9].includes(t.profile)&&t.version===12&&t.engineId==='latex-dvi'||t.version===8&&t.engineId==='xelatex'||t.profile===9&&t.version===13&&t.engineId==='xelatex'||[10,12].includes(t.profile)&&(t.version===15&&t.engineId==='latex-dvi'||t.version===(t.profile===12?21:16)&&t.engineId==='xelatex')||pB(t.profile)&&(t.version===24&&t.engineId==='latex-dvi'||t.version===21&&t.engineId==='xelatex')))return false;
- if(frame.files.length>(conversion?4096:suite?(t.profile===14?8448:8384):t.version>=4?768:512)
+ if(frame.files.length>(conversion?4096:suite?(pT(t.profile)?8448:8384):t.version>=4?768:512)
   ||transferLength(frame.loader,1048576)<1||transferLength(frame.wasm,16777216)<1)return false;
  const resources=frame.runtimeResourceNames??[],generated=frame.generatedInputNames??[];
  if(!Array.isArray(resources)||resources.length>8192||!Array.isArray(generated)||generated.length>128)return false;
@@ -114,8 +115,8 @@ function transportFrame(frame){
    else {if(suite&&f.name.startsWith(prefix)||n>8388608)return false;work+=n;if(!g.has(f.name))captured++;}
   }
  }
- if((suite||conversion)&&(captured>(conversion?(t.profile===14?129:65):t.profile===14?128:64)||work>(conversion?8388608:33554432)
-  ||runtime>(!conversion&&[12,13,14].includes(t.profile)&&t.version===22&&t.engineId==='lualatex'&&t.tool==='latex'?134217728:conversion||[9,14,17].includes(t.version)&&t.tool==='latex'?100663296:167772160)
+ if((suite||conversion)&&(captured>(conversion?(pT(t.profile)?129:65):pT(t.profile)?128:64)||work>(conversion?8388608:33554432)
+  ||runtime>(!conversion&&[12,13,14,15].includes(t.profile)&&t.version===22&&t.engineId==='lualatex'&&t.tool==='latex'?134217728:conversion||[9,14,17].includes(t.version)&&t.tool==='latex'?100663296:167772160)
   ||resources.some(n=>suite&&!n.startsWith(prefix)||names.get(nativeAlias(n))!==n||conversion&&(suite?n.slice(prefix.length):n).includes('/'))
   ||generated.some(n=>names.get(nativeAlias(n))!==n)||g.has(frame.selectedRoot)||r.has(frame.selectedRoot)))return false;
  if(suite&&!conversion&&(t.version===6||t.version===7||t.version===12||t.version===15||t.tool==='bibtex')&&total>167772160)return false;
@@ -162,7 +163,7 @@ function boundedNativeReply(reply,tag,caps){
   const n=transferLength(f.bytes,caps.output);if(n<0||n>(biber?caps.output:2*caps.output)-total)return null;total+=n;names.add(f.name);
  }
  for(const f of inputs)if(!f||!nativePath(f.name)||!Number.isSafeInteger(f.length)||f.length<0||f.length>67108864||typeof f.sha256!=='string'||!/^[0-9a-f]{64}$/.test(f.sha256))return null;
- const navigation=[8,9,10,12,13,14].includes(tag.profile),xeMap=(tag.profile===9&&tag.version===13||tag.profile===10&&tag.version===16||[12,13,14].includes(tag.profile)&&tag.version===21)&&tag.engineId==='xelatex',dviMap=tag.version===(pB(tag.profile)?24:[10,12].includes(tag.profile)?15:12)&&tag.engineId==='latex-dvi',luaMap=tag.version===([12,13,14].includes(tag.profile)?22:tag.profile===10?17:14)&&tag.engineId==='lualatex',success=reply.outcome==='native-return'&&reply.nativeReturn===0;
+ const navigation=[8,9,10,12,13,14,15].includes(tag.profile),xeMap=(tag.profile===9&&tag.version===13||tag.profile===10&&tag.version===16||[12,13,14,15].includes(tag.profile)&&tag.version===21)&&tag.engineId==='xelatex',dviMap=tag.version===(pB(tag.profile)?24:[10,12].includes(tag.profile)?15:12)&&tag.engineId==='latex-dvi',luaMap=tag.version===([12,13,14,15].includes(tag.profile)?22:tag.profile===10?17:14)&&tag.engineId==='lualatex',success=reply.outcome==='native-return'&&reply.nativeReturn===0;
  const mapCell=navigation&&tag.tool==='latex'&&(dviMap||luaMap||xeMap||pB(tag.profile)&&tag.version===23&&tag.engineId==='pdftex');
  const geometryCell=navigation&&((dviMap||xeMap)&&tag.tool==='dvipdfmx'||luaMap&&tag.tool==='latex');
  let sourceMapPayload=reply.sourceMapPayload,sourceMapGeometryPayload=reply.sourceMapGeometryPayload;
@@ -196,8 +197,8 @@ export function execute(frame){
  const mapped=(pB(frame.tag.profile)&&frame.tag.version===23&&frame.tag.engineId==='pdftex'||frame.tag.version===6&&([3,4].includes(frame.tag.profile)&&frame.tag.engineId==null
   ||[5,6,7,8,9,10,12].includes(frame.tag.profile)&&frame.tag.engineId==='pdftex'))&&identity;
  const dviPhase=(pB(frame.tag.profile)&&frame.tag.version===24||frame.tag.version===7&&[4,5,6,7].includes(frame.tag.profile)||frame.tag.version===([10,12].includes(frame.tag.profile)?15:12)&&[8,9,10,12].includes(frame.tag.profile))&&frame.tag.engineId==='latex-dvi'&&identity;
- const xe=(frame.tag.version===8&&[5,6,7,8].includes(frame.tag.profile)||frame.tag.version===([12,13,14].includes(frame.tag.profile)?21:frame.tag.profile===10?16:13)&&[9,10,12,13,14].includes(frame.tag.profile))&&frame.tag.engineId==='xelatex'&&identity;
- const lua=(frame.tag.version===9&&[5,6,7].includes(frame.tag.profile)||frame.tag.version===([12,13,14].includes(frame.tag.profile)?22:frame.tag.profile===10?17:14)&&[8,9,10,12,13,14].includes(frame.tag.profile))&&frame.tag.engineId==='lualatex'&&identity;
+ const xe=(frame.tag.version===8&&[5,6,7,8].includes(frame.tag.profile)||frame.tag.version===([12,13,14,15].includes(frame.tag.profile)?21:frame.tag.profile===10?16:13)&&[9,10,12,13,14,15].includes(frame.tag.profile))&&frame.tag.engineId==='xelatex'&&identity;
+ const lua=(frame.tag.version===9&&[5,6,7].includes(frame.tag.profile)||frame.tag.version===([12,13,14,15].includes(frame.tag.profile)?22:frame.tag.profile===10?17:14)&&[8,9,10,12,13,14,15].includes(frame.tag.profile))&&frame.tag.engineId==='lualatex'&&identity;
  const biber=pB(frame.tag.profile)&&frame.tag.version===10&&frame.tag.tool==='biber'&&identity;
  const converter=(dviPhase||xe)&&frame.tag.tool==='dvipdfmx';
  const kind=biber?'biber':converter?'dvi':frame.tag.tool==='latex'?(xe?'xetex':lua?'luatex':'compile'):'compile';

@@ -119,8 +119,7 @@ public sealed class LocalInstalledRuntimeProviders : INativeRuntimeProvider, IPd
         if (read.Package is not { } package
             || !NativeRuntimeProfiles.IsSuite(package.Profile) && package.Profile is not (NativeRuntimeProfile.LocalLatex2023SyncTeX or NativeRuntimeProfile.LocalLatex2023Dvi)) return null;
         token.ThrowIfCancellationRequested();
-        return new(package.Copy("synctex-query.js"), package.Copy("synctex-query.wasm"),
-            NativeRuntimeProfiles.SyncTeXQueryLoaderHash, NativeRuntimeProfiles.SyncTeXQueryWasmHash);
+        return SyncTeXRuntimePackage.FromCompiler(package);
     }
     private static InstalledNativeRuntimeRead CompilerFailure(RuntimeAssetStatus status) => new(new(status), null, NativeRuntimeIssue.Unavailable);
     private static InstalledPdfRuntimeRead PdfFailure(RuntimeAssetStatus status) => new(new(status), null);

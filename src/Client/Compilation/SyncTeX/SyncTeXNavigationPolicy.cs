@@ -86,7 +86,14 @@ public sealed class SyncTeXNavigationPolicy(WorkspaceCoordinator workspace, Comp
         // These producers require an explicit native/converter transform. A
         // copied map alone must never fall through to the pdfTeX writer flip.
         if (expectedEngine is "latex-dvi" or "xelatex" or "lualatex" && geometry is null) return null;
-        var result = new SyncTeXNavigationResult(this, output, ticket, direction, token, geometry: geometry);
+        SyncTeXRuntimeBinding? binding = null;
+        if (session.ConfiguredPorts?.NativeProfile is { } profile)
+        {
+            binding = SyncTeXRuntimeBinding.ForProfile(profile);
+            if (binding is null || output.Snapshot.Selection.Bundles.Length != 1
+                || output.Snapshot.Selection.Bundles[0] != binding.Bundle) return null;
+        }
+        var result = new SyncTeXNavigationResult(this, output, ticket, direction, token, geometry: geometry, runtimeBinding: binding);
         return IsCurrent(result, token) ? result : null;
     }
 
@@ -123,7 +130,7 @@ public sealed class SyncTeXNavigationPolicy(WorkspaceCoordinator workspace, Comp
         // Foreign ports receive only the caller token. The private lifetime
         // token cancels our wait, so Dispose never runs foreign cancellation
         // callbacks or disposes a borrowed query/storage owner.
-        try { outcome = await ObserveBorrowed(queries.QueryAsync(request, token)).WaitAsync(linked.Token); }
+        try { outcome = await ObserveBorrowed(queries.QueryAsync(request with { RuntimeBinding = authority.RuntimeBinding }, token)).WaitAsync(linked.Token); }
         catch (Exception error) when (error is not OutOfMemoryException) { return null; }
         if (!IsCurrent(authority, token) || outcome is not { Status: SyncTeXQueryStatus.Completed }
             || outcome.Matches is null || outcome.Matches.Count is < 1 or > 32) return null;
@@ -140,7 +147,7 @@ public sealed class SyncTeXNavigationPolicy(WorkspaceCoordinator workspace, Comp
         }
         if (matches.Count == 0 || !IsCurrent(authority, token)) return null;
         return new(this, authority.Output, authority.Ticket, authority.Direction, authority.Cancellation,
-            matches.ToImmutable(), outcome.Truncated, authority.Geometry);
+            matches.ToImmutable(), outcome.Truncated, authority.Geometry, authority.RuntimeBinding);
     }
 
     private static bool Coordinate(double value) => double.IsFinite(value) && value is >= -1000000 and <= 1000000;
@@ -259,11 +266,12 @@ public sealed class SyncTeXNavigationResult
 {
     internal SyncTeXNavigationResult(SyncTeXNavigationPolicy owner, AcceptedCompileOutput output,
         CompileLifecycleTicket ticket, SyncTeXDirection direction, CancellationToken cancellation,
-        ImmutableArray<SyncTeXNavigationMatch> matches = default, bool truncated = false, SourceMapGeometry? geometry = null)
+        ImmutableArray<SyncTeXNavigationMatch> matches = default, bool truncated = false, SourceMapGeometry? geometry = null, SyncTeXRuntimeBinding? runtimeBinding = null)
     {
         Owner = owner; Output = output; Ticket = ticket; Direction = direction; Cancellation = cancellation;
-        Matches = matches.IsDefault ? [] : matches; Truncated = truncated; Geometry = geometry;
+        Matches = matches.IsDefault ? [] : matches; Truncated = truncated; Geometry = geometry; RuntimeBinding = runtimeBinding;
     }
+    internal SyncTeXRuntimeBinding? RuntimeBinding { get; }
     internal SyncTeXNavigationPolicy Owner { get; }
     internal CompileLifecycleTicket Ticket { get; }
     internal CancellationToken Cancellation { get; }

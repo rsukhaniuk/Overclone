@@ -1,0 +1,106 @@
+{
+  "schemaVersion": 1,
+  "profile": 15,
+  "base": {
+    "profile": 14,
+    "resourceCount": 4453,
+    "totalBytes": 261154796,
+    "closureSha256": "f0c9ff2492565b273130a4596ea608d646728cacf5dd73294c88e0d03c6e86a6",
+    "pins": {
+      "length": 640872,
+      "sha256": "41472c987634a016b970acf3ca8359f7277021792bf5e6adf6f33cb446b5036e"
+    }
+  },
+  "components": [
+    {
+      "name": "luatex.js",
+      "length": 193740,
+      "sha256": "6ea9b1b9b32eaddc37492e90f09770345568d79277a14933c3d96e553efd13b9",
+      "group": "lua",
+      "source": "luatex.js"
+    },
+    {
+      "name": "luatex.wasm",
+      "length": 6026492,
+      "sha256": "0720b4da5ea2d99dfc3455d8b15a98c7b22fa7c3880944dc078d4cb1fec7e29a",
+      "group": "lua",
+      "source": "luatex.wasm"
+    },
+    {
+      "name": "dvi-map-converter.js",
+      "length": 13396,
+      "sha256": "2aafbfe08a1a5a05d7fdb1980daf56781cadb67fbb16f1444d79898ffe956be9",
+      "group": "dvi",
+      "source": "oc-dvi.js"
+    },
+    {
+      "name": "dvi-map-converter.wasm",
+      "length": 697299,
+      "sha256": "1d2bed683ca42adc712de9c4649b26a6bb7001451cc00915d46b213fe81e304d",
+      "group": "dvi",
+      "source": "oc-dvi.wasm"
+    },
+    {
+      "name": "xdv-map-converter.js",
+      "length": 13152,
+      "sha256": "c6feeaac32a9d23d03720de9c0d977506d5186b397c9f3ff221343e25ad3dd89",
+      "group": "xe",
+      "source": "oc-dvi.js"
+    },
+    {
+      "name": "xdv-map-converter.wasm",
+      "length": 696011,
+      "sha256": "182fa124810d48d1dbfe17ee82c3deebdeeb6fec8838c590a2b445389d2224d1",
+      "group": "xe",
+      "source": "oc-dvi.wasm"
+    },
+    {
+      "name": "synctex-query.js",
+      "length": 59432,
+      "sha256": "42f9467bb0d03dc488decab6baec00c2a78f4f524dc18a5a1b912ca55cdcaafd",
+      "group": "query",
+      "source": "synctex-query.js"
+    },
+    {
+      "name": "synctex-query.wasm",
+      "length": 191680,
+      "sha256": "974212d6edbdad96e9733d854e427883a7b16fc09202e8468baa9d3cdda410b8",
+      "group": "query",
+      "source": "synctex-query.wasm"
+    }
+  ],
+  "target": {
+    "resourceCount": 4453,
+    "totalBytes": 261178860,
+    "closureSha256": "e20e5f5e14f2088d4c8e6718566824b9ce0911120be519386f09709f292f5e03",
+    "pins": {
+      "length": 640872,
+      "sha256": "2722b0d0f9151617d6a671186fb9397e612dda49155bb27d357a215586964328"
+    },
+    "package": {
+      "length": 262369324,
+      "sha256": "b113c3fb869df250f8e1c58df05aeaffa9e25eaa36931ae3d6f42aae20b9f2e7"
+    }
+  },
+  "limits": {
+    "manifestBytes": 2097152,
+    "resourceCount": 8192,
+    "fileBytes": 67108864,
+    "totalBytes": 268435456
+  },
+  "phases": {
+    "pdftex": 23,
+    "latex-dvi": 24,
+    "xelatex": 21,
+    "lualatex": 22,
+    "biber": 10
+  },
+  "projectLimits": {
+    "capturedFiles": 128,
+    "capturedBytes": 8388608,
+    "fileBytes": 1048576,
+    "generatedCarryFiles": 128,
+    "declarations": 256
+  },
+  "scope": "Closed current-P14 origin1/neutral1 and area64 derivative. Earlier profiles immutable; schema1, formats, resource budgets and project quotas retained. No default adoption or browser acceptance."
+}

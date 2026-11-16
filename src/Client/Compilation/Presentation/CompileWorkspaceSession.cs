@@ -149,7 +149,10 @@ public sealed class CompileWorkspaceSession(WorkspaceCoordinator workspace, ICom
                     && NativeCompilerSuiteContract.MatchesOptions(configuredOptions, NativeBiberCompilerContract.Profile, NativeCompilerEngine.XeLaTeX)
                 || _ports.NativeProfile == NativeThesisCompilerContract.Profile && NativeCompilerThesisPins.Ready
                     && configuredEngine == new CompilationDescriptor("xelatex", NativeThesisCompilerContract.Component(NativeCompilerEngine.XeLaTeX).EngineVersion, new(NativeCompilerThesisPins.XeWasmHash))
-                    && NativeCompilerSuiteContract.MatchesOptions(configuredOptions, NativeThesisCompilerContract.Profile, NativeCompilerEngine.XeLaTeX));
+                    && NativeCompilerSuiteContract.MatchesOptions(configuredOptions, NativeThesisCompilerContract.Profile, NativeCompilerEngine.XeLaTeX)
+                || _ports.NativeProfile == NativeOriginCompilerContract.Profile && NativeCompilerOriginPins.Ready
+                    && configuredEngine == new CompilationDescriptor("xelatex", NativeOriginCompilerContract.Component(NativeCompilerEngine.XeLaTeX).EngineVersion, new(NativeCompilerThesisPins.XeWasmHash))
+                    && NativeCompilerSuiteContract.MatchesOptions(configuredOptions, NativeOriginCompilerContract.Profile, NativeCompilerEngine.XeLaTeX));
         var entryError = main is null ? null : selectedEntry ? unicodeXe
             ? NativeSelectedEntryContract.ValidateEntry(main.RelativePath, NativeUnicodeCompilerContract.Profile, NativeCompilerEngine.XeLaTeX)
             : NativeSelectedEntryContract.ValidateEntry(main.RelativePath)

@@ -10,20 +10,24 @@ public static class SyncTeXDisplayGeometry
     private static bool Valid(PdfPreviewGeometry g)
     {
         var m = g.Media; var e = g.Effective;
-        // The supported writer uses an origin at (0,0). A changed media origin
-        // needs independent writer geometry; do not guess from a display box.
-        if (m.Left != 0 || m.Bottom != 0 || g.Rotation is < 0 or > 3
-            || !double.IsFinite(m.Top + m.Right + e.Left + e.Bottom + e.Right + e.Top + g.Display.X + g.Display.Y)
-            || m.Right <= 0 || m.Top <= 0 || e.Left < 0 || e.Bottom < 0 || e.Right > m.Right || e.Top > m.Top
-            || e.Right <= e.Left || e.Top <= e.Bottom) return false;
+        // The renderer reports actual unrotated PDF boxes. Only the typed
+        // native matrix can relate a nonzero MediaBox to writer coordinates.
+        if (g.Rotation is < 0 or > 3
+            || new[] { m.Left, m.Bottom, m.Right, m.Top, e.Left, e.Bottom, e.Right, e.Top, g.Display.X, g.Display.Y }.Any(v => !double.IsFinite(v))
+            || m.Right <= m.Left || m.Top <= m.Bottom || e.Left < m.Left || e.Bottom < m.Bottom
+            || e.Right > m.Right || e.Top > m.Top || e.Right <= e.Left || e.Top <= e.Bottom
+            || g.Display.X <= 0 || g.Display.Y <= 0) return false;
         double w = e.Right - e.Left, h = e.Top - e.Bottom;
         return Math.Abs(g.Display.X - (g.Rotation % 2 == 0 ? w : h)) <= .001
             && Math.Abs(g.Display.Y - (g.Rotation % 2 == 0 ? h : w)) <= .001;
     }
 
+    private static bool Legacy(PdfPreviewGeometry geometry) => Valid(geometry)
+        && geometry.Media.Left == 0 && geometry.Media.Bottom == 0;
+
     public static SyncTeXPoint? Inverse(PdfPreviewGeometry geometry, double x, double y)
     {
-        if (!Valid(geometry) || !double.IsFinite(x + y) || x is < 0 or > 1 || y is < 0 or > 1) return null;
+        if (!Legacy(geometry) || !double.IsFinite(x + y) || x is < 0 or > 1 || y is < 0 or > 1) return null;
         var e = geometry.Effective;
         double w = e.Right - e.Left, h = e.Top - e.Bottom;
         x *= geometry.Display.X; y *= geometry.Display.Y;
@@ -39,7 +43,7 @@ public static class SyncTeXDisplayGeometry
 
     public static PdfPreviewRect? Highlight(PdfPreviewGeometry geometry, SyncTeXBox box)
     {
-        if (!Valid(geometry) || !double.IsFinite(box.H + box.V + box.Width + box.Height + box.Depth)
+        if (!Legacy(geometry) || !double.IsFinite(box.H + box.V + box.Width + box.Height + box.Depth)
             || box.Width < 0 || box.Height < 0 || box.Depth < 0) return null;
         var corners = new[] { Forward(geometry, box.H, box.V - box.Height),
             Forward(geometry, box.H + box.Width, box.V - box.Height),

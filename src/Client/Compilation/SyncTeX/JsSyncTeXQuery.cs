@@ -49,6 +49,9 @@ public sealed class JsSyncTeXQuery(IJSRuntime js, ISyncTeXRuntimeProvider runtim
             var package = await runtime.GetAsync(token).ConfigureAwait(false);
             token.ThrowIfCancellationRequested();
             if (package is null) return SyncTeXWire.End(SyncTeXQueryStatus.Unavailable, "RuntimeAbsent");
+            if (owned.RuntimeBinding is { } required && !required.Matches(package.CompilerBinding)
+                || package.CompilerBinding?.Profile == Native.NativeOriginCompilerContract.Profile && owned.RuntimeBinding is null)
+                return SyncTeXWire.End(SyncTeXQueryStatus.Unavailable, "RuntimeProfileMismatch");
             if (!package.IsValid) return SyncTeXWire.End(SyncTeXQueryStatus.Unavailable, "RuntimeMismatch");
             byte[] loader = package.CopyLoader(), wasm = package.CopyWasm();
             token.ThrowIfCancellationRequested();
@@ -60,12 +63,15 @@ public sealed class JsSyncTeXQuery(IJSRuntime js, ISyncTeXRuntimeProvider runtim
             module = null; channel = null; // Port now owns BOTH references.
             lock (_gate) op.Port = port;
             token.ThrowIfCancellationRequested();
-            string metadata = JsonSerializer.Serialize(new
+            var metadataFields = new Dictionary<string, object?>
             {
-                version = 1, requestId = op.Id, deadlineMs = SyncTeXWire.DeadlineMs,
-                direction = owned!.Direction == SyncTeXDirection.Forward ? "forward" : "inverse",
-                file = owned.File, line = owned.Line, page = owned.Page, h = owned.H, v = owned.V
-            });
+                ["version"] = 1, ["requestId"] = op.Id, ["deadlineMs"] = SyncTeXWire.DeadlineMs,
+                ["direction"] = owned.Direction == SyncTeXDirection.Forward ? "forward" : "inverse",
+                ["file"] = owned.File, ["line"] = owned.Line, ["page"] = owned.Page, ["h"] = owned.H, ["v"] = owned.V
+            };
+            if (package.CompilerBinding?.Profile == Native.NativeOriginCompilerContract.Profile)
+                metadataFields.Add("queryProfile", 15);
+            string metadata = JsonSerializer.Serialize(metadataFields);
             // Cancellation can run between this check and invocation. The port
             // tombstones the correlated ID, including cancellation before query().
             token.ThrowIfCancellationRequested();

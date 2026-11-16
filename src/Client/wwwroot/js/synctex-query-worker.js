@@ -29,9 +29,15 @@
             version: 1, requestId: request.requestId, status, nativeStatus, json
         });
         try {
-            const mapLength=typedLength(data.map),wasmLength=typedLength(data.wasm);
-            if(!validQueryFields(request)||mapLength<1||mapLength>1048575||wasmLength<8||wasmLength>1048576)
+            const mapLength=typedLength(data.map),wasmLength=typedLength(data.wasm),loaderLength=typedLength(data.loader);
+            const origins=Object.hasOwn(request,'queryProfile');
+            if(!validQueryFields(request)||mapLength<1||mapLength>1048575||wasmLength<8||wasmLength>1048576||loaderLength<1||loaderLength>1048576||origins&&request.queryProfile!==15)
                 throw new Error('Invalid bounded query frame');
+            // Match the complete closed pair before importing executable bytes.
+            const hash=async bytes=>[...new Uint8Array(await crypto.subtle.digest('SHA-256',bytes))].map(n=>n.toString(16).padStart(2,'0')).join('');
+            const [loaderHash,wasmHash]=await Promise.all([hash(data.loader),hash(data.wasm)]);
+            if(loaderHash!==(origins?'42f9467bb0d03dc488decab6baec00c2a78f4f524dc18a5a1b912ca55cdcaafd':'94fb846cc1c474b2ee2c8334b060f108a6c4fc31def740022a7768767039eb33')
+                ||wasmHash!==(origins?'974212d6edbdad96e9733d854e427883a7b16fc09202e8468baa9d3cdda410b8':'502f46777a8864280adc110dacea40b0bd842aaa785542dc7447e4789839d485'))throw 0;
             // URL created from the verified provider bytes by this query's parent.
             // The parent revokes it on EVERY settlement, even forced termination.
             if (typeof data.loaderUrl !== 'string' || !data.loaderUrl.startsWith('blob:')) throw 0;
@@ -51,7 +57,7 @@
                     Promise.resolve(loading).then(resolve, reject);
                 } catch (error) { reject(error); }
             });
-            if (module._sq_version() !== 1) throw 0;
+            if (module._sq_version() !== 1 || origins && module._sq_area64_abi?.() !== 1) throw 0;
             const allocate = size => {
                 const pointer = module._malloc(size);
                 if (!Number.isInteger(pointer) || pointer <= 0 || pointer > module.HEAPU8.length - size) throw 0;

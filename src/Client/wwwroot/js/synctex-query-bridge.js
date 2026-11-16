@@ -69,6 +69,7 @@ export function createSyncTeXQueryPort() {
             !Number.isInteger(source.deadlineMs) || source.deadlineMs < 1 || source.deadlineMs > 15000)
             return Promise.resolve(terminal('', 'failed'));
         const id = source.requestId;
+        if (Object.hasOwn(source, 'queryProfile') && source.queryProfile !== 15) return Promise.resolve(terminal(id, 'failed'));
         if (!validQueryFields(source)) return Promise.resolve(terminal(id, 'failed'));
         if (disposed) return Promise.resolve(terminal(id, 'disposed'));
         if (cancelled.has(id)) return Promise.resolve(terminal(id, 'cancelled'));
@@ -80,6 +81,7 @@ export function createSyncTeXQueryPort() {
         // Explicit allowlist: only selected query fields cross into the worker.
         const request = { version: 1, requestId: id, direction: source.direction, file: source.file,
             line: source.line, page: source.page, h: source.h, v: source.v };
+        if (source.queryProfile === 15) request.queryProfile = 15;
         const reservation = {};
         preparation = reservation;
         let map, loader, wasm;
@@ -129,7 +131,7 @@ export function createSyncTeXQueryPort() {
                     };
                     worker.onerror = worker.onmessageerror = () => settle(entry, terminal(id, 'failed'));
                     admission.check(binding);
-                    worker.postMessage({ request, map, wasm, loaderUrl: entry.loaderUrl }, [map.buffer, wasm.buffer]);
+                    worker.postMessage({ request, map, loader, wasm, loaderUrl: entry.loaderUrl }, [map.buffer, loader.buffer, wasm.buffer]);
                 } catch {
                     if (active === entry) settle(entry, terminal(id, 'unavailable'));
                 } finally {

@@ -1,4 +1,4 @@
-const pB=p=>p===13||p===14;
+const pB=p=>p===13||p===14||p===15;
 // Browser/WASM/owned-byte glue only. C# selects the backend and admits BCF.
 // Genuine Perl/Biber, filesystem confinement and output limits live in C++/WASM.
 const send=self.postMessage.bind(self),encode=new TextEncoder(),decode=new TextDecoder('utf-8',{fatal:true});

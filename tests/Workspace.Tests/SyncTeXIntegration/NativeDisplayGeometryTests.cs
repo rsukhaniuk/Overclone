@@ -52,7 +52,7 @@ public sealed class NativeDisplayGeometryTests
     }
 
     [Fact]
-    public void Unavailable_geometry_bad_measurements_and_nonzero_origin_remain_unavailable()
+    public void Unavailable_geometry_and_bad_measurements_remain_unavailable()
     {
         var unavailable = SourceMapGeometryCodec.ParseNativeSidecar(Encoding.UTF8.GetBytes(
             """{"schemaVersion":1,"pages":[{"page":1,"status":"unsupported","reason":"writer-origin-unavailable","writerToPdfRaw":null,"writerPageBoxBp":null}]}"""))
@@ -63,7 +63,7 @@ public sealed class NativeDisplayGeometryTests
             Assert.Null(SyncTeXDisplayGeometry.Inverse(g, p, .5, .5));
             Assert.Null(SyncTeXDisplayGeometry.Highlight(g, p, new(19, 30, 2, 1, 1)));
         }
-        foreach (var bad in new[] { g with { Media = new(1, 0, 100, 200) }, g with { Display = new(81, 160) }, g with { Rotation = 4 } })
+        foreach (var bad in new[] { g with { Media = new(11, 0, 100, 200) }, g with { Display = new(81, 160) }, g with { Rotation = 4 } })
         {
             Assert.Null(SyncTeXDisplayGeometry.Inverse(bad, page, .5, .5));
             Assert.Null(SyncTeXDisplayGeometry.Highlight(bad, page, new(19, 30, 2, 1, 1)));
