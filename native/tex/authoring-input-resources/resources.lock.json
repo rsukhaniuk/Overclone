@@ -1,0 +1,1811 @@
+{
+  "schemaVersion": 1,
+  "scope": "Exact historic TeX Live2023 package/font resources plus true-font-metadata catalogue extension. No project source, font aliases, engine changes or default adoption.",
+  "inventory": {
+    "url": "https://ftp.math.utah.edu/pub/tex/historic/systems/texlive/2023/tlnet-final/tlpkg/texlive.tlpdb.xz",
+    "length": 2553548,
+    "sha256": "c3ed3818114393f3ff5ef5bb4fd3e8b460f49d0b2532457d72875c6b6bab34ae"
+  },
+  "base": {
+    "profile": 15,
+    "pinsLength": 640872,
+    "pinsSha256": "2722b0d0f9151617d6a671186fb9397e612dda49155bb27d357a215586964328"
+  },
+  "limits": {
+    "compressedArchiveBytes": 67108864,
+    "decodedArchiveBytes": 134217728,
+    "archiveMembers": 50000
+  },
+  "packages": [
+    {
+      "name": "algorithms",
+      "revision": 42428,
+      "version": "0.1",
+      "license": "lgpl2.1",
+      "declaredDependencies": []
+    },
+    {
+      "name": "algorithmicx",
+      "revision": 15878,
+      "version": null,
+      "license": "lppl",
+      "declaredDependencies": []
+    },
+    {
+      "name": "bbm-macros",
+      "revision": 17224,
+      "version": null,
+      "license": "lppl",
+      "declaredDependencies": []
+    },
+    {
+      "name": "bbm",
+      "revision": 15878,
+      "version": null,
+      "license": "other-free",
+      "declaredDependencies": []
+    },
+    {
+      "name": "changepage",
+      "revision": 15878,
+      "version": "1.0c",
+      "license": "lppl1.3",
+      "declaredDependencies": []
+    },
+    {
+      "name": "doublestroke",
+      "revision": 15878,
+      "version": "1.111",
+      "license": "other-free",
+      "declaredDependencies": []
+    },
+    {
+      "name": "import",
+      "revision": 54683,
+      "version": "6.2",
+      "license": "pd",
+      "declaredDependencies": []
+    },
+    {
+      "name": "stmaryrd",
+      "revision": 22027,
+      "version": null,
+      "license": "lppl",
+      "declaredDependencies": []
+    },
+    {
+      "name": "totcount",
+      "revision": 21178,
+      "version": "1.2",
+      "license": "lppl",
+      "declaredDependencies": []
+    },
+    {
+      "name": "biblatex-gost",
+      "revision": 66935,
+      "version": "1.24",
+      "license": "lppl1.3c",
+      "declaredDependencies": []
+    },
+    {
+      "name": "xits",
+      "revision": 55730,
+      "version": "1.302",
+      "license": "ofl",
+      "declaredDependencies": []
+    },
+    {
+      "name": "xetex",
+      "revision": "66203",
+      "license": "x11"
+    }
+  ],
+  "archives": [
+    {
+      "name": "algorithms.tar.xz",
+      "package": "algorithms",
+      "kind": "run",
+      "length": 3472,
+      "sha512": "ba02581f18b74ef97f37b7c1052bb7577b256ef94232b045a43c841fc4705f8d7ebcb2b286d95dd70943d309080b05d36dbf847ecd6e661038d6e375d514a787",
+      "url": "https://ftp.math.utah.edu/pub/tex/historic/systems/texlive/2023/tlnet-final/archive/algorithms.tar.xz",
+      "sha256": "72bbcee59d4cfc8f7342fcdbfb13a6e10f51e01c29d774bb839125e0261215f1",
+      "revision": 42428,
+      "license": "lgpl2.1"
+    },
+    {
+      "name": "algorithms.source.tar.xz",
+      "package": "algorithms",
+      "kind": "source",
+      "length": 11940,
+      "sha512": "d83acd2275e83d37b5bb9a24d9cb0efbf711a2fb76a9a5a18d7299c95d6e1e0ac8fb41990b795a21b23b5e4fd8de5ef08fa480c6b2eaa7d1f7644e0d44c2f1fa",
+      "url": "https://ftp.math.utah.edu/pub/tex/historic/systems/texlive/2023/tlnet-final/archive/algorithms.source.tar.xz",
+      "sha256": "cc623b5ff90f35bc62bf046da7b6e69e7e09865bb057a6f75deeeed6fddbbc18",
+      "revision": 42428,
+      "license": "lgpl2.1"
+    },
+    {
+      "name": "algorithms.doc.tar.xz",
+      "package": "algorithms",
+      "kind": "doc",
+      "length": 293444,
+      "sha512": "3658a5a31162acf5ea1dc318503a2f9e74944cb998494083de76e2e31119bbc22094bfd41e048f5628730df359d2359943cec3cebd07b364a81703b92520dd01",
+      "url": "https://ftp.math.utah.edu/pub/tex/historic/systems/texlive/2023/tlnet-final/archive/algorithms.doc.tar.xz",
+      "sha256": "5ffa72133d779a1e580c9e085866f26a038ee4b93620b8aaad4cb17642e453b4",
+      "revision": 42428,
+      "license": "lgpl2.1"
+    },
+    {
+      "name": "algorithmicx.tar.xz",
+      "package": "algorithmicx",
+      "kind": "run",
+      "length": 7716,
+      "sha512": "b6cccb7bc391ad11a8996d3e6a3a48f79e50e3e685a4b7670a3399d5d400435616794100b38e73d32633fc16cdd1795c2dcd57bc79279266dc6509bb14d08804",
+      "url": "https://ftp.math.utah.edu/pub/tex/historic/systems/texlive/2023/tlnet-final/archive/algorithmicx.tar.xz",
+      "sha256": "67a57f9e1bd4c227d749c8ffc87d8f660fe76f721a7eba9a91e1a311e44a29ab",
+      "revision": 15878,
+      "license": "lppl"
+    },
+    {
+      "name": "algorithmicx.doc.tar.xz",
+      "package": "algorithmicx",
+      "kind": "doc",
+      "length": 170008,
+      "sha512": "cda9c4082faeaaf504194d75c014fda9cda20fe85ab9dd8c4f5a3c9e39fc2c8c8428ef20b921790f36c8abae2ecd8ea089353db540477909039575bc65ed5228",
+      "url": "https://ftp.math.utah.edu/pub/tex/historic/systems/texlive/2023/tlnet-final/archive/algorithmicx.doc.tar.xz",
+      "sha256": "ccfef70c28c32d5d86cc20fda3817dd824187a150c660281104281815937bd00",
+      "revision": 15878,
+      "license": "lppl"
+    },
+    {
+      "name": "bbm-macros.tar.xz",
+      "package": "bbm-macros",
+      "kind": "run",
+      "length": 1708,
+      "sha512": "06f59837d585c721da77f289119bd4b45a91e3d72543ed3e4de76f84a2916431a733baa379b83a3e299d166e27bc0350df6f053d1ec744c52dcd0297d416fdf1",
+      "url": "https://ftp.math.utah.edu/pub/tex/historic/systems/texlive/2023/tlnet-final/archive/bbm-macros.tar.xz",
+      "sha256": "977964064f0f4821f2c6d438cdaa24c5c0681188f4ae44ce19b794959f7958bf",
+      "revision": 17224,
+      "license": "lppl"
+    },
+    {
+      "name": "bbm-macros.source.tar.xz",
+      "package": "bbm-macros",
+      "kind": "source",
+      "length": 3916,
+      "sha512": "11d1d83d558a7943e35e8146b7f44df6a553a513f8e0478e1a9c773d66d004a4110288f91896b283dc4153372bb638a444c53b9184745858976a7e6aac69b121",
+      "url": "https://ftp.math.utah.edu/pub/tex/historic/systems/texlive/2023/tlnet-final/archive/bbm-macros.source.tar.xz",
+      "sha256": "8709757b5f6d5ff8e8ceb15c7248a777ae913ef47035495f62753f990421b0f8",
+      "revision": 17224,
+      "license": "lppl"
+    },
+    {
+      "name": "bbm-macros.doc.tar.xz",
+      "package": "bbm-macros",
+      "kind": "doc",
+      "length": 301276,
+      "sha512": "20a29809dffe8090e5c067dd2df9dd5a5f7de6ec7abbc01eb14b5a500f37cd62b50914733edf7403af89a1db86ebe10b3d7262f519dc01dc35b29ba0c70c3478",
+      "url": "https://ftp.math.utah.edu/pub/tex/historic/systems/texlive/2023/tlnet-final/archive/bbm-macros.doc.tar.xz",
+      "sha256": "950e179f14d09b1e7fdcd966deba6fe4ae208e939da8a4c04169acc457bab198",
+      "revision": 17224,
+      "license": "lppl"
+    },
+    {
+      "name": "bbm.tar.xz",
+      "package": "bbm",
+      "kind": "run",
+      "length": 32616,
+      "sha512": "d795fb56f2ba57dea55a546244c5d07bb20c104cb9d1e6f9b6c229df9e5fa4244f8bb883bcddc150e1072453cb518d31c110bb85d157b4fbfeb47195da939619",
+      "url": "https://ftp.math.utah.edu/pub/tex/historic/systems/texlive/2023/tlnet-final/archive/bbm.tar.xz",
+      "sha256": "f8faf86af65b2af86c78927cfeec02075d8c32c1986219b9ed1aee88983feb39",
+      "revision": 15878,
+      "license": "other-free"
+    },
+    {
+      "name": "bbm.doc.tar.xz",
+      "package": "bbm",
+      "kind": "doc",
+      "length": 2288,
+      "sha512": "034d880588fa88d97045d73dd651a0b3573c624dbbf1d2f9fee046c59f007b9e3e2121d5d773b34aa7b0bc8c72daa540447981bf60731e64d99cde49b5f6e911",
+      "url": "https://ftp.math.utah.edu/pub/tex/historic/systems/texlive/2023/tlnet-final/archive/bbm.doc.tar.xz",
+      "sha256": "491db7c07c5a597e488582758deeafd03ec1e0e94902b88586027d35490d4de9",
+      "revision": 15878,
+      "license": "other-free"
+    },
+    {
+      "name": "changepage.tar.xz",
+      "package": "changepage",
+      "kind": "run",
+      "length": 2612,
+      "sha512": "0ef1d3370affd4ffc2ef77031a8713b5c663263802d67142b10fa7fc025569b3914dbbaa5e71e2c643718940a0cb89194d79ec83a83b93fcf5d57e0bfbbdbb46",
+      "url": "https://ftp.math.utah.edu/pub/tex/historic/systems/texlive/2023/tlnet-final/archive/changepage.tar.xz",
+      "sha256": "ab93ccf442841a811a312b6cfed99c0ad5c5710f966ddada0526e902a0f42078",
+      "revision": 15878,
+      "license": "lppl1.3"
+    },
+    {
+      "name": "changepage.source.tar.xz",
+      "package": "changepage",
+      "kind": "source",
+      "length": 5956,
+      "sha512": "45ba09248231ad1bf14dfa553b11172e610ae8f46948451437ce3a88521f84791ae149a83c1ff104dd0f00ea6a1a029e816ab7dbe1e38b9eb97902c4a9b9b312",
+      "url": "https://ftp.math.utah.edu/pub/tex/historic/systems/texlive/2023/tlnet-final/archive/changepage.source.tar.xz",
+      "sha256": "fb9a9ccf219d1584430ce171811e56b501d598637a67c5c86ad068e559c53af9",
+      "revision": 15878,
+      "license": "lppl1.3"
+    },
+    {
+      "name": "changepage.doc.tar.xz",
+      "package": "changepage",
+      "kind": "doc",
+      "length": 274712,
+      "sha512": "e3894d3a475f132e2242a6402899e8b9b6045681ce1fdb05fc5b0570e4d6b8b6980c2b5f5953602690250826db0e7dc9bab2f235d39fa5bda0e1161fd781478f",
+      "url": "https://ftp.math.utah.edu/pub/tex/historic/systems/texlive/2023/tlnet-final/archive/changepage.doc.tar.xz",
+      "sha256": "cdc83ccc00e1683dbcb771a7d32f70faaea44d2cff97b4344d49cb1631ff5a8f",
+      "revision": 15878,
+      "license": "lppl1.3"
+    },
+    {
+      "name": "doublestroke.tar.xz",
+      "package": "doublestroke",
+      "kind": "run",
+      "length": 67024,
+      "sha512": "ff1be47939d9a2e8ec4fe8e6852d9fa31c2776511de158611ef8b853ac73291d1aa4ffe81985bed60c75a16e3cfc963a3a8ce3fb9494dcf6664cd6d92a549e73",
+      "url": "https://ftp.math.utah.edu/pub/tex/historic/systems/texlive/2023/tlnet-final/archive/doublestroke.tar.xz",
+      "sha256": "878178cf3c231b800eac7bb2d66fb145ff24709e7fbd303742671623745a8369",
+      "revision": 15878,
+      "license": "other-free"
+    },
+    {
+      "name": "doublestroke.doc.tar.xz",
+      "package": "doublestroke",
+      "kind": "doc",
+      "length": 94088,
+      "sha512": "2cf0cc8936393be2b01ed06158b250a43514098aeec4007bf493bd9232fda911f4a59f45716fba5837e475bdc39a86cf6e1180d4220e6aef26ff9e0315389200",
+      "url": "https://ftp.math.utah.edu/pub/tex/historic/systems/texlive/2023/tlnet-final/archive/doublestroke.doc.tar.xz",
+      "sha256": "4f76b1bd6abb53e5cae6b74e61df1151d39e888efc6bf85f8a74be3615677648",
+      "revision": 15878,
+      "license": "other-free"
+    },
+    {
+      "name": "import.tar.xz",
+      "package": "import",
+      "kind": "run",
+      "length": 2712,
+      "sha512": "96a92584b4ff4a4bd3b345b446f2802e34d59ebf8c14469a5b5331e6d2f92b63f42d8f5799bdcefc9ae3f74e5e6f93aad7d5371dbe7d21e84ced3890a76c7a19",
+      "url": "https://ftp.math.utah.edu/pub/tex/historic/systems/texlive/2023/tlnet-final/archive/import.tar.xz",
+      "sha256": "0fc357c25c7cfb15cce3648f8b3bf93cef5f778406058419d9bf050a8bf84556",
+      "revision": 54683,
+      "license": "pd"
+    },
+    {
+      "name": "import.doc.tar.xz",
+      "package": "import",
+      "kind": "doc",
+      "length": 246512,
+      "sha512": "967d456dd18c8838db7d2ed64016fa0f77f2ed475e5cbe36389414849786d7e7850ea43e8bb00d8aa06e3ba06f62970a6525ee1b5a5109f8cbc77a0baf894b50",
+      "url": "https://ftp.math.utah.edu/pub/tex/historic/systems/texlive/2023/tlnet-final/archive/import.doc.tar.xz",
+      "sha256": "b4a846442252615878e0a5ad610efc354d066ec41c4e97da8ee719f10045fabc",
+      "revision": 54683,
+      "license": "pd"
+    },
+    {
+      "name": "stmaryrd.tar.xz",
+      "package": "stmaryrd",
+      "kind": "run",
+      "length": 166148,
+      "sha512": "8abe58b84fff2f4fd6846b6c267f3b245fb1dfc2f38d0db54ce7cd9d456abd07627247613073f09dcf7e11e3e9c5940d8ff657327232ce638abc6babcc5b3d77",
+      "url": "https://ftp.math.utah.edu/pub/tex/historic/systems/texlive/2023/tlnet-final/archive/stmaryrd.tar.xz",
+      "sha256": "a4ea1fe9106391a8847c2bba22c05e8396eca2e9e944356ea0eeb19c4badf067",
+      "revision": 22027,
+      "license": "lppl"
+    },
+    {
+      "name": "stmaryrd.source.tar.xz",
+      "package": "stmaryrd",
+      "kind": "source",
+      "length": 6248,
+      "sha512": "ebefe2836daed0dd4db99517af0f40c73f0a7b19453d5415c80ae6cf723f4ec4e4ae6f9700a21722b4c0d9b8507c58a596697017893716111b46222f54676aa2",
+      "url": "https://ftp.math.utah.edu/pub/tex/historic/systems/texlive/2023/tlnet-final/archive/stmaryrd.source.tar.xz",
+      "sha256": "ee5b574a9be466d692b3dbeb03716129602d1732b344728767097dcaf98b347e",
+      "revision": 22027,
+      "license": "lppl"
+    },
+    {
+      "name": "stmaryrd.doc.tar.xz",
+      "package": "stmaryrd",
+      "kind": "doc",
+      "length": 78724,
+      "sha512": "caf883d1c5021b52d6471c4c2145e708ac3c05c8944eaae621a3ea7b602b683ba2ef2bc0052f9caf67adc1415e7db02b5b55d3642ed82727a926ec193dd984f4",
+      "url": "https://ftp.math.utah.edu/pub/tex/historic/systems/texlive/2023/tlnet-final/archive/stmaryrd.doc.tar.xz",
+      "sha256": "a32d0a4d2c2ace0c1bd29d97103d4eaabe2c4b134000d2bc21f13771e767bcfc",
+      "revision": 22027,
+      "license": "lppl"
+    },
+    {
+      "name": "totcount.tar.xz",
+      "package": "totcount",
+      "kind": "run",
+      "length": 2272,
+      "sha512": "03ece717c7db3820cf41192e3bad2711e159fcb8a5a5a185e1c55335364917a515d9dd691cf1890421a8c62c9e55bdc49cb13718f7d98d9df34a2470cfff0daf",
+      "url": "https://ftp.math.utah.edu/pub/tex/historic/systems/texlive/2023/tlnet-final/archive/totcount.tar.xz",
+      "sha256": "bb8ecc6c184225c3c89778daaace81130804f62145a9e8d090733693e5b2b91c",
+      "revision": 21178,
+      "license": "lppl"
+    },
+    {
+      "name": "totcount.source.tar.xz",
+      "package": "totcount",
+      "kind": "source",
+      "length": 6680,
+      "sha512": "1820b0b44434650c072a67a4c6144beb7a34129415a4ae298b9c97efd7e81d3396ddb6e4a03081a19962001c8c01a4cdda563c20ba19bda1411e4832d5e7fd14",
+      "url": "https://ftp.math.utah.edu/pub/tex/historic/systems/texlive/2023/tlnet-final/archive/totcount.source.tar.xz",
+      "sha256": "a997de45b24922d5dc1f48de1db1b051d6612fc4b3a9dea657973d0c14c269fb",
+      "revision": 21178,
+      "license": "lppl"
+    },
+    {
+      "name": "totcount.doc.tar.xz",
+      "package": "totcount",
+      "kind": "doc",
+      "length": 286576,
+      "sha512": "46ef8cd2317108d0896b32ba9104c69fb34a6d13d1e123d6b8f1648bfdfffa6bb21f17207433dd763451b1f6c104ae3532e7aac43ef2ba73281842f0a3bcd05e",
+      "url": "https://ftp.math.utah.edu/pub/tex/historic/systems/texlive/2023/tlnet-final/archive/totcount.doc.tar.xz",
+      "sha256": "c80a9a31b79de1f1d895e734c8caf3dcc0464fcfba0c86b1d65d2676602fccd1",
+      "revision": 21178,
+      "license": "lppl"
+    },
+    {
+      "name": "biblatex-gost.tar.xz",
+      "package": "biblatex-gost",
+      "kind": "run",
+      "length": 21248,
+      "sha512": "8d87595c133fd1b64ea7facda55a1a7a79dbedb93750e0f54abd26e5904d331200349a956eb03a67017015e85e9854e26f6753b5d2be2ef0f3e4d532eb0b7ddf",
+      "url": "https://ftp.math.utah.edu/pub/tex/historic/systems/texlive/2023/tlnet-final/archive/biblatex-gost.tar.xz",
+      "sha256": "e11acce480219578352b69445328868c296cc00f6d9229eae57e463edfc1b8f7",
+      "revision": 66935,
+      "license": "lppl1.3c"
+    },
+    {
+      "name": "biblatex-gost.doc.tar.xz",
+      "package": "biblatex-gost",
+      "kind": "doc",
+      "length": 1005352,
+      "sha512": "3ee6799d4dd00b4503fd6d7bb041d674c9e61d4ab3c366fe078a9db4a4da154601c13876dec51ba14e3322442e3174cda81212df26d2309e3517a60d06283051",
+      "url": "https://ftp.math.utah.edu/pub/tex/historic/systems/texlive/2023/tlnet-final/archive/biblatex-gost.doc.tar.xz",
+      "sha256": "0ada79c063fd3ff99ec9a2d159c18dd96b9ed5e25418ff426d89842ebb1f8185",
+      "revision": 66935,
+      "license": "lppl1.3c"
+    },
+    {
+      "name": "xits.tar.xz",
+      "package": "xits",
+      "kind": "run",
+      "length": 541240,
+      "sha512": "8c47de766f965fcb50399e59d20f030e90a28e2aaac018ab1289a1a26b16cd6c9c7d3fd18f1d2b84fe86a99734bbf2ac9b58bfd723a7854bfe29141ab6acb874",
+      "url": "https://ftp.math.utah.edu/pub/tex/historic/systems/texlive/2023/tlnet-final/archive/xits.tar.xz",
+      "sha256": "cdc51390b6ad6e1151d0186c5be4b24d8bc910e338fa472db282023825c74409",
+      "revision": 55730,
+      "license": "ofl"
+    },
+    {
+      "name": "xits.doc.tar.xz",
+      "package": "xits",
+      "kind": "doc",
+      "length": 6060,
+      "sha512": "3c4594f4023f6ae4dd6ac57841720a47f00ae65fcd6930d4e8ec94281a71bf97e7acea26c60d6866304b5018e866ae87554cc470e671d47ede6572da1ac2970d",
+      "url": "https://ftp.math.utah.edu/pub/tex/historic/systems/texlive/2023/tlnet-final/archive/xits.doc.tar.xz",
+      "sha256": "27e3c4e1b0f4fd06eb74295cd6b648eb07b152cd854dc37811ff90e3f86b4f42",
+      "revision": 55730,
+      "license": "ofl"
+    },
+    {
+      "name": "xetex.tar.xz",
+      "package": "xetex",
+      "kind": "run",
+      "length": 7784,
+      "sha512": "fddc7a48405d5ae56b09fab5f180372972fc7fdd10eb19ec8e2b0f6e1e3bc54d2f92512a6954238c21fbdd75425923dcdf115bf16fe35ab3a850363c41ac99e0",
+      "url": "https://ftp.math.utah.edu/pub/tex/historic/systems/texlive/2023/tlnet-final/archive/xetex.tar.xz",
+      "sha256": "65a29c1d3f3f00b06cce2e0b5a6076a4016be27f0febd1eba4939cdb4275760c",
+      "revision": 66203,
+      "license": "x11"
+    },
+    {
+      "name": "xetex.doc.tar.xz",
+      "package": "xetex",
+      "kind": "doc",
+      "length": 634692,
+      "sha512": "7fda9e0a2e7f4dcd6a1813cf8fe280f7193aa88a77cbc5891b892112950e5d5e7690328e267805c8b9a24dc735e7991065ee3664b1278fa334f83ddf06aee236",
+      "url": "https://ftp.math.utah.edu/pub/tex/historic/systems/texlive/2023/tlnet-final/archive/xetex.doc.tar.xz",
+      "sha256": "f8bf0297322b3299f3b46ec627d45979bd9ad75844dfd269e2d21b369d1a4ac7",
+      "revision": 66203,
+      "license": "x11"
+    }
+  ],
+  "resources": [
+    {
+      "name": "Udsrom.fd",
+      "length": 211,
+      "sha256": "24e14828e82b7eea9aad9cc1fce2071848847dcb6cd9bf12fe0ad39aedb7dff6",
+      "archive": "doublestroke.tar.xz",
+      "member": "tex/latex/doublestroke/Udsrom.fd",
+      "package": "doublestroke",
+      "kind": "runtime"
+    },
+    {
+      "name": "Udsss.fd",
+      "length": 210,
+      "sha256": "ed356034b355598ed26e7b64f0166a97383715d49ed2213df44ae07a329c16b1",
+      "archive": "doublestroke.tar.xz",
+      "member": "tex/latex/doublestroke/Udsss.fd",
+      "package": "doublestroke",
+      "kind": "runtime"
+    },
+    {
+      "name": "Ustmry.fd",
+      "length": 1766,
+      "sha256": "a6e7ccc1c8ff376dbbf0a3c1418f8ded711898ddcfc46a1a7156c0bf66e14bbe",
+      "archive": "stmaryrd.tar.xz",
+      "member": "tex/latex/stmaryrd/Ustmry.fd",
+      "package": "stmaryrd",
+      "kind": "runtime"
+    },
+    {
+      "name": "XITS-Bold.otf",
+      "length": 154292,
+      "sha256": "6076d16614af00f81163b6a5886811bbb2db6dee8ee81827212c8029042693de",
+      "archive": "xits.tar.xz",
+      "member": "fonts/opentype/public/xits/XITS-Bold.otf",
+      "package": "xits",
+      "kind": "runtime"
+    },
+    {
+      "name": "XITS-BoldItalic.otf",
+      "length": 112820,
+      "sha256": "fde9c2628b3cd960fc3b068d4ee491801b64b54f4cdb31921e8b380ccea36018",
+      "archive": "xits.tar.xz",
+      "member": "fonts/opentype/public/xits/XITS-BoldItalic.otf",
+      "package": "xits",
+      "kind": "runtime"
+    },
+    {
+      "name": "XITS-Italic.otf",
+      "length": 116744,
+      "sha256": "c917a8c25a1ee196fff88e6e95fa82f1a18a758563b04dd68bc13acbbe98dc17",
+      "archive": "xits.tar.xz",
+      "member": "fonts/opentype/public/xits/XITS-Italic.otf",
+      "package": "xits",
+      "kind": "runtime"
+    },
+    {
+      "name": "XITS-Regular.otf",
+      "length": 270632,
+      "sha256": "9cd5e6b9bac7647cc714c17d7c9e2e5087f8551cf1bec48a8e753172dbc641b8",
+      "archive": "xits.tar.xz",
+      "member": "fonts/opentype/public/xits/XITS-Regular.otf",
+      "package": "xits",
+      "kind": "runtime"
+    },
+    {
+      "name": "algc.sty",
+      "length": 1280,
+      "sha256": "068837b255bd0b905458ee1576f32e0b38b651e2e3b52ff84ee35b00c0136e00",
+      "archive": "algorithmicx.tar.xz",
+      "member": "tex/latex/algorithmicx/algc.sty",
+      "package": "algorithmicx",
+      "kind": "runtime"
+    },
+    {
+      "name": "algcompatible.sty",
+      "length": 2994,
+      "sha256": "e4ce6965c55d5b50e1eb3cdfe0f649a2e4c15ca1e6e52508c5381400c9b30d8b",
+      "archive": "algorithmicx.tar.xz",
+      "member": "tex/latex/algorithmicx/algcompatible.sty",
+      "package": "algorithmicx",
+      "kind": "runtime"
+    },
+    {
+      "name": "algmatlab.sty",
+      "length": 2217,
+      "sha256": "76c043dacc122f2bbab8f17043e9522c743d29c975cee17daccdf1ec8aa0a26d",
+      "archive": "algorithmicx.tar.xz",
+      "member": "tex/latex/algorithmicx/algmatlab.sty",
+      "package": "algorithmicx",
+      "kind": "runtime"
+    },
+    {
+      "name": "algorithm.sty",
+      "length": 3249,
+      "sha256": "d63fdf24879f0efd535bc6d06bc2a008b79ae77f6d6d2bc96156ff1f35e96bd7",
+      "archive": "algorithms.tar.xz",
+      "member": "tex/latex/algorithms/algorithm.sty",
+      "package": "algorithms",
+      "kind": "runtime"
+    },
+    {
+      "name": "algorithmic.sty",
+      "length": 9318,
+      "sha256": "7fe47ed7f8222c56452bd73bf0682e72023ece06d59207653a02e080a341118d",
+      "archive": "algorithms.tar.xz",
+      "member": "tex/latex/algorithms/algorithmic.sty",
+      "package": "algorithms",
+      "kind": "runtime"
+    },
+    {
+      "name": "algorithmicx.sty",
+      "length": 26750,
+      "sha256": "65d5bc723633cf909cd8586b85c9dd0bc2714f74c0a1a569552aca4bfbdf2acd",
+      "archive": "algorithmicx.tar.xz",
+      "member": "tex/latex/algorithmicx/algorithmicx.sty",
+      "package": "algorithmicx",
+      "kind": "runtime"
+    },
+    {
+      "name": "algpascal.sty",
+      "length": 1323,
+      "sha256": "e72157051c0afc391865e2daf3f4f2c5eb9117c371b5cdb58ef492f1368b18a9",
+      "archive": "algorithmicx.tar.xz",
+      "member": "tex/latex/algorithmicx/algpascal.sty",
+      "package": "algorithmicx",
+      "kind": "runtime"
+    },
+    {
+      "name": "algpseudocode.sty",
+      "length": 3457,
+      "sha256": "d593ce32962f09494d212c176af0e739e51d89d65032c5a0c1b82c543badbccb",
+      "archive": "algorithmicx.tar.xz",
+      "member": "tex/latex/algorithmicx/algpseudocode.sty",
+      "package": "algorithmicx",
+      "kind": "runtime"
+    },
+    {
+      "name": "american-gost.lbx",
+      "length": 1133,
+      "sha256": "db52087e860e65686f900383756de2c7c4ebe8766b5e5a9d38385eb514ae5fa4",
+      "archive": "biblatex-gost.tar.xz",
+      "member": "tex/latex/biblatex-gost/american-gost.lbx",
+      "package": "biblatex-gost",
+      "kind": "runtime"
+    },
+    {
+      "name": "bbm.sty",
+      "length": 1644,
+      "sha256": "6d54416a5c8291c6a4810a2324b2a58658faef774748b395524a3a50593f4c97",
+      "archive": "bbm-macros.tar.xz",
+      "member": "tex/latex/bbm-macros/bbm.sty",
+      "package": "bbm-macros",
+      "kind": "runtime"
+    },
+    {
+      "name": "biblatex-gost.dbx",
+      "length": 2582,
+      "sha256": "73fd5fda99ba939a08d29fbc94f2c344efb94f201a6207c3056627e9de4ef476",
+      "archive": "biblatex-gost.tar.xz",
+      "member": "tex/latex/biblatex-gost/biblatex-gost.dbx",
+      "package": "biblatex-gost",
+      "kind": "runtime"
+    },
+    {
+      "name": "biblatex-gost.def",
+      "length": 12727,
+      "sha256": "b4e1025567a481940938a06d9e4ce19a590e2d523811fe86b2cec14026681ce3",
+      "archive": "biblatex-gost.tar.xz",
+      "member": "tex/latex/biblatex-gost/biblatex-gost.def",
+      "package": "biblatex-gost",
+      "kind": "runtime"
+    },
+    {
+      "name": "brazilian-gost.lbx",
+      "length": 346,
+      "sha256": "92ea7268d83722d4219f64b54866e8548572cf5633dba2f969057fd898a1f0d5",
+      "archive": "biblatex-gost.tar.xz",
+      "member": "tex/latex/biblatex-gost/brazilian-gost.lbx",
+      "package": "biblatex-gost",
+      "kind": "runtime"
+    },
+    {
+      "name": "british-gost.lbx",
+      "length": 1100,
+      "sha256": "83a0a01e80197d477808ff38e9c6ebf774eb1874623f77e9b282ddded1019bca",
+      "archive": "biblatex-gost.tar.xz",
+      "member": "tex/latex/biblatex-gost/british-gost.lbx",
+      "package": "biblatex-gost",
+      "kind": "runtime"
+    },
+    {
+      "name": "catalan-gost.lbx",
+      "length": 336,
+      "sha256": "0359582d91d47f0e3874f63e66d2906f4b3b8a70369d83ec7e9305a25adb9ade",
+      "archive": "biblatex-gost.tar.xz",
+      "member": "tex/latex/biblatex-gost/catalan-gost.lbx",
+      "package": "biblatex-gost",
+      "kind": "runtime"
+    },
+    {
+      "name": "changepage.sty",
+      "length": 4523,
+      "sha256": "c26adc410847658bbb8ddcadfb5fee6fa71254f07df5f007d2126760d6715a02",
+      "archive": "changepage.tar.xz",
+      "member": "tex/latex/changepage/changepage.sty",
+      "package": "changepage",
+      "kind": "runtime"
+    },
+    {
+      "name": "chngpage.sty",
+      "length": 4325,
+      "sha256": "aa3f87b58bc1ac695d29f397a988b796d2596a0c5352793a1966a02a2cc60670",
+      "archive": "changepage.tar.xz",
+      "member": "tex/latex/changepage/chngpage.sty",
+      "package": "changepage",
+      "kind": "runtime"
+    },
+    {
+      "name": "croatian-gost.lbx",
+      "length": 338,
+      "sha256": "185a0ffd14c05b02c880845995ede6e02beccee9be4f8a89f5f1f2851634151d",
+      "archive": "biblatex-gost.tar.xz",
+      "member": "tex/latex/biblatex-gost/croatian-gost.lbx",
+      "package": "biblatex-gost",
+      "kind": "runtime"
+    },
+    {
+      "name": "dsfont.sty",
+      "length": 230,
+      "sha256": "d52d0b44c12cada19fb32d97dc960c6d0769f5687ae554225da7b2c288d80214",
+      "archive": "doublestroke.tar.xz",
+      "member": "tex/latex/doublestroke/dsfont.sty",
+      "package": "doublestroke",
+      "kind": "runtime"
+    },
+    {
+      "name": "english-gost.lbx",
+      "length": 1098,
+      "sha256": "a415df096d51bc313110ac0eeda852944ac16f5c21cd74bf29c9e558fe364b1c",
+      "archive": "biblatex-gost.tar.xz",
+      "member": "tex/latex/biblatex-gost/english-gost.lbx",
+      "package": "biblatex-gost",
+      "kind": "runtime"
+    },
+    {
+      "name": "french-gost.lbx",
+      "length": 957,
+      "sha256": "d8e5364ea32de1ad7036d71ca72fa0f8a6e7c87a26b53e2b0426aeada44c93ab",
+      "archive": "biblatex-gost.tar.xz",
+      "member": "tex/latex/biblatex-gost/french-gost.lbx",
+      "package": "biblatex-gost",
+      "kind": "runtime"
+    },
+    {
+      "name": "galician-gost.lbx",
+      "length": 293,
+      "sha256": "3e1657d5615414f0c774ef9dc65e51fac76802c45b2f078a370f4857e6c1b9a8",
+      "archive": "biblatex-gost.tar.xz",
+      "member": "tex/latex/biblatex-gost/galician-gost.lbx",
+      "package": "biblatex-gost",
+      "kind": "runtime"
+    },
+    {
+      "name": "german-gost.lbx",
+      "length": 934,
+      "sha256": "cadbcce4bcd779a555ec4e8a07095c69234149ff708a203cc59fd00360df1167",
+      "archive": "biblatex-gost.tar.xz",
+      "member": "tex/latex/biblatex-gost/german-gost.lbx",
+      "package": "biblatex-gost",
+      "kind": "runtime"
+    },
+    {
+      "name": "gost-alphabetic-min.bbx",
+      "length": 277,
+      "sha256": "a0cf32c077dd9c3da7ded41955f8654b828012f9e52e36e310e1eeea0dc9f244",
+      "archive": "biblatex-gost.tar.xz",
+      "member": "tex/latex/biblatex-gost/gost-alphabetic-min.bbx",
+      "package": "biblatex-gost",
+      "kind": "runtime"
+    },
+    {
+      "name": "gost-alphabetic-min.cbx",
+      "length": 232,
+      "sha256": "51c8945da4646154ebea7ebf3ccf29db98242d944f0ebd7f23f1c4b80917934d",
+      "archive": "biblatex-gost.tar.xz",
+      "member": "tex/latex/biblatex-gost/gost-alphabetic-min.cbx",
+      "package": "biblatex-gost",
+      "kind": "runtime"
+    },
+    {
+      "name": "gost-alphabetic-min.dbx",
+      "length": 174,
+      "sha256": "094d739585ba4dc42c33ea58eb554598585a712ee324ab385fe53e10a6b51fbb",
+      "archive": "biblatex-gost.tar.xz",
+      "member": "tex/latex/biblatex-gost/gost-alphabetic-min.dbx",
+      "package": "biblatex-gost",
+      "kind": "runtime"
+    },
+    {
+      "name": "gost-alphabetic.bbx",
+      "length": 1226,
+      "sha256": "997258d90979052ecb65aa18b61d101d535412aeb31a76d616f5a6d7b25a5da9",
+      "archive": "biblatex-gost.tar.xz",
+      "member": "tex/latex/biblatex-gost/gost-alphabetic.bbx",
+      "package": "biblatex-gost",
+      "kind": "runtime"
+    },
+    {
+      "name": "gost-alphabetic.cbx",
+      "length": 189,
+      "sha256": "a3944cb7c550b646346f44937ed16d4511a3f0637d5cf260e616bf291a7882c8",
+      "archive": "biblatex-gost.tar.xz",
+      "member": "tex/latex/biblatex-gost/gost-alphabetic.cbx",
+      "package": "biblatex-gost",
+      "kind": "runtime"
+    },
+    {
+      "name": "gost-alphabetic.dbx",
+      "length": 170,
+      "sha256": "ed022c523dd81e1be4c0ad1460294832274908fac19a9255aebf34ab848e3dce",
+      "archive": "biblatex-gost.tar.xz",
+      "member": "tex/latex/biblatex-gost/gost-alphabetic.dbx",
+      "package": "biblatex-gost",
+      "kind": "runtime"
+    },
+    {
+      "name": "gost-authoryear-min.bbx",
+      "length": 277,
+      "sha256": "66a7da5bbf1e14004e5b56ec97739bfe41e63f009dd59b176ea4d369a00327a7",
+      "archive": "biblatex-gost.tar.xz",
+      "member": "tex/latex/biblatex-gost/gost-authoryear-min.bbx",
+      "package": "biblatex-gost",
+      "kind": "runtime"
+    },
+    {
+      "name": "gost-authoryear-min.cbx",
+      "length": 232,
+      "sha256": "f4e90f6de208ce480f619a0021453ceb1ca92c703607534ffd3c17b360362c21",
+      "archive": "biblatex-gost.tar.xz",
+      "member": "tex/latex/biblatex-gost/gost-authoryear-min.cbx",
+      "package": "biblatex-gost",
+      "kind": "runtime"
+    },
+    {
+      "name": "gost-authoryear-min.dbx",
+      "length": 174,
+      "sha256": "54e3b629a66805cda8d1c8a3e35044f8ebce74438f4de98ed84ac4a05ba45d10",
+      "archive": "biblatex-gost.tar.xz",
+      "member": "tex/latex/biblatex-gost/gost-authoryear-min.dbx",
+      "package": "biblatex-gost",
+      "kind": "runtime"
+    },
+    {
+      "name": "gost-authoryear.bbx",
+      "length": 11758,
+      "sha256": "34c90db89596ad2325271e915813db0be65bead4b3ed05c0aa3c85738af9642f",
+      "archive": "biblatex-gost.tar.xz",
+      "member": "tex/latex/biblatex-gost/gost-authoryear.bbx",
+      "package": "biblatex-gost",
+      "kind": "runtime"
+    },
+    {
+      "name": "gost-authoryear.cbx",
+      "length": 11512,
+      "sha256": "25ccc6bf04fa1fbac2d4e577a2c32f730031dcc4611453ecea20b2460bfb13e9",
+      "archive": "biblatex-gost.tar.xz",
+      "member": "tex/latex/biblatex-gost/gost-authoryear.cbx",
+      "package": "biblatex-gost",
+      "kind": "runtime"
+    },
+    {
+      "name": "gost-authoryear.dbx",
+      "length": 170,
+      "sha256": "da7c20b2fc150f9e693a48a751ae3cf742a40f068532d0a347555278f705000c",
+      "archive": "biblatex-gost.tar.xz",
+      "member": "tex/latex/biblatex-gost/gost-authoryear.dbx",
+      "package": "biblatex-gost",
+      "kind": "runtime"
+    },
+    {
+      "name": "gost-footnote-min.bbx",
+      "length": 144,
+      "sha256": "148fba89e0afadeac0f25a204be5d434cd6a62a52fb3494c2b0ca15c3e7ee242",
+      "archive": "biblatex-gost.tar.xz",
+      "member": "tex/latex/biblatex-gost/gost-footnote-min.bbx",
+      "package": "biblatex-gost",
+      "kind": "runtime"
+    },
+    {
+      "name": "gost-footnote-min.cbx",
+      "length": 290,
+      "sha256": "2e588642aeb1a44108b08edeb117578b7e798dbd4c2b9b80fcca970f2832c1ed",
+      "archive": "biblatex-gost.tar.xz",
+      "member": "tex/latex/biblatex-gost/gost-footnote-min.cbx",
+      "package": "biblatex-gost",
+      "kind": "runtime"
+    },
+    {
+      "name": "gost-footnote-min.dbx",
+      "length": 172,
+      "sha256": "6c772554f7c3f8651a0468331bc4cc49b3ea757b5deb5fe81e96fea6603f3dff",
+      "archive": "biblatex-gost.tar.xz",
+      "member": "tex/latex/biblatex-gost/gost-footnote-min.dbx",
+      "package": "biblatex-gost",
+      "kind": "runtime"
+    },
+    {
+      "name": "gost-footnote.bbx",
+      "length": 136,
+      "sha256": "9e7e82bfade640a2e402f8625cab6e2be8090680fbfbf63b6a36d4b3b70056a0",
+      "archive": "biblatex-gost.tar.xz",
+      "member": "tex/latex/biblatex-gost/gost-footnote.bbx",
+      "package": "biblatex-gost",
+      "kind": "runtime"
+    },
+    {
+      "name": "gost-footnote.cbx",
+      "length": 226,
+      "sha256": "55b81ac6bb9b669bc328126d501d1ee99275a70ee5e6f39ff08a2a0ad76cb9e0",
+      "archive": "biblatex-gost.tar.xz",
+      "member": "tex/latex/biblatex-gost/gost-footnote.cbx",
+      "package": "biblatex-gost",
+      "kind": "runtime"
+    },
+    {
+      "name": "gost-footnote.dbx",
+      "length": 168,
+      "sha256": "4ab960e714a54a87dbf655fe893820b0ff2a1320a327223182c2907965ce31da",
+      "archive": "biblatex-gost.tar.xz",
+      "member": "tex/latex/biblatex-gost/gost-footnote.dbx",
+      "package": "biblatex-gost",
+      "kind": "runtime"
+    },
+    {
+      "name": "gost-inline-min.bbx",
+      "length": 269,
+      "sha256": "c005f2c365f92306d37e6dec5a74aafa9262a7ec150b3cdf3bbf73ad42fb2dff",
+      "archive": "biblatex-gost.tar.xz",
+      "member": "tex/latex/biblatex-gost/gost-inline-min.bbx",
+      "package": "biblatex-gost",
+      "kind": "runtime"
+    },
+    {
+      "name": "gost-inline-min.cbx",
+      "length": 286,
+      "sha256": "bb9923c82e1d40372248fac2b5d7a310decabc155ca08fad15a6bdc2af002012",
+      "archive": "biblatex-gost.tar.xz",
+      "member": "tex/latex/biblatex-gost/gost-inline-min.cbx",
+      "package": "biblatex-gost",
+      "kind": "runtime"
+    },
+    {
+      "name": "gost-inline-min.dbx",
+      "length": 170,
+      "sha256": "9ee49cf34b5400ba7040282174ff0fae2051722a6e5fa768ff2d5a043a6c3140",
+      "archive": "biblatex-gost.tar.xz",
+      "member": "tex/latex/biblatex-gost/gost-inline-min.dbx",
+      "package": "biblatex-gost",
+      "kind": "runtime"
+    },
+    {
+      "name": "gost-inline.bbx",
+      "length": 1327,
+      "sha256": "6d0350950130877645fcad05b4ff6c857493ffe83d2dca3999b7dbe837afe5c9",
+      "archive": "biblatex-gost.tar.xz",
+      "member": "tex/latex/biblatex-gost/gost-inline.bbx",
+      "package": "biblatex-gost",
+      "kind": "runtime"
+    },
+    {
+      "name": "gost-inline.cbx",
+      "length": 17106,
+      "sha256": "01e7a417050c20ef1ff6f37329d06d16d14e95f1501485ec139f115b202d2029",
+      "archive": "biblatex-gost.tar.xz",
+      "member": "tex/latex/biblatex-gost/gost-inline.cbx",
+      "package": "biblatex-gost",
+      "kind": "runtime"
+    },
+    {
+      "name": "gost-inline.dbx",
+      "length": 166,
+      "sha256": "5b7c86827c2ff7b722f5e93542a5ce6758250e61b84326253e8ba13eae111826",
+      "archive": "biblatex-gost.tar.xz",
+      "member": "tex/latex/biblatex-gost/gost-inline.dbx",
+      "package": "biblatex-gost",
+      "kind": "runtime"
+    },
+    {
+      "name": "gost-numeric-min.bbx",
+      "length": 271,
+      "sha256": "49f1ce269463ae7ef7aae30eddf37c0d69083a5d2776cfc5227bcf73768faa9e",
+      "archive": "biblatex-gost.tar.xz",
+      "member": "tex/latex/biblatex-gost/gost-numeric-min.bbx",
+      "package": "biblatex-gost",
+      "kind": "runtime"
+    },
+    {
+      "name": "gost-numeric-min.cbx",
+      "length": 226,
+      "sha256": "90e44003dd80728cf6237013504fe8675f488b3a338033babc58a0409b0e49da",
+      "archive": "biblatex-gost.tar.xz",
+      "member": "tex/latex/biblatex-gost/gost-numeric-min.cbx",
+      "package": "biblatex-gost",
+      "kind": "runtime"
+    },
+    {
+      "name": "gost-numeric-min.dbx",
+      "length": 171,
+      "sha256": "34042a00dfac89dc944d0a72b2b42015f366e8237920dd020482bb3126a261b6",
+      "archive": "biblatex-gost.tar.xz",
+      "member": "tex/latex/biblatex-gost/gost-numeric-min.dbx",
+      "package": "biblatex-gost",
+      "kind": "runtime"
+    },
+    {
+      "name": "gost-numeric.bbx",
+      "length": 1607,
+      "sha256": "440398a12dce997d378678749d142ab37b970718d0a6c88dcfa5543121ecbf21",
+      "archive": "biblatex-gost.tar.xz",
+      "member": "tex/latex/biblatex-gost/gost-numeric.bbx",
+      "package": "biblatex-gost",
+      "kind": "runtime"
+    },
+    {
+      "name": "gost-numeric.cbx",
+      "length": 263,
+      "sha256": "9be94ad253bf00cf07682cdcc70f306643b57ebe818548df3f4c4b64757788e4",
+      "archive": "biblatex-gost.tar.xz",
+      "member": "tex/latex/biblatex-gost/gost-numeric.cbx",
+      "package": "biblatex-gost",
+      "kind": "runtime"
+    },
+    {
+      "name": "gost-numeric.dbx",
+      "length": 167,
+      "sha256": "ee302299b2a1598f84a7321011e45ea4be54e1f2b4a46cea9448d8d163027a8f",
+      "archive": "biblatex-gost.tar.xz",
+      "member": "tex/latex/biblatex-gost/gost-numeric.dbx",
+      "package": "biblatex-gost",
+      "kind": "runtime"
+    },
+    {
+      "name": "gost-standard.bbx",
+      "length": 75813,
+      "sha256": "32d06b38e1e111e381b34f77c9eee5af49b75cc99a61164925a0f0f29a3e57ed",
+      "archive": "biblatex-gost.tar.xz",
+      "member": "tex/latex/biblatex-gost/gost-standard.bbx",
+      "package": "biblatex-gost",
+      "kind": "runtime"
+    },
+    {
+      "name": "greek-gost.lbx",
+      "length": 289,
+      "sha256": "57d2b96c43e3b4a666ed23c5dbef4cd8fd87061e09f61aaafbe18087bfbcf8f3",
+      "archive": "biblatex-gost.tar.xz",
+      "member": "tex/latex/biblatex-gost/greek-gost.lbx",
+      "package": "biblatex-gost",
+      "kind": "runtime"
+    },
+    {
+      "name": "icelandic-gost.lbx",
+      "length": 368,
+      "sha256": "1273d490aa828384d51d798a4ab7f85779a7f2cb790f64790a5c07ad0ee4a3b1",
+      "archive": "biblatex-gost.tar.xz",
+      "member": "tex/latex/biblatex-gost/icelandic-gost.lbx",
+      "package": "biblatex-gost",
+      "kind": "runtime"
+    },
+    {
+      "name": "import.sty",
+      "length": 6201,
+      "sha256": "ddcc378af8f3710502e60a97d0f6d65cdb3f3252528332edd58d564410599cd2",
+      "archive": "import.tar.xz",
+      "member": "tex/latex/import/import.sty",
+      "package": "import",
+      "kind": "runtime"
+    },
+    {
+      "name": "italian-gost.lbx",
+      "length": 286,
+      "sha256": "a48a02c891f9d7242645f18531bd52c13f9ab85e2a02d640bad98227ea3eabbc",
+      "archive": "biblatex-gost.tar.xz",
+      "member": "tex/latex/biblatex-gost/italian-gost.lbx",
+      "package": "biblatex-gost",
+      "kind": "runtime"
+    },
+    {
+      "name": "notices/original-thesis-packages/xetex/README",
+      "length": 708,
+      "sha256": "451765fc0efe726fca118326bf839a157ccd196a77e476da7b1d80ceaa341dce",
+      "archive": "xetex.doc.tar.xz",
+      "member": "texmf-dist/doc/xetex/base/README",
+      "package": "xetex",
+      "kind": "notice"
+    },
+    {
+      "name": "notices/thesis-packages/algorithmicx/README",
+      "length": 256,
+      "sha256": "815ac494ff7034f137dedb250f8ce64df15bc89eb027d7e28e56694d0d62c547",
+      "archive": "algorithmicx.doc.tar.xz",
+      "member": "doc/latex/algorithmicx/README",
+      "package": "algorithmicx",
+      "kind": "notice"
+    },
+    {
+      "name": "notices/thesis-packages/algorithms/COPYING",
+      "length": 26527,
+      "sha256": "a9bdde5616ecdd1e980b44f360600ee8783b1f99b8cc83a2beb163a0a390e861",
+      "archive": "algorithms.doc.tar.xz",
+      "member": "doc/latex/algorithms/COPYING",
+      "package": "algorithms",
+      "kind": "notice"
+    },
+    {
+      "name": "notices/thesis-packages/algorithms/README",
+      "length": 768,
+      "sha256": "0376218331d458f7867c6ac73760216af20a2865cde59023518ee5bd26a44cc6",
+      "archive": "algorithms.doc.tar.xz",
+      "member": "doc/latex/algorithms/README",
+      "package": "algorithms",
+      "kind": "notice"
+    },
+    {
+      "name": "notices/thesis-packages/bbm-macros/README",
+      "length": 947,
+      "sha256": "c69c57b3434c92d4ef6d33449d6ae72dcde86263f2642e576d9ea4ce21f4bcaf",
+      "archive": "bbm-macros.doc.tar.xz",
+      "member": "doc/latex/bbm-macros/README",
+      "package": "bbm-macros",
+      "kind": "notice"
+    },
+    {
+      "name": "notices/thesis-packages/bbm/README",
+      "length": 2480,
+      "sha256": "7b085ddd6a7f340f66f580b4eddb3905aee9ecb005b0a6c5986f6f5072f588a1",
+      "archive": "bbm.doc.tar.xz",
+      "member": "doc/fonts/bbm/README",
+      "package": "bbm",
+      "kind": "notice"
+    },
+    {
+      "name": "notices/thesis-packages/biblatex-gost/README.md",
+      "length": 2001,
+      "sha256": "44b2ce533ac29783f13fbbb5910939084303fbc8915188f8eabfac8f5b90dc31",
+      "archive": "biblatex-gost.doc.tar.xz",
+      "member": "doc/latex/biblatex-gost/README.md",
+      "package": "biblatex-gost",
+      "kind": "notice"
+    },
+    {
+      "name": "notices/thesis-packages/changepage/README",
+      "length": 2818,
+      "sha256": "d9cdbab34d2dbeb9bd7dfb94740bd6e9e3a18b6682c95780a1dda7352085cdba",
+      "archive": "changepage.doc.tar.xz",
+      "member": "doc/latex/changepage/README",
+      "package": "changepage",
+      "kind": "notice"
+    },
+    {
+      "name": "notices/thesis-packages/doublestroke/README",
+      "length": 4762,
+      "sha256": "ccb7766b328e115f59a4bfb9954336190c1f2bf81c364d79379af384a6be7333",
+      "archive": "doublestroke.doc.tar.xz",
+      "member": "doc/fonts/doublestroke/README",
+      "package": "doublestroke",
+      "kind": "notice"
+    },
+    {
+      "name": "notices/thesis-packages/import/README",
+      "length": 647,
+      "sha256": "55e8d66ae290faa851fea5a69d5e5018ec64811b480fb562e374be775542e382",
+      "archive": "import.doc.tar.xz",
+      "member": "doc/latex/import/README",
+      "package": "import",
+      "kind": "notice"
+    },
+    {
+      "name": "notices/thesis-packages/stmaryrd/README",
+      "length": 359,
+      "sha256": "1fe762e776c95c09b1b3a2a8221cab4388a998d791d08a1785d925c9b3a2698e",
+      "archive": "stmaryrd.doc.tar.xz",
+      "member": "doc/fonts/stmaryrd/README",
+      "package": "stmaryrd",
+      "kind": "notice"
+    },
+    {
+      "name": "notices/thesis-packages/stmaryrd/README.hoekwater",
+      "length": 1140,
+      "sha256": "8abeab633dbdca0b507c42996674a36e371a39784300a52b18adb44ee6254a08",
+      "archive": "stmaryrd.doc.tar.xz",
+      "member": "doc/fonts/stmaryrd/README.hoekwater",
+      "package": "stmaryrd",
+      "kind": "notice"
+    },
+    {
+      "name": "notices/thesis-packages/totcount/README",
+      "length": 1613,
+      "sha256": "f45b8ca80822d256e84e00ddb8884d5f5133ebf4fc2653d678be04c13cc2ff3f",
+      "archive": "totcount.doc.tar.xz",
+      "member": "doc/latex/totcount/README",
+      "package": "totcount",
+      "kind": "notice"
+    },
+    {
+      "name": "notices/thesis-packages/xits/OFL.txt",
+      "length": 4998,
+      "sha256": "10c83acb7bf240c6e263906e0905c8e419f3483c89141e83243465c221d322ad",
+      "archive": "xits.doc.tar.xz",
+      "member": "doc/fonts/xits/OFL.txt",
+      "package": "xits",
+      "kind": "notice"
+    },
+    {
+      "name": "notices/thesis-packages/xits/README.txt",
+      "length": 652,
+      "sha256": "67432af9a4ed7fdf43126fc881105a06471d1f308c0e5bb0c1e2136e431775e5",
+      "archive": "xits.doc.tar.xz",
+      "member": "doc/fonts/xits/README.txt",
+      "package": "xits",
+      "kind": "notice"
+    },
+    {
+      "name": "portuguese-gost.lbx",
+      "length": 346,
+      "sha256": "02798d271f3a829dd4575b34664c242863c3a04504e9f1a00d70576abf5e4fe3",
+      "archive": "biblatex-gost.tar.xz",
+      "member": "tex/latex/biblatex-gost/portuguese-gost.lbx",
+      "package": "biblatex-gost",
+      "kind": "runtime"
+    },
+    {
+      "name": "russian-gost.lbx",
+      "length": 20700,
+      "sha256": "e4749b72cbf255b7c2f26c9e9fc2aa492307642a3ecde5da560a8d0f810f4fc7",
+      "archive": "biblatex-gost.tar.xz",
+      "member": "tex/latex/biblatex-gost/russian-gost.lbx",
+      "package": "biblatex-gost",
+      "kind": "runtime"
+    },
+    {
+      "name": "slovene-gost.lbx",
+      "length": 330,
+      "sha256": "e68ae42360f044bd00a57ddd8eab70bb81bed6fc338c5be142dbde71ca4e204d",
+      "archive": "biblatex-gost.tar.xz",
+      "member": "tex/latex/biblatex-gost/slovene-gost.lbx",
+      "package": "biblatex-gost",
+      "kind": "runtime"
+    },
+    {
+      "name": "spanish-gost.lbx",
+      "length": 336,
+      "sha256": "4227cd07c98a9a69624b4653444a2c68c41f1237c72bcf49d011ed96811a409a",
+      "archive": "biblatex-gost.tar.xz",
+      "member": "tex/latex/biblatex-gost/spanish-gost.lbx",
+      "package": "biblatex-gost",
+      "kind": "runtime"
+    },
+    {
+      "name": "stmary10.pfb",
+      "length": 27430,
+      "sha256": "eff077f7d9ca7c2f02695e1c51bb97327f097dbdf6b2677579772bcd4f6a6844",
+      "archive": "stmaryrd.tar.xz",
+      "member": "fonts/type1/public/stmaryrd/stmary10.pfb",
+      "package": "stmaryrd",
+      "kind": "runtime"
+    },
+    {
+      "name": "stmary10.tfm",
+      "length": 848,
+      "sha256": "9c41cd0d9cfb12c5f7ed6dccfe0367be6378e5b755a5b22424c47b975b57af8f",
+      "archive": "stmaryrd.tar.xz",
+      "member": "fonts/tfm/public/stmaryrd/stmary10.tfm",
+      "package": "stmaryrd",
+      "kind": "runtime"
+    },
+    {
+      "name": "stmary5.pfb",
+      "length": 28325,
+      "sha256": "f1ed664a815eddf1da7fe4fc037361236434d6c082cf0be14ba3e3246b25a153",
+      "archive": "stmaryrd.tar.xz",
+      "member": "fonts/type1/public/stmaryrd/stmary5.pfb",
+      "package": "stmaryrd",
+      "kind": "runtime"
+    },
+    {
+      "name": "stmary5.tfm",
+      "length": 848,
+      "sha256": "052a74aa1f218573cb6e94100f78a7022c8db53c8078432d971000c3eb62f0c8",
+      "archive": "stmaryrd.tar.xz",
+      "member": "fonts/tfm/public/stmaryrd/stmary5.tfm",
+      "package": "stmaryrd",
+      "kind": "runtime"
+    },
+    {
+      "name": "stmary6.pfb",
+      "length": 27786,
+      "sha256": "b7bb88b8b71712f8bc648240df49a10826f988a695bcb8e357a9bf9835a93b59",
+      "archive": "stmaryrd.tar.xz",
+      "member": "fonts/type1/public/stmaryrd/stmary6.pfb",
+      "package": "stmaryrd",
+      "kind": "runtime"
+    },
+    {
+      "name": "stmary6.tfm",
+      "length": 848,
+      "sha256": "67b95fb10e764df112161df5622ff8c3c637c59ced807c947b8ac2c12da17611",
+      "archive": "stmaryrd.tar.xz",
+      "member": "fonts/tfm/public/stmaryrd/stmary6.tfm",
+      "package": "stmaryrd",
+      "kind": "runtime"
+    },
+    {
+      "name": "stmary7.pfb",
+      "length": 28237,
+      "sha256": "d5a26237839a2e17a97d1c5c804a6c01be71c2c2bb25b9f34506734a0e8181de",
+      "archive": "stmaryrd.tar.xz",
+      "member": "fonts/type1/public/stmaryrd/stmary7.pfb",
+      "package": "stmaryrd",
+      "kind": "runtime"
+    },
+    {
+      "name": "stmary7.tfm",
+      "length": 848,
+      "sha256": "0e62aadc2213ee9de5b82661b93c2ad386b62ee2a2e0fd6c95911a5c9c40c33d",
+      "archive": "stmaryrd.tar.xz",
+      "member": "fonts/tfm/public/stmaryrd/stmary7.tfm",
+      "package": "stmaryrd",
+      "kind": "runtime"
+    },
+    {
+      "name": "stmary8.pfb",
+      "length": 27873,
+      "sha256": "89b5630c45fe1f91327531faa8c33f68009f299e04681aba8ead9e0bbb514cd3",
+      "archive": "stmaryrd.tar.xz",
+      "member": "fonts/type1/public/stmaryrd/stmary8.pfb",
+      "package": "stmaryrd",
+      "kind": "runtime"
+    },
+    {
+      "name": "stmary8.tfm",
+      "length": 848,
+      "sha256": "c19ff2d3555bef3ef361fa6d3bf69ab7907ff775a32cd11d7e086f9db96dcb23",
+      "archive": "stmaryrd.tar.xz",
+      "member": "fonts/tfm/public/stmaryrd/stmary8.tfm",
+      "package": "stmaryrd",
+      "kind": "runtime"
+    },
+    {
+      "name": "stmary9.pfb",
+      "length": 27392,
+      "sha256": "f904c6b43ea9fc2e78c3a13bbcf4999933d49840ad18e9abeb1c780d845ff6be",
+      "archive": "stmaryrd.tar.xz",
+      "member": "fonts/type1/public/stmaryrd/stmary9.pfb",
+      "package": "stmaryrd",
+      "kind": "runtime"
+    },
+    {
+      "name": "stmary9.tfm",
+      "length": 848,
+      "sha256": "8db345096c71d0cb3bc9a32f69061e3088532eda711728b3a6143a1bb144f400",
+      "archive": "stmaryrd.tar.xz",
+      "member": "fonts/tfm/public/stmaryrd/stmary9.tfm",
+      "package": "stmaryrd",
+      "kind": "runtime"
+    },
+    {
+      "name": "stmaryrd.map",
+      "length": 214,
+      "sha256": "44f74dad233915a7a3fc43c51039c4eb165f6f8a4cd8e9a8633da0fade885ee7",
+      "archive": "stmaryrd.tar.xz",
+      "member": "fonts/map/dvips/stmaryrd/stmaryrd.map",
+      "package": "stmaryrd",
+      "kind": "runtime"
+    },
+    {
+      "name": "stmaryrd.sty",
+      "length": 11080,
+      "sha256": "75fb8a156eaad65a58ddaedb1556f86638a013e5eaa640f3bbd994a8ce630270",
+      "archive": "stmaryrd.tar.xz",
+      "member": "tex/latex/stmaryrd/stmaryrd.sty",
+      "package": "stmaryrd",
+      "kind": "runtime"
+    },
+    {
+      "name": "tex-text.map",
+      "length": 802,
+      "sha256": "65a1cf61ec924a1a8b8494760586a098bbf68046f004339108556c6465f75ada",
+      "archive": "xetex.tar.xz",
+      "member": "texmf-dist/fonts/misc/xetex/fontmapping/base/tex-text.map",
+      "package": "xetex",
+      "kind": "runtime"
+    },
+    {
+      "name": "tex-text.tec",
+      "length": 398,
+      "sha256": "511836c4d363daffa1c789956bdb44b89ac526ef3e4215a846c313b717447d40",
+      "archive": "xetex.tar.xz",
+      "member": "texmf-dist/fonts/misc/xetex/fontmapping/base/tex-text.tec",
+      "package": "xetex",
+      "kind": "runtime"
+    },
+    {
+      "name": "totcount.sty",
+      "length": 5857,
+      "sha256": "d6e30e018db29b709122085f88db0404d6f2ac1d31d83190b7ec55aec8d7d2be",
+      "archive": "totcount.tar.xz",
+      "member": "tex/latex/totcount/totcount.sty",
+      "package": "totcount",
+      "kind": "runtime"
+    },
+    {
+      "name": "ubbm.fd",
+      "length": 2132,
+      "sha256": "293e6076b710eee2446216d87f9a219c220ddd250839ce7b60b32ffd22a678d2",
+      "archive": "bbm-macros.tar.xz",
+      "member": "tex/latex/bbm-macros/ubbm.fd",
+      "package": "bbm-macros",
+      "kind": "runtime"
+    },
+    {
+      "name": "ubbmss.fd",
+      "length": 1919,
+      "sha256": "fafb93184dabfe70e4de8e8def946ef0a0571d3044be514780e3f1c40f60ee44",
+      "archive": "bbm-macros.tar.xz",
+      "member": "tex/latex/bbm-macros/ubbmss.fd",
+      "package": "bbm-macros",
+      "kind": "runtime"
+    },
+    {
+      "name": "ubbmtt.fd",
+      "length": 1586,
+      "sha256": "a94a043d2d0bf0f83694afed97e4560648ccab5e15481299e2655d00fe3642a0",
+      "archive": "bbm-macros.tar.xz",
+      "member": "tex/latex/bbm-macros/ubbmtt.fd",
+      "package": "bbm-macros",
+      "kind": "runtime"
+    }
+  ],
+  "catalogue": {
+    "parent": {
+      "length": 12315,
+      "sha256": "380ef7057355bff9024f448cf132e6c563364071ee36251d557d95c4652d1e65"
+    },
+    "candidate": {
+      "length": 12729,
+      "sha256": "7e714695c3bf62543445856f69d6690de0b4b5cecec8def6624b64875522768b"
+    },
+    "file": "xetexfontlist.txt",
+    "originalFontCount": 77,
+    "fontCount": 81,
+    "fonts": [
+      {
+        "name": "DejaVuSerif-Bold.ttf",
+        "length": 356668,
+        "sha256": "847b33e13925f19ff87e4d934d6b3cf7cac35ce16424f6f670e40c2f377cf2df"
+      },
+      {
+        "name": "DejaVuSerif-BoldItalic.ttf",
+        "length": 348020,
+        "sha256": "e4662d0bcf9039a5d1fb7b52f964aebdde4563be9e5a8521299936f4818c0ab2"
+      },
+      {
+        "name": "DejaVuSerif-Italic.ttf",
+        "length": 346544,
+        "sha256": "1d7476da447f9455a47c41adfd6ac2b1fc1b65e660f3ea4bf36128506c7e094c"
+      },
+      {
+        "name": "DejaVuSerif.ttf",
+        "length": 380660,
+        "sha256": "8f2c103bfa3fd5de71f1b92b18f21906b5a26871fb7e19a9a4c9af539c3cc7ab"
+      },
+      {
+        "name": "latinmodern-math.otf",
+        "length": 733736,
+        "sha256": "6075562b771f8b82f0c179e363389684f2dd09de30038269e2628e504bd7be0f"
+      },
+      {
+        "name": "lmmono10-italic.otf",
+        "length": 63584,
+        "sha256": "14e6328a5383d2b927c47051093ce0aff60deea07e6df71b8b99ee8d9c2ff8f2"
+      },
+      {
+        "name": "lmmono10-regular.otf",
+        "length": 64684,
+        "sha256": "22deb6d3be3ffcb40b33f0e010afb256c677d97c2a2bdee1f5740cdc97751558"
+      },
+      {
+        "name": "lmmono12-regular.otf",
+        "length": 63012,
+        "sha256": "b826e490fa671f254840abe88afea0975b606f57fb4a8b93f53787c26d8ac319"
+      },
+      {
+        "name": "lmmono8-regular.otf",
+        "length": 66268,
+        "sha256": "17319490d20f24e192bd7e7999484b95111a4654ac2620e7aa215591142ae997"
+      },
+      {
+        "name": "lmmono9-regular.otf",
+        "length": 63076,
+        "sha256": "cdd53c7dc01a1d25f21eaf7cae44bfb8a9665e4cbd60e5f8da14287aca819bb9"
+      },
+      {
+        "name": "lmmonocaps10-oblique.otf",
+        "length": 71232,
+        "sha256": "6bb7315ab000361195457b6c5efc75ed4bc24d278c6026d0aa8e0e4847394384"
+      },
+      {
+        "name": "lmmonocaps10-regular.otf",
+        "length": 63228,
+        "sha256": "9fb93a8f39f8e55682d09edb93c4c07d976c13bb92253b875b5b6a19e9af9e0a"
+      },
+      {
+        "name": "lmmonolt10-bold.otf",
+        "length": 66332,
+        "sha256": "2f4ae1bd30d4203a1c74c61d61dddbd5e2c2d5a7001d456b1b98e08b7c47ffb9"
+      },
+      {
+        "name": "lmmonolt10-boldoblique.otf",
+        "length": 75300,
+        "sha256": "a739b6deaafe0b9e8ae1eec9db1f425c52e1f6f483ca8e07e359bdd118310bba"
+      },
+      {
+        "name": "lmmonolt10-oblique.otf",
+        "length": 73144,
+        "sha256": "f19451a27c178d48b99921e72ff6acf568f670bf58c71c6dd506b1f96a2d9c9e"
+      },
+      {
+        "name": "lmmonolt10-regular.otf",
+        "length": 63628,
+        "sha256": "176f2e3745e3d97eb7b96b25be919ed0e198f491dc363ad28971be1d5707ace7"
+      },
+      {
+        "name": "lmmonoltcond10-oblique.otf",
+        "length": 75908,
+        "sha256": "2af9fab2c4d4c7a98aaebb9d66ffe1b55b3319e48c5d84add7ef27c2890747d2"
+      },
+      {
+        "name": "lmmonoltcond10-regular.otf",
+        "length": 64160,
+        "sha256": "fd2e0afd73a6029887d222f1e379f9e977ed57f9471d48ba44fb42c52a650274"
+      },
+      {
+        "name": "lmmonoprop10-oblique.otf",
+        "length": 116764,
+        "sha256": "7306b49832153fb387be1c741962a72d36127a2176f855d11c9903e6a15bfaca"
+      },
+      {
+        "name": "lmmonoprop10-regular.otf",
+        "length": 109500,
+        "sha256": "59036dd0b599f3e90c41dc4b063849bb36ba29058f94d386718fb9ce523d8657"
+      },
+      {
+        "name": "lmmonoproplt10-bold.otf",
+        "length": 110276,
+        "sha256": "c30d83cb4cdd879ea251243590e135e012e5d43e889a0d0990d196b1083715d2"
+      },
+      {
+        "name": "lmmonoproplt10-boldoblique.otf",
+        "length": 120732,
+        "sha256": "4d1193e06d6042695f8caf9cde48785867bee8de8460a7a9c99504074d280f57"
+      },
+      {
+        "name": "lmmonoproplt10-oblique.otf",
+        "length": 118244,
+        "sha256": "2d57934e1ae5f71cbcbed7b7ea6fa597f9212ebfd8d0cc91e9fabbb9622cab7f"
+      },
+      {
+        "name": "lmmonoproplt10-regular.otf",
+        "length": 110784,
+        "sha256": "dedec8ee86f7448949cb695ace72f2e0de3ccc380ff92dfbc6c45c20209e3349"
+      },
+      {
+        "name": "lmmonoslant10-regular.otf",
+        "length": 72212,
+        "sha256": "4b4a3e600db7f6ec434f8b48b31f22e12faced90e1681c93eeba5e23a6e55fde"
+      },
+      {
+        "name": "lmroman10-bold.otf",
+        "length": 111240,
+        "sha256": "102fe06c430a8b681b2bf6876b7cd967ae4d47b4b6b41d915eb7913b726d9fb1"
+      },
+      {
+        "name": "lmroman10-bolditalic.otf",
+        "length": 118204,
+        "sha256": "c37a28eed7a6e03f792b98b5e5f637b2fcda378bb4855f99284f1a88fe35f124"
+      },
+      {
+        "name": "lmroman10-italic.otf",
+        "length": 118828,
+        "sha256": "c1fce25075567bb8dbf2151658c3b442690041db17a2d49fc9e55905ea5b7169"
+      },
+      {
+        "name": "lmroman10-regular.otf",
+        "length": 111536,
+        "sha256": "1aa18cfefa58132c52ce5de70db1fd1154201c19cd2b2cdaffba4906a33e6852"
+      },
+      {
+        "name": "lmroman12-bold.otf",
+        "length": 110496,
+        "sha256": "28c8782ac2b6486958b5dc7610ada7800c53546ff7f36bc65909a876e1cd338e"
+      },
+      {
+        "name": "lmroman12-italic.otf",
+        "length": 117732,
+        "sha256": "ada6b3f451238784e5a5ea75d43efa1eb4329cd75ce65bf047ed2f31b7b5e2f3"
+      },
+      {
+        "name": "lmroman12-regular.otf",
+        "length": 110400,
+        "sha256": "e6be218ae83e61aa8a29990d3cdc401c678c1962188cb9a4a8b6359e4f5e5870"
+      },
+      {
+        "name": "lmroman17-regular.otf",
+        "length": 110248,
+        "sha256": "ed048c80fb4b67663b80899b89fe5fba17d7442e1286d61fd08fe5689c6b7c3c"
+      },
+      {
+        "name": "lmroman5-bold.otf",
+        "length": 109564,
+        "sha256": "6326fb955d07bedcc8f73684e6b6bfa76706d38f3a85bd89c0659504ace366a1"
+      },
+      {
+        "name": "lmroman5-regular.otf",
+        "length": 111872,
+        "sha256": "954bd9c376597c7043e7b616430163e0158155edf7434fd70082cf8460c08533"
+      },
+      {
+        "name": "lmroman6-bold.otf",
+        "length": 112452,
+        "sha256": "f1ebd52916182bfc2e3f9d4b5ba847ad6acc6c7761354c0dc052fb01ec14f73c"
+      },
+      {
+        "name": "lmroman6-regular.otf",
+        "length": 112212,
+        "sha256": "501396c437f76c260b8724265b8495f318a640ee5a4674852ecbb20daf256696"
+      },
+      {
+        "name": "lmroman7-bold.otf",
+        "length": 110212,
+        "sha256": "063ea9e378b4fca4fd59771cf522faa21eb7c8516c89464745c79725b384fb9a"
+      },
+      {
+        "name": "lmroman7-italic.otf",
+        "length": 117960,
+        "sha256": "19d20f2bb00fbffe5d3d66e9b6a54f0108289068029e9d88649d981d53613ddf"
+      },
+      {
+        "name": "lmroman7-regular.otf",
+        "length": 110792,
+        "sha256": "48c4b46ab255eec96588fb992fba1ed6102e53d051da480738a61cc6cdb328c3"
+      },
+      {
+        "name": "lmroman8-bold.otf",
+        "length": 112404,
+        "sha256": "04d4f633c3da31a169f4c54a7fe8c7e63925b39d030381f8d3eab955f16be7b2"
+      },
+      {
+        "name": "lmroman8-italic.otf",
+        "length": 117248,
+        "sha256": "fb0536b5c3eee5b5622cd827ceb410e6514e36512ebdc51d2cf98a96c06d44e8"
+      },
+      {
+        "name": "lmroman8-regular.otf",
+        "length": 111948,
+        "sha256": "f73015c3827596586faa380c398501caf9b5bcbb6f40b46af6a51277ca97c9fc"
+      },
+      {
+        "name": "lmroman9-bold.otf",
+        "length": 113040,
+        "sha256": "f72feac9ea12eb858d8093d6c0ee710a6c25f59b61278c88ec41c0a680838415"
+      },
+      {
+        "name": "lmroman9-italic.otf",
+        "length": 118380,
+        "sha256": "2106cffcdc9f9cb411d7c3441e34d77a168b998a58b40e727ab5b815437d1975"
+      },
+      {
+        "name": "lmroman9-regular.otf",
+        "length": 112680,
+        "sha256": "8ab7b017fc67ea0e30cbf9e7ebd940010442ea67b40cf65f87d73f3ca11b0e6f"
+      },
+      {
+        "name": "lmromancaps10-oblique.otf",
+        "length": 116564,
+        "sha256": "603e6bb88c206f3252d2ca1a061d0faf252dd6c87501f2efa32ce2f70793b1ad"
+      },
+      {
+        "name": "lmromancaps10-regular.otf",
+        "length": 108740,
+        "sha256": "1ab40332a969892c7ed6cb010193b5276ccef1da6798bcbd1a465fee23d29334"
+      },
+      {
+        "name": "lmromandemi10-oblique.otf",
+        "length": 119632,
+        "sha256": "430d9237cfeb1b7ef25a36002adac0524a11a07f4a31b16ce5a0eb3330163217"
+      },
+      {
+        "name": "lmromandemi10-regular.otf",
+        "length": 111892,
+        "sha256": "63b6f9528e6117c5b0c0b1992517696ae09d05e7ca3711df0e0409d9db6df32c"
+      },
+      {
+        "name": "lmromandunh10-oblique.otf",
+        "length": 122840,
+        "sha256": "5f7b9361353271246ac66a2681399052cc261a943c8a03c754ee212fdfb4a64c"
+      },
+      {
+        "name": "lmromandunh10-regular.otf",
+        "length": 113276,
+        "sha256": "6c298b3680cc111c6e20eb2489bab9637ac316a686740fc1f8396230215e1161"
+      },
+      {
+        "name": "lmromanslant10-bold.otf",
+        "length": 117984,
+        "sha256": "5f6689646a5e88b402d2e60085c813fca3a4d60707b0383c65cb023107a8bddc"
+      },
+      {
+        "name": "lmromanslant10-regular.otf",
+        "length": 118508,
+        "sha256": "056ad4d08d2eb58d6b7fd0ac5de3f1fb799f2bb0c16b66c7e6b5bc5b6aef6481"
+      },
+      {
+        "name": "lmromanslant12-regular.otf",
+        "length": 117116,
+        "sha256": "25f2ecfb860f2e45e6ebe69d11bc6305f5bfbef8f13476638ba291f47d1f130c"
+      },
+      {
+        "name": "lmromanslant17-regular.otf",
+        "length": 118092,
+        "sha256": "4f30eda1d4674a1f4eea513b3baf85e3ba3fb17b2e4cf09bf627aee91dc0a4cc"
+      },
+      {
+        "name": "lmromanslant8-regular.otf",
+        "length": 118720,
+        "sha256": "a88ecd1a6b4d5aa1c9d537b98d0de8e19d63b292918fabf0cc36158ed770ca63"
+      },
+      {
+        "name": "lmromanslant9-regular.otf",
+        "length": 119932,
+        "sha256": "7441aee0c9dfbca16118fc7fe339c2e6c79ecc966a51ac1f76860351b6a8f02e"
+      },
+      {
+        "name": "lmromanunsl10-regular.otf",
+        "length": 124048,
+        "sha256": "21bbbe167e824b93a956327bcc1efda99c1bb472e761834da40cef33cab46194"
+      },
+      {
+        "name": "lmsans10-bold.otf",
+        "length": 107448,
+        "sha256": "a597b710326c1a8a2c7238d808e5d38711638a72a32383478db4829d63afd687"
+      },
+      {
+        "name": "lmsans10-boldoblique.otf",
+        "length": 114984,
+        "sha256": "e45673d84754a94f2f053bd4c15950b4b320144fbb622c630a26fd7b68cfabc5"
+      },
+      {
+        "name": "lmsans10-oblique.otf",
+        "length": 101412,
+        "sha256": "1b38b36efc21f9d3f34edf6a13f9d71f59c41f824e790f5d3ee5ba5b4936f377"
+      },
+      {
+        "name": "lmsans10-regular.otf",
+        "length": 95128,
+        "sha256": "d431b786b9b603662718e79cfe9b441f47a8b0b3e854dde89d5acb3ed7cfd682"
+      },
+      {
+        "name": "lmsans12-oblique.otf",
+        "length": 102056,
+        "sha256": "1f138e6203f7092f9a01f6193ed97d971b5045b99969f3a62c7e43a7faabc1c0"
+      },
+      {
+        "name": "lmsans12-regular.otf",
+        "length": 95160,
+        "sha256": "f87ebdea035a96e8787e2c663cfcc78ce73205d37800eafe7948278e2cc7666a"
+      },
+      {
+        "name": "lmsans17-oblique.otf",
+        "length": 100500,
+        "sha256": "0f6a4450c5fc9afd3650f24ad9003684fff3252691bbf2a33be94b383db8a77c"
+      },
+      {
+        "name": "lmsans17-regular.otf",
+        "length": 94828,
+        "sha256": "f6c395a436e4fa7e88bbf1445e64b9c78ce4effba3668b13cc433077fc71a984"
+      },
+      {
+        "name": "lmsans8-oblique.otf",
+        "length": 100084,
+        "sha256": "7f4227513bfd47b7077bedd125caa4c0a223a2cdad17a1470145cdea83353c88"
+      },
+      {
+        "name": "lmsans8-regular.otf",
+        "length": 94256,
+        "sha256": "04f0d25ca474494cb707e752170f6c22cdcb8ae2b5fb80872143e18d5cc463f8"
+      },
+      {
+        "name": "lmsans9-oblique.otf",
+        "length": 101068,
+        "sha256": "ac0535d7d4a8eb1b531c5faeb9060a4b9bac397d72cf54191ef53eea6f66b617"
+      },
+      {
+        "name": "lmsans9-regular.otf",
+        "length": 94552,
+        "sha256": "80ef596460b7b402621780f7cd73a348efedc4cd2c6deca37da58f07ee61b85d"
+      },
+      {
+        "name": "lmsansdemicond10-oblique.otf",
+        "length": 114848,
+        "sha256": "f98ed7d9cc5e10fd5c8e01f6ea708fddff5bbbf6f4503998c92b3c1f26d68d33"
+      },
+      {
+        "name": "lmsansdemicond10-regular.otf",
+        "length": 106836,
+        "sha256": "3a8cc8f72acaf6d4cc9200a838e5e118bf6f265233aa078e105559f6db6c2948"
+      },
+      {
+        "name": "lmsansquot8-bold.otf",
+        "length": 106232,
+        "sha256": "44cd928f556c68c3a6ce5938f6968c3da7b3d9d14d3c8add54005f0cc5e39a53"
+      },
+      {
+        "name": "lmsansquot8-boldoblique.otf",
+        "length": 112456,
+        "sha256": "0cac0a6909c1cb33df8d3aeda2817ef2671d7f466cc352d826551bf92ca5f877"
+      },
+      {
+        "name": "lmsansquot8-oblique.otf",
+        "length": 112648,
+        "sha256": "d858d237a69d432ca0ff67b930dabf5a60bfde69ca39bc555fab78ecbb5f4e4d"
+      },
+      {
+        "name": "lmsansquot8-regular.otf",
+        "length": 105172,
+        "sha256": "5da041def6d17825bb9b2d1d4fef66099a1e871005c08fc8f0d29976a923f4c9"
+      },
+      {
+        "name": "XITS-Regular.otf",
+        "length": 270632,
+        "sha256": "9cd5e6b9bac7647cc714c17d7c9e2e5087f8551cf1bec48a8e753172dbc641b8"
+      },
+      {
+        "name": "XITS-Bold.otf",
+        "length": 154292,
+        "sha256": "6076d16614af00f81163b6a5886811bbb2db6dee8ee81827212c8029042693de"
+      },
+      {
+        "name": "XITS-Italic.otf",
+        "length": 116744,
+        "sha256": "c917a8c25a1ee196fff88e6e95fa82f1a18a758563b04dd68bc13acbbe98dc17"
+      },
+      {
+        "name": "XITS-BoldItalic.otf",
+        "length": 112820,
+        "sha256": "fde9c2628b3cd960fc3b068d4ee491801b64b54f4cdb31921e8b380ccea36018"
+      }
+    ],
+    "originalFontPrefixByteExact": true,
+    "aliases": 0,
+    "extractorSource": {
+      "path": "native/tex/suite-resources/font-catalog.cpp",
+      "length": 6572,
+      "sha256": "38c2c4bc0c892fbb41feb0c40c70c3e55bf26853e21398f5892dfed1f7a1665c"
+    },
+    "metadataReceiptFile": "catalog.metadata.json",
+    "extractorComponents": [
+      {
+        "name": "font-catalog.js",
+        "length": 66997,
+        "sha256": "547ddf3bad941f618ce8b5c086f0b326877084e374195f790b4acaa6d2abe56c"
+      },
+      {
+        "name": "font-catalog.wasm",
+        "length": 746147,
+        "sha256": "e9eeb55e7f36e63b3ba5a8cfc783d275fe77cd876d4d1217b189d9d2f3842548"
+      }
+    ],
+    "retainedFreeTypeLibrarySha256": "a2b64a90de09044b0604442276cfa5e14bd84fd8d52ddafbf8313cd14a004a28"
+  },
+  "expected": {
+    "archiveCount": 29,
+    "compressedBytes": 4285024,
+    "decodedBytes": 6928348,
+    "additiveResources": 104,
+    "additiveBytes": 1140849,
+    "replacementResources": 1
+  }
+}

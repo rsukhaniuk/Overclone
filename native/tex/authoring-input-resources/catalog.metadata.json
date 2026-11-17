@@ -1,0 +1,1573 @@
+{
+  "schemaVersion": 1,
+  "method": "existing-cpp-freetype-sfnt-metadata-extractor",
+  "fontCount": 81,
+  "originalFontCount": 77,
+  "originalCataloguePrefixByteExact": true,
+  "aliasCount": 0,
+  "fontPins": [
+    {
+      "name": "DejaVuSerif-Bold.ttf",
+      "length": 356668,
+      "sha256": "847b33e13925f19ff87e4d934d6b3cf7cac35ce16424f6f670e40c2f377cf2df"
+    },
+    {
+      "name": "DejaVuSerif-BoldItalic.ttf",
+      "length": 348020,
+      "sha256": "e4662d0bcf9039a5d1fb7b52f964aebdde4563be9e5a8521299936f4818c0ab2"
+    },
+    {
+      "name": "DejaVuSerif-Italic.ttf",
+      "length": 346544,
+      "sha256": "1d7476da447f9455a47c41adfd6ac2b1fc1b65e660f3ea4bf36128506c7e094c"
+    },
+    {
+      "name": "DejaVuSerif.ttf",
+      "length": 380660,
+      "sha256": "8f2c103bfa3fd5de71f1b92b18f21906b5a26871fb7e19a9a4c9af539c3cc7ab"
+    },
+    {
+      "name": "latinmodern-math.otf",
+      "length": 733736,
+      "sha256": "6075562b771f8b82f0c179e363389684f2dd09de30038269e2628e504bd7be0f"
+    },
+    {
+      "name": "lmmono10-italic.otf",
+      "length": 63584,
+      "sha256": "14e6328a5383d2b927c47051093ce0aff60deea07e6df71b8b99ee8d9c2ff8f2"
+    },
+    {
+      "name": "lmmono10-regular.otf",
+      "length": 64684,
+      "sha256": "22deb6d3be3ffcb40b33f0e010afb256c677d97c2a2bdee1f5740cdc97751558"
+    },
+    {
+      "name": "lmmono12-regular.otf",
+      "length": 63012,
+      "sha256": "b826e490fa671f254840abe88afea0975b606f57fb4a8b93f53787c26d8ac319"
+    },
+    {
+      "name": "lmmono8-regular.otf",
+      "length": 66268,
+      "sha256": "17319490d20f24e192bd7e7999484b95111a4654ac2620e7aa215591142ae997"
+    },
+    {
+      "name": "lmmono9-regular.otf",
+      "length": 63076,
+      "sha256": "cdd53c7dc01a1d25f21eaf7cae44bfb8a9665e4cbd60e5f8da14287aca819bb9"
+    },
+    {
+      "name": "lmmonocaps10-oblique.otf",
+      "length": 71232,
+      "sha256": "6bb7315ab000361195457b6c5efc75ed4bc24d278c6026d0aa8e0e4847394384"
+    },
+    {
+      "name": "lmmonocaps10-regular.otf",
+      "length": 63228,
+      "sha256": "9fb93a8f39f8e55682d09edb93c4c07d976c13bb92253b875b5b6a19e9af9e0a"
+    },
+    {
+      "name": "lmmonolt10-bold.otf",
+      "length": 66332,
+      "sha256": "2f4ae1bd30d4203a1c74c61d61dddbd5e2c2d5a7001d456b1b98e08b7c47ffb9"
+    },
+    {
+      "name": "lmmonolt10-boldoblique.otf",
+      "length": 75300,
+      "sha256": "a739b6deaafe0b9e8ae1eec9db1f425c52e1f6f483ca8e07e359bdd118310bba"
+    },
+    {
+      "name": "lmmonolt10-oblique.otf",
+      "length": 73144,
+      "sha256": "f19451a27c178d48b99921e72ff6acf568f670bf58c71c6dd506b1f96a2d9c9e"
+    },
+    {
+      "name": "lmmonolt10-regular.otf",
+      "length": 63628,
+      "sha256": "176f2e3745e3d97eb7b96b25be919ed0e198f491dc363ad28971be1d5707ace7"
+    },
+    {
+      "name": "lmmonoltcond10-oblique.otf",
+      "length": 75908,
+      "sha256": "2af9fab2c4d4c7a98aaebb9d66ffe1b55b3319e48c5d84add7ef27c2890747d2"
+    },
+    {
+      "name": "lmmonoltcond10-regular.otf",
+      "length": 64160,
+      "sha256": "fd2e0afd73a6029887d222f1e379f9e977ed57f9471d48ba44fb42c52a650274"
+    },
+    {
+      "name": "lmmonoprop10-oblique.otf",
+      "length": 116764,
+      "sha256": "7306b49832153fb387be1c741962a72d36127a2176f855d11c9903e6a15bfaca"
+    },
+    {
+      "name": "lmmonoprop10-regular.otf",
+      "length": 109500,
+      "sha256": "59036dd0b599f3e90c41dc4b063849bb36ba29058f94d386718fb9ce523d8657"
+    },
+    {
+      "name": "lmmonoproplt10-bold.otf",
+      "length": 110276,
+      "sha256": "c30d83cb4cdd879ea251243590e135e012e5d43e889a0d0990d196b1083715d2"
+    },
+    {
+      "name": "lmmonoproplt10-boldoblique.otf",
+      "length": 120732,
+      "sha256": "4d1193e06d6042695f8caf9cde48785867bee8de8460a7a9c99504074d280f57"
+    },
+    {
+      "name": "lmmonoproplt10-oblique.otf",
+      "length": 118244,
+      "sha256": "2d57934e1ae5f71cbcbed7b7ea6fa597f9212ebfd8d0cc91e9fabbb9622cab7f"
+    },
+    {
+      "name": "lmmonoproplt10-regular.otf",
+      "length": 110784,
+      "sha256": "dedec8ee86f7448949cb695ace72f2e0de3ccc380ff92dfbc6c45c20209e3349"
+    },
+    {
+      "name": "lmmonoslant10-regular.otf",
+      "length": 72212,
+      "sha256": "4b4a3e600db7f6ec434f8b48b31f22e12faced90e1681c93eeba5e23a6e55fde"
+    },
+    {
+      "name": "lmroman10-bold.otf",
+      "length": 111240,
+      "sha256": "102fe06c430a8b681b2bf6876b7cd967ae4d47b4b6b41d915eb7913b726d9fb1"
+    },
+    {
+      "name": "lmroman10-bolditalic.otf",
+      "length": 118204,
+      "sha256": "c37a28eed7a6e03f792b98b5e5f637b2fcda378bb4855f99284f1a88fe35f124"
+    },
+    {
+      "name": "lmroman10-italic.otf",
+      "length": 118828,
+      "sha256": "c1fce25075567bb8dbf2151658c3b442690041db17a2d49fc9e55905ea5b7169"
+    },
+    {
+      "name": "lmroman10-regular.otf",
+      "length": 111536,
+      "sha256": "1aa18cfefa58132c52ce5de70db1fd1154201c19cd2b2cdaffba4906a33e6852"
+    },
+    {
+      "name": "lmroman12-bold.otf",
+      "length": 110496,
+      "sha256": "28c8782ac2b6486958b5dc7610ada7800c53546ff7f36bc65909a876e1cd338e"
+    },
+    {
+      "name": "lmroman12-italic.otf",
+      "length": 117732,
+      "sha256": "ada6b3f451238784e5a5ea75d43efa1eb4329cd75ce65bf047ed2f31b7b5e2f3"
+    },
+    {
+      "name": "lmroman12-regular.otf",
+      "length": 110400,
+      "sha256": "e6be218ae83e61aa8a29990d3cdc401c678c1962188cb9a4a8b6359e4f5e5870"
+    },
+    {
+      "name": "lmroman17-regular.otf",
+      "length": 110248,
+      "sha256": "ed048c80fb4b67663b80899b89fe5fba17d7442e1286d61fd08fe5689c6b7c3c"
+    },
+    {
+      "name": "lmroman5-bold.otf",
+      "length": 109564,
+      "sha256": "6326fb955d07bedcc8f73684e6b6bfa76706d38f3a85bd89c0659504ace366a1"
+    },
+    {
+      "name": "lmroman5-regular.otf",
+      "length": 111872,
+      "sha256": "954bd9c376597c7043e7b616430163e0158155edf7434fd70082cf8460c08533"
+    },
+    {
+      "name": "lmroman6-bold.otf",
+      "length": 112452,
+      "sha256": "f1ebd52916182bfc2e3f9d4b5ba847ad6acc6c7761354c0dc052fb01ec14f73c"
+    },
+    {
+      "name": "lmroman6-regular.otf",
+      "length": 112212,
+      "sha256": "501396c437f76c260b8724265b8495f318a640ee5a4674852ecbb20daf256696"
+    },
+    {
+      "name": "lmroman7-bold.otf",
+      "length": 110212,
+      "sha256": "063ea9e378b4fca4fd59771cf522faa21eb7c8516c89464745c79725b384fb9a"
+    },
+    {
+      "name": "lmroman7-italic.otf",
+      "length": 117960,
+      "sha256": "19d20f2bb00fbffe5d3d66e9b6a54f0108289068029e9d88649d981d53613ddf"
+    },
+    {
+      "name": "lmroman7-regular.otf",
+      "length": 110792,
+      "sha256": "48c4b46ab255eec96588fb992fba1ed6102e53d051da480738a61cc6cdb328c3"
+    },
+    {
+      "name": "lmroman8-bold.otf",
+      "length": 112404,
+      "sha256": "04d4f633c3da31a169f4c54a7fe8c7e63925b39d030381f8d3eab955f16be7b2"
+    },
+    {
+      "name": "lmroman8-italic.otf",
+      "length": 117248,
+      "sha256": "fb0536b5c3eee5b5622cd827ceb410e6514e36512ebdc51d2cf98a96c06d44e8"
+    },
+    {
+      "name": "lmroman8-regular.otf",
+      "length": 111948,
+      "sha256": "f73015c3827596586faa380c398501caf9b5bcbb6f40b46af6a51277ca97c9fc"
+    },
+    {
+      "name": "lmroman9-bold.otf",
+      "length": 113040,
+      "sha256": "f72feac9ea12eb858d8093d6c0ee710a6c25f59b61278c88ec41c0a680838415"
+    },
+    {
+      "name": "lmroman9-italic.otf",
+      "length": 118380,
+      "sha256": "2106cffcdc9f9cb411d7c3441e34d77a168b998a58b40e727ab5b815437d1975"
+    },
+    {
+      "name": "lmroman9-regular.otf",
+      "length": 112680,
+      "sha256": "8ab7b017fc67ea0e30cbf9e7ebd940010442ea67b40cf65f87d73f3ca11b0e6f"
+    },
+    {
+      "name": "lmromancaps10-oblique.otf",
+      "length": 116564,
+      "sha256": "603e6bb88c206f3252d2ca1a061d0faf252dd6c87501f2efa32ce2f70793b1ad"
+    },
+    {
+      "name": "lmromancaps10-regular.otf",
+      "length": 108740,
+      "sha256": "1ab40332a969892c7ed6cb010193b5276ccef1da6798bcbd1a465fee23d29334"
+    },
+    {
+      "name": "lmromandemi10-oblique.otf",
+      "length": 119632,
+      "sha256": "430d9237cfeb1b7ef25a36002adac0524a11a07f4a31b16ce5a0eb3330163217"
+    },
+    {
+      "name": "lmromandemi10-regular.otf",
+      "length": 111892,
+      "sha256": "63b6f9528e6117c5b0c0b1992517696ae09d05e7ca3711df0e0409d9db6df32c"
+    },
+    {
+      "name": "lmromandunh10-oblique.otf",
+      "length": 122840,
+      "sha256": "5f7b9361353271246ac66a2681399052cc261a943c8a03c754ee212fdfb4a64c"
+    },
+    {
+      "name": "lmromandunh10-regular.otf",
+      "length": 113276,
+      "sha256": "6c298b3680cc111c6e20eb2489bab9637ac316a686740fc1f8396230215e1161"
+    },
+    {
+      "name": "lmromanslant10-bold.otf",
+      "length": 117984,
+      "sha256": "5f6689646a5e88b402d2e60085c813fca3a4d60707b0383c65cb023107a8bddc"
+    },
+    {
+      "name": "lmromanslant10-regular.otf",
+      "length": 118508,
+      "sha256": "056ad4d08d2eb58d6b7fd0ac5de3f1fb799f2bb0c16b66c7e6b5bc5b6aef6481"
+    },
+    {
+      "name": "lmromanslant12-regular.otf",
+      "length": 117116,
+      "sha256": "25f2ecfb860f2e45e6ebe69d11bc6305f5bfbef8f13476638ba291f47d1f130c"
+    },
+    {
+      "name": "lmromanslant17-regular.otf",
+      "length": 118092,
+      "sha256": "4f30eda1d4674a1f4eea513b3baf85e3ba3fb17b2e4cf09bf627aee91dc0a4cc"
+    },
+    {
+      "name": "lmromanslant8-regular.otf",
+      "length": 118720,
+      "sha256": "a88ecd1a6b4d5aa1c9d537b98d0de8e19d63b292918fabf0cc36158ed770ca63"
+    },
+    {
+      "name": "lmromanslant9-regular.otf",
+      "length": 119932,
+      "sha256": "7441aee0c9dfbca16118fc7fe339c2e6c79ecc966a51ac1f76860351b6a8f02e"
+    },
+    {
+      "name": "lmromanunsl10-regular.otf",
+      "length": 124048,
+      "sha256": "21bbbe167e824b93a956327bcc1efda99c1bb472e761834da40cef33cab46194"
+    },
+    {
+      "name": "lmsans10-bold.otf",
+      "length": 107448,
+      "sha256": "a597b710326c1a8a2c7238d808e5d38711638a72a32383478db4829d63afd687"
+    },
+    {
+      "name": "lmsans10-boldoblique.otf",
+      "length": 114984,
+      "sha256": "e45673d84754a94f2f053bd4c15950b4b320144fbb622c630a26fd7b68cfabc5"
+    },
+    {
+      "name": "lmsans10-oblique.otf",
+      "length": 101412,
+      "sha256": "1b38b36efc21f9d3f34edf6a13f9d71f59c41f824e790f5d3ee5ba5b4936f377"
+    },
+    {
+      "name": "lmsans10-regular.otf",
+      "length": 95128,
+      "sha256": "d431b786b9b603662718e79cfe9b441f47a8b0b3e854dde89d5acb3ed7cfd682"
+    },
+    {
+      "name": "lmsans12-oblique.otf",
+      "length": 102056,
+      "sha256": "1f138e6203f7092f9a01f6193ed97d971b5045b99969f3a62c7e43a7faabc1c0"
+    },
+    {
+      "name": "lmsans12-regular.otf",
+      "length": 95160,
+      "sha256": "f87ebdea035a96e8787e2c663cfcc78ce73205d37800eafe7948278e2cc7666a"
+    },
+    {
+      "name": "lmsans17-oblique.otf",
+      "length": 100500,
+      "sha256": "0f6a4450c5fc9afd3650f24ad9003684fff3252691bbf2a33be94b383db8a77c"
+    },
+    {
+      "name": "lmsans17-regular.otf",
+      "length": 94828,
+      "sha256": "f6c395a436e4fa7e88bbf1445e64b9c78ce4effba3668b13cc433077fc71a984"
+    },
+    {
+      "name": "lmsans8-oblique.otf",
+      "length": 100084,
+      "sha256": "7f4227513bfd47b7077bedd125caa4c0a223a2cdad17a1470145cdea83353c88"
+    },
+    {
+      "name": "lmsans8-regular.otf",
+      "length": 94256,
+      "sha256": "04f0d25ca474494cb707e752170f6c22cdcb8ae2b5fb80872143e18d5cc463f8"
+    },
+    {
+      "name": "lmsans9-oblique.otf",
+      "length": 101068,
+      "sha256": "ac0535d7d4a8eb1b531c5faeb9060a4b9bac397d72cf54191ef53eea6f66b617"
+    },
+    {
+      "name": "lmsans9-regular.otf",
+      "length": 94552,
+      "sha256": "80ef596460b7b402621780f7cd73a348efedc4cd2c6deca37da58f07ee61b85d"
+    },
+    {
+      "name": "lmsansdemicond10-oblique.otf",
+      "length": 114848,
+      "sha256": "f98ed7d9cc5e10fd5c8e01f6ea708fddff5bbbf6f4503998c92b3c1f26d68d33"
+    },
+    {
+      "name": "lmsansdemicond10-regular.otf",
+      "length": 106836,
+      "sha256": "3a8cc8f72acaf6d4cc9200a838e5e118bf6f265233aa078e105559f6db6c2948"
+    },
+    {
+      "name": "lmsansquot8-bold.otf",
+      "length": 106232,
+      "sha256": "44cd928f556c68c3a6ce5938f6968c3da7b3d9d14d3c8add54005f0cc5e39a53"
+    },
+    {
+      "name": "lmsansquot8-boldoblique.otf",
+      "length": 112456,
+      "sha256": "0cac0a6909c1cb33df8d3aeda2817ef2671d7f466cc352d826551bf92ca5f877"
+    },
+    {
+      "name": "lmsansquot8-oblique.otf",
+      "length": 112648,
+      "sha256": "d858d237a69d432ca0ff67b930dabf5a60bfde69ca39bc555fab78ecbb5f4e4d"
+    },
+    {
+      "name": "lmsansquot8-regular.otf",
+      "length": 105172,
+      "sha256": "5da041def6d17825bb9b2d1d4fef66099a1e871005c08fc8f0d29976a923f4c9"
+    },
+    {
+      "name": "XITS-Regular.otf",
+      "length": 270632,
+      "sha256": "9cd5e6b9bac7647cc714c17d7c9e2e5087f8551cf1bec48a8e753172dbc641b8"
+    },
+    {
+      "name": "XITS-Bold.otf",
+      "length": 154292,
+      "sha256": "6076d16614af00f81163b6a5886811bbb2db6dee8ee81827212c8029042693de"
+    },
+    {
+      "name": "XITS-Italic.otf",
+      "length": 116744,
+      "sha256": "c917a8c25a1ee196fff88e6e95fa82f1a18a758563b04dd68bc13acbbe98dc17"
+    },
+    {
+      "name": "XITS-BoldItalic.otf",
+      "length": 112820,
+      "sha256": "fde9c2628b3cd960fc3b068d4ee491801b64b54f4cdb31921e8b380ccea36018"
+    }
+  ],
+  "metadataFields": [
+    "filename",
+    "postscript",
+    "family",
+    "style",
+    "weight",
+    "width",
+    "slant",
+    "designDecipoints",
+    "minDecipoints",
+    "maxDecipoints",
+    "subFamilyID",
+    "nameCode"
+  ],
+  "metadata": [
+    [
+      "DejaVuSerif-Bold.ttf",
+      "DejaVuSerif-Bold",
+      "DejaVu Serif",
+      "Bold",
+      "700",
+      "5",
+      "0",
+      "0",
+      "0",
+      "0",
+      "0",
+      "0"
+    ],
+    [
+      "DejaVuSerif-BoldItalic.ttf",
+      "DejaVuSerif-BoldItalic",
+      "DejaVu Serif",
+      "Bold Italic",
+      "700",
+      "5",
+      "194",
+      "0",
+      "0",
+      "0",
+      "0",
+      "0"
+    ],
+    [
+      "DejaVuSerif-Italic.ttf",
+      "DejaVuSerif-Italic",
+      "DejaVu Serif",
+      "Italic",
+      "400",
+      "5",
+      "194",
+      "0",
+      "0",
+      "0",
+      "0",
+      "0"
+    ],
+    [
+      "DejaVuSerif.ttf",
+      "DejaVuSerif",
+      "DejaVu Serif",
+      "Book",
+      "400",
+      "5",
+      "0",
+      "0",
+      "0",
+      "0",
+      "0",
+      "0"
+    ],
+    [
+      "latinmodern-math.otf",
+      "LatinModernMath-Regular",
+      "Latin Modern Math",
+      "Regular",
+      "400",
+      "5",
+      "0",
+      "0",
+      "0",
+      "0",
+      "0",
+      "0"
+    ],
+    [
+      "lmmono10-italic.otf",
+      "LMMono10-Italic",
+      "Latin Modern Mono",
+      "10 Italic",
+      "400",
+      "5",
+      "249",
+      "100",
+      "50",
+      "200",
+      "2",
+      "256"
+    ],
+    [
+      "lmmono10-regular.otf",
+      "LMMono10-Regular",
+      "Latin Modern Mono",
+      "10 Regular",
+      "400",
+      "5",
+      "0",
+      "100",
+      "95",
+      "110",
+      "1",
+      "256"
+    ],
+    [
+      "lmmono12-regular.otf",
+      "LMMono12-Regular",
+      "Latin Modern Mono",
+      "12 Regular",
+      "400",
+      "5",
+      "0",
+      "120",
+      "110",
+      "240",
+      "1",
+      "256"
+    ],
+    [
+      "lmmono8-regular.otf",
+      "LMMono8-Regular",
+      "Latin Modern Mono",
+      "8 Regular",
+      "400",
+      "5",
+      "0",
+      "80",
+      "40",
+      "85",
+      "1",
+      "256"
+    ],
+    [
+      "lmmono9-regular.otf",
+      "LMMono9-Regular",
+      "Latin Modern Mono",
+      "9 Regular",
+      "400",
+      "5",
+      "0",
+      "90",
+      "85",
+      "95",
+      "1",
+      "256"
+    ],
+    [
+      "lmmonocaps10-oblique.otf",
+      "LMMonoCaps10-Oblique",
+      "Latin Modern Mono Caps",
+      "10 Oblique",
+      "400",
+      "5",
+      "166",
+      "100",
+      "50",
+      "200",
+      "2",
+      "256"
+    ],
+    [
+      "lmmonocaps10-regular.otf",
+      "LMMonoCaps10-Regular",
+      "Latin Modern Mono Caps",
+      "10 Regular",
+      "400",
+      "5",
+      "0",
+      "100",
+      "50",
+      "200",
+      "1",
+      "256"
+    ],
+    [
+      "lmmonolt10-bold.otf",
+      "LMMonoLt10-Bold",
+      "Latin Modern Mono Light",
+      "10 Bold",
+      "700",
+      "5",
+      "0",
+      "100",
+      "50",
+      "200",
+      "3",
+      "256"
+    ],
+    [
+      "lmmonolt10-boldoblique.otf",
+      "LMMonoLt10-BoldOblique",
+      "Latin Modern Mono Light",
+      "10 Bold Oblique",
+      "700",
+      "5",
+      "166",
+      "100",
+      "50",
+      "200",
+      "4",
+      "256"
+    ],
+    [
+      "lmmonolt10-oblique.otf",
+      "LMMonoLt10-Oblique",
+      "Latin Modern Mono Light",
+      "10 Oblique",
+      "400",
+      "5",
+      "166",
+      "100",
+      "50",
+      "200",
+      "2",
+      "256"
+    ],
+    [
+      "lmmonolt10-regular.otf",
+      "LMMonoLt10-Regular",
+      "Latin Modern Mono Light",
+      "10 Regular",
+      "400",
+      "5",
+      "0",
+      "100",
+      "50",
+      "200",
+      "1",
+      "256"
+    ],
+    [
+      "lmmonoltcond10-oblique.otf",
+      "LMMonoLtCond10-Oblique",
+      "Latin Modern Mono Light Cond",
+      "10 Oblique",
+      "400",
+      "5",
+      "166",
+      "100",
+      "50",
+      "200",
+      "2",
+      "256"
+    ],
+    [
+      "lmmonoltcond10-regular.otf",
+      "LMMonoLtCond10-Regular",
+      "Latin Modern Mono Light Cond",
+      "10 Regular",
+      "400",
+      "5",
+      "0",
+      "100",
+      "50",
+      "200",
+      "1",
+      "256"
+    ],
+    [
+      "lmmonoprop10-oblique.otf",
+      "LMMonoProp10-Oblique",
+      "Latin Modern Mono Prop",
+      "10 Oblique",
+      "400",
+      "5",
+      "166",
+      "100",
+      "50",
+      "200",
+      "2",
+      "256"
+    ],
+    [
+      "lmmonoprop10-regular.otf",
+      "LMMonoProp10-Regular",
+      "Latin Modern Mono Prop",
+      "10 Regular",
+      "400",
+      "5",
+      "0",
+      "100",
+      "50",
+      "200",
+      "1",
+      "256"
+    ],
+    [
+      "lmmonoproplt10-bold.otf",
+      "LMMonoPropLt10-Bold",
+      "Latin Modern Mono Prop Light",
+      "10 Bold",
+      "700",
+      "5",
+      "0",
+      "100",
+      "50",
+      "200",
+      "3",
+      "256"
+    ],
+    [
+      "lmmonoproplt10-boldoblique.otf",
+      "LMMonoPropLt10-BoldOblique",
+      "Latin Modern Mono Prop Light",
+      "10 BoldOblique",
+      "700",
+      "5",
+      "166",
+      "100",
+      "50",
+      "200",
+      "4",
+      "256"
+    ],
+    [
+      "lmmonoproplt10-oblique.otf",
+      "LMMonoPropLt10-Oblique",
+      "Latin Modern Mono Prop Light",
+      "10 Oblique",
+      "400",
+      "5",
+      "166",
+      "100",
+      "50",
+      "200",
+      "2",
+      "256"
+    ],
+    [
+      "lmmonoproplt10-regular.otf",
+      "LMMonoPropLt10-Regular",
+      "Latin Modern Mono Prop Light",
+      "10 Regular",
+      "400",
+      "5",
+      "0",
+      "100",
+      "50",
+      "200",
+      "1",
+      "256"
+    ],
+    [
+      "lmmonoslant10-regular.otf",
+      "LMMonoSlant10-Regular",
+      "Latin Modern Mono Slanted",
+      "10 Regular",
+      "400",
+      "5",
+      "166",
+      "100",
+      "50",
+      "200",
+      "1",
+      "256"
+    ],
+    [
+      "lmroman10-bold.otf",
+      "LMRoman10-Bold",
+      "Latin Modern Roman",
+      "10 Bold",
+      "700",
+      "5",
+      "0",
+      "100",
+      "95",
+      "110",
+      "3",
+      "256"
+    ],
+    [
+      "lmroman10-bolditalic.otf",
+      "LMRoman10-BoldItalic",
+      "Latin Modern Roman",
+      "10 Bold Italic",
+      "700",
+      "5",
+      "249",
+      "100",
+      "50",
+      "200",
+      "4",
+      "256"
+    ],
+    [
+      "lmroman10-italic.otf",
+      "LMRoman10-Italic",
+      "Latin Modern Roman",
+      "10 Italic",
+      "400",
+      "5",
+      "249",
+      "100",
+      "95",
+      "110",
+      "2",
+      "256"
+    ],
+    [
+      "lmroman10-regular.otf",
+      "LMRoman10-Regular",
+      "Latin Modern Roman",
+      "10 Regular",
+      "400",
+      "5",
+      "0",
+      "100",
+      "95",
+      "110",
+      "1",
+      "256"
+    ],
+    [
+      "lmroman12-bold.otf",
+      "LMRoman12-Bold",
+      "Latin Modern Roman",
+      "12 Bold",
+      "700",
+      "5",
+      "0",
+      "120",
+      "110",
+      "240",
+      "3",
+      "256"
+    ],
+    [
+      "lmroman12-italic.otf",
+      "LMRoman12-Italic",
+      "Latin Modern Roman",
+      "12 Italic",
+      "400",
+      "5",
+      "249",
+      "120",
+      "110",
+      "240",
+      "2",
+      "256"
+    ],
+    [
+      "lmroman12-regular.otf",
+      "LMRoman12-Regular",
+      "Latin Modern Roman",
+      "12 Regular",
+      "400",
+      "5",
+      "0",
+      "120",
+      "110",
+      "140",
+      "1",
+      "256"
+    ],
+    [
+      "lmroman17-regular.otf",
+      "LMRoman17-Regular",
+      "Latin Modern Roman",
+      "17 Regular",
+      "400",
+      "5",
+      "0",
+      "172",
+      "140",
+      "240",
+      "1",
+      "256"
+    ],
+    [
+      "lmroman5-bold.otf",
+      "LMRoman5-Bold",
+      "Latin Modern Roman",
+      "5 Bold",
+      "700",
+      "5",
+      "0",
+      "50",
+      "30",
+      "55",
+      "3",
+      "256"
+    ],
+    [
+      "lmroman5-regular.otf",
+      "LMRoman5-Regular",
+      "Latin Modern Roman",
+      "5 Regular",
+      "400",
+      "5",
+      "0",
+      "50",
+      "30",
+      "55",
+      "1",
+      "256"
+    ],
+    [
+      "lmroman6-bold.otf",
+      "LMRoman6-Bold",
+      "Latin Modern Roman",
+      "6 Bold",
+      "700",
+      "5",
+      "0",
+      "60",
+      "55",
+      "65",
+      "3",
+      "256"
+    ],
+    [
+      "lmroman6-regular.otf",
+      "LMRoman6-Regular",
+      "Latin Modern Roman",
+      "6 Regular",
+      "400",
+      "5",
+      "0",
+      "60",
+      "55",
+      "65",
+      "1",
+      "256"
+    ],
+    [
+      "lmroman7-bold.otf",
+      "LMRoman7-Bold",
+      "Latin Modern Roman",
+      "7 Bold",
+      "700",
+      "5",
+      "0",
+      "70",
+      "65",
+      "75",
+      "3",
+      "256"
+    ],
+    [
+      "lmroman7-italic.otf",
+      "LMRoman7-Italic",
+      "Latin Modern Roman",
+      "7 Italic",
+      "400",
+      "5",
+      "249",
+      "70",
+      "40",
+      "75",
+      "2",
+      "256"
+    ],
+    [
+      "lmroman7-regular.otf",
+      "LMRoman7-Regular",
+      "Latin Modern Roman",
+      "7 Regular",
+      "400",
+      "5",
+      "0",
+      "70",
+      "65",
+      "75",
+      "1",
+      "256"
+    ],
+    [
+      "lmroman8-bold.otf",
+      "LMRoman8-Bold",
+      "Latin Modern Roman",
+      "8 Bold",
+      "700",
+      "5",
+      "0",
+      "80",
+      "75",
+      "85",
+      "3",
+      "256"
+    ],
+    [
+      "lmroman8-italic.otf",
+      "LMRoman8-Italic",
+      "Latin Modern Roman",
+      "8 Italic",
+      "400",
+      "5",
+      "249",
+      "80",
+      "75",
+      "85",
+      "2",
+      "256"
+    ],
+    [
+      "lmroman8-regular.otf",
+      "LMRoman8-Regular",
+      "Latin Modern Roman",
+      "8 Regular",
+      "400",
+      "5",
+      "0",
+      "80",
+      "75",
+      "85",
+      "1",
+      "256"
+    ],
+    [
+      "lmroman9-bold.otf",
+      "LMRoman9-Bold",
+      "Latin Modern Roman",
+      "9 Bold",
+      "700",
+      "5",
+      "0",
+      "90",
+      "85",
+      "95",
+      "3",
+      "256"
+    ],
+    [
+      "lmroman9-italic.otf",
+      "LMRoman9-Italic",
+      "Latin Modern Roman",
+      "9 Italic",
+      "400",
+      "5",
+      "249",
+      "90",
+      "85",
+      "95",
+      "2",
+      "256"
+    ],
+    [
+      "lmroman9-regular.otf",
+      "LMRoman9-Regular",
+      "Latin Modern Roman",
+      "9 Regular",
+      "400",
+      "5",
+      "0",
+      "90",
+      "85",
+      "95",
+      "1",
+      "256"
+    ],
+    [
+      "lmromancaps10-oblique.otf",
+      "LMRomanCaps10-Oblique",
+      "Latin Modern Roman Caps",
+      "10 Oblique",
+      "400",
+      "5",
+      "166",
+      "100",
+      "50",
+      "200",
+      "2",
+      "256"
+    ],
+    [
+      "lmromancaps10-regular.otf",
+      "LMRomanCaps10-Regular",
+      "Latin Modern Roman Caps",
+      "10 Regular",
+      "400",
+      "5",
+      "0",
+      "100",
+      "50",
+      "200",
+      "1",
+      "256"
+    ],
+    [
+      "lmromandemi10-oblique.otf",
+      "LMRomanDemi10-Oblique",
+      "Latin Modern Roman Demi",
+      "10 Oblique",
+      "600",
+      "5",
+      "166",
+      "100",
+      "50",
+      "200",
+      "2",
+      "256"
+    ],
+    [
+      "lmromandemi10-regular.otf",
+      "LMRomanDemi10-Regular",
+      "Latin Modern Roman Demi",
+      "10 Regular",
+      "600",
+      "5",
+      "0",
+      "100",
+      "50",
+      "200",
+      "1",
+      "256"
+    ],
+    [
+      "lmromandunh10-oblique.otf",
+      "LMRomanDunh10-Oblique",
+      "Latin Modern Roman Dunhill",
+      "10 Oblique",
+      "400",
+      "5",
+      "166",
+      "100",
+      "50",
+      "200",
+      "2",
+      "256"
+    ],
+    [
+      "lmromandunh10-regular.otf",
+      "LMRomanDunh10-Regular",
+      "Latin Modern Roman Dunhill",
+      "10 Regular",
+      "400",
+      "5",
+      "0",
+      "100",
+      "50",
+      "200",
+      "1",
+      "256"
+    ],
+    [
+      "lmromanslant10-bold.otf",
+      "LMRomanSlant10-Bold",
+      "Latin Modern Roman Slanted",
+      "10 Bold",
+      "700",
+      "5",
+      "166",
+      "100",
+      "50",
+      "200",
+      "2",
+      "256"
+    ],
+    [
+      "lmromanslant10-regular.otf",
+      "LMRomanSlant10-Regular",
+      "Latin Modern Roman Slanted",
+      "10 Regular",
+      "400",
+      "5",
+      "166",
+      "100",
+      "95",
+      "110",
+      "1",
+      "256"
+    ],
+    [
+      "lmromanslant12-regular.otf",
+      "LMRomanSlant12-Regular",
+      "Latin Modern Roman Slanted",
+      "12 Regular",
+      "400",
+      "5",
+      "166",
+      "120",
+      "110",
+      "140",
+      "1",
+      "256"
+    ],
+    [
+      "lmromanslant17-regular.otf",
+      "LMRomanSlant17-Regular",
+      "Latin Modern Roman Slanted",
+      "17 Regular",
+      "400",
+      "5",
+      "166",
+      "172",
+      "140",
+      "240",
+      "1",
+      "256"
+    ],
+    [
+      "lmromanslant8-regular.otf",
+      "LMRomanSlant8-Regular",
+      "Latin Modern Roman Slanted",
+      "8 Regular",
+      "400",
+      "5",
+      "166",
+      "80",
+      "40",
+      "85",
+      "1",
+      "256"
+    ],
+    [
+      "lmromanslant9-regular.otf",
+      "LMRomanSlant9-Regular",
+      "Latin Modern Roman Slanted",
+      "9 Regular",
+      "400",
+      "5",
+      "166",
+      "90",
+      "85",
+      "95",
+      "1",
+      "256"
+    ],
+    [
+      "lmromanunsl10-regular.otf",
+      "LMRomanUnsl10-Regular",
+      "Latin Modern Roman Unslanted",
+      "10 Regular",
+      "400",
+      "5",
+      "0",
+      "100",
+      "50",
+      "200",
+      "1",
+      "256"
+    ],
+    [
+      "lmsans10-bold.otf",
+      "LMSans10-Bold",
+      "Latin Modern Sans",
+      "10 Bold",
+      "700",
+      "5",
+      "0",
+      "100",
+      "50",
+      "200",
+      "3",
+      "256"
+    ],
+    [
+      "lmsans10-boldoblique.otf",
+      "LMSans10-BoldOblique",
+      "Latin Modern Sans",
+      "10 Bold Oblique",
+      "700",
+      "5",
+      "212",
+      "100",
+      "50",
+      "200",
+      "4",
+      "256"
+    ],
+    [
+      "lmsans10-oblique.otf",
+      "LMSans10-Oblique",
+      "Latin Modern Sans",
+      "10 Oblique",
+      "400",
+      "5",
+      "212",
+      "100",
+      "95",
+      "110",
+      "2",
+      "256"
+    ],
+    [
+      "lmsans10-regular.otf",
+      "LMSans10-Regular",
+      "Latin Modern Sans",
+      "10 Regular",
+      "400",
+      "5",
+      "0",
+      "100",
+      "95",
+      "110",
+      "1",
+      "256"
+    ],
+    [
+      "lmsans12-oblique.otf",
+      "LMSans12-Oblique",
+      "Latin Modern Sans",
+      "12 Oblique",
+      "400",
+      "5",
+      "212",
+      "120",
+      "110",
+      "140",
+      "2",
+      "256"
+    ],
+    [
+      "lmsans12-regular.otf",
+      "LMSans12-Regular",
+      "Latin Modern Sans",
+      "12 Regular",
+      "400",
+      "5",
+      "0",
+      "120",
+      "110",
+      "140",
+      "1",
+      "256"
+    ],
+    [
+      "lmsans17-oblique.otf",
+      "LMSans17-Oblique",
+      "Latin Modern Sans",
+      "17 Oblique",
+      "400",
+      "5",
+      "212",
+      "172",
+      "140",
+      "240",
+      "2",
+      "256"
+    ],
+    [
+      "lmsans17-regular.otf",
+      "LMSans17-Regular",
+      "Latin Modern Sans",
+      "17 Regular",
+      "400",
+      "5",
+      "0",
+      "172",
+      "140",
+      "240",
+      "1",
+      "256"
+    ],
+    [
+      "lmsans8-oblique.otf",
+      "LMSans8-Oblique",
+      "Latin Modern Sans",
+      "8 Oblique",
+      "400",
+      "5",
+      "212",
+      "80",
+      "40",
+      "85",
+      "2",
+      "256"
+    ],
+    [
+      "lmsans8-regular.otf",
+      "LMSans8-Regular",
+      "Latin Modern Sans",
+      "8 Regular",
+      "400",
+      "5",
+      "0",
+      "80",
+      "40",
+      "85",
+      "1",
+      "256"
+    ],
+    [
+      "lmsans9-oblique.otf",
+      "LMSans9-Oblique",
+      "Latin Modern Sans",
+      "9 Oblique",
+      "400",
+      "5",
+      "212",
+      "90",
+      "85",
+      "95",
+      "2",
+      "256"
+    ],
+    [
+      "lmsans9-regular.otf",
+      "LMSans9-Regular",
+      "Latin Modern Sans",
+      "9 Regular",
+      "400",
+      "5",
+      "0",
+      "90",
+      "85",
+      "95",
+      "1",
+      "256"
+    ],
+    [
+      "lmsansdemicond10-oblique.otf",
+      "LMSansDemiCond10-Oblique",
+      "Latin Modern Sans Demi Cond",
+      "10 Oblique",
+      "600",
+      "5",
+      "212",
+      "100",
+      "50",
+      "200",
+      "2",
+      "256"
+    ],
+    [
+      "lmsansdemicond10-regular.otf",
+      "LMSansDemiCond10-Regular",
+      "Latin Modern Sans Demi Cond",
+      "10 Regular",
+      "600",
+      "5",
+      "0",
+      "100",
+      "50",
+      "200",
+      "1",
+      "256"
+    ],
+    [
+      "lmsansquot8-bold.otf",
+      "LMSansQuot8-Bold",
+      "Latin Modern Sans Quotation",
+      "8 Bold",
+      "700",
+      "5",
+      "0",
+      "80",
+      "40",
+      "160",
+      "3",
+      "256"
+    ],
+    [
+      "lmsansquot8-boldoblique.otf",
+      "LMSansQuot8-BoldOblique",
+      "Latin Modern Sans Quotation",
+      "8 Bold Oblique",
+      "700",
+      "5",
+      "212",
+      "80",
+      "40",
+      "160",
+      "4",
+      "256"
+    ],
+    [
+      "lmsansquot8-oblique.otf",
+      "LMSansQuot8-Oblique",
+      "Latin Modern Sans Quotation",
+      "8 Oblique",
+      "400",
+      "5",
+      "212",
+      "80",
+      "40",
+      "160",
+      "2",
+      "256"
+    ],
+    [
+      "lmsansquot8-regular.otf",
+      "LMSansQuot8-Regular",
+      "Latin Modern Sans Quotation",
+      "8 Regular",
+      "400",
+      "5",
+      "0",
+      "80",
+      "40",
+      "160",
+      "1",
+      "256"
+    ],
+    [
+      "XITS-Regular.otf",
+      "XITS-Regular",
+      "XITS",
+      "Regular",
+      "400",
+      "5",
+      "0",
+      "0",
+      "0",
+      "0",
+      "0",
+      "0"
+    ],
+    [
+      "XITS-Bold.otf",
+      "XITS-Bold",
+      "XITS",
+      "Bold",
+      "700",
+      "5",
+      "0",
+      "0",
+      "0",
+      "0",
+      "0",
+      "0"
+    ],
+    [
+      "XITS-Italic.otf",
+      "XITS-Italic",
+      "XITS",
+      "Italic",
+      "400",
+      "5",
+      "292",
+      "0",
+      "0",
+      "0",
+      "0",
+      "0"
+    ],
+    [
+      "XITS-BoldItalic.otf",
+      "XITS-BoldItalic",
+      "XITS",
+      "Bold Italic",
+      "700",
+      "5",
+      "292",
+      "0",
+      "0",
+      "0",
+      "0",
+      "0"
+    ]
+  ],
+  "originalCatalogue": {
+    "length": 12315,
+    "sha256": "380ef7057355bff9024f448cf132e6c563364071ee36251d557d95c4652d1e65"
+  },
+  "catalogue": {
+    "length": 12729,
+    "sha256": "7e714695c3bf62543445856f69d6690de0b4b5cecec8def6624b64875522768b"
+  }
+}
