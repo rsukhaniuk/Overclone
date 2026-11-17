@@ -1,0 +1,167 @@
+{
+  "schemaVersion": 1,
+  "scope": "Source-associated PDF facts schema2; conservative native painted ink and parsed Unicode text/search",
+  "pdfium": {
+    "commit": "6688c576fd851f4159c6fae39396da50939de110",
+    "inputs": "source-build/inputs.json",
+    "patchOrder": [
+      "source-build/actualtext.py",
+      "source-build/unicode_text.py",
+      "source-build/ink.py"
+    ],
+    "matchingArchive": {
+      "bytes": 18061048,
+      "sha256": "a2512bf85e29ea765dffb79aeed34beef2b52d1a439ced40692360309bf9df19"
+    },
+    "fullyRebuiltWithPatchedHeaders": true
+  },
+  "toolchain": {
+    "image": "emscripten/emsdk:6.0.13@sha256:fb7864e398acfda863dfcea78b8bc8adad359fa60c6a0bbeb845931de64aa68a",
+    "network": "none",
+    "memoryBytes": 6442450944,
+    "cpus": 4
+  },
+  "runtime": {
+    "loader": {
+      "bytes": 14103,
+      "sha256": "968aae4935523f528e2314c4dbd831b2dd326ac8d3de3444fd033b73463b0225"
+    },
+    "wasm": {
+      "bytes": 3716447,
+      "sha256": "8b715ed561ec644757f305ddad0a99ae728c6705f9868e96ccb53c8c9143c4b3"
+    }
+  },
+  "source": {
+    "native/pdf/e1.cpp": {
+      "bytes": 19006,
+      "sha256": "16fbe6833bdff747b73deb5e42bb74af763df12a7d0b4865d1986e5d282782c4"
+    },
+    "native/pdf/layout.inc": {
+      "bytes": 8428,
+      "sha256": "550b952b21a3c2743fdb749b321362d486922e25cb64e129c99251c8ee890944"
+    },
+    "native/pdf/ink.inc": {
+      "bytes": 11993,
+      "sha256": "1775f9f9ce88308e048b1616aee4bdc467dfb305ad1c317fbaaeb4fef63917e5"
+    },
+    "native/pdf/source-build/prepare.py": {
+      "bytes": 1546,
+      "sha256": "7aaa5aa83cf0299cdc33fb7749bde910d457b2bc1571d3cfd54fa365d73856a3"
+    },
+    "native/pdf/source-build/ink.py": {
+      "bytes": 2582,
+      "sha256": "a2dd0744e6edd43476b34dd47bfce3cbdc281efd4ef371344260b1b7dcbb3081"
+    },
+    "native/pdf/source-build/unicode_text.py": {
+      "bytes": 3032,
+      "sha256": "50f323f3605f4f62f48fe84ab00433b86cfb965e6ab50665e0386f457ba34f78"
+    },
+    "native/pdf/source-build/README.md": {
+      "bytes": 8018,
+      "sha256": "86183b140974fae3c1a65a8f16423f08f360d3396e715ba394889fb540b7f1aa"
+    },
+    "native/pdf/fixtures/layout/test.cjs": {
+      "bytes": 7923,
+      "sha256": "cb072413a431e9300112c11c6f3a36658ee248e4e546d4fc7f3452e48185cb88"
+    },
+    "native/pdf/fixtures/ink/make_fixtures.py": {
+      "bytes": 6088,
+      "sha256": "7f8038fe9f0036647d3f7317576ea4be64a722d0148291a426edeed8bc2ca092"
+    },
+    "native/pdf/fixtures/ink/test.cjs": {
+      "bytes": 4551,
+      "sha256": "cae0a225e89d77ff813788ab15fdfe4e2c0bfdb4a7436edb22dd84281cf5976a"
+    },
+    "native/pdf/fixtures/unicode/make_fixtures.py": {
+      "bytes": 1786,
+      "sha256": "d5b6ec5fa444c7ba78b84bc0ac303b552344f0ce7d2e8daeff6864718bb547ad"
+    },
+    "native/pdf/fixtures/unicode/test.cjs": {
+      "bytes": 3552,
+      "sha256": "e0a2b362a72638f7a4266d4bdf9f8bfa46e55bc00f0fcbe5c02c7bd55136fbe4"
+    },
+    "src/Client/Pdf/Layout/PdfLayoutContracts.cs": {
+      "bytes": 3135,
+      "sha256": "7758d6e5b0c91330c274abc6ad7be575a9e3c31f1cae1445a21a118ca1fbdfad"
+    },
+    "src/Client/Pdf/Layout/PdfLayoutJson.cs": {
+      "bytes": 9661,
+      "sha256": "22bb29d3a79aac1eee4b50b038b33bf2cefe8378149f2ac85c1414f7341be3f4"
+    },
+    "tests/Workspace.Tests/Pdf/LayoutV2WireTests.cs": {
+      "bytes": 4809,
+      "sha256": "13fcf1c7b36d2c19239b437a5def0964d5377597757d6488b25e6ade276caa06"
+    },
+    "tests/Workspace.Tests/Fixtures/RenderedReview/producer-pdf-ink-v2.json": {
+      "bytes": 1183,
+      "sha256": "7e33123840008f9809cbd8a53d7cddee8851947275c0c58160fd8be195bc164b"
+    },
+    "tests/Workspace.Tests/Fixtures/RenderedReview/producer-pdf-unicode-v2.json": {
+      "bytes": 2712,
+      "sha256": "e5accf33eb4c8402c2e12f7dc7f796c24196eab6e0b6dea419d9b93b8d19147e"
+    },
+    "rust/src/rendered_review/classify.rs": {
+      "bytes": 9059,
+      "sha256": "48b329dcfd44f0e89b229399bb3401bf19531f364b9ae050fe6a2638ed196fa6"
+    },
+    "rust/src/rendered_review/tests_metrics.rs": {
+      "bytes": 14886,
+      "sha256": "760d728968f6bb6c2f0eff2c46e5a73f49dbbeaf56b6e6ba586751f86260937b"
+    },
+    "rust/src/rendered_review/fixtures/native-v2-painted-space-batch.json": {
+      "bytes": 1183,
+      "sha256": "a76b4f9ec088c40d914c4c57fdfe6899d5116bc75c9d7384e17e56173d15ccf0"
+    },
+    "rust/src/rendered_review/fixtures/native-v2-painted-nbsp-batch.json": {
+      "bytes": 1184,
+      "sha256": "293886a8017584c4fd269eacea4cf81d4d82c933ed8c1c4335533caed41c5ffa"
+    },
+    "rust/src/rendered_review/fixtures/native-v2-actualtext-space-batch.json": {
+      "bytes": 1082,
+      "sha256": "121a5c6902307f374de3c2daf0c35c1dc75fd964790c2f4b3fcc627836b844c8"
+    },
+    "rust/src/rendered_review/fixtures/native-v2-generated-space-batch.json": {
+      "bytes": 1788,
+      "sha256": "d8efb51dee7e5b3a1efcc7a5c58b36c1dba194a984cb73249399786b1b648781"
+    }
+  },
+  "upstreamPatchedFiles": [
+    {
+      "path": "core/fxge/cfx_face.h",
+      "sha256": "046a3b503fe4e9bdd23966d6e3d492365c4c25d5b2139dc79fc67c460931e642"
+    },
+    {
+      "path": "core/fpdfapi/page/cpdf_generalstate.h",
+      "sha256": "716ebbab81df699578a3d31f820a092a25ecb253f92b0365afefd3678e87cddf"
+    },
+    {
+      "path": "core/fpdftext/cpdf_textpage.cpp",
+      "sha256": "48f81482a995fe229b068bd12518af6cb68b96107826339ce9c6e47a3c176217"
+    },
+    {
+      "path": "core/fpdfapi/font/cpdf_tounicodemap.cpp",
+      "sha256": "c6b9f10f5c835d8d2b6d8d2b44d77c7090782e6a5291d2f55c607ca0cef39928"
+    }
+  ],
+  "verification": {
+    "inkOracleAndCounterexampleCases": 25,
+    "legacyGeometryLimitsAndApiCases": 23,
+    "literalUnicodeTextAndSearchControls": 17,
+    "malformedSurrogateRejections": 3,
+    "managedPdfCases": 76,
+    "managedLayoutV1V2AndGenuineUnicodePreviewIncluded": 16,
+    "exactPatchReproductionAndIdempotence": true,
+    "realArabicBaseline": "same PDF sha8744df2500d0d622fe0f383b0b6414bab8835f9309110e6fd8c5787e27c8fb01; all text/UTF16/native character facts/search/raster equal accepted baseline",
+    "unchangedRasterControls": 12,
+    "genuineWhitespaceProducerConsumerCases": 4,
+    "rustMetricCases": 11
+  },
+  "limitations": [
+    "Native ink available only for validated embedded static-font pure opaque black fill, without clipping, Forms, transparency groups, substitution, unsupported paint effects or unproven later occlusion.",
+    "Measurement error is explicit, not a standard tolerance. Entire error envelope is within effective page box.",
+    "Visual style indeterminate, line grouping unsupported. Nominal font metadata does not prove visual style or ambiguous 1.8mm font height.",
+    "Author role labels remain conditional; no normative compliance or speculative source fixes.",
+    "Native/managed checks do not substitute for new-pair browser/offline integration or R4 release source/notice clearance.",
+    "Unicode whitespace never proves blank paint. Only native-generated glyphless separators or proven empty outlines are missing; unknown whitespace blocks metric classification."
+  ]
+}

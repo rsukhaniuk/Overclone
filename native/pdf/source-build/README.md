@@ -47,9 +47,8 @@ Run `node native/pdf/fixtures/layout/test.cjs /build/e1/e1.js` inside the existi
 browser test image, never with mocked native replies. The fixtures independently
 exercise parsed default/explicit/indirect/malformed/UserUnit, the non-inherited
 page-tree case, all rotations, crop/nonzero origins, native character matrix/font
-size, character/output limits and handle cleanup. They do not establish visual
-glyph ink, clipping/style, full font parity, browser cancellation or release
-source/notice closure.
+size, character/output limits and handle cleanup. These baseline cases do not themselves establish glyph ink, visual style,
+full font parity, browser cancellation or release source/notice closure.
 
 `UserUnit` is resolved through this exact revision's `CPDFPageFromFPDFPage`,
 `CPDF_Page::GetDict` and `CPDF_Dictionary::GetDirectObjectFor`. Missing page entry
@@ -58,8 +57,9 @@ defaults to1; a `/Parent` entry is not inherited. Only finite numeric values in
 indeterminate. This adapter reports raw boxes plus the independent scale; it
 never rewrites legacy geometry or claims `FPDFText_GetCharBox` measures painted
 ink. Font flags/nominal size/matrix/render mode are observations; visual style
-and ink remain explicitly unsupported until transforms, clipping, substitution,
-Type3 and synthetic styles have a validated measurement path.
+remain observations rather than proof of visual style. The schema2 instrument
+below measures a conservative subset of actual painted outlines; all other
+characters stay explicitly indeterminate or missing.
 
 Generate complete synthetic ActualText/control PDFs into a separate output
 directory, then run the literal extraction/search controls on the repaired pair:
@@ -69,10 +69,63 @@ python3 native/pdf/fixtures/actualtext/make_fixtures.py /outputs/actualtext
 node native/pdf/fixtures/actualtext/test.cjs /build/e1 /outputs/actualtext /outputs/actualtext-result.json
 ```
 
-The controls retain two observed pre-existing limitations explicitly: this
-upstream revision drops supplementary Unicode from ActualText, and the literal
-emoji search control also misses in the accepted older renderer. They remain
-failing expectations in the receipt, separate from the repaired RTL controls;
-the test does not claim full Unicode/search compatibility. Normal Latin,
-Ukrainian/emoji extraction and unmarked Arabic retain identical text, UTF-16,
-character facts and raster bytes compared with the unpatched source build.
+The preserved schema1 receipt records two supplementary-Unicode limitations
+of that exact old pair. Schema2 additionally applies `unicode_text.py`: parsed
+ActualText accepts valid supplementary scalars; CMap destination strings decode
+UTF-16 through PDFium's existing codec **after** bfRange arithmetic. E1's UTF-16
+export reads the same parsed text page and native encoder instead of PDFium's
+public UCS-2-only text export. Native character indexes and search ranges remain
+scalar indexes. A single emoji is one native character and two UTF-16 units.
+Malformed surrogate mappings are rejected; no JavaScript text rewriting is used.
+
+`ink.py` adds two read-only guards to the exact matching PDFium source headers.
+The complete archive must be rebuilt after applying **all** source patches;
+linking newly patched headers against an older archive is invalid. Every patch
+checks the full before/after source hashes and is idempotent. Original source
+archives, pinned dependency inputs, notices and the exact recipe remain required.
+
+Schema2 painted-ink facts use the embedded static font's actual glyph path,
+renderer glyph adjustment, character transform and exact cubic extrema. A native
+PDFium winding-fill mask witnesses that contours paint noncancelled ink at each
+extreme. Reported uncertainty combines mask resolution, font-outline coordinate
+quantization and transform roundoff; it is a measurement error, never a guideline
+tolerance. The entire error envelope must fit inside the effective MediaBox /
+CropBox intersection. Pure opaque black fill only is admitted. Substitution,
+variable/color/SVG/tricky/Type3/vertical fonts, clip paths, nested Forms, page
+transparency groups, nondefault graphics effects, extraction deduplication and
+unproven later paint remain indeterminate. Only native-generated glyphless separators prove missing ink. A visible glyph
+mapped to SPACE/NBSP is measured; unknown ActualText whitespace stays
+indeterminate and consumers refuse to treat it as blank. Font metadata never proves visual bold/italic or the ambiguous
+1.8 mm font-height requirement.
+
+The schema2 capability `glyphInk: "available"` declares this instrument exists;
+each character independently declares its result. Available ink requires a box
+and `inkUncertainty: { absoluteErrorRaw, method: "native-outline-fill-witness" }`.
+All other statuses require both fields null. The required capability method is
+`embedded-static-font-outline-opaque-fill`; visual style stays indeterminate and
+line grouping unsupported. Schema1 consumers preserve their exact old shape.
+The legacy ABI1 and 36-byte budget stay unchanged. Caps: 100,000 characters,
+10,000 page objects, 4,096 outline points/glyph, 1,024 mask-cache entries,
+256 by 256 mask pixels and 20 million work units. Existing raster/output caps
+still apply; cap exhaustion rejects the complete operation instead of truncating.
+
+Generate and run the genuine schema2 oracle/control sets in the existing test
+container, using a fresh output directory:
+
+```sh
+python3 native/pdf/fixtures/ink/make_fixtures.py /outputs/ink
+node native/pdf/fixtures/ink/test.cjs /build/e1 /outputs/ink /outputs
+python3 native/pdf/fixtures/unicode/make_fixtures.py /outputs/unicode
+node native/pdf/fixtures/unicode/test.cjs /build/e1 /outputs/unicode /outputs/unicode-results.json
+```
+
+Ink controls use self-generated embedded TrueType rectangle/quadratic glyphs,
+independent analytic extrema and high-resolution native rasters. They cover scale,
+shear, mirror, rotation, winding cancellation, clipping/uncertainty edges,
+invisible/stroked paint, occlusion, extraction deduplication, Forms and page groups.
+Unicode controls preserve the original literal Arabic/mixed-direction oracles,
+add supplementary bfRange/array/BMP-ligature/boundary cases and reject malformed
+surrogates. The emitted `native-unicode-transport-v2.json` preserves genuine
+`e1_facts`/`e1_text`/`e1_search` replies for managed parser and preview assertions.
+These checks establish bounded native facts, not a complete rendered-document
+standard, browser acceptance or full release clearance.

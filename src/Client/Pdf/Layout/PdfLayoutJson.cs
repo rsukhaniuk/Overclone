@@ -16,16 +16,21 @@ public static class PdfLayoutJson
         using var factDoc = JsonDocument.Parse(factsJson);
         PdfWireParser.Unique(capabilityDoc.RootElement); PdfWireParser.Unique(factDoc.RootElement);
         var c = capabilityDoc.RootElement;
-        PdfWireParser.Keys(c, "schemaVersion", "coordinateSpace", "physicalScale", "glyphInk", "textStyle", "lineGrouping", "maxCharacters", "nominalSizeUnit", "nominalSizeMethod");
-        if (c.GetProperty("schemaVersion").GetInt32() != 1 || Text(c, "coordinateSpace") != "pdf-raw-unrotated-bottom-left"
+        if (!c.TryGetProperty("schemaVersion", out var versionJson) || versionJson.ValueKind != JsonValueKind.Number
+            || !versionJson.TryGetInt32(out int version) || version is not (1 or 2)) throw new JsonException();
+        string[] capabilityKeys = ["schemaVersion", "coordinateSpace", "physicalScale", "glyphInk", "textStyle", "lineGrouping", "maxCharacters", "nominalSizeUnit", "nominalSizeMethod"];
+        PdfWireParser.Keys(c, version == 1 ? capabilityKeys : [.. capabilityKeys, "glyphInkMethod"]);
+        string? inkMethod = version == 2 ? Text(c, "glyphInkMethod") : null;
+        if (version == 2 && inkMethod != "embedded-static-font-outline-opaque-fill") throw new JsonException();
+        if (c.GetProperty("schemaVersion").GetInt32() != version || Text(c, "coordinateSpace") != "pdf-raw-unrotated-bottom-left"
             || Text(c, "lineGrouping") != "unsupported" || c.GetProperty("maxCharacters").GetInt32() != 100000
             || Text(c, "nominalSizeUnit") != "raw-user-units" || Text(c, "nominalSizeMethod") != "pdfium-font-size") throw new JsonException();
-        var capabilities = new PdfLayoutCapabilities(1, Text(c, "coordinateSpace"), Capability(c, "physicalScale"),
-            Capability(c, "glyphInk"), Capability(c, "textStyle"), "unsupported", 100000, "raw-user-units", "pdfium-font-size");
+        var capabilities = new PdfLayoutCapabilities(version, Text(c, "coordinateSpace"), Capability(c, "physicalScale"),
+            Capability(c, "glyphInk"), Capability(c, "textStyle"), "unsupported", 100000, "raw-user-units", "pdfium-font-size", inkMethod);
         var f = factDoc.RootElement;
         PdfWireParser.Keys(f, "schemaVersion", "pageIndex", "pageCount", "media", "crop", "effective", "rotation", "userUnit", "characters", "complete", "limitations");
         int index = f.GetProperty("pageIndex").GetInt32(), pages = f.GetProperty("pageCount").GetInt32(), rotation = f.GetProperty("rotation").GetInt32();
-        if (f.GetProperty("schemaVersion").GetInt32() != 1 || index != request.PageIndex || pages < 1 || pages > request.Budget.Pages
+        if (f.GetProperty("schemaVersion").GetInt32() != version || index != request.PageIndex || pages < 1 || pages > request.Budget.Pages
             || index >= pages || rotation is not (0 or 90 or 180 or 270) || !f.GetProperty("complete").GetBoolean()) throw new JsonException();
         var media = Box(f.GetProperty("media")); var effective = Box(f.GetProperty("effective"));
         PdfBox? crop = f.GetProperty("crop").ValueKind == JsonValueKind.Null ? null : Box(f.GetProperty("crop"));
@@ -37,18 +42,32 @@ public static class PdfLayoutJson
         if (state == "available" ? scale is not > 0 || scale > 75000 || method is not ("page-dictionary-userunit" or "default-userunit") || method == "default-userunit" && scale != 1
             : scale is not null || method is not ("unavailable" or "invalid")) throw new JsonException();
         if (state == "available" && capabilities.PhysicalScale != "available" || capabilities.PhysicalScale == "available" && state is "unsupported" or "missing") throw new JsonException();
+        if (version == 2 && (state == "available") != (capabilities.PhysicalScale == "available")) throw new JsonException();
         var array = f.GetProperty("characters");
         if (array.ValueKind != JsonValueKind.Array || array.GetArrayLength() > Math.Min(100000, request.Budget.TextUnits)) throw new JsonException();
         var chars = new PdfLayoutCharacter[array.GetArrayLength()]; int i = 0;
         foreach (var ch in array.EnumerateArray())
         {
-            PdfWireParser.Keys(ch, "index", "unicode", "origin", "advance", "matrix", "nominalSize", "fontName", "fontFlags", "renderMode", "inkBox", "inkStatus", "styleStatus");
+            string[] characterKeys = ["index", "unicode", "origin", "advance", "matrix", "nominalSize", "fontName", "fontFlags", "renderMode", "inkBox", "inkStatus", "styleStatus"];
+            PdfWireParser.Keys(ch, version == 1 ? characterKeys : [.. characterKeys, "inkUncertainty"]);
             int nativeIndex = ch.GetProperty("index").GetInt32(), scalar = ch.GetProperty("unicode").GetInt32();
             if (nativeIndex != i || scalar is < 0 or > 0x10ffff or >= 0xd800 and <= 0xdfff) throw new JsonException();
             string ink = FactStatus(ch, "inkStatus"), style = FactStatus(ch, "styleStatus");
             var boxJson = ch.GetProperty("inkBox"); PdfBox? inkBox = boxJson.ValueKind == JsonValueKind.Null ? null : Box(boxJson);
             if ((ink == "available") != (inkBox is not null) || ink == "available" && capabilities.GlyphInk != "available"
                 || style == "available" && capabilities.TextStyle != "available") throw new JsonException();
+            PdfInkUncertainty? uncertainty = null;
+            if (version == 2)
+            {
+                var uJson = ch.GetProperty("inkUncertainty");
+                if (uJson.ValueKind != JsonValueKind.Null)
+                {
+                    PdfWireParser.Keys(uJson, "absoluteErrorRaw", "method"); double error = Number(uJson.GetProperty("absoluteErrorRaw"));
+                    if (error < 0 || Text(uJson, "method") != "native-outline-fill-witness") throw new JsonException();
+                    uncertainty = new(error, "native-outline-fill-witness");
+                }
+                if ((ink == "available") != (uncertainty is not null)) throw new JsonException();
+            }
             var fontJson = ch.GetProperty("fontName"); string? font = fontJson.ValueKind == JsonValueKind.Null ? null : fontJson.GetString();
             if (font is not null && (!PdfHashes.ValidUtf16(font) || Encoding.UTF8.GetByteCount(font) > 256 || font.Contains('\0'))) throw new JsonException();
             var flagsJson = ch.GetProperty("fontFlags"); uint? flags = flagsJson.ValueKind == JsonValueKind.Null ? null : flagsJson.GetUInt32();
@@ -59,13 +78,13 @@ public static class PdfLayoutJson
             { var a = Numbers(matrixJson, 6); matrix = new(a[0], a[1], a[2], a[3], a[4], a[5]); }
             if (style == "available" && (matrix is null || size is null || flags is null || mode is null)) throw new JsonException();
             chars[i++] = new(nativeIndex, scalar, Point(ch.GetProperty("origin")), Point(ch.GetProperty("advance")), matrix,
-                size, font, flags, mode, inkBox, ink, style);
+                size, font, flags, mode, inkBox, ink, style, uncertainty);
         }
         var limitationsJson = f.GetProperty("limitations");
         if (limitationsJson.ValueKind != JsonValueKind.Array || limitationsJson.GetArrayLength() > 32) throw new JsonException();
         var limitations = limitationsJson.EnumerateArray().Select(p => p.GetString() ?? throw new JsonException()).ToArray();
         if (limitations.Any(p => p.Length is < 1 or > 64 || p.Any(c => c is < '!' or > '~')) || limitations.Distinct().Count() != limitations.Length) throw new JsonException();
-        return (capabilities, new(index, pages, media, crop, effective, rotation, new(state, scale, method), chars, limitations, factsJson));
+        return (capabilities, new(index, pages, media, crop, effective, rotation, new(state, scale, method), chars, limitations, factsJson, version));
     }
     private static string Text(JsonElement e, string name) => e.GetProperty(name).GetString() ?? throw new JsonException();
     private static string Capability(JsonElement e, string name) => Text(e, name) is var s && s is "available" or "unsupported" or "indeterminate" ? s : throw new JsonException();

@@ -3,6 +3,10 @@
 #include <fpdf_text.h>
 #include <fpdf_transformpage.h>
 #include <fpdf_edit.h>
+#if defined(E1_PDFIUM_SOURCE_USERUNIT)
+#include "core/fpdftext/cpdf_textpage.h"
+#include "fpdfsdk/cpdfsdk_helpers.h"
+#endif
 #include <emscripten/emscripten.h>
 #include <algorithm>
 #include <array>
@@ -219,7 +223,21 @@ API uint32_t e1_text(uint32_t h){
  start();auto* p=page_slot(h);if(!p)return status;int count=0;if(!text_count(*p,count))return status;
  Geometry g{};if(!geometry(*p,g))return status;
  std::vector<unsigned short> units(static_cast<size_t>(count)*2+1);
- int got=FPDFText_GetText(p->text,0,count,units.data());if(got<0||static_cast<uint32_t>(got)>p->budget.text_units+1)return fail(E1_INDETERMINATE);
+ int got=0;
+#if defined(E1_PDFIUM_SOURCE_USERUNIT)
+ // FPDFText_GetText is explicitly UCS-2 and omits supplementary scalars.
+ // This source-associated ABI promises UTF-16, using the same parsed text page
+ // and native encoder; native character indexes remain separate from units.
+ auto* native_text=CPDFTextPageFromFPDFTextPage(p->text);
+ if(!native_text)return fail(E1_INDETERMINATE);
+ auto encoded=native_text->GetAllPageText().ToUTF16LE();
+ if(encoded.GetLength()%2||encoded.GetLength()/2>units.size())return fail(E1_LIMIT);
+ got=static_cast<int>(encoded.GetLength()/2);
+ if(encoded.GetLength())std::memcpy(units.data(),encoded.c_str(),encoded.GetLength());
+#else
+ got=FPDFText_GetText(p->text,0,count,units.data());
+#endif
+ if(got<0||static_cast<uint32_t>(got)>p->budget.text_units+1)return fail(E1_INDETERMINATE);
  size_t n=got>0?static_cast<size_t>(got-1):0;std::string text,unit_json="[",chars="[";
  for(size_t i=0;i<n;++i){if(i)unit_json+=',';unit_json+=std::to_string(units[i]);}
  unit_json+=']';

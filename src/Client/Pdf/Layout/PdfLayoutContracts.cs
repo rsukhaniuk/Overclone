@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Text.Json.Serialization;
 
 namespace Client.Pdf;
 
@@ -16,23 +17,25 @@ public interface IPdfLayoutInspector
 
 public sealed record PdfLayoutCapabilities(int SchemaVersion, string CoordinateSpace, string PhysicalScale,
     string GlyphInk, string TextStyle, string LineGrouping, int MaxCharacters,
-    string NominalSizeUnit, string NominalSizeMethod);
+    string NominalSizeUnit, string NominalSizeMethod,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? GlyphInkMethod = null);
 public sealed record PdfUserUnit(string Status, double? Value, string Method);
 public readonly record struct PdfCharacterMatrix(double A, double B, double C, double D, double E, double F);
+public sealed record PdfInkUncertainty(double AbsoluteErrorRaw, string Method);
 public sealed record PdfLayoutCharacter(int Index, int Unicode, PdfPoint? Origin, PdfPoint? Advance,
     PdfCharacterMatrix? Matrix, double? NominalSize, string? FontName, uint? FontFlags, int? RenderMode,
-    PdfBox? InkBox, string InkStatus, string StyleStatus);
+    PdfBox? InkBox, string InkStatus, string StyleStatus, PdfInkUncertainty? InkUncertainty = null);
 
 public sealed class PdfLayoutFacts
 {
     internal PdfLayoutFacts(int pageIndex, int pageCount, PdfBox media, PdfBox? crop, PdfBox effective,
-        int rotation, PdfUserUnit userUnit, PdfLayoutCharacter[] characters, string[] limitations, string json)
+        int rotation, PdfUserUnit userUnit, PdfLayoutCharacter[] characters, string[] limitations, string json, int schemaVersion = 1)
     {
-        PageIndex = pageIndex; PageCount = pageCount; Media = media; Crop = crop; Effective = effective;
+        SchemaVersion = schemaVersion; PageIndex = pageIndex; PageCount = pageCount; Media = media; Crop = crop; Effective = effective;
         Rotation = rotation; UserUnit = userUnit; Characters = Array.AsReadOnly((PdfLayoutCharacter[])characters.Clone());
         Limitations = Array.AsReadOnly((string[])limitations.Clone()); Json = json;
     }
-    public int SchemaVersion => 1;
+    public int SchemaVersion { get; }
     public int PageIndex { get; }
     public int PageCount { get; }
     public PdfBox Media { get; }

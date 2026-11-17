@@ -51,7 +51,7 @@ pub fn measure(page: &Page, annotation: &Annotation) -> Result<Measurement, &'st
     // cannot be silently omitted on the basis of ToUnicode/ActualText alone.
     if f.characters[start..end]
         .iter()
-        .any(|ch| whitespace(ch) && ch.ink_box.is_some())
+        .any(|ch| whitespace(ch) && (ch.ink_status != "missing" || ch.ink_box.is_some()))
     {
         return Err("metric-painted-whitespace-ambiguous");
     }

@@ -312,3 +312,68 @@ fn visible_ink_mapped_to_whitespace_cannot_disappear_from_margin_bounds() {
     assert_eq!(margins["reason"], "metric-painted-whitespace-ambiguous");
     assert!(margins["evidence"].as_array().unwrap().is_empty());
 }
+
+#[test]
+fn unknown_or_painted_whitespace_never_becomes_blank_body_coverage() {
+    for scalar in [32, 160, 9, 10] {
+        for state in ["available", "indeterminate", "unsupported", "missing"] {
+            let (r, mut f) = pair();
+            let ch = &mut f["pages"][0]["facts"]["characters"][0];
+            ch["unicode"] = json!(scalar);
+            ch["inkStatus"] = json!(state);
+            if state != "available" {
+                ch["inkBox"] = Value::Null;
+                ch["inkUncertainty"] = Value::Null;
+            }
+            let v = response(&r, &f);
+            let result = rule(&v, "KNU-MARGINS-001");
+            assert_eq!(
+                result["reason"],
+                if state == "missing" {
+                    "metric-no-measured-glyphs"
+                } else {
+                    "metric-painted-whitespace-ambiguous"
+                }
+            );
+            assert!(result["evidence"].as_array().unwrap().is_empty());
+        }
+    }
+}
+
+#[test]
+fn genuine_native_whitespace_coverage_rejects_visible_and_unknown_accepts_generated() {
+    for (bytes, succeeds) in [
+        (
+            include_str!("fixtures/native-v2-painted-space-batch.json"),
+            false,
+        ),
+        (
+            include_str!("fixtures/native-v2-painted-nbsp-batch.json"),
+            false,
+        ),
+        (
+            include_str!("fixtures/native-v2-actualtext-space-batch.json"),
+            false,
+        ),
+        (
+            include_str!("fixtures/native-v2-generated-space-batch.json"),
+            true,
+        ),
+    ] {
+        let (mut r, _) = pair();
+        let f: Value = serde_json::from_str(bytes).unwrap();
+        r["payload"]["pdfSha256"] = f["documentSha256"].clone();
+        let v = response(&r, &f);
+        assert_eq!(v["status"], "completed");
+        let result = rule(&v, "KNU-MARGINS-001");
+        assert_eq!(
+            result["reason"],
+            if succeeds {
+                "conditional-body-ink-margins"
+            } else {
+                "metric-painted-whitespace-ambiguous"
+            }
+        );
+        assert_eq!(result["evidence"].as_array().unwrap().is_empty(), !succeeds);
+    }
+}

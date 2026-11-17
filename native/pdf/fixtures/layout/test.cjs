@@ -67,7 +67,7 @@ function pdf({unit='',parentUnit='',media='0 0 72 144',crop='',rotate=0,text='A'
         // Independent literal raw+UserUnit oracle: 72 raw units at scale2 is50.8mm.
         assert.equal(72*facts.userUnit.value*25.4/72,50.8);
         const a=facts.characters.find(c=>c.unicode===65);assert.ok(a);assert.equal(a.nominalSize,12);assert.equal(a.matrix.length,6);
-        assert.equal(a.inkBox,null);assert.equal(a.inkStatus,'unsupported');assert.equal(a.styleStatus,'unsupported');cases++;
+        assert.equal(a.inkBox,null);assert.equal(a.inkStatus,facts.schemaVersion===1?'unsupported':'indeterminate');assert.equal(a.styleStatus,facts.schemaVersion===1?'unsupported':'indeterminate');cases++;
     }
     const bounded=inspect({text:'A'.repeat(100001),media:'0 0 1000000 144'});assert.equal(bounded.status,3,`native characters: ${bounded.facts?.characters?.length}`);assert.equal(bounded.facts,null);cases++;
     const output=inspect({text:'A'.repeat(200),media:'0 0 10000 144'},4096);assert.equal(output.status,3);assert.equal(output.facts,null);cases++;
@@ -78,7 +78,7 @@ function pdf({unit='',parentUnit='',media='0 0 72 144',crop='',rotate=0,text='A'
         'BT /F1 12 Tf 2 Tr 2 w 10 20 Td (A) Tj ET',
     ]){
         const result=inspect({content});assert.equal(result.status,0);
-        for(const ch of result.facts.characters){assert.equal(ch.inkBox,null);assert.equal(ch.inkStatus,'unsupported');assert.equal(ch.styleStatus,'unsupported');}
+        for(const ch of result.facts.characters){assert.equal(ch.inkBox,null);assert.equal(ch.inkStatus,result.facts.schemaVersion===1?'unsupported':'indeterminate');assert.equal(ch.styleStatus,result.facts.schemaVersion===1?'unsupported':'indeterminate');}
         if(content.includes('3 Tr'))assert.ok(result.facts.characters.some(ch=>ch.renderMode===3));
         if(content.includes('2 Tr'))assert.ok(result.facts.characters.some(ch=>ch.renderMode===2));
         cases++;
@@ -91,5 +91,5 @@ function pdf({unit='',parentUnit='',media='0 0 72 144',crop='',rotate=0,text='A'
     // Legacy facts/text/raster exports remain available on the same candidate.
     assert.equal(typeof m._e1_facts,'function');assert.equal(typeof m._e1_text,'function');assert.equal(typeof m._e1_raster,'function');
     m._e1_reset();assert.equal(m._e1_live(),0);
-    console.log(JSON.stringify({status:'passed',cases,measurement:'parsed-page-dictionary-and-native-text',glyphInk:'unsupported',textStyle:'unsupported',fixtures}));
+    console.log(JSON.stringify({status:'passed',cases,measurement:'parsed-page-dictionary-and-native-text',scope:'parsed-userunit-native-metadata-and-legacy-regressions',fixtures}));
 })().catch(error=>{console.error(error);process.exitCode=1;});

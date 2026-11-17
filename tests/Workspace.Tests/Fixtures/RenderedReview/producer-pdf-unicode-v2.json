@@ -1,0 +1,75 @@
+{
+  "schemaVersion": 1,
+  "runtime": {
+    "loaderSha256": "968aae4935523f528e2314c4dbd831b2dd326ac8d3de3444fd033b73463b0225",
+    "wasmSha256": "8b715ed561ec644757f305ddad0a99ae728c6705f9868e96ccb53c8c9143c4b3"
+  },
+  "pdfSha256": "b4054301d654e01dccc667d82ab2a808306bf4002d33feaba910332fef023404",
+  "pdfBase64": "JVBERi0xLjcKMSAwIG9iago8PCAvVHlwZSAvQ2F0YWxvZyAvUGFnZXMgMiAwIFIgPj4KZW5kb2JqCjIgMCBvYmoKPDwgL1R5cGUgL1BhZ2VzIC9LaWRzIFszIDAgUl0gL0NvdW50IDEgPj4KZW5kb2JqCjMgMCBvYmoKPDwgL1R5cGUgL1BhZ2UgL1BhcmVudCAyIDAgUiAvTWVkaWFCb3ggWzAgMCA2MDAgMjAwXSAvUmVzb3VyY2VzIDw8IC9Gb250IDw8IC9GMSA1IDAgUiA+PiAgPj4gL0NvbnRlbnRzIDQgMCBSID4+CmVuZG9iago0IDAgb2JqCjw8IC9MZW5ndGggMzIgPj4Kc3RyZWFtCkJUIC9GMSAxMiBUZiAxMCAyMCBUZCA8MjE+IFRqIEVUCmVuZHN0cmVhbQplbmRvYmoKNSAwIG9iago8PCAvVHlwZSAvRm9udCAvU3VidHlwZSAvVHlwZTEgL0Jhc2VGb250IC9IZWx2ZXRpY2EgL1RvVW5pY29kZSA2IDAgUiA+PgplbmRvYmoKNiAwIG9iago8PCAvTGVuZ3RoIDMyNCA+PgpzdHJlYW0KL0NJREluaXQgL1Byb2NTZXQgZmluZHJlc291cmNlIGJlZ2luIDEyIGRpY3QgYmVnaW4gYmVnaW5jbWFwIC9DSURTeXN0ZW1JbmZvIDw8IC9SZWdpc3RyeSAoQWRvYmUpIC9PcmRlcmluZyAoVUNTKSAvU3VwcGxlbWVudCAwID4+IGRlZiAvQ01hcE5hbWUgL0ZpeHR1cmUgZGVmIC9DTWFwVHlwZSAyIGRlZiAxIGJlZ2luY29kZXNwYWNlcmFuZ2UgPDAwPiA8RkY+IGVuZGNvZGVzcGFjZXJhbmdlIDEgYmVnaW5iZmNoYXIKPDIxPiA8RDgzRERFNDI+CmVuZGJmY2hhciBlbmRjbWFwIENNYXBOYW1lIGN1cnJlbnRkaWN0IC9DTWFwIGRlZmluZXJlc291cmNlIHBvcCBlbmQgZW5kCmVuZHN0cmVhbQplbmRvYmoKeHJlZgowIDcKMDAwMDAwMDAwMCA2NTUzNSBmIAowMDAwMDAwMDA5IDAwMDAwIG4gCjAwMDAwMDAwNTggMDAwMDAgbiAKMDAwMDAwMDExNSAwMDAwMCBuIAowMDAwMDAwMjQyIDAwMDAwIG4gCjAwMDAwMDAzMjQgMDAwMDAgbiAKMDAwMDAwMDQxMSAwMDAwMCBuIAp0cmFpbGVyCjw8IC9TaXplIDcgL1Jvb3QgMSAwIFIgPj4Kc3RhcnR4cmVmCjc4NgolJUVPRgo=",
+  "facts": {
+    "media": [
+      0,
+      0,
+      600,
+      200
+    ],
+    "crop": null,
+    "cropDefaulted": true,
+    "effective": [
+      0,
+      0,
+      600,
+      200
+    ],
+    "rotation": 0,
+    "displayPoints": [
+      600,
+      200
+    ],
+    "nativeWidthHeight": [
+      600,
+      200
+    ],
+    "sourceMapping": "unsupported"
+  },
+  "text": {
+    "text": "🙂",
+    "utf16": [
+      55357,
+      56898
+    ],
+    "characterCount": 1,
+    "characters": [
+      {
+        "index": 0,
+        "unicode": 128578,
+        "origin": [
+          10,
+          20
+        ],
+        "box": [
+          11.079999923706055,
+          20,
+          12.243999481201172,
+          28.61600112915039
+        ],
+        "displayBox": [
+          11.079999923706055,
+          171.3839988708496,
+          12.243999481201172,
+          180
+        ],
+        "boxStatus": "available",
+        "font": "Helvetica",
+        "fontStatus": "available"
+      }
+    ],
+    "sourceMapping": "unsupported"
+  },
+  "search": [
+    {
+      "start": 0,
+      "count": 1
+    }
+  ]
+}

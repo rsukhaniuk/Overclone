@@ -6,8 +6,22 @@
 #include "core/fpdfapi/parser/cpdf_dictionary.h"
 #include "core/fpdfapi/parser/cpdf_object.h"
 #include "fpdfsdk/cpdfsdk_helpers.h"
+#include "ink.inc"
+#else
+namespace {
+struct InkContext { explicit InkContext(Slot&) {} };
+struct InkBox { double l=0,b=0,r=0,t=0;bool available=false;const char* state="unsupported";double error=0; };
+InkBox measure_ink(InkContext&,Slot&,int,const Geometry&){return {};}
+}
 #endif
 namespace {
+#if defined(E1_PDFIUM_SOURCE_USERUNIT)
+constexpr const char* LAYOUT_INK_CAPABILITY="available";
+constexpr const char* LAYOUT_STYLE_CAPABILITY="indeterminate";
+#else
+constexpr const char* LAYOUT_INK_CAPABILITY="unsupported";
+constexpr const char* LAYOUT_STYLE_CAPABILITY="unsupported";
+#endif
 constexpr int LAYOUT_CHARACTER_CAP=100000;
 constexpr double LAYOUT_NUMBER_CAP=1000000;
 bool layout_number(double v){return std::isfinite(v)&&std::abs(v)<=LAYOUT_NUMBER_CAP;}
@@ -37,9 +51,9 @@ bool layout_box(ActionJson& out,double l,double b,double r,double t){
  for(double n:{l,b,r,t})if(!layout_number(n)){fail(E1_INDETERMINATE);return false;}
  return out.add("[")&&out.number(l)&&out.add(",")&&out.number(b)&&out.add(",")&&out.number(r)&&out.add(",")&&out.number(t)&&out.add("]");
 }
-bool serialize_layout(ActionJson& out,Slot& p,const Geometry& g,int count,LayoutScale scale){
+bool serialize_layout(ActionJson& out,Slot& p,const Geometry& g,int count,LayoutScale scale,InkContext& ink){
  auto* parent=get(p.parent,DOC);if(!parent){fail(E1_HANDLE);return false;}
- if(!out.add("{\"schemaVersion\":1,\"pageIndex\":")||!out.number(p.count)||!out.add(",\"pageCount\":")||!out.number(parent->count)
+ if(!out.add("{\"schemaVersion\":2,\"pageIndex\":")||!out.number(p.count)||!out.add(",\"pageCount\":")||!out.number(parent->count)
    ||!out.add(",\"media\":")||!layout_box(out,g.ml,g.mb,g.mr,g.mt)||!out.add(",\"crop\":"))return false;
  float l=0,b=0,r=0,t=0;
  if(FPDFPage_GetCropBox(p.page,&l,&b,&r,&t)){if(!layout_box(out,l,b,r,t))return false;}else if(!out.add("null"))return false;
@@ -48,6 +62,8 @@ bool serialize_layout(ActionJson& out,Slot& p,const Geometry& g,int count,Layout
  if(std::strcmp(scale.status,"available")==0){if(!out.number(scale.value))return false;}else if(!out.add("null"))return false;
  if(!out.add(",\"method\":")||!out.string(scale.method,std::strlen(scale.method))||!out.add("},\"characters\":["))return false;
  for(int i=0;i<count;++i){
+  auto measured=measure_ink(ink,p,i,g);
+  if(status!=E1_OK)return false;
   uint32_t scalar=FPDFText_GetUnicode(p.text,i);
   if(scalar>0x10ffff||(scalar>=0xd800&&scalar<=0xdfff)){fail(E1_INDETERMINATE);return false;}
   double x=0,y=0;bool origin=FPDFText_GetCharOrigin(p.text,i,&x,&y)&&layout_number(x)&&layout_number(y);
@@ -73,28 +89,32 @@ bool serialize_layout(ActionJson& out,Slot& p,const Geometry& g,int count,Layout
   if(has_font){if(!out.number(static_cast<uint32_t>(flags)))return false;}else if(!out.add("null"))return false;
   if(!out.add(",\"renderMode\":"))return false;
   if(mode>=0&&mode<=7){if(!out.number(mode))return false;}else if(!out.add("null"))return false;
-  // Public character boxes do not account for all clip/style effects. Never
-  // turn these nominal/native facts into a painted ink or visual-bold claim.
-  if(!out.add(",\"inkBox\":null,\"inkStatus\":\"unsupported\",\"styleStatus\":\"unsupported\"}"))return false;
+  // Only the independently validated outline/fill path supplies ink. Native
+  // nominal font metadata never becomes a visual-bold or font-height proof.
+  if(!out.add(",\"inkBox\":"))return false;
+  if(measured.available){if(!layout_box(out,measured.l,measured.b,measured.r,measured.t))return false;}else if(!out.add("null"))return false;
+  if(!out.add(",\"inkUncertainty\":"))return false;
+  if(measured.available){if(!out.add("{\"absoluteErrorRaw\":")||!out.number(measured.error)||!out.add(",\"method\":\"native-outline-fill-witness\"}"))return false;}else if(!out.add("null"))return false;
+  if(!out.add(",\"inkStatus\":")||!out.string(measured.state,std::strlen(measured.state))||!out.add(",\"styleStatus\":")||!out.string(LAYOUT_STYLE_CAPABILITY,std::strlen(LAYOUT_STYLE_CAPABILITY))||!out.add("}"))return false;
  }
- return out.add("],\"complete\":true,\"limitations\":[\"glyph-ink-not-measured\",\"effective-style-not-measured\",\"advance-not-measured\",\"semantic-roles-not-classified\"]}");
+ return out.add("],\"complete\":true,\"limitations\":[\"glyph-ink-conservative-subset\",\"effective-style-not-measured\",\"advance-not-measured\",\"semantic-roles-not-classified\"]}");
 }
 }
 API uint32_t e1_layout_capabilities(uint32_t h){
  start();auto* p=page_slot(h);if(!p)return status;auto scale=layout_scale(*p);
- return json(*p,std::string("{\"schemaVersion\":1,\"coordinateSpace\":\"pdf-raw-unrotated-bottom-left\",\"physicalScale\":")+quote(scale.status)
-  +",\"glyphInk\":\"unsupported\",\"textStyle\":\"unsupported\",\"lineGrouping\":\"unsupported\",\"maxCharacters\":100000,\"nominalSizeUnit\":\"raw-user-units\",\"nominalSizeMethod\":\"pdfium-font-size\"}");
+ return json(*p,std::string("{\"schemaVersion\":2,\"coordinateSpace\":\"pdf-raw-unrotated-bottom-left\",\"physicalScale\":")+quote(scale.status)
+  +",\"glyphInk\":"+quote(LAYOUT_INK_CAPABILITY)+",\"glyphInkMethod\":\"embedded-static-font-outline-opaque-fill\",\"textStyle\":"+quote(LAYOUT_STYLE_CAPABILITY)+",\"lineGrouping\":\"unsupported\",\"maxCharacters\":100000,\"nominalSizeUnit\":\"raw-user-units\",\"nominalSizeMethod\":\"pdfium-font-size\"}");
 }
 API uint32_t e1_layout_facts(uint32_t h){
  start();auto* p=page_slot(h);if(!p)return status;Geometry g{};if(!geometry(*p,g)||!text_page(*p))return status;
  int count=FPDFText_CountChars(p->text);
  if(count<0)return fail(E1_INDETERMINATE);
  if(count>LAYOUT_CHARACTER_CAP||static_cast<uint32_t>(count)>p->budget.text_units)return fail(E1_LIMIT);
- auto scale=layout_scale(*p);ActionJson preflight(p->budget.output_bytes);
- if(!serialize_layout(preflight,*p,g,count,scale))return status;
+ auto scale=layout_scale(*p);InkContext ink(*p);if(status!=E1_OK)return status;ActionJson preflight(p->budget.output_bytes);
+ if(!serialize_layout(preflight,*p,g,count,scale,ink))return status;
  if(preflight.count>MAX_OUTPUT||allocated()+preflight.count>TOTAL_BYTES||live()>=p->budget.live_handles)return fail(E1_LIMIT);
  ActionJson filled(preflight.count);filled.filling=true;filled.bytes.reserve(preflight.count);
- if(!serialize_layout(filled,*p,g,count,scale))return status;
+ if(!serialize_layout(filled,*p,g,count,scale,ink))return status;
  if(filled.count!=preflight.count)return fail(E1_INDETERMINATE);
  return output(*p,filled.bytes.data(),filled.bytes.size());
 }

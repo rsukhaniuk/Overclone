@@ -5,9 +5,13 @@ import shutil
 import sys
 
 from actualtext import apply as repair_actualtext
+from unicode_text import apply as repair_unicode
+from ink import apply as prepare_ink
 
 source = Path(sys.argv[1]).resolve()
 repair_actualtext(source)
+repair_unicode(source)
+prepare_ink(source)
 def replace(relative, before, after):
     path = source / relative
     text = path.read_text()
