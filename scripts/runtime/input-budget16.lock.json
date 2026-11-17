@@ -1,0 +1,102 @@
+{
+  "schemaVersion": 1,
+  "profile": 16,
+  "base": {
+    "profile": 15,
+    "resourceCount": 4453,
+    "totalBytes": 261178860,
+    "closureSha256": "e20e5f5e14f2088d4c8e6718566824b9ce0911120be519386f09709f292f5e03",
+    "pins": {
+      "length": 640872,
+      "sha256": "2722b0d0f9151617d6a671186fb9397e612dda49155bb27d357a215586964328"
+    }
+  },
+  "resources": {
+    "resourceCount": 105,
+    "totalBytes": 1153578,
+    "closureSha256": "842f5bc8b01071a50c8f2fca9d33a932ec504250971f873a5f456a295157e725",
+    "pins": {
+      "length": 15197,
+      "sha256": "6b96115ff20c71856baf1da1618bc3ca379f9198faf6bbe9cb29e746417f3502"
+    }
+  },
+  "replacedResources": [
+    {
+      "parent": {
+        "name": "xetexfontlist.txt",
+        "length": 12315,
+        "sha256": "380ef7057355bff9024f448cf132e6c563364071ee36251d557d95c4652d1e65"
+      },
+      "candidate": {
+        "name": "xetexfontlist.txt",
+        "length": 12729,
+        "sha256": "7e714695c3bf62543445856f69d6690de0b4b5cecec8def6624b64875522768b"
+      }
+    }
+  ],
+  "components": [
+    {
+      "name": "dvi-map-converter.js",
+      "length": 13624,
+      "sha256": "75d1c4441867f3875f82d09409c3eb0ebb8ee0d31d73d8008fc150605c023b09",
+      "group": "dvi",
+      "source": "oc-dvi.js"
+    },
+    {
+      "name": "dvi-map-converter.wasm",
+      "length": 697401,
+      "sha256": "44fe2d05227f7e8d0736ab929825088619e1f741afcb4b788180a6d4c743fe9c",
+      "group": "dvi",
+      "source": "oc-dvi.wasm"
+    },
+    {
+      "name": "xdv-map-converter.js",
+      "length": 13380,
+      "sha256": "a61b06d8530fc0e2a09cc874c8e36260925cc15308b674e946634689d2d62bbc",
+      "group": "xe",
+      "source": "oc-dvi.js"
+    },
+    {
+      "name": "xdv-map-converter.wasm",
+      "length": 696113,
+      "sha256": "44ae512b65187816e6b43e40c1d94857734336721f30090ea2ed83f111001e12",
+      "group": "xe",
+      "source": "oc-dvi.wasm"
+    }
+  ],
+  "target": {
+    "resourceCount": 4557,
+    "totalBytes": 262320783,
+    "closureSha256": "8e3fcc0c3255613609a423a5440934b261feee32a5cc73510f4633648b4a135e",
+    "pins": {
+      "length": 655922,
+      "sha256": "bba6ece7b18136d4bb2e8df64ac47cc5643ddd3763f2fdc3110f70ce7f556a33"
+    }
+  },
+  "limits": {
+    "manifestBytes": 2097152,
+    "fileBytes": 67108864,
+    "resourceCount": 8192,
+    "totalBytes": 536870912
+  },
+  "phases": {
+    "pdftex": 23,
+    "dvi": 24,
+    "xe": 21,
+    "lua": 22,
+    "biber": 10,
+    "query": 15
+  },
+  "projectLimits": {
+    "files": 128,
+    "fileBytes": 2097152,
+    "totalBytes": 16777216,
+    "pdfOutputBytes": 8388608,
+    "carryFiles": 128,
+    "declarations": 256
+  },
+  "recipes": [
+    "native/tex/authoring-input-resources/prepare.py",
+    "native/tex/project-input-budget16/build.py"
+  ]
+}
