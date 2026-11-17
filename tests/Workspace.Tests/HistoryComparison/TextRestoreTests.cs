@@ -10,6 +10,26 @@ namespace Workspace.Tests.HistoryComparison;
 public sealed class TextRestoreTests
 {
     [Fact]
+    public async Task Reviewed_history_restore_accepts_exact_saved_preimage_after_editor_restores_crlf_text()
+    {
+        await using var h = await HistoryTestHost.Open();
+        // The editor journal can restore the original CRLF string through
+        // ordinary editing, which saves LF bytes and retains the BOM.
+        Assert.True(h.Workspace.EditText(h.Main, Encoding.UTF8.GetString(h.Original.AsSpan(3))));
+        Assert.Equal(CommitStatus.Saved, (await h.Workspace.SaveAsync(default)).Status);
+        var saved = (await h.Bytes(h.Main)).ToArray();
+        Assert.DoesNotContain((byte)'\r', saved);
+        Assert.NotEqual(h.Original, saved);
+
+        var proposal = await h.Proposal(h.Main);
+        var preview = await proposal.PreviewAsync(h.Review, default);
+        Assert.Equal(HistoryComparisonCode.Ready, preview.Code);
+        var accepted = await h.Review.AcceptAsync(preview.Review!.Preview!.Id, default);
+        Assert.Equal(ReviewStatus.AppliedSaved, accepted.Status);
+        Assert.Equal(h.Original, await h.Bytes(h.Main));
+    }
+
+    [Fact]
     public async Task Explicit_review_accept_save_and_ordinary_review_Undo_preserve_exact_bytes()
     {
         await using var h = await HistoryTestHost.Open();

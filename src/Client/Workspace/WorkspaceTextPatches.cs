@@ -151,7 +151,16 @@ public sealed partial class WorkspaceCoordinator
         if (f.PendingTextBytes is { } pending) return f.Content == patch.Before.Content && pending.Span.SequenceEqual(patch.Before.Span);
         if (f.IsNew && !f.DirtyContent && f.ImportedBytes is { } imported) return f.Content == patch.Before.Content && patch.Before.Span.SequenceEqual(imported);
         if (!f.IsNew && !f.DirtyContent && f.DurableHash is { } durable)
-            return f.Content == patch.Before.Content && durable == patch.Before.Hash && f.DurableLength == patch.Before.Length;
+        {
+            if (durable != patch.Before.Hash || f.DurableLength != patch.Before.Length) return false;
+            if (f.Content == patch.Before.Content) return true;
+            // Undo can put CRLF back in the editor string before ordinary Save
+            // encodes it as LF. Require that same exact encoding to match the
+            // already verified durable preimage; other content still conflicts.
+            return f.Content.Contains('\r')
+                && TextContent.TryCountEditedBytes(f.Content, f.HasBom, out long length) && length == patch.Before.Length
+                && patch.Before.Span.SequenceEqual(TextContent.EncodeEdited(f.Content, f.HasBom));
+        }
         // Final equality also defends against direct mutable-model changes that
         // did not increment generation. Size was checked without encoding above.
         return patch.Before.Span.SequenceEqual(TextContent.EncodeEdited(f.Content, f.HasBom));
