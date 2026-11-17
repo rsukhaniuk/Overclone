@@ -6,6 +6,8 @@ using Client.Compilation.Native;
 using Client.Compilation.Presentation;
 using Client.Pages;
 using Client.Pdf;
+using Client.Pdf.Preview;
+using Workspace.Tests.PdfPreview;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;
@@ -90,6 +92,105 @@ public sealed class RenderedReviewPanelTests
         });
     });
 
+    [Fact]
+    public void Selected_pdf_search_result_uses_native_glyph_indexes_and_explicit_author_label_only() => Run(async () =>
+    {
+        await using var f = await Host.Open(preview: true); using var services = Services(f);
+        await using var renderer = new Events(services, services.GetRequiredService<ILoggerFactory>());
+        await renderer.Dispatcher.InvokeAsync(async () =>
+        {
+            int id = await renderer.Mount(f);
+            Assert.True(renderer.Element(id, "rendered-role-use-search").Attributes.ContainsKey("disabled"));
+            await f.Search(); var before = f.Work.State(); int calls = f.Inspector.Preview.Calls.Count;
+            Assert.False(renderer.Element(id, "rendered-role-use-search").Attributes.ContainsKey("disabled"));
+            await renderer.Change(id, "rendered-role", "headingMajor");
+            await renderer.Click(id, "rendered-role-use-search");
+            var draft = renderer.Element(id, "rendered-role-search-draft");
+            Assert.Equal("true", draft.Attributes["data-current"]);
+            Assert.Equal(1, Convert.ToInt32(draft.Attributes["data-character-start"])); Assert.Equal(2, Convert.ToInt32(draft.Attributes["data-character-end"]));
+            Assert.Contains("😀", renderer.Text(id)); Assert.Equal(2, f.Session.Preview.State.Search.Hits[0].GlyphText.Length);
+            Assert.Empty(f.Controller.Annotations);
+            await renderer.Click(id, "rendered-role-add");
+            var label = Assert.Single(f.Controller.Annotations);
+            Assert.Equal(1, label.CharacterStart); Assert.Equal(2, label.CharacterEnd); Assert.Equal(0, label.PageIndex);
+            Assert.Equal("headingMajor", label.Role); Assert.Equal("authorLabel", label.Provenance); Assert.Equal("tentative", label.Certainty);
+            Assert.Null(label.SourceFileId); Assert.Null(label.SourceSpan);
+            Assert.Equal(calls, f.Inspector.Preview.Calls.Count); Assert.Equal(0, f.Inspector.LayoutCalls); Assert.Equal(0, f.Evaluator.Calls);
+            Assert.Equal(before, f.Work.State());
+        });
+    });
+
+    [Theory]
+    [InlineData("search")][InlineData("search-aba")][InlineData("hit-aba")][InlineData("page-aba")]
+    [InlineData("zoom-aba")][InlineData("cancel")][InlineData("source-aba")][InlineData("same-hash-ticket")][InlineData("reopen")]
+    public void Pending_search_label_refuses_changed_pdf_search_frame_or_compile_owner(string change) => Run(async () =>
+    {
+        await using var f = await Host.Open(preview: true); using var services = Services(f);
+        await using var renderer = new Events(services, services.GetRequiredService<ILoggerFactory>());
+        await renderer.Dispatcher.InvokeAsync(async () =>
+        {
+            int id = await renderer.Mount(f); await f.Search(); await renderer.Click(id, "rendered-role-use-search");
+            var output = f.Session.DisplayedOutput!; var ticket = f.Session.LastTicket!;
+            async Task Settle() { await f.Session.Preview.WhenSettled.WaitAsync(TimeSpan.FromSeconds(5)); await Task.Yield(); }
+            switch (change)
+            {
+                case "search": await f.Search("І"); break;
+                case "search-aba": await f.Search("І"); await f.Search(); break;
+                case "hit-aba": Assert.True(f.Session.Preview.SelectHit(1)); await Settle(); Assert.True(f.Session.Preview.SelectHit(0)); await Settle(); break;
+                case "page-aba": Assert.True(f.Session.Preview.GoToPage(2)); await Settle(); Assert.True(f.Session.Preview.GoToPage(1)); await Settle(); break;
+                case "zoom-aba": Assert.True(f.Session.Preview.Zoom(125)); await Settle(); Assert.True(f.Session.Preview.Zoom(100)); await Settle(); break;
+                case "cancel": f.Session.Preview.Cancel(); await Task.Yield(); break;
+                case "source-aba":
+                    string old = f.Work.Workspace.Files.Single(x => x.Id == f.Work.Main).Content;
+                    Assert.True(f.Work.Workspace.EditText(f.Work.Main, old + "x")); Assert.True(f.Work.Workspace.EditText(f.Work.Main, old)); break;
+                case "same-hash-ticket":
+                    await f.Compile(); await f.Search(); Assert.Equal(output.OutputHash, f.Session.DisplayedOutput!.OutputHash);
+                    Assert.NotSame(output, f.Session.DisplayedOutput); Assert.NotSame(ticket, f.Session.LastTicket); break;
+                case "reopen":
+                    var project = f.Work.Workspace.Project!.Id;
+                    await f.Work.Workspace.CloseAsync(default); await f.Work.Workspace.OpenAsync(project, default); break;
+            }
+            await Task.Yield();
+            Assert.Equal("false", renderer.Element(id, "rendered-role-search-draft").Attributes["data-current"]);
+            Assert.Contains("The PDF or selected search result changed", renderer.Text(id));
+            await renderer.Click(id, "rendered-role-add"); // Exercise handler guard as well as disabled DOM state.
+            Assert.Empty(f.Controller.Annotations); Assert.Equal(0, f.Inspector.LayoutCalls); Assert.Equal(0, f.Evaluator.Calls);
+        });
+    });
+
+    [Fact]
+    public void Discard_search_draft_preserves_pdf_and_source_then_requires_another_explicit_selection() => Run(async () =>
+    {
+        await using var f = await Host.Open(preview: true); using var services = Services(f);
+        await using var renderer = new Events(services, services.GetRequiredService<ILoggerFactory>());
+        await renderer.Dispatcher.InvokeAsync(async () =>
+        {
+            int id = await renderer.Mount(f); await f.Search(); var before = f.Work.State(); var state = f.Session.Preview.State;
+            await renderer.Click(id, "rendered-role-use-search"); await renderer.Click(id, "rendered-role-discard");
+            Assert.Empty(f.Controller.Annotations); Assert.Same(state, f.Session.Preview.State); Assert.Equal(before, f.Work.State());
+            Assert.Throws<InvalidOperationException>(() => renderer.Element(id, "rendered-role-search-draft"));
+            await renderer.Click(id, "rendered-role-use-search"); await renderer.Change(id, "rendered-role-certainty", "confirmedObservation");
+            await renderer.Click(id, "rendered-role-add"); Assert.Equal("confirmedObservation", Assert.Single(f.Controller.Annotations).Certainty);
+        });
+    });
+
+    [Fact]
+    public void Stale_source_draft_can_be_discarded_without_confirming_or_recompiling() => Run(async () =>
+    {
+        await using var f = await Host.Open(preview: true); using var services = Services(f);
+        await using var renderer = new Events(services, services.GetRequiredService<ILoggerFactory>());
+        await renderer.Dispatcher.InvokeAsync(async () =>
+        {
+            int id = await renderer.Mount(f); await f.Search(); await renderer.Click(id, "rendered-role-use-search");
+            Assert.True(f.Work.Workspace.EditText(f.Work.Main, "Changed source\n"));
+            Assert.False(f.Session.State!.IsCurrent);
+            Assert.False(renderer.Element(id, "rendered-role-discard").Attributes.ContainsKey("disabled"));
+            await renderer.Click(id, "rendered-role-discard"); Assert.Empty(f.Controller.Annotations);
+            Assert.Throws<InvalidOperationException>(() => renderer.Element(id, "rendered-role-search-draft"));
+            Assert.Single(f.Workers.Created); Assert.Equal(0, f.Inspector.LayoutCalls); Assert.Equal(0, f.Evaluator.Calls);
+        });
+    });
+
     private static ParameterView Parameters(Host host) => ParameterView.FromDictionary(new Dictionary<string, object?> { ["Session"] = host.Controller });
     private static ServiceProvider Services(Host host) => new ServiceCollection().AddLogging().AddSingleton(host.Work.Workspace)
         .AddSingleton(host.Session).AddSingleton<IRenderedReviewEvaluator>(host.Evaluator).BuildServiceProvider();
@@ -102,8 +203,10 @@ public sealed class RenderedReviewPanelTests
     private sealed class Inspector : IPdfInspector, IPdfLayoutInspector
     {
         public int LayoutCalls;
+        public bool EnablePreview;
+        public readonly PreviewInspector Preview = new();
         public Task<PdfInspectionOutcome> InspectAsync(PdfInspectRequest request, CancellationToken cancellationToken = default)
-            => Task.FromResult(new PdfInspectionOutcome(PdfInspectionStatus.Unavailable, Guid.NewGuid().ToString("N"), request.Document.Sha256, 1));
+            => EnablePreview ? Preview.InspectAsync(request, cancellationToken) : Task.FromResult(new PdfInspectionOutcome(PdfInspectionStatus.Unavailable, Guid.NewGuid().ToString("N"), request.Document.Sha256, 1));
         public Task<PdfLayoutOutcome> InspectLayoutAsync(PdfLayoutRequest request, CancellationToken cancellationToken = default)
         { LayoutCalls++; return Task.FromResult(new PdfLayoutOutcome(PdfInspectionStatus.Unavailable, Guid.NewGuid().ToString("N"), request.Document.Sha256, 1)); }
         public ValueTask DisposeAsync() => ValueTask.CompletedTask;
@@ -120,9 +223,9 @@ public sealed class RenderedReviewPanelTests
         public CompilationTestWorkspace Work = null!;
         public readonly Workers Workers = new(); public readonly Inspector Inspector = new(); public readonly Evaluator Evaluator = new();
         public CompileWorkspaceSession Session = null!; public CompiledReviewController Controller = null!;
-        public static async Task<Host> Open()
+        public static async Task<Host> Open(bool preview = false)
         {
-            var h = new Host { Work = await CompilationTestWorkspace.Open() };
+            var h = new Host { Work = await CompilationTestWorkspace.Open() }; h.Inspector.EnablePreview = preview;
             Assert.True(h.Work.Workspace.RenameFile(h.Work.Main, "main.tex")); var owner = SynchronizationContext.Current!;
             Task Dispatch(Action action)
             {
@@ -132,6 +235,13 @@ public sealed class RenderedReviewPanelTests
             h.Session = new(h.Work.Workspace, new Configuration(h.Workers, h.Inspector)); h.Session.AttachRenderer(Dispatch);
             await h.Session.RefreshToolsAsync(); h.Session.SelectMain(h.Work.Main); h.Session.SelectEngine("review-test");
             h.Controller = new(h.Work.Workspace, h.Session, h.Evaluator, Dispatch); await h.Compile(); return h;
+        }
+        public async Task Search(string query = "😀", int hit = 0)
+        {
+            await Session.Preview.WhenSettled.WaitAsync(TimeSpan.FromSeconds(5));
+            Assert.True(Session.Preview.Search(query)); await Session.Preview.WhenSettled.WaitAsync(TimeSpan.FromSeconds(5));
+            Assert.True(Session.Preview.SelectHit(hit)); await Session.Preview.WhenSettled.WaitAsync(TimeSpan.FromSeconds(5));
+            Assert.Equal(PdfPreviewStatus.Available, Session.Preview.State.Status); await Task.Yield();
         }
         public async Task Compile()
         {

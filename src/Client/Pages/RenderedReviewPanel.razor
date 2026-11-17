@@ -1,6 +1,12 @@
 @using System.Globalization
 @using System.Text.Json
+@using System.Text
+@using Client.Compilation
+@using Client.Compilation.Lifecycle
+@using Client.Pdf
+@using Client.Pdf.Preview
 @using Client.Analysis.RenderedExtent
+@using Client.Analysis
 @using Client.Analysis.RenderedReview
 @using Client.Compilation.Presentation
 @using Client.Workspace
@@ -32,27 +38,50 @@
                         @foreach (var role in Roles) { <option value="@role.Id">@role.Label</option> }
                     </select>
                 </label>
-                <label>First PDF page (one-based)
-                    <input data-testid="rendered-role-first" inputmode="numeric" maxlength="3" @bind="_firstPage" @bind:event="oninput" @bind:after="DraftChanged" />
-                </label>
-                <label>Last PDF page, inclusive (optional)
-                    <input data-testid="rendered-role-last" inputmode="numeric" maxlength="3" @bind="_lastPage" @bind:event="oninput" @bind:after="DraftChanged" />
-                </label>
+                <button type="button" data-testid="rendered-role-use-search" @onclick="UseSelectedSearch" disabled="@(!CanUseSelectedSearch)">Use selected PDF search result</button>
+                <p>Search in the PDF preview and select a result first. This selects native PDF characters, not source or UTF-16 positions.</p>
                 <label>Scope
                     <select data-testid="rendered-role-scope" @bind="_rangeKind" @bind:after="DraftChanged">
                         <option value="page">Whole page or page range</option>
-                        <option value="characters">Character range on one PDF page</option>
+                        <option value="search">Selected PDF search result</option>
+                        <option value="characters">Advanced: native character range</option>
                     </select>
                 </label>
+                @if (_rangeKind == "search")
+                {
+                    @if (_searchDraft is { } draft)
+                    {
+                        <output data-testid="rendered-role-search-draft" data-current="@SearchDraftCurrent.ToString().ToLowerInvariant()"
+                                data-pdf-sha256="@draft.State.DocumentSha256" data-generation="@draft.State.Generation"
+                                data-page-index="@draft.Hit.PageIndex" data-character-start="@draft.Hit.StartCharacterIndex"
+                                data-character-end="@(draft.Hit.StartCharacterIndex + draft.Hit.CharacterCount)" data-glyph-text="@SearchText(draft.Hit.GlyphText)" data-compile-request="@draft.Output.RequestId.Value.ToString("N")">
+                            PDF page @(draft.Hit.PageIndex + 1), selected text: @SearchText(draft.Hit.GlyphText)
+                        </output>
+                        @if (!SearchDraftCurrent)
+                        { <p role="status" data-testid="rendered-role-search-stale">The PDF or selected search result changed. Select the current result again, or discard this draft.</p> }
+                    }
+                    else { <p>No PDF search result has been selected for this label. Use the button above to capture the current result.</p> }
+                }
+                else
+                {
+                    <label>First PDF page (one-based)
+                        <input data-testid="rendered-role-first" inputmode="numeric" maxlength="3" @bind="_firstPage" @bind:event="oninput" @bind:after="DraftChanged" />
+                    </label>
+                    <label>Last PDF page, inclusive (optional)
+                        <input data-testid="rendered-role-last" inputmode="numeric" maxlength="3" @bind="_lastPage" @bind:event="oninput" @bind:after="DraftChanged" />
+                    </label>
+                }
                 @if (_rangeKind == "characters")
                 {
-                    <p>Use the PDF inspector's zero-based character indexes, with an exclusive end. Source-editor positions and UTF-16 offsets are different. Leave the last-page field empty for this scope.</p>
-                    <label>First native character index
-                        <input data-testid="rendered-role-start" inputmode="numeric" maxlength="6" @bind="_characterStart" @bind:event="oninput" @bind:after="DraftChanged" />
-                    </label>
-                    <label>Exclusive last native character index
-                        <input data-testid="rendered-role-end" inputmode="numeric" maxlength="6" @bind="_characterEnd" @bind:event="oninput" @bind:after="DraftChanged" />
-                    </label>
+                    <details data-testid="rendered-role-advanced"><summary>Advanced native character indexes</summary>
+                        <p>Use zero-based PDF inspector indexes with an exclusive end. Source-editor positions and UTF-16 offsets are different. Leave the last-page field empty.</p>
+                        <label>First native character index
+                            <input data-testid="rendered-role-start" inputmode="numeric" maxlength="6" @bind="_characterStart" @bind:event="oninput" @bind:after="DraftChanged" />
+                        </label>
+                        <label>Exclusive last native character index
+                            <input data-testid="rendered-role-end" inputmode="numeric" maxlength="6" @bind="_characterEnd" @bind:event="oninput" @bind:after="DraftChanged" />
+                        </label>
+                    </details>
                 }
                 <label>Certainty
                     <select data-testid="rendered-role-certainty" @bind="_certainty" @bind:after="DraftChanged">
@@ -60,9 +89,9 @@
                         <option value="confirmedObservation">I have confirmed this role in the PDF</option>
                     </select>
                 </label>
-                <button type="button" data-testid="rendered-role-add" @onclick="AddLabels" disabled="@(_controller.Annotations.Count >= LabelLimit || !_controller.AnnotationsCurrent)">Add and confirm for the current PDF</button>
-                <button type="button" data-testid="rendered-role-discard" @onclick="DiscardDraft" disabled="@(!_draftChanged)">Discard pending label input</button>
+                <button type="button" data-testid="rendered-role-add" @onclick="AddLabels" disabled="@(_controller.Annotations.Count >= LabelLimit || !_controller.AnnotationsCurrent || _rangeKind == "search" && !SearchDraftCurrent)">Add and confirm for the current PDF</button>
             </fieldset>
+            <button type="button" data-testid="rendered-role-discard" @onclick="DiscardDraft" disabled="@(!_draftChanged)">Discard pending label input</button>
             @if (_draftChanged)
             { <p role="status" data-testid="rendered-role-pending">Label input has not been confirmed. Add it or discard it before checking; any previous review is shown as stale.</p> }
             @if (_controller.Annotations.Count == 0)
@@ -70,12 +99,14 @@
             else
             {
                 <p>@_controller.Annotations.Count of @LabelLimit available labels; annotation version @_controller.AnnotationVersion.</p>
-                <ul data-testid="rendered-role-list">
+                <ul data-testid="rendered-role-list" data-annotation-version="@_controller.AnnotationVersion">
                     @foreach (var annotation in _controller.Annotations.Skip(_labelPage * LabelPageSize).Take(LabelPageSize))
                     {
-                        <li @key="annotation.AnnotationId" data-testid="rendered-role-row" data-annotation-id="@annotation.AnnotationId">
-                            Page @(annotation.PageIndex + 1): @RoleLabel(annotation.Role), @AnnotationRange(annotation), @CertaintyLabel(annotation.Certainty).
-                            <button type="button" @onclick="() => RemoveLabel(annotation.AnnotationId)" disabled="@(!CanBindLabels || !_controller.AnnotationsCurrent)" aria-label="@($"Remove {RoleLabel(annotation.Role)} label on page {annotation.PageIndex + 1}")">Remove label</button>
+                        <li @key="annotation.AnnotationId" data-testid="rendered-role-row" data-annotation-id="@annotation.AnnotationId" data-role="@annotation.Role" data-page-index="@annotation.PageIndex" data-character-start="@annotation.CharacterStart" data-character-end="@annotation.CharacterEnd" data-provenance="@annotation.Provenance" data-certainty="@annotation.Certainty">
+                            Page @(annotation.PageIndex + 1): @RoleLabel(annotation.Role), @AnnotationRange(annotation).
+                            @if (annotation.Provenance == "authorLabel") { <span>Your label: @CertaintyLabel(annotation.Certainty).</span> }
+                            else { <span>Matched analyzed text; surrounding section or illustration is not established.</span> }
+                            <button type="button" @onclick="() => RemoveLabel(annotation.AnnotationId)" disabled="@_controller.Busy" aria-label="@($"Remove {RoleLabel(annotation.Role)} label on page {annotation.PageIndex + 1}")">Remove label</button>
                         </li>
                     }
                 </ul>
@@ -93,6 +124,33 @@
                 <button type="button" data-testid="rendered-role-clear" @onclick="ClearLabels" disabled="@(!CanBindLabels)">Clear confirmed labels</button>
             }
         </details>
+
+        @if (Binding is not null)
+        {
+            <details data-testid="rendered-source-binding-panel">
+                <summary>Match analyzed text in the current PDF</summary>
+                <p>First run the KNU source analysis with the same main file and work type as this review. Select a literal heading or caption below, then check its text and source location against the current PDF. This does not establish a whole section, illustration bounds or compliance.</p>
+                <label>Source observation
+                    <select data-testid="rendered-source-event" value="@SourceChoice" @onchange="SourceEventChanged" disabled="@_controller.Busy">
+                        <option value="">Choose analyzed text</option>
+                        @foreach (var candidate in SourceCandidates)
+                        { <option value="@candidate.Index">@SourceEventLabel(candidate.Event)</option> }
+                    </select>
+                </label>
+                @if (SourceReport?.Result.Thesis is null)
+                { <p>Current KNU source observations are unavailable. Run source analysis before matching.</p> }
+                @if (_sourceDraft is not null && !ReferenceEquals(_sourceDraft.Report, SourceReport))
+                { <p role="status" data-testid="rendered-source-draft-stale">Source analysis changed. Choose an observation from the current report.</p> }
+                <button type="button" data-testid="rendered-source-bind" @onclick="MatchSource" disabled="@(!CanMatchSource)">Match analyzed text with current PDF</button>
+                @foreach (var proof in _controller.SourceBindings)
+                {
+                    <p data-testid="rendered-source-binding" data-annotation-id="@proof.Annotation.AnnotationId" data-range-kind="@proof.RangeKind" data-glyph-ink-measured="false">
+                        Matched @(proof.RangeKind == "captionText" ? "caption text" : "heading text") on PDF page @(proof.Annotation.PageIndex + 1).
+                        This identifies only those text characters. Reanalyze and match again after source, analysis settings or compilation changes.
+                    </p>
+                }
+            </details>
+        }
 
         <fieldset disabled="@_controller.Busy">
             <legend>Pages to inspect</legend>
@@ -186,6 +244,8 @@
 
 @code {
     [Parameter] public CompiledReviewController? Session { get; set; }
+    [Parameter] public RenderedRoleBinding? Binding { get; set; }
+    [Parameter] public AnalysisReport? SourceReport { get; set; }
     private CompiledReviewController _controller = default!;
     private bool _ownsController, _disposed, _draftChanged, _allPages = true;
     private RenderedReviewReport? _shown;
@@ -195,6 +255,9 @@
     private string _role = "body", _firstPage = "1", _lastPage = "", _rangeKind = "page", _characterStart = "", _characterEnd = "", _certainty = "tentative";
     private string _checkFirst = "1", _checkLast = "";
     private string? _inputError;
+    private SearchLabelDraft? _searchDraft;
+    private sealed record SourceEventDraft(AnalysisReport Report, int Index);
+    private SourceEventDraft? _sourceDraft;
     private int _labelPage, _identityPage;
     private readonly Dictionary<string, int> _evidencePages = new(StringComparer.Ordinal);
     private const int LabelLimit = 512, LabelPageSize = 16, EvidencePageSize = 8;
@@ -209,13 +272,98 @@
     protected override void OnInitialized()
     {
         _ownsController = Session is null;
-        _controller = Session ?? new(Workspace, Compile, Evaluator, action => InvokeAsync(action));
+        _controller = Session ?? new(Workspace, Compile, Evaluator, action => InvokeAsync(action), Binding);
         _shown = _controller.Report;
         _shownProject = Workspace.Project?.Id; _shownSession = Workspace.SessionId; _shownWorkType = _controller.WorkType;
         _controller.Changed += Changed;
     }
-    private void DraftChanged() { _draftChanged = true; _inputError = null; _controller.Cancel(); }
-    private void DiscardDraft() { _firstPage = "1"; _lastPage = _characterStart = _characterEnd = ""; _rangeKind = "page"; _draftChanged = false; _inputError = null; }
+    private IEnumerable<(AnalysisThesisEventDto Event, int Index)> SourceCandidates => SourceReport?.Result.Thesis is { } thesis && !thesis.Events.IsDefault
+        ? thesis.Events.Select((item, index) => (Event: item, Index: index))
+            .Where(item => item.Event.Kind is "captionTitle" or "introduction" or "conclusions" or "references" or "appendix")
+        : [];
+    private string SourceChoice => _sourceDraft is { } draft && ReferenceEquals(draft.Report, SourceReport)
+        ? draft.Index.ToString(CultureInfo.InvariantCulture) : "";
+    private bool CanMatchSource => !_draftChanged && _controller.CanBindSourceEvent && _sourceDraft is { } draft
+        && ReferenceEquals(draft.Report, SourceReport) && SourceCandidates.Any(item => item.Index == draft.Index);
+    private static string SourceEventLabel(AnalysisThesisEventDto item)
+    {
+        string kind = item.Kind switch
+        {
+            "captionTitle" => "Caption", "introduction" => "Introduction", "conclusions" => "Conclusions",
+            "references" => "References", "appendix" => "Appendix heading", _ => "Heading"
+        };
+        string excerpt = string.Concat(item.Text.EnumerateRunes().Take(96).Select(rune => rune.ToString()));
+        return kind + ": " + excerpt + (excerpt.Length < item.Text.Length ? "…" : "");
+    }
+    private void SourceEventChanged(ChangeEventArgs args)
+    {
+        _sourceDraft = null;
+        if (SourceReport is { } report && int.TryParse(args.Value?.ToString(), NumberStyles.None,
+            CultureInfo.InvariantCulture, out int index) && SourceCandidates.Any(item => item.Index == index))
+            _sourceDraft = new(report, index);
+    }
+    private async Task MatchSource()
+    {
+        if (!CanMatchSource || _sourceDraft is not { } draft) return;
+        if (await _controller.BindSourceEventAsync(draft.Report, draft.Index) && ReferenceEquals(_sourceDraft, draft))
+            _sourceDraft = null;
+    }
+    private void DraftChanged() { if (_rangeKind != "search") _searchDraft = null; _draftChanged = true; _inputError = null; _controller.Cancel(); }
+    private void DiscardDraft() { _searchDraft = null; _firstPage = "1"; _lastPage = _characterStart = _characterEnd = ""; _rangeKind = "page"; _draftChanged = false; _inputError = null; }
+    private sealed record SearchLabelDraft(AcceptedCompileOutput Output, CompileLifecycleTicket Ticket,
+        PdfPreviewController Preview, PdfPreviewState State, PdfPreviewHit Hit, long AnnotationVersion, string WorkType);
+    private bool CanUseSelectedSearch => TrySearchSelection(out _);
+    private bool CurrentOutput(AcceptedCompileOutput output, CompileLifecycleTicket ticket)
+    {
+        var identity = output.SnapshotIdentity;
+        return CanBindLabels && !Compile.Disposed && ReferenceEquals(Compile.DisplayedOutput, output)
+            && ReferenceEquals(Compile.State?.LastSuccessful, output) && ReferenceEquals(Compile.LastTicket, ticket)
+            && ticket.Completion.IsCompletedSuccessfully && ticket.Completion.Result.Reason == CompileLifecycleReason.Succeeded
+            && ReferenceEquals(ticket.Completion.Result.Output, output) && ReferenceEquals(ticket.Snapshot, output.Snapshot)
+            && Workspace.IsOpen && Workspace.Recovery is null && Workspace.Project?.Id == identity.ProjectId
+            && Workspace.SessionId == identity.SessionId && Workspace.WorkingGeneration == identity.WorkingGeneration
+            && Workspace.CurrentRevision?.Id == identity.BaseHeadRevisionId && Compile.SelectionVersion == identity.SelectionVersion;
+    }
+    private bool TrySearchSelection(out SearchLabelDraft? draft)
+    {
+        draft = null;
+        if (!_controller.AnnotationsCurrent || Compile.DisplayedOutput is not { } output || Compile.LastTicket is not { } ticket
+            || !CurrentOutput(output, ticket)) return false;
+        var state = Compile.Preview.State;
+        if (state.Status != PdfPreviewStatus.Available || state.Frame is not { } frame || state.DocumentSha256 != output.OutputHash?.Hex
+            || frame.Generation != state.Generation || frame.DocumentSha256 != state.DocumentSha256 || frame.PageIndex != state.PageIndex
+            || state.NativeRequestId is not { Length: 32 } || state.NativeEpoch is null or <= 0
+            || state.Search.Status is not (PdfPreviewSearchStatus.Complete or PdfPreviewSearchStatus.Partial) || state.Search.Query.Length == 0
+            || state.SelectedHit < 0 || state.SelectedHit >= state.Search.Hits.Count) return false;
+        var hit = state.Search.Hits[state.SelectedHit];
+        long end = (long)hit.StartCharacterIndex + hit.CharacterCount;
+        if (hit.PageIndex != state.PageIndex || hit.StartCharacterIndex < 0 || hit.CharacterCount <= 0 || end > state.Glyphs.Count || end > 100000) return false;
+        var text = new StringBuilder();
+        for (int index = hit.StartCharacterIndex; index < end; index++)
+        {
+            var glyph = state.Glyphs[index];
+            if (glyph.Index != index || glyph.UnicodeValue == 0 || !Rune.TryCreate(glyph.UnicodeValue, out var scalar)) return false;
+            text.Append(scalar.ToString());
+        }
+        if (!string.Equals(text.ToString(), hit.GlyphText, StringComparison.Ordinal)) return false;
+        draft = new(output, ticket, Compile.Preview, state, hit, _controller.AnnotationVersion, _controller.WorkType); return true;
+    }
+    private bool SearchDraftCurrent => _searchDraft is { } draft && _rangeKind == "search" && TrySearchSelection(out var current)
+        && current is not null && ReferenceEquals(current.Output, draft.Output) && ReferenceEquals(current.Ticket, draft.Ticket)
+        && ReferenceEquals(current.Preview, draft.Preview) && ReferenceEquals(current.State, draft.State)
+        && ReferenceEquals(current.State.Frame, draft.State.Frame) && ReferenceEquals(current.Hit, draft.Hit)
+        && current.State.Generation == draft.State.Generation && current.State.PageIndex == draft.State.PageIndex
+        && current.State.DocumentSha256 == draft.State.DocumentSha256 && current.AnnotationVersion == draft.AnnotationVersion && current.WorkType == draft.WorkType;
+    private void UseSelectedSearch()
+    {
+        if (!TrySearchSelection(out var draft)) { _inputError = "Select a search result on the current compiled PDF page first."; return; }
+        _searchDraft = draft; _rangeKind = "search"; DraftChanged();
+    }
+    private static string SearchText(string text)
+    {
+        var scalars = text.EnumerateRunes().Take(129).ToArray();
+        return string.Concat(scalars.Take(128).Select(r => r.ToString())) + (scalars.Length > 128 ? "…" : "");
+    }
     private static bool Number(string text, int minimum, int maximum, out int number)
     {
         number = 0;
@@ -231,10 +379,17 @@
     {
         if (!CanBindLabels) return;
         if (!_controller.AnnotationsCurrent) { _inputError = "Confirm or clear labels from the earlier PDF before adding labels to this one."; return; }
-        if (!PageRange(_firstPage, _lastPage, out var first, out var last) || !Roles.Any(role => role.Id == _role)
-            || _certainty is not ("tentative" or "confirmedObservation") || _rangeKind is not ("page" or "characters"))
+        int first = 0, last = 0;
+        if ((_rangeKind != "search" && !PageRange(_firstPage, _lastPage, out first, out last)) || !Roles.Any(role => role.Id == _role)
+            || _certainty is not ("tentative" or "confirmedObservation") || _rangeKind is not ("page" or "characters" or "search"))
         { _inputError = "Choose a supported role and ordered PDF pages from 1 to 512."; return; }
         int? begin = null, end = null;
+        if (_rangeKind == "search")
+        {
+            if (!SearchDraftCurrent || _searchDraft is not { } draft)
+            { _inputError = "The selected PDF search result is stale. Select the current result again or discard this draft."; return; }
+            first = last = draft.Hit.PageIndex + 1; begin = draft.Hit.StartCharacterIndex; end = begin + draft.Hit.CharacterCount;
+        }
         if (_rangeKind == "characters")
         {
             if (_lastPage.Length != 0 || !Number(_characterStart, 0, 99999, out var s) || !Number(_characterEnd, s + 1, 100000, out var e))
@@ -249,12 +404,12 @@
         _controller.SelectAnnotations(labels);
         if (_controller.AnnotationVersion == version)
         { _inputError = "Labels were refused. Check for incompatible overlapping roles; previously confirmed labels remain unchanged."; return; }
-        _draftChanged = false; _inputError = null; _labelPage = (_controller.Annotations.Count - 1) / LabelPageSize;
+        _searchDraft = null; _draftChanged = false; _inputError = null; _labelPage = (_controller.Annotations.Count - 1) / LabelPageSize;
     }
     private void RemoveLabel(long id)
     {
-        if (!CanBindLabels || !_controller.AnnotationsCurrent) return;
-        _controller.SelectAnnotations(_controller.Annotations.Where(label => label.AnnotationId != id).ToArray());
+        if (_controller.Busy) return;
+        _controller.RemoveAnnotation(id);
         _labelPage = Math.Min(_labelPage, Math.Max(0, PageTotal(_controller.Annotations.Count, LabelPageSize) - 1)); _inputError = null;
     }
     private void ClearLabels() { if (CanBindLabels) { _controller.SelectAnnotations([]); _labelPage = 0; _inputError = null; } }
@@ -300,7 +455,9 @@
     private bool CanShowPage(int page) => ShownCurrent && Compile.Preview.State.DocumentSha256 == _shown!.Evidence.Compilation.PdfSha256 && page >= 0 && page < Compile.Preview.State.PageCount;
     private void ShowPage(int page) { if (CanShowPage(page) && !Compile.Preview.GoToPage(page + 1)) _inputError = "The PDF preview cannot show this page yet. The recorded observation remains separate."; }
     private static int? EvidencePage(JsonElement evidence) => evidence.ValueKind == JsonValueKind.Object && evidence.TryGetProperty("pageIndex", out var page) && page.TryGetInt32(out var index) && index >= 0 ? index : null;
-    private static string JsonText(JsonElement value, string property) => value.ValueKind == JsonValueKind.Object && value.TryGetProperty(property, out var part) && part.ValueKind == JsonValueKind.String ? part.GetString() ?? "Not provided" : "Not provided";
+    private static string JsonText(JsonElement value, string property) => value.ValueKind == JsonValueKind.Object && value.TryGetProperty(property, out var part)
+        ? part.ValueKind == JsonValueKind.String ? part.GetString() ?? "Not provided" : part.ValueKind == JsonValueKind.Number ? part.GetRawText() : "Not established"
+        : "Not provided";
     private static string CitationLabel(JsonElement citation)
     {
         var section = JsonText(citation, "section");

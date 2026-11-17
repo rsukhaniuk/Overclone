@@ -18,6 +18,7 @@
 @inject IAuthoringAssistProvider AuthoringAssistProvider
 @using Client.Compilation.Navigation
 @using Client.Compilation.SyncTeX
+@using Client.Analysis.RenderedReview
 @using Client.Pdf.Preview
 @inject ISyncTeXQuery SourceMapQueries
 @inject Client.Compilation.Presentation.CompileWorkspaceSession CompileSession
@@ -474,7 +475,7 @@ else
                 SourceMatch="@CurrentSyncMatch" SourceMatchPdfHash="@(_syncResult?.Output.OutputHash?.Hex)"
                 SourceMatchTransform="@CurrentSyncTransform" SourceMatchUsesNativeTransform="@(_syncResult?.Geometry is not null)" />
 
-            <RenderedReviewPanel />
+            <RenderedReviewPanel Binding="@_renderedRoleBinding" SourceReport="@AnalysisCurrentReport" />
 
         </div>
 
@@ -776,6 +777,7 @@ else
     private CompilerSourceNavigationRequest? _compilerSourceRequest;
     private string? _compilerSourceStatus;
     private SyncTeXNavigationPolicy _syncNavigation = default!;
+    private RenderedRoleBinding? _renderedRoleBinding;
     private SyncTeXNavigationResult? _syncResult;
     private SyncTeXNavigationSelection? _pendingSyncSource;
     private PdfPreviewPointer? _syncPointer;
@@ -1315,6 +1317,7 @@ else
         // CURRENT coordinator.State (never a stale event argument).
         _compilerSource = new(Coordinator, CompileSession);
         _syncNavigation = new(Coordinator, CompileSession, SourceMapQueries);
+        _renderedRoleBinding = new(Coordinator, CompileSession, Navigator, _syncNavigation);
         Coordinator.WorkspaceChanged += CompilerSourceAuthorityChanged;
         CompileSession.Changed += CompilerSourceAuthorityChanged;
         AnalysisCoord.Changed += OnAnalysisChanged;
