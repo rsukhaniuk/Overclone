@@ -1,0 +1,1009 @@
+{
+  "facts": {
+    "documentSha256": "d707766b5e91d68380be260d06d233ae1277cbb2ab696e77a84444236d310a97",
+    "pages": [
+      {
+        "capabilities": {
+          "coordinateSpace": "pdf-raw-unrotated-bottom-left",
+          "glyphInk": "available",
+          "glyphInkMethod": "embedded-static-font-outline-opaque-fill",
+          "lineGrouping": "unsupported",
+          "maxCharacters": 100000,
+          "nominalSizeMethod": "pdfium-font-size",
+          "nominalSizeUnit": "raw-user-units",
+          "physicalScale": "available",
+          "schemaVersion": 2,
+          "textStyle": "indeterminate"
+        },
+        "facts": {
+          "characters": [
+            {
+              "advance": null,
+              "fontFlags": 524320,
+              "fontName": "SyntheticInk",
+              "index": 0,
+              "inkBox": [
+                10,
+                80,
+                17.201171875,
+                89.6005859375
+              ],
+              "inkStatus": "available",
+              "inkUncertainty": {
+                "absoluteErrorRaw": 0.11822216852754357,
+                "method": "native-outline-fill-witness"
+              },
+              "matrix": [
+                1,
+                0,
+                0,
+                1,
+                10,
+                80
+              ],
+              "nominalSize": 12,
+              "origin": [
+                10,
+                80
+              ],
+              "renderMode": 0,
+              "styleStatus": "indeterminate",
+              "unicode": 65
+            },
+            {
+              "advance": null,
+              "fontFlags": 524320,
+              "fontName": "SyntheticInk",
+              "index": 1,
+              "inkBox": [
+                17.200000762939453,
+                80,
+                24.401172637939453,
+                89.6005859375
+              ],
+              "inkStatus": "available",
+              "inkUncertainty": {
+                "absoluteErrorRaw": 0.11822216852754357,
+                "method": "native-outline-fill-witness"
+              },
+              "matrix": [
+                1,
+                0,
+                0,
+                1,
+                10,
+                80
+              ],
+              "nominalSize": 12,
+              "origin": [
+                17.200000762939453,
+                80
+              ],
+              "renderMode": 0,
+              "styleStatus": "indeterminate",
+              "unicode": 65
+            },
+            {
+              "advance": null,
+              "fontFlags": null,
+              "fontName": null,
+              "index": 2,
+              "inkBox": null,
+              "inkStatus": "missing",
+              "inkUncertainty": null,
+              "matrix": [
+                1,
+                0,
+                0,
+                1,
+                0,
+                0
+              ],
+              "nominalSize": 1,
+              "origin": [
+                24.400001525878903,
+                80
+              ],
+              "renderMode": null,
+              "styleStatus": "indeterminate",
+              "unicode": 13
+            },
+            {
+              "advance": null,
+              "fontFlags": null,
+              "fontName": null,
+              "index": 3,
+              "inkBox": null,
+              "inkStatus": "missing",
+              "inkUncertainty": null,
+              "matrix": [
+                1,
+                0,
+                0,
+                1,
+                0,
+                0
+              ],
+              "nominalSize": 1,
+              "origin": [
+                24.400001525878903,
+                80
+              ],
+              "renderMode": null,
+              "styleStatus": "indeterminate",
+              "unicode": 10
+            },
+            {
+              "advance": null,
+              "fontFlags": 524320,
+              "fontName": "SyntheticInk",
+              "index": 4,
+              "inkBox": [
+                10,
+                60,
+                17.201171875,
+                69.6005859375
+              ],
+              "inkStatus": "available",
+              "inkUncertainty": {
+                "absoluteErrorRaw": 0.11820309504121544,
+                "method": "native-outline-fill-witness"
+              },
+              "matrix": [
+                1,
+                0,
+                0,
+                1,
+                10,
+                60
+              ],
+              "nominalSize": 12,
+              "origin": [
+                10,
+                60
+              ],
+              "renderMode": 0,
+              "styleStatus": "indeterminate",
+              "unicode": 65
+            },
+            {
+              "advance": null,
+              "fontFlags": 524320,
+              "fontName": "SyntheticInk",
+              "index": 5,
+              "inkBox": [
+                17.200000762939453,
+                60,
+                24.401172637939453,
+                69.6005859375
+              ],
+              "inkStatus": "available",
+              "inkUncertainty": {
+                "absoluteErrorRaw": 0.11820309504121544,
+                "method": "native-outline-fill-witness"
+              },
+              "matrix": [
+                1,
+                0,
+                0,
+                1,
+                10,
+                60
+              ],
+              "nominalSize": 12,
+              "origin": [
+                17.200000762939453,
+                60
+              ],
+              "renderMode": 0,
+              "styleStatus": "indeterminate",
+              "unicode": 65
+            }
+          ],
+          "complete": true,
+          "crop": null,
+          "effective": [
+            0,
+            0,
+            72,
+            144
+          ],
+          "limitations": [
+            "glyph-ink-conservative-subset",
+            "effective-style-not-measured",
+            "advance-not-measured",
+            "semantic-roles-not-classified"
+          ],
+          "media": [
+            0,
+            0,
+            72,
+            144
+          ],
+          "pageCount": 1,
+          "pageIndex": 0,
+          "rotation": 0,
+          "schemaVersion": 2,
+          "userUnit": {
+            "method": "default-userunit",
+            "status": "available",
+            "value": 1
+          }
+        }
+      }
+    ],
+    "schemaVersion": 1
+  },
+  "request": {
+    "operation": "evaluateRenderedReview",
+    "payload": {
+      "annotationVersion": 2,
+      "annotations": [
+        {
+          "annotationId": 1,
+          "certainty": "confirmedObservation",
+          "characterEnd": null,
+          "characterStart": null,
+          "pageIndex": 0,
+          "provenance": "authorLabel",
+          "role": "body",
+          "sourceFileId": null,
+          "sourceSpan": null
+        }
+      ],
+      "captureId": "12345678-1234-1234-1234-123456789abc",
+      "compileEpoch": 3,
+      "compileRequestId": "cccccccccccccccccccccccccccccccc",
+      "factsSha256": "b5f4512fac016df882f257fc3af66b7a555e8020be177808bc42c8c74bf2af43",
+      "inputDigest": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "pageCount": 1,
+      "pdfSha256": "d707766b5e91d68380be260d06d233ae1277cbb2ab696e77a84444236d310a97",
+      "profile": {
+        "id": "knu-csc-2025-rendered-review",
+        "version": "1.0.0"
+      },
+      "requestedPages": [
+        0
+      ],
+      "workType": "masterQualification"
+    },
+    "protocolVersion": 1,
+    "requestId": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+  },
+  "response": {
+    "payload": {
+      "annotationVersion": 2,
+      "captureId": "12345678-1234-1234-1234-123456789abc",
+      "compileEpoch": 3,
+      "compileRequestId": "cccccccccccccccccccccccccccccccc",
+      "coverage": {
+        "complete": true,
+        "pagesEvaluated": 1,
+        "standardsComplete": false
+      },
+      "factsSha256": "b5f4512fac016df882f257fc3af66b7a555e8020be177808bc42c8c74bf2af43",
+      "guidelineSha256": "8be4d724ac108488e6b1766322e7fd6b3646412aa2b6de12b6945f48fb380714",
+      "inputDigest": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "limitations": [
+        "finite-catalog-not-compliance-certificate",
+        "unassessed-guideline-categories"
+      ],
+      "pageCount": 1,
+      "pdfSha256": "d707766b5e91d68380be260d06d233ae1277cbb2ab696e77a84444236d310a97",
+      "profile": {
+        "id": "knu-csc-2025-rendered-review",
+        "version": "1.0.0"
+      },
+      "requestedPages": [
+        0
+      ],
+      "results": [
+        {
+          "citation": {
+            "pdfPages": [
+              18
+            ],
+            "printedPages": [
+              18
+            ],
+            "section": "3.1"
+          },
+          "domain": "renderedObservation",
+          "evidence": [
+            {
+              "characterEnd": null,
+              "characterStart": null,
+              "expected": "A4 210 x 297; A3 297 x 420 only for necessary illustrations",
+              "measured": "25.400000000 x 50.800000000",
+              "method": "native-page-box",
+              "pageIndex": 0,
+              "rawBox": [
+                0.0,
+                0.0,
+                72.0,
+                144.0
+              ],
+              "roleProvenance": null,
+              "sourceLocation": null,
+              "uncertainty": {
+                "absoluteError": 6.055832131224292e-6,
+                "limitations": [
+                  "nominal-paper-tolerance-unspecified"
+                ],
+                "method": "pdfium-float32-roundoff-bound"
+              },
+              "unit": "mm"
+            }
+          ],
+          "limitations": [
+            "single-sided-printing-not-observable"
+          ],
+          "outcome": "indeterminate",
+          "reason": "measured-page-differs-from-nominal-paper-review-required",
+          "ruleId": "KNU-PAPER-001",
+          "ruleVersion": "1.0.0",
+          "severity": "warning",
+          "supportState": "partial"
+        },
+        {
+          "citation": {
+            "pdfPages": [
+              18
+            ],
+            "printedPages": [
+              18
+            ],
+            "section": "3.1"
+          },
+          "domain": "renderedObservation",
+          "evidence": [
+            {
+              "characterEnd": null,
+              "characterStart": null,
+              "classification": {
+                "characterCount": 4,
+                "continuationBaselineRaw": 60.0,
+                "firstBaselineRaw": 80.0,
+                "lineCount": 2
+              },
+              "expected": 25.0,
+              "measured": 3.5277777777777777,
+              "method": "native-glyph-ink",
+              "metric": "margin-left",
+              "pageIndex": 0,
+              "rawBox": [
+                10.0,
+                60.0,
+                24.401172637939453,
+                89.6005859375
+              ],
+              "roleProvenance": {
+                "annotationId": 1,
+                "certainty": "confirmedObservation",
+                "provenance": "authorLabel",
+                "role": "body"
+              },
+              "sourceLocation": null,
+              "uncertainty": {
+                "absoluteError": 0.04170657444132389,
+                "limitations": [
+                  "conditional-role-scope-only",
+                  "other-page-paint-not-established",
+                  "ink-extents-not-layout-box"
+                ],
+                "method": "native-outline-and-float32-bound"
+              },
+              "unit": "mm"
+            },
+            {
+              "characterEnd": null,
+              "characterStart": null,
+              "classification": {
+                "characterCount": 4,
+                "continuationBaselineRaw": 60.0,
+                "firstBaselineRaw": 80.0,
+                "lineCount": 2
+              },
+              "expected": 20.0,
+              "measured": 19.190904405381943,
+              "method": "native-glyph-ink",
+              "metric": "margin-top",
+              "pageIndex": 0,
+              "rawBox": [
+                10.0,
+                60.0,
+                24.401172637939453,
+                89.6005859375
+              ],
+              "roleProvenance": {
+                "annotationId": 1,
+                "certainty": "confirmedObservation",
+                "provenance": "authorLabel",
+                "role": "body"
+              },
+              "sourceLocation": null,
+              "uncertainty": {
+                "absoluteError": 0.041715977827179666,
+                "limitations": [
+                  "conditional-role-scope-only",
+                  "other-page-paint-not-established",
+                  "ink-extents-not-layout-box"
+                ],
+                "method": "native-outline-and-float32-bound"
+              },
+              "unit": "mm"
+            },
+            {
+              "characterEnd": null,
+              "characterStart": null,
+              "classification": {
+                "characterCount": 4,
+                "continuationBaselineRaw": 60.0,
+                "firstBaselineRaw": 80.0,
+                "lineCount": 2
+              },
+              "expected": 10.0,
+              "measured": 16.791808541615804,
+              "method": "native-glyph-ink",
+              "metric": "margin-right",
+              "pageIndex": 0,
+              "rawBox": [
+                10.0,
+                60.0,
+                24.401172637939453,
+                89.6005859375
+              ],
+              "roleProvenance": {
+                "annotationId": 1,
+                "certainty": "confirmedObservation",
+                "provenance": "authorLabel",
+                "role": "body"
+              },
+              "sourceLocation": null,
+              "uncertainty": {
+                "absoluteError": 0.04171020798978397,
+                "limitations": [
+                  "conditional-role-scope-only",
+                  "other-page-paint-not-established",
+                  "ink-extents-not-layout-box"
+                ],
+                "method": "native-outline-and-float32-bound"
+              },
+              "unit": "mm"
+            },
+            {
+              "characterEnd": null,
+              "characterStart": null,
+              "classification": {
+                "characterCount": 4,
+                "continuationBaselineRaw": 60.0,
+                "firstBaselineRaw": 80.0,
+                "lineCount": 2
+              },
+              "expected": 20.0,
+              "measured": 21.166666666666668,
+              "method": "native-glyph-ink",
+              "metric": "margin-bottom",
+              "pageIndex": 0,
+              "rawBox": [
+                10.0,
+                60.0,
+                24.401172637939453,
+                89.6005859375
+              ],
+              "roleProvenance": {
+                "annotationId": 1,
+                "certainty": "confirmedObservation",
+                "provenance": "authorLabel",
+                "role": "body"
+              },
+              "sourceLocation": null,
+              "uncertainty": {
+                "absoluteError": 0.0417086771607368,
+                "limitations": [
+                  "conditional-role-scope-only",
+                  "other-page-paint-not-established",
+                  "ink-extents-not-layout-box"
+                ],
+                "method": "native-outline-and-float32-bound"
+              },
+              "unit": "mm"
+            }
+          ],
+          "limitations": [
+            "headers-and-illustrations-need-separate-roles"
+          ],
+          "outcome": "indeterminate",
+          "reason": "conditional-body-ink-margins",
+          "ruleId": "KNU-MARGINS-001",
+          "ruleVersion": "1.0.0",
+          "severity": "warning",
+          "supportState": "partial"
+        },
+        {
+          "citation": {
+            "pdfPages": [
+              18,
+              26,
+              27
+            ],
+            "printedPages": [
+              18,
+              26,
+              27
+            ],
+            "section": "3.1;3.10;3.11"
+          },
+          "domain": "renderedObservation",
+          "evidence": [
+            {
+              "characterEnd": null,
+              "characterStart": null,
+              "classification": {
+                "characterCount": 4,
+                "continuationBaselineRaw": 60.0,
+                "firstBaselineRaw": 80.0,
+                "lineCount": 2
+              },
+              "expected": "Font height is undefined in section 3.1; letter ink height is an observation only",
+              "measured": 3.3868733723958333,
+              "method": "native-glyph-ink-height",
+              "metric": "letter-ink-height-min",
+              "pageIndex": 0,
+              "rawBox": [
+                10.0,
+                60.0,
+                24.401172637939453,
+                89.6005859375
+              ],
+              "roleProvenance": {
+                "annotationId": 1,
+                "certainty": "confirmedObservation",
+                "provenance": "authorLabel",
+                "role": "body"
+              },
+              "sourceLocation": null,
+              "uncertainty": {
+                "absoluteError": 0.08341984399031642,
+                "limitations": [
+                  "conditional-role-scope-only",
+                  "extracted-unicode-not-visual-glyph-proof",
+                  "ink-height-not-font-height",
+                  "baseline-distance-not-leading-definition"
+                ],
+                "method": "native-outline-and-float32-bound"
+              },
+              "unit": "mm"
+            },
+            {
+              "characterEnd": null,
+              "characterStart": null,
+              "classification": {
+                "characterCount": 4,
+                "continuationBaselineRaw": 60.0,
+                "firstBaselineRaw": 80.0,
+                "lineCount": 2
+              },
+              "expected": "Font height is undefined in section 3.1; letter ink height is an observation only",
+              "measured": 3.3868733723958333,
+              "method": "native-glyph-ink-height",
+              "metric": "letter-ink-height-max",
+              "pageIndex": 0,
+              "rawBox": [
+                10.0,
+                60.0,
+                24.401172637939453,
+                89.6005859375
+              ],
+              "roleProvenance": {
+                "annotationId": 1,
+                "certainty": "confirmedObservation",
+                "provenance": "authorLabel",
+                "role": "body"
+              },
+              "sourceLocation": null,
+              "uncertainty": {
+                "absoluteError": 0.08341984399031642,
+                "limitations": [
+                  "conditional-role-scope-only",
+                  "extracted-unicode-not-visual-glyph-proof",
+                  "ink-height-not-font-height",
+                  "baseline-distance-not-leading-definition"
+                ],
+                "method": "native-outline-and-float32-bound"
+              },
+              "unit": "mm"
+            },
+            {
+              "characterEnd": null,
+              "characterStart": null,
+              "classification": {
+                "characterCount": 4,
+                "continuationBaselineRaw": 60.0,
+                "firstBaselineRaw": 80.0,
+                "lineCount": 2
+              },
+              "expected": "1.5 line spacing has no baseline-distance definition in section 3.1",
+              "measured": 7.055555555555555,
+              "method": "classified-baseline-distance",
+              "metric": "baseline-distance-min",
+              "pageIndex": 0,
+              "rawBox": [
+                10.0,
+                60.0,
+                24.401172637939453,
+                89.6005859375
+              ],
+              "roleProvenance": {
+                "annotationId": 1,
+                "certainty": "confirmedObservation",
+                "provenance": "authorLabel",
+                "role": "body"
+              },
+              "sourceLocation": null,
+              "uncertainty": {
+                "absoluteError": 0.08341230779465807,
+                "limitations": [
+                  "conditional-role-scope-only",
+                  "extracted-unicode-not-visual-glyph-proof",
+                  "ink-height-not-font-height",
+                  "baseline-distance-not-leading-definition"
+                ],
+                "method": "native-outline-and-float32-bound"
+              },
+              "unit": "mm"
+            },
+            {
+              "characterEnd": null,
+              "characterStart": null,
+              "classification": {
+                "characterCount": 4,
+                "continuationBaselineRaw": 60.0,
+                "firstBaselineRaw": 80.0,
+                "lineCount": 2
+              },
+              "expected": "1.5 line spacing has no baseline-distance definition in section 3.1",
+              "measured": 7.055555555555555,
+              "method": "classified-baseline-distance",
+              "metric": "baseline-distance-max",
+              "pageIndex": 0,
+              "rawBox": [
+                10.0,
+                60.0,
+                24.401172637939453,
+                89.6005859375
+              ],
+              "roleProvenance": {
+                "annotationId": 1,
+                "certainty": "confirmedObservation",
+                "provenance": "authorLabel",
+                "role": "body"
+              },
+              "sourceLocation": null,
+              "uncertainty": {
+                "absoluteError": 0.08341230779465807,
+                "limitations": [
+                  "conditional-role-scope-only",
+                  "extracted-unicode-not-visual-glyph-proof",
+                  "ink-height-not-font-height",
+                  "baseline-distance-not-leading-definition"
+                ],
+                "method": "native-outline-and-float32-bound"
+              },
+              "unit": "mm"
+            }
+          ],
+          "limitations": [
+            "measurement-definition-unresolved",
+            "usual-font-is-advisory",
+            "notes-have-separate-policy"
+          ],
+          "outcome": "indeterminate",
+          "reason": "conditional-typography-observations",
+          "ruleId": "KNU-TYPOGRAPHY-001",
+          "ruleVersion": "1.0.0",
+          "severity": "warning",
+          "supportState": "partial"
+        },
+        {
+          "citation": {
+            "pdfPages": [
+              18
+            ],
+            "printedPages": [
+              18
+            ],
+            "section": "3.1"
+          },
+          "domain": "renderedObservation",
+          "evidence": [],
+          "limitations": [
+            "all-body-paragraphs-required-for-uniformity"
+          ],
+          "outcome": "indeterminate",
+          "reason": "confirmed-paragraph-starts-required",
+          "ruleId": "KNU-PARAGRAPH-RENDERED-001",
+          "ruleVersion": "1.0.0",
+          "severity": "warning",
+          "supportState": "partial"
+        },
+        {
+          "citation": {
+            "pdfPages": [
+              18,
+              19,
+              20
+            ],
+            "printedPages": [
+              18,
+              19,
+              20
+            ],
+            "section": "3.2;3.4"
+          },
+          "domain": "renderedObservation",
+          "evidence": [],
+          "limitations": [
+            "subordinate-page-start-exception",
+            "source-case-is-not-rendered-case",
+            "extracted-text-not-visual-glyph-proof",
+            "visual-style-and-text-alignment-unestablished"
+          ],
+          "outcome": "unavailable",
+          "reason": "effective-style-unavailable",
+          "ruleId": "KNU-HEADINGS-RENDERED-001",
+          "ruleVersion": "1.0.0",
+          "severity": "warning",
+          "supportState": "unsupported"
+        },
+        {
+          "citation": {
+            "pdfPages": [
+              19
+            ],
+            "printedPages": [
+              19
+            ],
+            "section": "3.3"
+          },
+          "domain": "renderedObservation",
+          "evidence": [],
+          "limitations": [
+            "empty-text-does-not-prove-number-absence",
+            "extracted-text-not-visual-glyph-proof",
+            "document-numbering-and-role-unestablished"
+          ],
+          "outcome": "indeterminate",
+          "reason": "confirmed-page-number-and-title-roles-required",
+          "ruleId": "KNU-PAGINATION-001",
+          "ruleVersion": "1.0.0",
+          "severity": "warning",
+          "supportState": "partial"
+        },
+        {
+          "citation": {
+            "pdfPages": [
+              11,
+              12,
+              13,
+              14,
+              15,
+              16,
+              17
+            ],
+            "printedPages": [
+              11,
+              12,
+              13,
+              14,
+              15,
+              16,
+              17
+            ],
+            "section": "2;2.1-2.9"
+          },
+          "domain": "renderedObservation",
+          "evidence": [],
+          "limitations": [
+            "semantic-content-needs-human-review",
+            "qualification-title-extra-signatures"
+          ],
+          "outcome": "indeterminate",
+          "reason": "confirmed-source-and-rendered-structure-required",
+          "ruleId": "KNU-STRUCTURE-001",
+          "ruleVersion": "1.0.0",
+          "severity": "warning",
+          "supportState": "partial"
+        },
+        {
+          "citation": {
+            "pdfPages": [
+              12,
+              13
+            ],
+            "printedPages": [
+              12,
+              13
+            ],
+            "section": "2.2"
+          },
+          "domain": "renderedObservation",
+          "evidence": [],
+          "limitations": [
+            "usual-keyword-count-advisory",
+            "semantic-content-needs-human-review"
+          ],
+          "outcome": "indeterminate",
+          "reason": "confirmed-abstract-and-reading-order-required",
+          "ruleId": "KNU-ABSTRACT-001",
+          "ruleVersion": "1.0.0",
+          "severity": "warning",
+          "supportState": "partial"
+        },
+        {
+          "citation": {
+            "pdfPages": [
+              11
+            ],
+            "printedPages": [
+              11
+            ],
+            "section": "2"
+          },
+          "domain": "renderedObservation",
+          "evidence": [],
+          "limitations": [
+            "delegates-existing-rendered-extent"
+          ],
+          "outcome": "notApplicable",
+          "reason": "delegated-to-existing-rendered-extent-evaluation",
+          "ruleId": "KNU-LENGTH-001",
+          "ruleVersion": "1.0.0",
+          "severity": "warning",
+          "supportState": "partial"
+        },
+        {
+          "citation": {
+            "pdfPages": [
+              16,
+              17,
+              30,
+              31,
+              32,
+              50,
+              51,
+              52,
+              53,
+              54
+            ],
+            "printedPages": [
+              16,
+              17,
+              30,
+              31,
+              32,
+              50,
+              51,
+              52,
+              53,
+              54
+            ],
+            "section": "2.8;3.15;3.16;appendixD"
+          },
+          "domain": "renderedObservation",
+          "evidence": [],
+          "limitations": [
+            "end-text-placement-recommended",
+            "no-external-dstu-certification"
+          ],
+          "outcome": "indeterminate",
+          "reason": "compiled-bibliography-and-citation-order-required",
+          "ruleId": "KNU-REFERENCES-001",
+          "ruleVersion": "1.0.0",
+          "severity": "warning",
+          "supportState": "partial"
+        },
+        {
+          "citation": {
+            "pdfPages": [
+              17,
+              31,
+              32
+            ],
+            "printedPages": [
+              17,
+              31,
+              32
+            ],
+            "section": "2.9;3.16"
+          },
+          "domain": "renderedObservation",
+          "evidence": [],
+          "limitations": [
+            "optional-appendix-absence-not-failure",
+            "copied-document-cover-exception"
+          ],
+          "outcome": "indeterminate",
+          "reason": "appendix-presence-and-designations-unknown",
+          "ruleId": "KNU-APPENDIX-001",
+          "ruleVersion": "1.0.0",
+          "severity": "warning",
+          "supportState": "partial"
+        },
+        {
+          "citation": {
+            "pdfPages": [
+              21,
+              22,
+              23
+            ],
+            "printedPages": [
+              21,
+              22,
+              23
+            ],
+            "section": "3.7;3.8"
+          },
+          "domain": "renderedObservation",
+          "evidence": [],
+          "limitations": [
+            "continued-figure-caption-exception",
+            "semantic-caption-content-needs-human-review",
+            "illustration-geometry-unavailable",
+            "extracted-text-not-visual-glyph-proof"
+          ],
+          "outcome": "indeterminate",
+          "reason": "confirmed-caption-and-illustration-roles-required",
+          "ruleId": "KNU-CAPTION-RENDERED-001",
+          "ruleVersion": "1.0.0",
+          "severity": "warning",
+          "supportState": "partial"
+        },
+        {
+          "citation": {
+            "pdfPages": [
+              16,
+              17,
+              30,
+              31,
+              32,
+              50,
+              51,
+              52,
+              53,
+              54
+            ],
+            "printedPages": [
+              16,
+              17,
+              30,
+              31,
+              32,
+              50,
+              51,
+              52,
+              53,
+              54
+            ],
+            "section": "2.8;3.15;3.16;appendixD"
+          },
+          "domain": "renderedObservation",
+          "evidence": [],
+          "limitations": [
+            "delegates-reference-predicates"
+          ],
+          "outcome": "notApplicable",
+          "reason": "delegated-to-reference-predicates",
+          "ruleId": "KNU-BIBLIOGRAPHY-RENDERED-001",
+          "ruleVersion": "1.0.0",
+          "severity": "warning",
+          "supportState": "partial"
+        }
+      ],
+      "workType": "masterQualification"
+    },
+    "protocolVersion": 1,
+    "requestId": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "status": "completed"
+  }
+}

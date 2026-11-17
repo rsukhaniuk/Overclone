@@ -1,0 +1,15 @@
+{
+  "fixtureKind": "synthetic-pdf-genuine-native-facts",
+  "pdf": {
+    "bytes": 1663,
+    "sha256": "d707766b5e91d68380be260d06d233ae1277cbb2ab696e77a84444236d310a97"
+  },
+  "facts": {
+    "bytes": 2823,
+    "sha256": "b5f4512fac016df882f257fc3af66b7a555e8020be177808bc42c8c74bf2af43"
+  },
+  "runtime": {
+    "loaderSha256": "968aae4935523f528e2314c4dbd831b2dd326ac8d3de3444fd033b73463b0225",
+    "wasmSha256": "8b715ed561ec644757f305ddad0a99ae728c6705f9868e96ccb53c8c9143c4b3"
+  }
+}

@@ -12,6 +12,9 @@ mod tests;
 mod tests_metrics;
 #[cfg(test)]
 mod tests_roles;
+#[cfg(test)]
+mod tests_typography;
+mod typography;
 
 use dto::*;
 use serde_json::{json, Value};

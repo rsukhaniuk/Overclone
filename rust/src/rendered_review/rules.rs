@@ -1,4 +1,4 @@
-use super::{catalog, classify, dto::*, roles};
+use super::{catalog, classify, dto::*, roles, typography};
 use serde_json::{json, Value};
 
 fn metrics(
@@ -227,11 +227,11 @@ pub fn evaluate(request: &Request, batch: &FactBatch) -> Vec<Value> {
                     evidence = measured.3;
                     (measured.0, measured.1, measured.2)
                 }
-                "KNU-TYPOGRAPHY-001" => (
-                    "partial",
-                    "indeterminate",
-                    "measurement-definition-unresolved",
-                ),
+                "KNU-TYPOGRAPHY-001" => {
+                    let observed = typography::evaluate(request, page);
+                    evidence = observed.3;
+                    (observed.0, observed.1, observed.2)
+                }
                 "KNU-PARAGRAPH-RENDERED-001" => {
                     let measured = metrics(request, page, true);
                     evidence = measured.3;

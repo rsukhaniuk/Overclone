@@ -73,7 +73,7 @@ fn genuine_outline_margins_are_numeric_conditional_and_include_native_uncertaint
     assert_eq!(evidence[0]["roleProvenance"]["provenance"], "authorLabel");
     assert_eq!(
         rule(&v, "KNU-TYPOGRAPHY-001")["reason"],
-        "measurement-definition-unresolved"
+        "conditional-typography-observations"
     );
     assert_eq!(v["payload"]["coverage"]["standardsComplete"], false);
     if let Ok(path) = std::env::var("RENDERED_METRICS_VECTOR_PATH") {
