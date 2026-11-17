@@ -74,7 +74,7 @@ public sealed class GraphicsTransportTests
             else { Assert.NotEqual(old.OutputAdapter, next.OutputAdapter); Assert.EndsWith("-graphics1", next.OutputAdapter.Version); }
         }
         var retained = Client.Compilation.Presentation.AuthoringWorkspaceRegistration.HistoricalOutputAdapters();
-        Assert.Equal(17, retained.Count); Assert.Equal(retained.Count, retained.Distinct().Count());
+        Assert.Equal(NativeCompilerInputBudgetPins.Ready ? 22 : NativeCompilerOriginPins.Ready ? 20 : 17, retained.Count); Assert.Equal(retained.Count, retained.Distinct().Count());
         Assert.Contains(NativeThesisCompilerContract.Component(NativeCompilerEngine.LuaLaTeX).OutputAdapter, retained);
         Assert.True(retained.Count <= Client.Compilation.History.CompileArtifactHistoryStore.MaxAdditionalAdapters);
         foreach (var e in Enum.GetValues<NativeCompilerEngine>()) Assert.Contains(NativeCompilerComponents.For(P, e).OutputAdapter, retained);

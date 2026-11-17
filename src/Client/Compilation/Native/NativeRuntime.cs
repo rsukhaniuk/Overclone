@@ -55,6 +55,7 @@ public sealed class NativeRuntimePackage
         NativeRuntimeProfile.LocalCompilerBiber => new("local-compiler-biber", "1", identity),
         NativeRuntimeProfile.LocalCompilerThesis => new("local-compiler-thesis", "1", identity),
         NativeRuntimeProfile.LocalCompilerOrigins => new("local-compiler-origins", "1", identity),
+        NativeRuntimeProfile.LocalCompilerInputBudget => new("local-compiler-input-budget", "1", identity),
         _ => throw new InvalidOperationException("Unknown trusted runtime profile.")
     };
     public CompilationDescriptor Bibtex => new("bibtex", "0.99d", new(NativeRuntimeProfiles.CompilerWasmHash(Profile)));
@@ -100,25 +101,29 @@ public sealed class NativeRuntimePackage
         .OrderBy(x => x.Key, StringComparer.Ordinal).Select(x => new NativeFileTransfer(x.Key, x.Value.ToArray())).ToArray();
 
     internal NativeCompilerComponent ComponentFor(NativeCompilerEngine engine) => NativeCompilerComponents.For(Profile, engine);
-    internal string ConverterStemFor(NativeCompilerEngine engine) => Profile is NativeOriginCompilerContract.Profile or NativeThesisCompilerContract.Profile or NativeBiberCompilerContract.Profile or NativeXeNavigationContract.Profile or NativeGraphicsNavigationContract.Profile or NativeUnicodeCompilerContract.Profile && engine == NativeCompilerEngine.XeLaTeX
+    internal string ConverterStemFor(NativeCompilerEngine engine) => Profile is NativeInputBudgetContract.Profile or NativeOriginCompilerContract.Profile or NativeThesisCompilerContract.Profile or NativeBiberCompilerContract.Profile or NativeXeNavigationContract.Profile or NativeGraphicsNavigationContract.Profile or NativeUnicodeCompilerContract.Profile && engine == NativeCompilerEngine.XeLaTeX
         ? "xdv-map-converter" : NativeNavigationContract.IsNavigationProfile(Profile) && engine == NativeCompilerEngine.LaTeXDvi ? "dvi-map-converter" : "dvi-converter";
-    internal string ConverterLoaderHashFor(NativeCompilerEngine engine) => Profile == NativeOriginCompilerContract.Profile && engine is NativeCompilerEngine.LaTeXDvi or NativeCompilerEngine.XeLaTeX
+    internal string ConverterLoaderHashFor(NativeCompilerEngine engine) => Profile == NativeInputBudgetContract.Profile && engine is NativeCompilerEngine.LaTeXDvi or NativeCompilerEngine.XeLaTeX
+        ? engine == NativeCompilerEngine.LaTeXDvi ? NativeCompilerInputBudgetPins.DviConverterLoaderHash : NativeCompilerInputBudgetPins.XeConverterLoaderHash
+        : Profile == NativeOriginCompilerContract.Profile && engine is NativeCompilerEngine.LaTeXDvi or NativeCompilerEngine.XeLaTeX
         ? engine == NativeCompilerEngine.LaTeXDvi ? NativeCompilerOriginPins.DviConverterLoaderHash : NativeCompilerOriginPins.XeConverterLoaderHash
         : NativeRuntimeProfiles.SupportsBiber(Profile) && engine == NativeCompilerEngine.LaTeXDvi
-        ? NativeCompilerBiberPins.ConverterLoaderHash : Profile is NativeOriginCompilerContract.Profile or NativeThesisCompilerContract.Profile or NativeBiberCompilerContract.Profile or NativeGraphicsNavigationContract.Profile or NativeUnicodeCompilerContract.Profile && engine is NativeCompilerEngine.LaTeXDvi or NativeCompilerEngine.XeLaTeX
+        ? NativeCompilerBiberPins.ConverterLoaderHash : Profile is NativeInputBudgetContract.Profile or NativeOriginCompilerContract.Profile or NativeThesisCompilerContract.Profile or NativeBiberCompilerContract.Profile or NativeGraphicsNavigationContract.Profile or NativeUnicodeCompilerContract.Profile && engine is NativeCompilerEngine.LaTeXDvi or NativeCompilerEngine.XeLaTeX
         ? NativeCompilerGraphicsNavigationPins.ConverterLoaderHash : Profile == NativeXeNavigationContract.Profile && engine == NativeCompilerEngine.XeLaTeX
         ? NativeCompilerXeNavigationPins.ConverterLoaderHash : NativeNavigationContract.IsNavigationProfile(Profile) && engine == NativeCompilerEngine.LaTeXDvi ? NativeCompilerNavigationPins.ConverterLoaderHash : ConverterLoaderHash;
-    internal string ConverterWasmHashFor(NativeCompilerEngine engine) => Profile == NativeOriginCompilerContract.Profile && engine is NativeCompilerEngine.LaTeXDvi or NativeCompilerEngine.XeLaTeX
+    internal string ConverterWasmHashFor(NativeCompilerEngine engine) => Profile == NativeInputBudgetContract.Profile && engine is NativeCompilerEngine.LaTeXDvi or NativeCompilerEngine.XeLaTeX
+        ? engine == NativeCompilerEngine.LaTeXDvi ? NativeCompilerInputBudgetPins.DviConverterWasmHash : NativeCompilerInputBudgetPins.XeConverterWasmHash
+        : Profile == NativeOriginCompilerContract.Profile && engine is NativeCompilerEngine.LaTeXDvi or NativeCompilerEngine.XeLaTeX
         ? engine == NativeCompilerEngine.LaTeXDvi ? NativeCompilerOriginPins.DviConverterWasmHash : NativeCompilerOriginPins.XeConverterWasmHash
         : NativeRuntimeProfiles.SupportsBiber(Profile) && engine == NativeCompilerEngine.LaTeXDvi
-        ? NativeCompilerBiberPins.ConverterWasmHash : Profile is NativeOriginCompilerContract.Profile or NativeThesisCompilerContract.Profile or NativeBiberCompilerContract.Profile or NativeGraphicsNavigationContract.Profile or NativeUnicodeCompilerContract.Profile && engine is NativeCompilerEngine.LaTeXDvi or NativeCompilerEngine.XeLaTeX
+        ? NativeCompilerBiberPins.ConverterWasmHash : Profile is NativeInputBudgetContract.Profile or NativeOriginCompilerContract.Profile or NativeThesisCompilerContract.Profile or NativeBiberCompilerContract.Profile or NativeGraphicsNavigationContract.Profile or NativeUnicodeCompilerContract.Profile && engine is NativeCompilerEngine.LaTeXDvi or NativeCompilerEngine.XeLaTeX
         ? engine == NativeCompilerEngine.XeLaTeX ? NativeCompilerGraphicsNavigationPins.XeWasmHash : NativeCompilerGraphicsNavigationPins.DviWasmHash
         : Profile == NativeXeNavigationContract.Profile && engine == NativeCompilerEngine.XeLaTeX
         ? NativeCompilerXeNavigationPins.ConverterWasmHash : NativeNavigationContract.IsNavigationProfile(Profile) && engine == NativeCompilerEngine.LaTeXDvi ? NativeCompilerNavigationPins.ConverterWasmHash : ConverterWasmHash;
     public CompilationDescriptor EngineFor(NativeCompilerEngine engine) => engine switch
     {
         NativeCompilerEngine.PdfLaTeX => Engine, NativeCompilerEngine.LaTeXDvi => DviEngine,
-        NativeCompilerEngine.XeLaTeX => Profile is NativeOriginCompilerContract.Profile or NativeThesisCompilerContract.Profile or NativeBiberCompilerContract.Profile or NativeXeNavigationContract.Profile or NativeGraphicsNavigationContract.Profile or NativeUnicodeCompilerContract.Profile
+        NativeCompilerEngine.XeLaTeX => Profile is NativeInputBudgetContract.Profile or NativeOriginCompilerContract.Profile or NativeThesisCompilerContract.Profile or NativeBiberCompilerContract.Profile or NativeXeNavigationContract.Profile or NativeGraphicsNavigationContract.Profile or NativeUnicodeCompilerContract.Profile
             ? new("xelatex", ComponentFor(engine).EngineVersion, new(ComponentFor(engine).WasmHash))
             : new("xelatex", "native-v1", new(NativeCompilerSuitePins.XeWasmHash)),
         NativeCompilerEngine.LuaLaTeX => new("lualatex", ComponentFor(engine).EngineVersion, new(ComponentFor(engine).WasmHash)),
@@ -127,7 +132,7 @@ public sealed class NativeRuntimePackage
     public CompileOutputDescriptor AdapterFor(NativeCompilerEngine engine) => engine switch
     {
         NativeCompilerEngine.PdfLaTeX => OutputAdapter, NativeCompilerEngine.LaTeXDvi => DviOutputAdapter,
-        NativeCompilerEngine.XeLaTeX => Profile is NativeOriginCompilerContract.Profile or NativeThesisCompilerContract.Profile or NativeBiberCompilerContract.Profile or NativeXeNavigationContract.Profile or NativeGraphicsNavigationContract.Profile or NativeUnicodeCompilerContract.Profile ? ComponentFor(engine).OutputAdapter : NativeCompilerSuiteContract.XeOutputAdapter,
+        NativeCompilerEngine.XeLaTeX => Profile is NativeInputBudgetContract.Profile or NativeOriginCompilerContract.Profile or NativeThesisCompilerContract.Profile or NativeBiberCompilerContract.Profile or NativeXeNavigationContract.Profile or NativeGraphicsNavigationContract.Profile or NativeUnicodeCompilerContract.Profile ? ComponentFor(engine).OutputAdapter : NativeCompilerSuiteContract.XeOutputAdapter,
         NativeCompilerEngine.LuaLaTeX => ComponentFor(engine).OutputAdapter,
         _ => throw new ArgumentOutOfRangeException(nameof(engine))
     };
@@ -220,7 +225,8 @@ public sealed class NativeRuntimePackage
         => Digest(Encoding.UTF8.GetBytes(string.Join("\n", pins.OrderBy(x => x.Name, StringComparer.Ordinal)
             .Select(x => FormattableString.Invariant($"{x.Name}\t{x.Length}\t{x.Sha256}")))));
     internal static bool Name(string? name, NativeRuntimeProfile profile) => NativeRuntimeProfiles.IsSuite(profile)
-        ? NativeCompilerSuiteContract.ResourceName(name) || (profile == NativeBiberCompilerContract.Profile && NativeBiberCompilerContract.NoticeName(name)
+        ? NativeCompilerSuiteContract.ResourceName(name) || (profile == NativeInputBudgetContract.Profile && NativeInputBudgetContract.NoticeName(name)
+            || profile == NativeBiberCompilerContract.Profile && NativeBiberCompilerContract.NoticeName(name)
             || profile is NativeThesisCompilerContract.Profile or NativeOriginCompilerContract.Profile && NativeThesisCompilerContract.NoticeName(name))
         : name is { Length: > 0 and <= 200 } && name.All(c => char.IsAsciiLetterOrDigit(c) || c is '.' or '-' or '_');
     private static bool Hex(string? s) => s is { Length: 64 } && s.All(c => c is >= '0' and <= '9' or >= 'a' and <= 'f');

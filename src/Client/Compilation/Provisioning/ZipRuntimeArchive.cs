@@ -233,7 +233,7 @@ internal static class ZipDirectory
     {
         if (!name.StartsWith("files/", StringComparison.Ordinal)) return false;
         var flat = name[6..];
-        return suite ? NativeCompilerSuiteContract.ResourceName(flat) || NativeThesisCompilerContract.NoticeName(flat)
+        return suite ? NativeCompilerSuiteContract.ResourceName(flat) || NativeThesisCompilerContract.NoticeName(flat) || NativeInputBudgetContract.NoticeName(flat)
             : flat.Length is > 0 and <= 200 && flat.All(c => char.IsAsciiLetterOrDigit(c) || c is '.' or '-' or '_')
             && flat is not ("." or "..");
     }

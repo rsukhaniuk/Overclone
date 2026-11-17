@@ -63,13 +63,15 @@ public sealed class CompileWorkspaceSession(WorkspaceCoordinator workspace, ICom
         || NativeCompilerSuiteContract.MatchesOptions(options, NativeUnicodeCompilerContract.Profile)
         || NativeCompilerSuiteContract.MatchesOptions(options, NativeBiberCompilerContract.Profile);
     private int ProjectFileLimit => NativeRuntimeProfiles.ProjectFileLimit(_ports?.NativeProfile ?? NativeRuntimeProfile.Legacy);
-    private CompileLifecycleOptions Options => new(new(ProjectFileLimit, 1048576, 8388608, 131072),
+    private int ProjectFileBytes => NativeRuntimeProfiles.ProjectFileBytes(_ports?.NativeProfile ?? NativeRuntimeProfile.Legacy);
+    private int ProjectTotalBytes => NativeRuntimeProfiles.ProjectTotalBytes(_ports?.NativeProfile ?? NativeRuntimeProfile.Legacy);
+    private CompileLifecycleOptions Options => new(new(ProjectFileLimit, ProjectFileBytes, ProjectTotalBytes, 131072),
         new(8388608, 2097152, 64, 128, 4096, 1048576), 65536,
         _ports?.SelectionOptions is { } options && SuiteOptions(options)
             ? NativeCompilerSuiteContract.LifecycleDeadline : TimeSpan.FromSeconds(30), NativeRuntimePackage.Pdf,
         _ports?.OutputAdapter ?? NativeRuntimePackage.Adapter);
-    private static CompileAttemptPresentationBudget LogBudget => new(1048576, 2097152,
-        new(NativeThesisCompilerContract.ProjectFiles, 8388608, 131072, 1048576, 8192, 10000, 128, 4096, 32, 200000, 8000000, 2097152));
+    private CompileAttemptPresentationBudget LogBudget => new(1048576, 2097152,
+        new(NativeThesisCompilerContract.ProjectFiles, ProjectTotalBytes, 131072, 1048576, 8192, 10000, 128, 4096, 32, 200000, 8000000, 2097152));
     public void AttachRenderer(Func<Action, Task> renderer)
     {
         if (_disposed) throw new ObjectDisposedException(nameof(CompileWorkspaceSession));

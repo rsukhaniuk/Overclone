@@ -45,6 +45,9 @@ public sealed record NativeCompilePlan(bool BibtexRequired, int MaxLatexPasses, 
     public int EffectivePhaseVersion => PhaseProtocolVersion ?? NativeRuntimeProfiles.ProtocolVersion(Profile);
     // Increasing runtime capacity cannot increase the modern project/aux limit.
     public int ProjectFileBytes => NativeRuntimeProfiles.Modern(Profile) ? 8 * 1024 * 1024 : MaxFileBytes;
+    public int SourceFileBytes => Profile == NativeInputBudgetContract.Profile ? NativeRuntimeProfiles.ProjectFileBytes(Profile) : ProjectFileBytes;
+    public int ProjectTotalBytes => NativeRuntimeProfiles.ProjectTotalBytes(Profile);
+    public int ConverterProjectBytes => NativeInputBudgetContract.Enabled(Profile) ? NativeInputBudgetContract.ConverterProjectBytes : NativeLatexDviContract.ProjectBytes;
 }
 public sealed record NativePhaseObservation(NativePhaseTag Tag, NativeInputFact[] Sent, NativePhaseReply Reply);
 
