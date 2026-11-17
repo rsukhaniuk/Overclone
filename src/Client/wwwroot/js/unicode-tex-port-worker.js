@@ -1,8 +1,8 @@
 // Mechanical browser/WASM/VFS glue. C# selects resources, passes, bibliography,
 // conversion and revision authority; native engines enforce their own IO limits.
 (() => {
-    const pB=p=>p===13||p===14||p===15;
-const pT=p=>p===14||p===15;
+    const pB=p=>p===13||p===14||p===15||p===16;
+const pT=p=>p===14||p===15||p===16;
     const emit = self.postMessage.bind(self), encoder = new TextEncoder();
     let state = 'boot', module, engine, loaderSha256, wasmSha256, nativeAbi, xeMapModule = false;
     let log = '', logBytes = 0, maxLog = 262144, truncated = false;
@@ -58,11 +58,11 @@ const pT=p=>p===14||p===15;
         let sourceMapPayload = null, sourceMapGeometryPayload = null;
         try {
             const xe = engine === 'xelatex', tag = frame.tag;
-            const origins = tag?.profile === 15, thesis = pT(tag?.profile), biberProfile = pB(tag?.profile), unicode = biberProfile || tag?.profile === 12, graphics = unicode || tag?.profile === 10;
-            const xeNavigation = [9, 10, 12, 13,14,15].includes(tag?.profile) && xe;
-            const navigation = xeNavigation || [8, 9, 10, 12, 13,14,15].includes(tag?.profile) && !xe;
+            const origins = [15,16].includes(tag?.profile), thesis = pT(tag?.profile), biberProfile = pB(tag?.profile), unicode = biberProfile || tag?.profile === 12, graphics = unicode || tag?.profile === 10;
+            const xeNavigation = [9, 10, 12, 13,14,15,16].includes(tag?.profile) && xe;
+            const navigation = xeNavigation || [8, 9, 10, 12, 13,14,15,16].includes(tag?.profile) && !xe;
             if (xe && xeMapModule !== xeNavigation
-                || tag?.version !== (unicode ? xe ? 21 : 22 : graphics ? xe ? 16 : 17 : xe ? xeNavigation ? 13 : 8 : navigation ? 14 : 9) || ![5, 6, 7, 8, 9, 10, 12, 13,14,15].includes(tag.profile) || tag.engineId !== engine || tag.tool !== 'latex'
+                || tag?.version !== (unicode ? xe ? 21 : 22 : graphics ? xe ? 16 : 17 : xe ? xeNavigation ? 13 : 8 : navigation ? 14 : 9) || ![5, 6, 7, 8, 9, 10, 12, 13,14,15,16].includes(tag.profile) || tag.engineId !== engine || tag.tool !== 'latex'
                 || !xe && nativeAbi !== (navigation ? 5 : tag.profile === 7 ? 3 : 2)
                 || xe && tag.profile === 8 && (loaderSha256 !== '4ca80d7ed06d550632766dc3629f394f7f41b586d96682e98b87ca8fe8c72255'
                     || wasmSha256 !== 'b02ff092694071320785486618aa0de7df2d12fae7d3e92c5a32c5cda5980243')
@@ -109,7 +109,7 @@ const pT=p=>p===14||p===15;
             }
             if ([...resources, ...generated].some(name => !names.has(name)) || resources.has(frame.selectedRoot)
                 || generated.has(frame.selectedRoot) || !names.has(frame.selectedRoot) || capturedCount > (pT(tag.profile) ? 128 : 64)
-                || projectBytes > 8388608 || workBytes > 33554432 || resourceBytes > (xe ? 167772160 : unicode ? 134217728 : 100663296)) throw 0;
+                || projectBytes > (tag.profile === 16 ? 16777216 : 8388608) || workBytes > 33554432 || resourceBytes > (xe ? 167772160 : unicode ? 134217728 : 100663296)) throw 0;
             const leaf = frame.selectedRoot.slice(frame.selectedRoot.lastIndexOf('/') + 1);
             const job = xe ? leaf.slice(0, -4) : 'result', artifact = job + (xe ? '.xdv' : '.pdf');
             const blx = job.replaceAll(' ', '_') + '-blx.bib';
@@ -120,7 +120,7 @@ const pT=p=>p===14||p===15;
             const outputNames = new Set(frame.outputs);
             if (outputNames.size !== frame.outputs.length || !outputNames.has(artifact)
                 || frame.outputs.some(name => !path(name) || !(/\.(aux|bbl|blg|toc|lof|lot|out|log)$/i.test(name) || name === artifact || xe && name === job + '.pdf'
-                    || [7, 8, 9, 10, 12, 13,14,15].includes(tag.profile) && !biber && name === blx || biber && (name === bcf || name === runXml))
+                    || [7, 8, 9, 10, 12, 13,14,15,16].includes(tag.profile) && !biber && name === blx || biber && (name === bcf || name === runXml))
                     || resources.has(name) || names.has(name) && !generated.has(name))) throw 0;
             maxLog = frame.maxLogBytes; log = ''; logBytes = 0; truncated = false;
             const F = module.FS;
@@ -135,7 +135,7 @@ const pT=p=>p===14||p===15;
             } else {
                 if (module.ccall('oc_luatex_configure', 'number', ['string', 'string'], [frame.selectedRoot, tag.nonce]) !== 0) throw 0;
                 for (const name of frame.outputs.filter(name => /\.(aux|bbl|blg|toc|lof|lot|out)$/i.test(name)
-                    || [7, 8, 9, 10, 12, 13,14,15].includes(tag.profile) && !biber && name === blx || biber && (name === bcf || name === runXml)))
+                    || [7, 8, 9, 10, 12, 13,14,15,16].includes(tag.profile) && !biber && name === blx || biber && (name === bcf || name === runXml)))
                     if (module.ccall('oc_luatex_declare_output', 'number', ['string'], [name]) !== 0) throw 0;
                 for (const file of frame.files) {
                     const pointer = module._malloc(Math.max(1, file.bytes.length));

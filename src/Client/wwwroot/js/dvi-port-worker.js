@@ -1,7 +1,7 @@
 // Mechanical byte/C-ABI glue only. C# chooses the engine, passes, resources,
 // convergence and revision authority; the native converter owns its virtual IO.
 (() => {
-    const pB=p=>p===13||p===14||p===15;
+    const pB=p=>p===13||p===14||p===15||p===16;
     const emit = self.postMessage.bind(self), encoder = new TextEncoder();
     let state = 'boot', module = null, loaderSha256 = null, wasmSha256 = null, nativeAbi;
     const hash = async bytes => [...new Uint8Array(await crypto.subtle.digest('SHA-256', bytes))]
@@ -55,24 +55,25 @@
         let sourceMapGeometryPayload = null;
         try {
             const tag = frame.tag, resources = frame.runtimeResourceNames;
-            const origins = tag?.profile === 15;
+            const expanded = tag?.profile === 16, origins = expanded || tag?.profile === 15;
             const semantic = pB(tag?.profile) && tag.engineId === 'latex-dvi';
-            const graphics = [10, 12, 13,14,15].includes(tag?.profile);
-            const xeNavigation = (tag?.profile === 9 && tag.version === 13 || graphics && tag.version === ([12,13,14,15].includes(tag.profile) ? 21 : 16)) && tag.engineId === 'xelatex';
+            const graphics = [10, 12, 13,14,15,16].includes(tag?.profile);
+            const xeNavigation = (tag?.profile === 9 && tag.version === 13 || graphics && tag.version === ([12,13,14,15,16].includes(tag.profile) ? 21 : 16)) && tag.engineId === 'xelatex';
             const dviNavigation = ([8, 9].includes(tag?.profile) && tag.version === 12 || graphics && tag.version === (pB(tag.profile) ? 24 : 15)) && tag.engineId === 'latex-dvi';
             const navigation = xeNavigation || dviNavigation;
-            const suite = [5, 6, 7, 8, 9, 10, 12, 13,14,15].includes(tag?.profile), xe = xeNavigation || [5, 6, 7, 8].includes(tag?.profile) && tag.version === 8 && tag.engineId === 'xelatex';
+            const suite = [5, 6, 7, 8, 9, 10, 12, 13,14,15,16].includes(tag?.profile), xe = xeNavigation || [5, 6, 7, 8].includes(tag?.profile) && tag.version === 8 && tag.engineId === 'xelatex';
             const dvi = dviNavigation || tag?.version === 7 && [4, 5, 6, 7].includes(tag.profile) && tag.engineId === 'latex-dvi';
             const prefix = '__oop_runtime__/', resourceName = name => suite ? name.slice(prefix.length) : name;
             if (!(dvi || xe) || tag.tool !== 'dvipdfmx' || nativeAbi !== (xeNavigation ? 3 : navigation ? 2 : 1)
                 || [8, 9].includes(tag.profile) && !navigation && (loaderSha256 !== 'dc31543194583c105228dc791040c2f09afd7aa64311ce254b215c9fcd24e54a'
                     || wasmSha256 !== '52085c656ec2680150519d39ecd8588326e123652d72294e7e19eedd0ec0171c')
                 || origins && (module._oc_dvi_origin_abi?.() !== 1 || module._oc_dvi_neutral_abi?.() !== 1)
+                || expanded && (module._oc_dvi_input_budget_abi?.() !== 1 || module._oc_dvi_project_input_limit?.() !== 16777216 || module._oc_dvi_pdf_output_limit?.() !== 8388608)
                 || graphics && (typeof module._oc_dvi_graphics_abi !== 'function' || module._oc_dvi_graphics_abi() !== 1)
                 || pB(tag.profile) && !['none','bibtex','biber'].includes(frame.bibliographyTool)
                 || semantic && (typeof module._oc_dvi_font_semantics_abi !== 'function' || module._oc_dvi_font_semantics_abi() !== 1 || typeof module._oc_dvi_font_semantics_status !== 'function')
-                || navigation && (loaderSha256 !== (origins ? xeNavigation ? 'c6feeaac32a9d23d03720de9c0d977506d5186b397c9f3ff221343e25ad3dd89' : '2aafbfe08a1a5a05d7fdb1980daf56781cadb67fbb16f1444d79898ffe956be9' : semantic ? '2975efeae6dc759ccdce984f68350a250ed8bb8bedaa6584329de5901db23caf' : graphics ? 'a961144a37546755175dfda0687c22bb79e67ebef495aa84c3922b01af6f2c57' : 'd79dca5dd87ab27ecb7dcc63cc96171092ea6a57c43054e4cabcf39a0f5c8c72')
-                    || wasmSha256 !== (origins ? xeNavigation ? '182fa124810d48d1dbfe17ee82c3deebdeeb6fec8838c590a2b445389d2224d1' : '1d2bed683ca42adc712de9c4649b26a6bb7001451cc00915d46b213fe81e304d' : semantic ? '4f4e13b462772c15184bf4279b533d598d446fa7a44c0b2bafda276baf91701f' : graphics ? xeNavigation ? 'ca030fe4077fc02338e4d92cdc5c0ef1b89c73bcb629b9d44f59708993fa15ef' : '53bd8a8a98c509afa8b0e0e5451bf78d7e9d765da1c8f513d9c1a909e9d5270d' : xeNavigation ? '10031d2748be3f6fa6ba5bc99fd4ef597f06f66208c5b9a5aeba60d5dc3aecac' : 'fb6d4da9ee438d66d89a7a0ec36ab7dd243ea2a5c32c4a426179b935e383ca84')
+                || navigation && (loaderSha256 !== (expanded ? xeNavigation ? 'a61b06d8530fc0e2a09cc874c8e36260925cc15308b674e946634689d2d62bbc' : '75d1c4441867f3875f82d09409c3eb0ebb8ee0d31d73d8008fc150605c023b09' : origins ? xeNavigation ? 'c6feeaac32a9d23d03720de9c0d977506d5186b397c9f3ff221343e25ad3dd89' : '2aafbfe08a1a5a05d7fdb1980daf56781cadb67fbb16f1444d79898ffe956be9' : semantic ? '2975efeae6dc759ccdce984f68350a250ed8bb8bedaa6584329de5901db23caf' : graphics ? 'a961144a37546755175dfda0687c22bb79e67ebef495aa84c3922b01af6f2c57' : 'd79dca5dd87ab27ecb7dcc63cc96171092ea6a57c43054e4cabcf39a0f5c8c72')
+                    || wasmSha256 !== (expanded ? xeNavigation ? '44ae512b65187816e6b43e40c1d94857734336721f30090ea2ed83f111001e12' : '44fe2d05227f7e8d0736ab929825088619e1f741afcb4b788180a6d4c743fe9c' : origins ? xeNavigation ? '182fa124810d48d1dbfe17ee82c3deebdeeb6fec8838c590a2b445389d2224d1' : '1d2bed683ca42adc712de9c4649b26a6bb7001451cc00915d46b213fe81e304d' : semantic ? '4f4e13b462772c15184bf4279b533d598d446fa7a44c0b2bafda276baf91701f' : graphics ? xeNavigation ? 'ca030fe4077fc02338e4d92cdc5c0ef1b89c73bcb629b9d44f59708993fa15ef' : '53bd8a8a98c509afa8b0e0e5451bf78d7e9d765da1c8f513d9c1a909e9d5270d' : xeNavigation ? '10031d2748be3f6fa6ba5bc99fd4ef597f06f66208c5b9a5aeba60d5dc3aecac' : 'fb6d4da9ee438d66d89a7a0ec36ab7dd243ea2a5c32c4a426179b935e383ca84')
                     || !Number.isSafeInteger(tag.ordinal) || tag.ordinal < 1 || tag.ordinal > 4294967295
                     || ['_oc_dvi_geometry_configure','_oc_dvi_geometry_length','_oc_dvi_geometry_copy','_oc_dvi_geometry_data','_oc_dvi_geometry_size']
                         .some(n => typeof module[n] !== 'function'))
@@ -99,7 +100,7 @@
                 if (suite && !resourceNames.has(file.name) && file.name.startsWith(prefix)) throw 0;
                 if (resourceNames.has(file.name)) resourceBytes += file.bytes.length;
                 else projectBytes += file.bytes.length;
-                if (projectBytes > 8388608 || resourceBytes > 100663296) throw 0;
+                if (projectBytes > (expanded ? 16777216 : 8388608) || resourceBytes > 100663296) throw 0;
             }
             if (resources.some(name => !names.has(name)) || resourceNames.has(frame.mainEntry)
                 || !frame.files.some(file => file.name === frame.mainEntry && file.bytes.length > 0)) throw 0;

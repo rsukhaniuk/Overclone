@@ -12,6 +12,7 @@ const originPairs={...thesisPairs,
  lua:['6ea9b1b9b32eaddc37492e90f09770345568d79277a14933c3d96e553efd13b9','0720b4da5ea2d99dfc3455d8b15a98c7b22fa7c3880944dc078d4cb1fec7e29a'],
  dvi:['2aafbfe08a1a5a05d7fdb1980daf56781cadb67fbb16f1444d79898ffe956be9','1d2bed683ca42adc712de9c4649b26a6bb7001451cc00915d46b213fe81e304d'],
  xecvt:['c6feeaac32a9d23d03720de9c0d977506d5186b397c9f3ff221343e25ad3dd89','182fa124810d48d1dbfe17ee82c3deebdeeb6fec8838c590a2b445389d2224d1']};
+const inputPairs={...originPairs,dvi:['75d1c4441867f3875f82d09409c3eb0ebb8ee0d31d73d8008fc150605c023b09','44fe2d05227f7e8d0736ab929825088619e1f741afcb4b788180a6d4c743fe9c'],xecvt:['a61b06d8530fc0e2a09cc874c8e36260925cc15308b674e946634689d2d62bbc','44ae512b65187816e6b43e40c1d94857734336721f30090ea2ed83f111001e12']};
 const oldLua=['b66ac597a51b06a97598c95db54329005db54ff5631e461e36f1a841bec86d90','7122d44f4d63a4626a3bcc55bb6bb404cfb8d78fd5419dda38849e991e23b7c6'];
 const encode=s=>new TextEncoder().encode(s),prefix='__oop_runtime__/';
 async function attempt(kind,options={},mutate=()=>{}){
@@ -25,7 +26,7 @@ async function attempt(kind,options={},mutate=()=>{}){
   outputs:converter?[job+'.pdf']:[artifact,...(kind==='xe'?[job+'.pdf']:[]),job+'.aux',job+'.log',...(backend==='biber'?[job+'.bcf',job+'.run.xml']:[job.replaceAll(' ','_')+'-blx.bib'])],
   maxLogBytes:65536,maxOutputBytes:8388608};
  if(converter)frame.files.push({name:frame.mainEntry,bytes:new Uint8Array([247,xe?7:2,0])});
- if(![13,14,15].includes(frame.tag.profile))delete frame.bibliographyTool;
+ if(![13,14,15,16].includes(frame.tag.profile))delete frame.bibliographyTool;
  mutate(frame);
  const calls=[],messages=[],heap=new Uint8Array(65536),store=new Map(),map=encode('native-model-map'),geo=encode('{"schemaVersion":1,"pages":[]}'),pdf=encode('%PDF-model');let next=1024;
  heap.set(pdf,32768);
@@ -48,13 +49,14 @@ async function attempt(kind,options={},mutate=()=>{}){
    case'oc_luatex_output_size':return a[0]===0?pdf.length:0;case'oc_luatex_copy_output':heap.set(pdf,a[1]);return pdf.length;
    case'oc_luatex_named_output_size':return 0;default:throw Error('unexpected modeled native call '+n);}},
   _oc_dvi_abi_version:()=>options.nativeAbi??(xe?3:2),_oc_dvi_font_semantics_abi:()=>options.semantic??1,_oc_dvi_font_semantics_status:()=>options.status??1,
+  _oc_dvi_input_budget_abi:()=>options.inputAbi??1,_oc_dvi_project_input_limit:()=>options.inputLimit??16777216,_oc_dvi_pdf_output_limit:()=>options.pdfLimit??8388608,
   _oc_dvi_add_file(){calls.push(['add-file']);return 0;},_oc_dvi_geometry_configure(...a){calls.push(['configure',...a]);return 1;},
   _oc_dvi_run(){calls.push(['native']);return options.converterStatus??0;},_oc_dvi_native_return:()=>options.nativeReturn??0,_oc_dvi_status:()=>options.converterStatus??0,
   _oc_dvi_log_data:()=>0,_oc_dvi_log_size:()=>0,_oc_dvi_log_truncated:()=>0,_oc_dvi_pdf_data:()=>32768,_oc_dvi_pdf_size:()=>pdf.length,
   _oc_dvi_geometry_data:()=>0,_oc_dvi_geometry_size:()=>geo.length,_oc_dvi_geometry_length(n){calls.push(['geometry-length',n]);return geo.length;},
   _oc_dvi_geometry_copy(n,p){calls.push(['geometry-copy',n]);heap.set(geo,p);return geo.length;}};
  for(const name of options.missing??[])delete model[name];
- const hashes=options.hashes??(options.profile===15?originPairs:options.profile===14?thesisPairs:pairs)[kind],crypto={subtle:{digest(a,b){return b.length===1&&[1,2].includes(b[0])?Promise.resolve(Uint8Array.from(Buffer.from(hashes[b[0]-1],'hex')).buffer):webcrypto.subtle.digest(a,b);}}};
+ const hashes=options.hashes??(options.profile===16?inputPairs:options.profile===15?originPairs:options.profile===14?thesisPairs:pairs)[kind],crypto={subtle:{digest(a,b){return b.length===1&&[1,2].includes(b[0])?Promise.resolve(Uint8Array.from(Buffer.from(hashes[b[0]-1],'hex')).buffer):webcrypto.subtle.digest(a,b);}}};
  const self={postMessage:m=>messages.push(m)};
  vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../../src/Client/wwwroot/js',converter?'dvi-port-worker.js':'unicode-tex-port-worker.js'),'utf8'),
   {self,Uint8Array,TextEncoder,TextDecoder,WebAssembly,crypto,performance,importScripts(){self[converter?'createOcDvi':xe?'createXeMaps':'createLuaTeX']=async()=>model;}});
@@ -66,14 +68,14 @@ module.exports={attempt};
 if(require.main===module)(async()=>{
  let count=0;
  for(const kind of ['lua','xe','dvi','xecvt']) {
-  for(const profile of [14,15])for(const backend of ['none','bibtex','biber']) {
+  for(const profile of [14,15,16])for(const backend of ['none','bibtex','biber']) {
    const r=await attempt(kind,{profile,backend});assert.equal(r.messages.at(-1).reply.outcome,'native-return');assert.equal(r.calls.filter(c=>c[0]==='native').length,1);count++;
   }
   if(['lua','xe'].includes(kind)) {
    for(const options of [{hashes:pairs[kind]},kind==='xe'?{workLimit:192}:{outputLimit:128}, {missing:[kind==='xe'?'_oc_xe_work_file_limit':'_oc_lua_output_declaration_limit']}]) {
     const r=await attempt(kind,{profile:14,...options});assert.ok(!r.calls.some(c=>c[0]==='native'));count++;
    }
-   for(const profile of [13,14,15])for(const countFiles of (profile>=14?[127,128,129]:[63,64,65])) {
+   for(const profile of [13,14,15,16])for(const countFiles of (profile>=14?[127,128,129]:[63,64,65])) {
     const maximum=profile>=14?128:64;
     const r=await attempt(kind,{profile},f=>{for(let i=1;i<countFiles;i++)f.files.push({name:'asset-'+i+'.txt',bytes:encode('a')});});
     assert.equal(r.calls.some(c=>c[0]==='native'),countFiles<=maximum,kind+' profile'+profile+' captured'+countFiles);count++;
@@ -89,7 +91,7 @@ if(require.main===module)(async()=>{
    const r=await attempt(kind,{backend,replay:true}),reply=r.messages.at(-1).reply;assert.equal(reply.outcome,'native-return');assert.equal(r.calls.filter(c=>c[0]==='native').length,1);
    for(const c of r.calls.filter(c=>/^(map|geometry)-(length|copy)$/.test(c[0])))assert.equal(c[1],7);count++;
   }
-  const negatives=[{profile:11},{profile:16},{version:10},{version:23},{version:kind==='dvi'?21:24},{hashes:[pairs[kind][0],'0'.repeat(64)]},
+  const negatives=[{profile:11},{profile:17},{version:10},{version:23},{version:kind==='dvi'?21:24},{hashes:[pairs[kind][0],'0'.repeat(64)]},
    {hashes:['0'.repeat(64),pairs[kind][1]]}, ...(kind==='xe'?[]:[{nativeAbi:kind==='lua'?3:kind==='dvi'?3:2}])];
   if(kind==='lua')negatives.push({text:0},{text:2},{missing:['_oc_lua_text_semantics_abi']},{fonts:0},{harfbuzz:0},{graphics:0},{hashes:oldLua});
   if(kind==='xe')negatives.push({nonbmp:0},{missing:['_oc_xe_nonbmp_abi']},{maps:0});
@@ -121,6 +123,9 @@ if(require.main===module)(async()=>{
    const r=await attempt(kind,{profile:15,...options});assert.equal(r.calls.some(c=>c[0]==='native'||c[0]==='add-file'),false,JSON.stringify({kind,options}));count++;
   }
   const old=await attempt(kind,{profile:14,hashes:originPairs[kind]});assert.equal(old.calls.some(c=>c[0]==='native'),false);count++;
+ }
+ for(const kind of ['dvi','xecvt'])for(const options of [{inputAbi:0},{inputAbi:2},{inputLimit:8388608},{inputLimit:33554432},{pdfLimit:16777216},{missing:['_oc_dvi_input_budget_abi']},{missing:['_oc_dvi_project_input_limit']},{missing:['_oc_dvi_pdf_output_limit']},{hashes:originPairs[kind]},{hashes:[inputPairs[kind][0],originPairs[kind][1]]},{hashes:[originPairs[kind][0],inputPairs[kind][1]]}]){
+  const r=await attempt(kind,{profile:16,...options});assert.equal(r.calls.some(c=>c[0]==='native'||c[0]==='add-file'),false,JSON.stringify({kind,options}));count++;
  }
  for(const status of [2,0,3]){const r=await attempt('dvi',{status}),reply=r.messages.at(-1).reply;assert.equal(reply.nativeReturn,0);assert.equal(reply.entered,true);assert.equal(reply.files.length,0);
   assert.equal(reply.sourceMapGeometryPayload,null);assert.equal(reply.outcome,status===2?'font-semantics-unsupported':'protocol-failure');count++;}

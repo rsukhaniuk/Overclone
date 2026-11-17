@@ -7,7 +7,9 @@ const source = fs.readFileSync(path.join(__dirname, '../../src/Client/wwwroot/js
 const start = source.indexOf('function validateAuthoringV4Frame(');
 const end = source.indexOf('async function execute(', start);
 assert.ok(start >= 0 && end > start);
-const validate = vm.runInNewContext(source.slice(start, end) + ';validateAuthoringV4Frame;', { TextEncoder, Uint8Array });
+const predicates = source.slice(0, source.indexOf('const emit='));
+assert.match(predicates, /const pU=/);
+const validate = vm.runInNewContext(predicates + source.slice(start, end) + ';validateAuthoringV4Frame;', { TextEncoder, Uint8Array });
 function frame(version, profile = 5) {
     const root = 'розділ/my thesis.tex', job = version === 9 ? 'result' : 'my thesis';
     const extensions = ['.pdf', '.aux', '.bbl', '.blg', '.log', '.toc', '.lof', '.lot', '.out'];
