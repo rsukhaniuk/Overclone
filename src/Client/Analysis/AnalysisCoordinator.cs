@@ -595,7 +595,10 @@ public sealed class AnalysisCoordinator : IAsyncDisposable
         {
             try
             {
-                if (completed.WorkerEpoch is <= 0 or > 9007199254740991 || !AnalysisIdentity.IsValidOpaqueId(completed.RequestId, AnalysisLimits.MaxIdBytes))
+                // The source bridge starts at epoch 0; replacement/reset bumps
+                // it. The awaited exact-current-epoch check below still owns
+                // freshness for that first worker as for every later worker.
+                if (completed.WorkerEpoch is < 0 or > 9007199254740991 || !AnalysisIdentity.IsValidOpaqueId(completed.RequestId, AnalysisLimits.MaxIdBytes))
                     throw new System.Text.Json.JsonException("Invalid analysis correlation.");
                 ThesisValidation.ValidateCapturedResult(completed.Result, snapshot);
             }
