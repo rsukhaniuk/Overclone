@@ -5,7 +5,9 @@ E1 ABI 1, 36-byte budget, immutable output handles, copy/release and reset APIs.
 It does not change layout facts 1/2, glyph ink, text extraction, search or raster
 behavior. Discover the symbol before calling: its absence is unsupported. The
 public-header-only build returns `E1_UNSUPPORTED`, with result zero and no output.
-This directory is a private candidate recipe, not an adopted runtime/default.
+This directory reproduces the renderer used for the bundled caption and image
+review. Distribution and corresponding-source verification are tracked
+separately in the release milestone.
 
 The corresponding source is the existing pinned PDFium
 `6688c576fd851f4159c6fae39396da50939de110`, with the already adopted ActualText,
