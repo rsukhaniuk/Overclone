@@ -1,0 +1,209 @@
+{
+  "schemaVersion": 1,
+  "status": "two-candidate-preflight-blocked-no-native-success",
+  "date": "2026-11-18",
+  "synthetic": false,
+  "limits": {
+    "capturedProjectFiles": 128,
+    "fileBytes": 1048576,
+    "totalProjectBytes": 8388608
+  },
+  "method": "Exact pinned public Git metadata and privately acquired source bytes only. No compiler or bibliography backend was invoked; no PDF, resolved reference, text, search, geometry or UI acceptance is claimed.",
+  "originalSourceEdited": false,
+  "fontSubstitution": false,
+  "quotaRelaxation": false,
+  "redistribution": "Metadata only. No LICENSE/COPYING file was present in either pinned tree; original acquired sources remain private and are not redistributed by this fixture.",
+  "candidates": [
+    {
+      "repository": "https://github.com/maksymshylo/bachelor-thesis",
+      "commit": "13732be1d4f49375bf5d0e13f5fd078c3b2f5794",
+      "root": "thesis/index.tex",
+      "status": "application-admission-blocker-required-original-figures-over-file-limit",
+      "requiredOversizedAssets": [
+        {
+          "name": "thesis/images/image28.png",
+          "length": 1086165,
+          "upstreamGitBlob": "2ecf7b5dc2d9b15fe05b7034e3d9688ba724bd78",
+          "requiredBy": "thesis/chapters/10_regression_results/2_results.tex",
+          "line": 113
+        },
+        {
+          "name": "thesis/images/image29.png",
+          "length": 1108631,
+          "upstreamGitBlob": "eda550fdc1c4d7c06cd0ada52e3ed04213a6898e",
+          "requiredBy": "thesis/chapters/10_regression_results/2_results.tex",
+          "line": 116
+        }
+      ],
+      "sourceEvidence": {
+        "name": "thesis/chapters/10_regression_results/2_results.tex",
+        "length": 10807,
+        "sha256": "3eab2796011d2d3de1ef967b86b0628c705331748fd0b81f0d772a6fa889758c",
+        "upstreamGitBlob": "f793a5fbcccbc8812d82b7aa626d2d1ac6cdf3c0"
+      },
+      "additionalTreeInventory": {
+        "scope": "All blobs below thesis/ except generated thesis/index.pdf; not asserted to be a minimal transitive TeX input closure.",
+        "files": 83,
+        "bytes": 10713803
+      },
+      "nativeCompile": "not-run",
+      "explanation": "At least two literal graphics inputs each exceed the unchanged 1 MiB project-file limit. No image asset was downloaded, recompressed, omitted or replaced."
+    },
+    {
+      "repository": "https://github.com/sergiokapone/Makarchuk_Diploma",
+      "commit": "fa54c0d8714e4729eed09edada399596a26e03ae",
+      "root": "diploma_main.tex",
+      "degree": "master",
+      "declaredEngine": "lualatex",
+      "declaredBackend": "biber",
+      "declaredFontFamilies": [
+        "CMU Serif",
+        "CMU Sans Serif",
+        "CMU Typewriter Text"
+      ],
+      "status": "upstream-source-error-case-sensitive-missing-literal-input",
+      "blocker": {
+        "source": "diploma_main.tex",
+        "line": 79,
+        "requestedInput": "Introduction/introduction.tex",
+        "requestedInputPresent": false,
+        "differentCaseFilePresent": "Introduction/Introduction.tex"
+      },
+      "sourceEvidence": [
+        {
+          "name": "diploma_main.tex",
+          "length": 5726,
+          "sha256": "cf215efce8740d0f657214fef54de5e4bbf7bbb7cf6c48a7f14ee4528a82d9b1",
+          "upstreamGitBlob": "5d826a62836a25e6829b5eea0a7431b09b7ff11f"
+        },
+        {
+          "name": "Introduction/Introduction.tex",
+          "length": 6162,
+          "sha256": "47c9460102f5ce01cf8a2fbd8635af072a5455245b27d95a2f93d41d7299becd",
+          "upstreamGitBlob": "2e9e98ef2854ae7147e990151a97c6c29a870d0d"
+        }
+      ],
+      "plannedOriginalProjectInventory": {
+        "excludedGeneratedOrRepositoryMetadata": [
+          ".gitignore",
+          "diploma_main.pdf",
+          "Bibliography/texput.log"
+        ],
+        "files": 41,
+        "bytes": 4854918,
+        "largestFileBytes": 446967,
+        "assetsDownloaded": false
+      },
+      "privateSourceAcquisition": {
+        "files": 13,
+        "bytes": 190733,
+        "allGitBlobsVerified": true,
+        "pins": [
+          {
+            "path": "Annotation/anotation.tex",
+            "bytes": 7694,
+            "gitBlob": "79b2b7c360a77a6e7e3e90c6d80208976323ac5e",
+            "sha256": "1cc05f6d3f373fe8aff56aeba12ea843225ae1636d648a5d9c942e7f50689999"
+          },
+          {
+            "path": "Appendix/appendix.tex",
+            "bytes": 5420,
+            "gitBlob": "a5f39998ce6788c47cbb9e2eb4557f3b6f6068d9",
+            "sha256": "d9d83d9b5590c75cb7eb883813cff8cd4973bed67e10a25add9e92372b5bec1a"
+          },
+          {
+            "path": "Bibliography/bibliography.bib",
+            "bytes": 9712,
+            "gitBlob": "b57167cd64bad44a2afe83e8832c71ae52129c86",
+            "sha256": "15a07879b4da82e6c4644d492bab5e53ecb9f8d9cfea6faae268fabe7b7a8938"
+          },
+          {
+            "path": "Conclusion/conclusion.tex",
+            "bytes": 3192,
+            "gitBlob": "422948ac6f2a0f0375cd3aa0c8a05c002e049a3f",
+            "sha256": "10ba012f83ea5626ffb6b6126ae153cd1c17bc9775c293d3a80e63f55add9954"
+          },
+          {
+            "path": "Introduction/Introduction.tex",
+            "bytes": 6162,
+            "gitBlob": "2e9e98ef2854ae7147e990151a97c6c29a870d0d",
+            "sha256": "47c9460102f5ce01cf8a2fbd8635af072a5455245b27d95a2f93d41d7299becd"
+          },
+          {
+            "path": "Introduction/symbols_abbreviations.tex",
+            "bytes": 1841,
+            "gitBlob": "a4d3cfeeb3e629bb29f3738e5ea826e5fe662683",
+            "sha256": "5b151a34bb0267f5fb7c9f225e58fef9ebb2f7b7260e9a67d80e16b39080eb6b"
+          },
+          {
+            "path": "MastersDiploma.cls",
+            "bytes": 20877,
+            "gitBlob": "ae08de15e898e0153b57fa544779756d15425a61",
+            "sha256": "264e2a734b2ea6efe8c1b0f11ea2bfa8f7ad10d6e2909631a53f9b2fb340fe8c"
+          },
+          {
+            "path": "Task.tex",
+            "bytes": 2814,
+            "gitBlob": "3ae9e4f1c5c987e7a1e1b4505e8289644ef88311",
+            "sha256": "7fc6245ba429f95dfe432a4fa0c370d0a793387da7dfb9e3ad75e87ed5609c05"
+          },
+          {
+            "path": "Task_1.tex",
+            "bytes": 5430,
+            "gitBlob": "1021c187ba5d7ab7dc9819e6d1cbc20aa7aa67c8",
+            "sha256": "27cab9bbcac490fe64a39051eff8d68ac6fe7f5553f93a7c1cfb000157a5ec78"
+          },
+          {
+            "path": "chapter_1/chapter_1.tex",
+            "bytes": 56381,
+            "gitBlob": "a76b231388627735bc9efcfe927a25385e3c9dea",
+            "sha256": "4020fd6ba17418fb640cba5a0e2b15ca31fe53443aea7d4e80d5bc76e24103fc"
+          },
+          {
+            "path": "chapter_2/chapter_2.tex",
+            "bytes": 24178,
+            "gitBlob": "8b283401c6640e7d26def1be6ec96ab0cf674e9b",
+            "sha256": "da6c3e7e0cfcd35842ef4a3f7e039e38e71a2e0e3a9a05a82633bac84faa079c"
+          },
+          {
+            "path": "chapter_3/chapter_3.tex",
+            "bytes": 41306,
+            "gitBlob": "dfdbb98c736db4058b094c40b45f974d9cf3c403",
+            "sha256": "3acb0da9341a2973a688c94abf5e2e824f4841a5e613552269224230f7c8ee09"
+          },
+          {
+            "path": "diploma_main.tex",
+            "bytes": 5726,
+            "gitBlob": "5d826a62836a25e6829b5eea0a7431b09b7ff11f",
+            "sha256": "cf215efce8740d0f657214fef54de5e4bbf7bbb7cf6c48a7f14ee4528a82d9b1"
+          }
+        ]
+      },
+      "nativeCompile": "not-run",
+      "explanation": "Original Linux/case-sensitive source closure error, not a runtime incompatibility or observed native failure. No case alias or rewritten source was supplied. No claim that all other packages, fonts or backend requirements are satisfied."
+    }
+  ],
+  "privateAcquisitionReceiptPins": [
+    {
+      "name": "candidate1-commit.json",
+      "length": 104616,
+      "sha256": "4faeef6525b5094931fc94906ac79d3c75ebe6d4221ab473894674abd63d444c"
+    },
+    {
+      "name": "candidate1-tree.json",
+      "length": 25209,
+      "sha256": "4293923e0b12ed0954176ef038d79f40a8f5c76106f4323cead28610c86c66fd"
+    },
+    {
+      "name": "candidate2-commit.json",
+      "length": 5304,
+      "sha256": "f8a4cc732faedb8e50901b3d1a01364560280e217df2bedccfa6f4d924935198"
+    },
+    {
+      "name": "candidate2-tree.json",
+      "length": 12964,
+      "sha256": "ab72538566bc310d44b2ecd73ef4e72c37ffc7e34cf14d5d31d0521ddae9a27a"
+    }
+  ],
+  "remainingGate": "One unchanged representative real Ukrainian diploma/thesis with a successful exact native backend, resolved cross-references and searchable text remains open. Two-candidate investigation stopped as assigned."
+}

@@ -20,6 +20,7 @@
 //   PREFLIGHT_ONLY=1        fixture checks only; exits BEFORE origin/browser creation
 //   PDF_DOWNLOAD_CHECKS=1   optional CASE=plain online/offline/stale export checks (RESULT_DIR required)
 //   SOURCE_PDF_CHECKS=1     plain/golden/portable/biber native forward/inverse checks
+//   RENDERED_REVIEW_CHECKS=1 plain/portable P14+layout-renderer checks; bundled and PDF_DOWNLOAD_CHECKS=1 required
 //   BUNDLED_RUNTIME=1       mandatory for final R1 cases; automatic embedded tools
 //   CYRILLIC_FIXTURE        mixed-ligature.tex (default) | mixed-semantic.tex, both original unchanged
 //   LUAHARFBUZZ_SOURCE_DIR   approved native LuaHarfbuzz source root, required only for harfbuzz
@@ -52,6 +53,7 @@ const { createHash } = require("node:crypto");
 const { chromium } = require("playwright");
 const H = require("./review-ui-helpers.cjs");
 const sourcePdfNavigation = require("./source-pdf-navigation-ui-checks.cjs");
+const renderedReview = require("./rendered-review-ui-checks.cjs");
 const { validate: validateCsp } = require("./test-csp.cjs");
 
 const sha256 = (b) => createHash("sha256").update(b).digest("hex");
@@ -83,6 +85,7 @@ assert.ok(["local-authoring-v4", "latex-dvi", "xelatex", "lualatex"].includes(CO
 const BUNDLED_RUNTIME = process.env.BUNDLED_RUNTIME === "1";
 assert.ok(!FINAL_R1_CASE || BUNDLED_RUNTIME, 'final R1 cases require automatic bundled tools');
 const SOURCE_PDF_CHECKS = process.env.SOURCE_PDF_CHECKS === "1" || STRICT_PACKAGE_CASE;
+const RENDERED_REVIEW_CHECKS = renderedReview.enabled(process.env.RENDERED_REVIEW_CHECKS);
 assert.ok(!SOURCE_PDF_CHECKS || ["plain", "golden", "portable", "packages", "biblatex", "biber"].includes(CASE), "source/PDF checks support plain/golden/portable/packages/biblatex/biber fixtures");
 // Opt-in real UI rename of the original input bytes, followed by the same
 // registered compile/BibTeX/render/full-cold-offline workflow.
@@ -268,6 +271,9 @@ const pdfFiles = pdfManifest.resources.map((r) => {
   assert.equal(sha256(bytes), r.sha256, `pdf byte hash: ${r.name}`);
   return fp;
 });
+const renderedReviewPreflight = RENDERED_REVIEW_CHECKS ? renderedReview.preflight({caseName:CASE,bundled:BUNDLED_RUNTIME,
+  downloads:CHECK_DOWNLOADS,resultDirectory:RESULT_DIR,runtime:renderedReview.classifyRuntime(pins),
+  renderer:{loader:loaderResource.sha256,wasm:wasmResource.sha256}}) : null;
 
 // --- Plain fixture: exact independently-accepted plain baseline extracted from
 // the controlled repo file tests/ModernCompilerBrowserHarness/ModernApi.cs
@@ -436,6 +442,7 @@ if (PREFLIGHT_ONLY) {
     fontAssets: FONT_FILES?.map(file => ({ name: file.name, bytes: file.buffer.length, sha256: sha256(file.buffer) })) || null,
     fontSourceSelection: fontSourceSelection(), finalR1: r1Preflight(),
     sourcePdfChecksEnabled:SOURCE_PDF_CHECKS,packageCompilerOnly:packageCompilerScope(),
+    renderedReview:renderedReviewPreflight,
     packageInputs:PACKAGE_CASE?portableFiles.map(f=>({name:f.name,length:f.buffer.length,sha256:sha256(f.buffer)})):null,
   }) + "\n");
   process.exit(0); // BEFORE http.createServer, profile creation, Chromium or runtime execution.
@@ -492,8 +499,10 @@ const record = {
   scope: PACKAGE_COMPILER_ONLY ? "local-authoring-compiler-package-cold-offline; native navigation NOT ASSESSED pending R2" : "local-authoring-compile-pdf-cold-offline",
   pdfDownloadChecksEnabled: CHECK_DOWNLOADS, bundledRuntime: BUNDLED_RUNTIME,
   sourcePdfChecksEnabled: SOURCE_PDF_CHECKS,
+  renderedReview:renderedReviewPreflight,
   harnessSha256: sha256(fs.readFileSync(__filename)),
   sourcePdfHelperSha256: sha256(fs.readFileSync(path.join(__dirname, 'source-pdf-navigation-ui-checks.cjs'))),
+  renderedReviewHelperSha256:sha256(fs.readFileSync(path.join(__dirname,'rendered-review-ui-checks.cjs'))),
   sdk: { cspValid: true, manifestVersion: manifest.version, manifestAssets: manifest.assets.length, allAssetHashesVerified: true },
   resources: {
     compilerPins: pins.length, pinsSha256: sha256(fs.readFileSync(pinsPath)),
@@ -899,6 +908,7 @@ async function readProductionNativePhases(page) {
   return {details,request,trace:observations.trace.filter(r=>r.tag.request===request)};
 }
 function assertPackageCompilerTrace(details,trace,compilerChoice,expectedRuntimeIdentity) {
+  const expectedProfile=renderedReview.identityProfile(expectedRuntimeIdentity);
   const request=details.match(/Request: ([0-9a-f]{32});/)?.[1],digest=details.match(/Input: ([0-9a-f]{64})/)?.[1],epoch=Number(details.match(/epoch: (\d+)/)?.[1]);
   assert.ok(request&&digest&&Number.isSafeInteger(epoch)&&epoch>0);assert.match(expectedRuntimeIdentity,/^[0-9a-f]{64}$/);
   const [engineId,version]={'local-authoring-v4':['pdftex',23],'latex-dvi':['latex-dvi',24],xelatex:['xelatex',21],lualatex:['lualatex',22]}[compilerChoice];
@@ -910,8 +920,8 @@ function assertPackageCompilerTrace(details,trace,compilerChoice,expectedRuntime
     assert.ok(r.posted&&r.entered&&r.terminated);assert.equal(r.outcome,'native-return');assert.equal(r.nativeReturn,0);
     assert.ok(['latex','bibtex','dvipdfmx'].includes(r.tag.tool),'no Biber or unselected backend substitution');
     assert.equal(r.tag.request,request);assert.equal(r.tag.digest,digest);assert.equal(r.tag.epoch,epoch);
-    assert.equal(r.tag.profile,13);assert.equal(r.tag.version,version);assert.equal(r.tag.engineId,engineId);
-    assert.equal(r.tag.runtimeIdentity,expectedRuntimeIdentity,'phase uses the exact supplied authenticated P13 runtime');
+    assert.equal(r.tag.profile,expectedProfile);assert.equal(r.tag.version,version);assert.equal(r.tag.engineId,engineId);
+    assert.equal(r.tag.runtimeIdentity,expectedRuntimeIdentity,'phase uses the exact supplied authenticated P13/P14/P15 runtime');
     assert.equal(r.tag.job,first.job);assert.equal(r.tag.capture,first.capture);assert.deepEqual(r.tag.snapshot,first.snapshot);
     assert.ok(r.tag.snapshot&&r.tag.snapshot.captureId===r.tag.capture,'phase snapshot capture is correlated');
     assert.equal(r.tag.ordinal,i+1,'complete contiguous current-phase ordering');
@@ -924,7 +934,7 @@ function assertPackageCompilerTrace(details,trace,compilerChoice,expectedRuntime
   assert.ok(tex.at(-1).tag.ordinal>bib.at(-1).tag.ordinal,'final TeX consumes successful BibTeX output');
   assert.equal(converted.length,['latex-dvi','xelatex'].includes(compilerChoice)?1:0,'only selected DVI/XDV engine converts once');
   assert.equal(trace.at(-1).tag.tool,converted.length?'dvipdfmx':'latex','conversion follows the final TeX pass');
-  return {request,inputDigest:digest,runtimeIdentity:expectedRuntimeIdentity,engineId,profile:13,texPhases:tex.length,bibtexPhases:bib.length,
+  return {request,inputDigest:digest,runtimeIdentity:expectedRuntimeIdentity,engineId,profile:expectedProfile,texPhases:tex.length,bibtexPhases:bib.length,
     lastTexAfterLastBibtex:true,selectedBibliographyTool:'Bibtex',trace,source:'read-only existing production bridge observations',bblBytesExposed:false};
 }
 async function observePackageCompilerPhases(page) {
@@ -932,20 +942,24 @@ async function observePackageCompilerPhases(page) {
   assert.equal(await H.$(page,'bibliography-tool').inputValue(),'Bibtex','explicit selected UI backend');
   assert.equal(await page.locator('select[aria-label="Compile engine"]').inputValue(),COMPILER_CHOICE);
   const {details,trace}=await readProductionNativePhases(page);
-  const closure=sha256(Buffer.from(pins.slice().sort((a,b)=>a.name<b.name?-1:a.name>b.name?1:0).map(p=>`${p.name}\t${p.length}\t${p.sha256}`).join('\n')));
-  const identity=sha256(Buffer.from('native-runtime-profile-v1\nlocal-compiler-biber-v1\n'+closure));
-  return assertPackageCompilerTrace(details,trace,COMPILER_CHOICE,identity);
+  const runtime=renderedReview.classifyRuntime(pins);assert.ok(runtime,'only exact closed P13/P14 semantic runtimes');
+  return assertPackageCompilerTrace(details,trace,COMPILER_CHOICE,runtime.identity);
 }
 async function observeR1Phases(page) {
+  const runtime=renderedReview.classifyRuntime(pins);assert.ok(runtime,'only exact closed P13/P14 semantic runtimes');
   const {request,trace}=await readProductionNativePhases(page),tex=trace.filter(r=>r.tag.tool==='latex'),bib=trace.filter(r=>r.tag.tool==='biber');
   assert.ok(tex.length>=(BIBER_CASE?3:2),'actual successful TeX phase count');
-  for(const r of trace){assert.ok(r.posted&&r.entered&&r.terminated);assert.equal(r.outcome,'native-return');assert.equal(r.nativeReturn,0);}
+  assert.ok(tex.length<=6,'actual bounded TeX phase count');
+  const [expectedEngine,expectedPhase]={'local-authoring-v4':['pdftex',23],'latex-dvi':['latex-dvi',24],xelatex:['xelatex',21],lualatex:['lualatex',22]}[COMPILER_CHOICE];
+  for(const r of trace){assert.ok(r.posted&&r.entered&&r.terminated);assert.equal(r.outcome,'native-return');assert.equal(r.nativeReturn,0);
+    assert.equal(r.tag.profile,runtime.profile);assert.equal(r.tag.runtimeIdentity,runtime.identity);assert.equal(r.tag.engineId,expectedEngine);
+    assert.equal(r.tag.version,r.tag.tool==='biber'?10:expectedPhase);}
   assert.ok(trace.every(r=>r.tag.tool!=='bibtex'),'no unexpected BibTeX substitution');
-  if(BIBER_CASE){assert.ok(bib.length>=1,'genuine Biber phase required');for(const r of bib){assert.equal(r.tag.version,10);assert.equal(r.tag.profile,13);}
+  if(BIBER_CASE){assert.ok(bib.length>=1,'genuine Biber phase required');for(const r of bib){assert.equal(r.tag.version,10);assert.equal(r.tag.profile,runtime.profile);}
     assert.ok(tex.at(-1).tag.ordinal>bib.at(-1).tag.ordinal,'real TeX consumes Biber result after phase10');}
-  if(CYRILLIC_CASE)for(const r of tex){assert.equal(r.tag.profile,13);assert.equal(r.tag.version,COMPILER_CHOICE==='latex-dvi'?24:23);}
-  if(HARFBUZZ_CASE)for(const r of tex){assert.equal(r.tag.profile,13);assert.equal(r.tag.version,22);assert.equal(r.tag.engineId,'lualatex');}
-  return {request,trace,source:'read-only existing production bridge observations',bblBytesExposed:false};
+  if(CYRILLIC_CASE)for(const r of tex){assert.equal(r.tag.profile,runtime.profile);assert.equal(r.tag.version,COMPILER_CHOICE==='latex-dvi'?24:23);}
+  if(HARFBUZZ_CASE)for(const r of tex){assert.equal(r.tag.profile,runtime.profile);assert.equal(r.tag.version,22);assert.equal(r.tag.engineId,'lualatex');}
+  return {request,trace,profile:runtime.profile,runtimeIdentity:runtime.identity,source:'read-only existing production bridge observations',bblBytesExposed:false};
 }
 function assertR1Text(text,biberEdited=false) {
   const norm=text.replace(/\s+/g,' ').trim(),markers=BIBER_CASE?[...biberManifest.pageMarkers,...biberManifest.bibliographyMarkers]
@@ -1055,6 +1069,7 @@ async function downloadAcceptedPdf(page, project, label, filename, expectedHash)
 
 let context;
 const workers = [];
+let renderedReviewWorkerStart=0;
 // Native compile/PDF workers are the SW-synthesized internal entry URLs only
 // (/__oop/native-worker/compile|pdf). An unrelated analyzer worker (e.g. a
 // blob: nested worker) is permitted and must not be counted as a native
@@ -1067,6 +1082,7 @@ const errors = [];
 const violations = [];
 
 async function launch(offline) {
+  renderedReviewWorkerStart=workers.length;
   context = await chromium.launchPersistentContext(profile, { headless: true, offline: !!offline });
   await context.route("**/*", (route) => {
     if (parseUrl(route.request().url()).origin === base) return route.continue();
@@ -1468,6 +1484,32 @@ let profile, base;
       record.online.sourcePdfNavigation = await sourcePdfNavigation.verify(page, project, MAIN_PATH, BIBER_CASE ? "portable" : CASE === "portable" || PACKAGE_CASE ? CASE : CASE === "golden", phase);
     }
     // --- Wait for the offline cache to be genuinely provisioned.
+    if(RENDERED_REVIEW_CHECKS){
+      phase='online-rendered-review';
+      record.online.renderedReview=await renderedReview.verify(page,{project,hash:outputHash,pages:await pageCount(page),
+        workers:()=>workers.slice(renderedReviewWorkerStart),expected:renderedReviewPreflight,offline:false,
+        previewReady:()=>waitPreviewAvailable(page,90000),recompile:async()=>{
+          phase='online-rendered-review-same-source-recompile';
+          const previousRequest=(await H.$(page,'compile-details').textContent()).match(/Request: ([0-9a-f]{32});/)?.[1];assert.ok(previousRequest);
+          const previousGeneration=Number(await H.$(page,'pdf-pane').getAttribute('data-generation'));
+          await H.$(page,'compile').click();
+          // A completed previous attempt is still visible until the click is
+          // processed. Wait for a NEW accepted request and its actual draw.
+          // Same-source recompiles may legitimately reproduce the same PDF hash.
+          await page.waitForFunction(({request,generation})=>{
+            const details=document.querySelector('[data-testid=compile-details]')?.textContent||'';
+            const next=details.match(/Request: ([0-9a-f]{32});/)?.[1],pane=document.querySelector('[data-testid=pdf-pane]');
+            return next&&next!==request&&document.querySelector('[data-testid=compile-panel]')?.dataset.isCurrent==='true'
+              &&/^Compilation finished\./.test(document.querySelector('[data-testid=compile-status]')?.textContent||'')
+              &&/^Idle/.test(document.querySelector('[data-testid=compile-work-status]')?.textContent||'')
+              &&Number(pane?.dataset.generation)>generation&&pane?.dataset.document
+              &&document.querySelector('[data-testid=preview-status]')?.dataset.previewStatus==='Available'
+              &&/Drawn/.test(document.querySelector('[data-testid=canvas-status]')?.textContent||'');
+          },{request:previousRequest,generation:previousGeneration},{timeout:suite?150000:90000});
+          await waitPreviewAvailable(page,90000);phase='online-rendered-review-reconfirmed';
+          return {hash:await H.$(page,'compile-panel').getAttribute('data-output-hash')};
+        }});
+    }
     await page.waitForFunction(() => window.__oopOfflineReady === true, null, { timeout: 90000 });
     record.online.offlineReady = true;
     violations.push(...(await page.evaluate(() => window.__authorCsp || [])));
@@ -1760,6 +1802,12 @@ let profile, base;
       record.coldOffline.sourcePdfNavigation = await sourcePdfNavigation.verify(page, project, MAIN_PATH, BIBER_CASE ? "portable" : CASE === "portable" || PACKAGE_CASE ? CASE : CASE === "golden", phase);
     }
     if (CHECK_DOWNLOADS) {
+      if(RENDERED_REVIEW_CHECKS){
+        phase='offline-rendered-review';
+        record.coldOffline.renderedReview=await renderedReview.verify(page,{project,hash:offlineOutputHash,pages:await pageCount(page),
+          workers:()=>workers.slice(renderedReviewWorkerStart),expected:renderedReviewPreflight,offline:true,
+          previewReady:()=>waitPreviewAvailable(page,90000)});
+      }
       assert.equal((await H.$(page, "pdf-hash").textContent()).trim(), offlineOutputHash);
       assert.deepEqual(await H.head(page, project), offlineSavedHead, "fresh offline compile/render keep saved project head and bytes");
       if (CASE === "font-assets") assertFontHead(offlineSavedHead, Buffer.from(changedSource, "utf8"));
@@ -1777,6 +1825,8 @@ let profile, base;
       await H.$(page, "editor").fill(workingOnly);
       await page.waitForFunction(() => document.querySelector('[data-testid=compile-panel]')?.dataset.isCurrent === 'false', null, { timeout: 30000 });
       await page.waitForFunction(() => /Last successful PDF.*out of date/.test(document.querySelector('[data-testid=compiled-pdf-status]')?.textContent || ''), null, { timeout: 30000 });
+      if(RENDERED_REVIEW_CHECKS)record.coldOffline.renderedReview.sourceStale=await renderedReview.sourceStale(page,
+        {hash:offlineOutputHash,workers:()=>workers.slice(renderedReviewWorkerStart)});
       // Ordinary autosave may commit while the stale preview refreshes. Save
       // through the real UI first, then prove download makes no further save,
       // source mutation, native work or promotion of the stale compiled PDF.

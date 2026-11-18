@@ -26,6 +26,11 @@
       "sha256": "6d1eff16d65e6a2575f68eb3491ac12a1c51b6767202e9bd8ef449c00fcd6918"
     },
     {
+      "name": "scripts/rendered-review-ui-checks.cjs",
+      "length": 35816,
+      "sha256": "bd6d0882064253655e18195b8711cdd07a6522a37c9005f7a1bd1aabb9ae1259"
+    },
+    {
       "name": "scripts/review-ui-helpers.cjs",
       "length": 7726,
       "sha256": "1f5063e1fb36a10b342b9202835dd877e2c4129fa4fd0c6c47e26dd3ddefcd21"
@@ -47,8 +52,8 @@
     },
     {
       "name": "scripts/test-local-authoring-ui.cjs",
-      "length": 126371,
-      "sha256": "3245256c8c84a42f23d2c617bd1c4de71ea02ad52df7e549bb0175503701717a"
+      "length": 130672,
+      "sha256": "175ad1080d38d3799e0ae88e8edaa69f694f30135e96794446d7b3f926beb537"
     },
     {
       "name": "src/Client/wwwroot/icons/icon-192.png",
@@ -2467,24 +2472,24 @@
     }
   ],
   "runtimeProfile": {
-    "profile": 13,
-    "resources": 4357,
-    "totalBytes": 259559615,
-    "closureSha256": "34540765dfd1b5d46666841378221cce0b40204014c4a8c2dc25ddddbe56d1ed"
+    "profile": 16,
+    "resources": 4557,
+    "totalBytes": 262320783,
+    "closureSha256": "8e3fcc0c3255613609a423a5440934b261feee32a5cc73510f4633648b4a135e"
   },
   "pdfRuntime": {
     "resources": [
       {
         "role": "loader",
         "name": "e1.js",
-        "length": 13562,
-        "sha256": "040bdfac50656b3993f622614b73feaaba31d8253d077ff50f925f316c2f5f6b"
+        "length": 14103,
+        "sha256": "968aae4935523f528e2314c4dbd831b2dd326ac8d3de3444fd033b73463b0225"
       },
       {
         "role": "wasm",
         "name": "e1.wasm",
-        "length": 3434939,
-        "sha256": "1637c1a7798cab443334e559045d88f33864d89e0ff02eeb57b3da4f08f37c20"
+        "length": 3716447,
+        "sha256": "8b715ed561ec644757f305ddad0a99ae728c6705f9868e96ccb53c8c9143c4b3"
       }
     ]
   },
