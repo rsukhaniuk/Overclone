@@ -13,7 +13,7 @@ namespace Client.Analysis.RenderedReview;
 /// uncancellable tasks; caller cancellation signals JS but never abandons their
 /// settlement or frees admission. Disposal invalidates synchronously and observes
 /// late cleanup without waiting on a noncooperative import.</summary>
-public sealed class RustRenderedReviewEvaluator(IJSRuntime js) : IRenderedReviewEvaluator
+public sealed class RustRenderedReviewEvaluator(IJSRuntime js) : IRenderedReviewEvaluator, IRenderedCaptionImageEvaluator
 {
     private readonly object _gate = new();
     private readonly CancellationTokenSource _shutdown = new();
@@ -22,9 +22,26 @@ public sealed class RustRenderedReviewEvaluator(IJSRuntime js) : IRenderedReview
     private int _busy;
     private long _lastEpoch;
 
-    public async Task<RenderedReviewEvaluationReply> EvaluateAsync(RenderedReviewRequest request, ReadOnlyMemory<byte> factsUtf8, CancellationToken cancellationToken = default)
+    public Task<RenderedReviewEvaluationReply> EvaluateAsync(RenderedReviewRequest request, ReadOnlyMemory<byte> factsUtf8,
+        CancellationToken cancellationToken = default)
+        => EvaluateTransportAsync(request?.RequestId ?? "", request?.FactsSha256, factsUtf8,
+            () => RenderedReviewJson.Pack(request!), cancellationToken);
+
+    public async Task<RenderedCaptionImageEvaluationReply> EvaluateCaptionImageAsync(RenderedCaptionImageRequest request,
+        CancellationToken cancellationToken = default)
     {
-        string id = request?.RequestId ?? "";
+        var reply = await EvaluateTransportAsync(request?.Review.RequestId ?? "", request?.Review.FactsSha256,
+            request?.FactsUtf8 ?? ReadOnlyMemory<byte>.Empty, () => RenderedCaptionImageJson.Pack(request!),
+            cancellationToken).ConfigureAwait(false);
+        if (reply.Status != RenderedExtentEvaluationStatus.Completed)
+            return new(reply.Status, reply.RequestId, reply.WorkerEpoch);
+        try { return RenderedCaptionImageJson.Parse(request!, reply.WorkerEpoch, reply.ResponseJson!); }
+        catch (JsonException) { return new(RenderedExtentEvaluationStatus.InvalidResponse, reply.RequestId, reply.WorkerEpoch); }
+    }
+
+    private async Task<RenderedReviewEvaluationReply> EvaluateTransportAsync(string id, string? factsSha256,
+        ReadOnlyMemory<byte> factsUtf8, Func<string> pack, CancellationToken cancellationToken)
+    {
         RenderedReviewEvaluationReply End(RenderedExtentEvaluationStatus status) => new(status, id, 0);
         CancellationTokenSource linked;
         CancellationTokenRegistration registration = default;
@@ -41,9 +58,9 @@ public sealed class RustRenderedReviewEvaluator(IJSRuntime js) : IRenderedReview
             if (linked.IsCancellationRequested) return End(RenderedExtentEvaluationStatus.Cancelled);
             if (factsUtf8.Length is < 1 or > RenderedReviewContract.FactsMaxBytes) return End(RenderedExtentEvaluationStatus.InvalidInput);
             var facts = factsUtf8.ToArray(); // Own exact bounded bytes before any await.
-            if (request is null || PdfHashes.Of(facts) != request.FactsSha256) return End(RenderedExtentEvaluationStatus.InvalidInput);
+            if (PdfHashes.Of(facts) != factsSha256) return End(RenderedExtentEvaluationStatus.InvalidInput);
             string json;
-            try { json = RenderedReviewJson.Pack(request!); }
+            try { json = pack(); }
             catch (ArgumentException) { return End(RenderedExtentEvaluationStatus.InvalidInput); }
             var port = await GetPortAsync().ConfigureAwait(false); // Actual transport task; no UI/model continuation or owner capture.
             if (_disposed) return End(RenderedExtentEvaluationStatus.Disposed);
@@ -76,7 +93,7 @@ public sealed class RustRenderedReviewEvaluator(IJSRuntime js) : IRenderedReview
                     return End(RenderedExtentEvaluationStatus.InvalidResponse);
             }
             else if (reply.ResponseJson is not null) return End(RenderedExtentEvaluationStatus.InvalidResponse);
-            return new(status, id, reply.WorkerEpoch, reply.ResponseJson); // Strict body parser is also applied by the controller.
+            return new(status, id, reply.WorkerEpoch, reply.ResponseJson);
         }
         catch (ObjectDisposedException) { return End(_disposed ? RenderedExtentEvaluationStatus.Disposed : RenderedExtentEvaluationStatus.TransportError); }
         catch (OperationCanceledException) { return End(linked.IsCancellationRequested ? RenderedExtentEvaluationStatus.Cancelled : RenderedExtentEvaluationStatus.TransportError); }
