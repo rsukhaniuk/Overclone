@@ -1,0 +1,33 @@
+{
+  "fixtureKind": "synthetic-pdf-genuine-native-facts",
+  "pdf": {
+    "bytes": 1950,
+    "sha256": "843fb66c1642884c0161b227dbc80d5570115c97073cc02a63be80df2774e910"
+  },
+  "batch": {
+    "bytes": 3949,
+    "sha256": "9a2a93779c188130913522d0bc8a141e690aa937b283f1cb7851c9b5aff0ea55"
+  },
+  "capabilities": {
+    "bytes": 334,
+    "sha256": "ebf7308a0af425f479b50910d3e427f341e85ab1f63b9445979a89ea1e206079"
+  },
+  "layout": {
+    "bytes": 1910,
+    "sha256": "e87fec6b57aac51576aeab39b3b22f315617e83a3e9a4c327b081ce28c91eff5"
+  },
+  "objects": {
+    "bytes": 1549,
+    "sha256": "045c3daff92b51288f3b91c5e94d481d16c30c2d4c202b3a297bd7e235ba8c0e"
+  },
+  "runtime": {
+    "loader": {
+      "bytes": 14175,
+      "sha256": "f95ae827b12703999ce1daafebbf6830f5f4d2c14bb7805a8f47abe54772b079"
+    },
+    "wasm": {
+      "bytes": 3725577,
+      "sha256": "2e2126ead8e00ef7c79d21e3836d66957b19e827523f7c054ca887f3c11ae5b7"
+    }
+  }
+}

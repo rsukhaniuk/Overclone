@@ -1,6 +1,7 @@
 //! Bounded, deterministic rendered observations. Native facts are supplied by
 //! the isolated PDF worker; compile/revision authority is checked by C#.
 //! This module performs no IO, fixes, macro execution or compliance certification.
+mod caption_placement;
 pub mod catalog;
 mod classify;
 mod dto;
@@ -39,6 +40,13 @@ fn run(metadata: &str, bytes: &str) -> Result<Value, &'static str> {
     let shape: Value = serde_json::from_str(metadata).map_err(|_| "InvalidInput")?;
     let fact_shape: Value = serde_json::from_str(bytes).map_err(|_| "InvalidFacts")?;
     dto::object_shapes(&shape, &fact_shape)?;
+    let payload = &shape["payload"];
+    if payload["profile"]["version"] == caption_placement::PROFILE_VERSION {
+        return caption_placement::run(metadata, bytes, payload, &fact_shape);
+    }
+    if payload.get("captionImagePair").is_some() {
+        return Err("InvalidInput");
+    }
     // deny_unknown_fields additionally rejects duplicate known fields, including
     // fields which Value parsing alone would silently overwrite.
     let request: Request = serde_json::from_str(metadata).map_err(|_| "InvalidInput")?;

@@ -25,6 +25,7 @@ pub struct Payload {
     pub requested_pages: Vec<u16>,
     pub annotations: Vec<Annotation>,
     pub facts_sha256: String,
+    pub caption_image_pair: Option<super::caption_placement::Pair>,
 }
 #[derive(Deserialize, Serialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -94,7 +95,7 @@ pub struct Facts {
     pub complete: bool,
     pub limitations: Vec<String>,
 }
-#[derive(Deserialize)]
+#[derive(Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct UserUnit {
     pub status: String,
@@ -130,7 +131,7 @@ pub fn hex(s: &str, n: usize) -> bool {
         && s.bytes()
             .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
 }
-fn number(n: f64) -> bool {
+pub(super) fn number(n: f64) -> bool {
     n.is_finite() && n.abs() <= 1_000_000.0
 }
 fn rect(a: &[f64; 4]) -> bool {
@@ -147,6 +148,13 @@ fn code(s: &str) -> bool {
 }
 impl Request {
     pub fn validate(&self, batch: &FactBatch) -> Result<(), &'static str> {
+        self.validate_profile(batch, "1.0.0")
+    }
+    pub(super) fn validate_profile(
+        &self,
+        batch: &FactBatch,
+        version: &str,
+    ) -> Result<(), &'static str> {
         let p = &self.payload;
         if self.protocol_version != 1
             || self.operation != "evaluateRenderedReview"
@@ -167,7 +175,7 @@ impl Request {
                 }
             })
             || p.profile.id != "knu-csc-2025-rendered-review"
-            || p.profile.version != "1.0.0"
+            || p.profile.version != version
             || !matches!(
                 p.work_type.as_str(),
                 "unspecified" | "coursework" | "bachelorQualification" | "masterQualification"
@@ -450,12 +458,13 @@ pub fn object_shapes(request: &Value, facts: &Value) -> Result<(), &'static str>
 
 // The optional serde fields distinguish versions, not absent-vs-null wire
 // fields. Require every native field explicitly, including v2 uncertainty:null.
+pub(super) fn exact_keys(value: &Value, keys: &[&str]) -> bool {
+    value
+        .as_object()
+        .is_some_and(|o| o.len() == keys.len() && keys.iter().all(|key| o.contains_key(*key)))
+}
+
 fn layout_version_shape(page: &Value) -> bool {
-    fn exact(value: &Value, keys: &[&str]) -> bool {
-        value
-            .as_object()
-            .is_some_and(|o| o.len() == keys.len() && keys.iter().all(|key| o.contains_key(*key)))
-    }
     let c = &page["capabilities"];
     let f = &page["facts"];
     let v = c["schemaVersion"].as_u64();
@@ -489,8 +498,8 @@ fn layout_version_shape(page: &Value) -> bool {
         character.push("inkUncertainty");
     }
     if !matches!(v, Some(1 | 2))
-        || !exact(c, &cap)
-        || !exact(
+        || !exact_keys(c, &cap)
+        || !exact_keys(
             f,
             &[
                 "schemaVersion",
@@ -506,16 +515,16 @@ fn layout_version_shape(page: &Value) -> bool {
                 "limitations",
             ],
         )
-        || !exact(&f["userUnit"], &["status", "value", "method"])
+        || !exact_keys(&f["userUnit"], &["status", "value", "method"])
     {
         return false;
     }
     f["characters"].as_array().is_some_and(|chars| {
         chars.iter().all(|ch| {
-            exact(ch, &character)
+            exact_keys(ch, &character)
                 && (v != Some(2)
                     || ch["inkUncertainty"].is_null()
-                    || exact(&ch["inkUncertainty"], &["absoluteErrorRaw", "method"]))
+                    || exact_keys(&ch["inkUncertainty"], &["absoluteErrorRaw", "method"]))
         })
     })
 }
