@@ -1,7 +1,6 @@
-//! Opt-in 1.5/1.6 adapter. Reuses unchanged 1.4 results and the same bounded lexer
-//! tokens/argument ownership. Edition 1.6 additionally observes literal citation
-//! postnotes; 1.5 keeps its original grammar. No macro expansion, bibliography backend,
-//! PDF or authored-content fix.
+//! Opt-in thesis source observations using unchanged 1.4 results and the same
+//! bounded lexer and argument ownership. Edition 1.6 observes literal citation
+//! postnotes. Edition 1.7 adds the pinned project caption context.
 use super::{
     dto::*,
     lexer::{LookaheadBudget, LookaheadResult},
@@ -11,6 +10,9 @@ use serde::Serialize;
 use serde_json::{json, Value};
 use std::collections::{BTreeSet, HashMap, HashSet};
 
+mod project_caption_roles;
+use project_caption_roles::{CaptionContext, Environment as CaptionEnvironment};
+
 pub(super) const CITATION_NOTES_VERSION: &str = "1.6.0";
 const LEGACY_VERSION: &str = "1.5.0";
 const LEGACY_CATALOG_VERSION: &str = "1.0.0";
@@ -19,7 +21,10 @@ const CITATION_NOTES_CATALOG_VERSION: &str = "1.1.0";
 const MAX_CITATION_NOTE_BYTES: usize = 512;
 
 pub(super) fn supports_version(version: &str) -> bool {
-    matches!(version, LEGACY_VERSION | CITATION_NOTES_VERSION)
+    matches!(
+        version,
+        LEGACY_VERSION | CITATION_NOTES_VERSION | project_caption_roles::VERSION
+    )
 }
 
 const IDS: [&str; 5] = [
@@ -159,6 +164,11 @@ fn run(metadata: &str, packed: &[u8], p: AnalyzePayload) -> Result<(Value, usize
     // brace/quote-aware .bib reader. This profile adds observations, not a parser.
     let mut project = crate::authoring::project::Project::new(&p.files, bytes.clone(), limits);
     project.visit(root, 0)?;
+    let caption_context = if p.profile.version == project_caption_roles::VERSION {
+        CaptionContext::recognize(root, &project)?
+    } else {
+        None
+    };
     let mut pass = Pass {
         p: &p,
         result: &result,
@@ -182,14 +192,18 @@ fn run(metadata: &str, packed: &[u8], p: AnalyzePayload) -> Result<(Value, usize
         class_seen: false,
         document_seen: false,
         document_closed: false,
+        caption_context,
     };
     for code in &project.limitations {
-        // These two generic assistance limitations are handled by this narrower
-        // observer (manual bibitems/captions are known here; duplicates are facts).
-        if !matches!(
-            *code,
-            "macroExecutionUnsupported" | "duplicateBibliographyKey"
-        ) {
+        let resolved = match *code {
+            // The thesis pass observes manual bibitems, captions and duplicate keys.
+            "macroExecutionUnsupported" | "duplicateBibliographyKey" => true,
+            // For 1.7 the exact preamble recognizes the one unlisted package
+            // in this closure. Every other package/scope limitation still applies.
+            "unknownPackage" => pass.caption_context.is_some(),
+            _ => false,
+        };
+        if !resolved {
             pass.limitations.insert(*code);
         }
     }
@@ -282,6 +296,7 @@ struct Pass<'a> {
     class_seen: bool,
     document_seen: bool,
     document_closed: bool,
+    caption_context: Option<CaptionContext>,
 }
 impl Pass<'_> {
     fn charge(&mut self, n: usize) -> Result<(), &'static str> {
@@ -332,6 +347,12 @@ impl Pass<'_> {
             return Ok(());
         }
         self.visited[file] = 1;
+        let inherited_env_count = self.envs.len();
+        if let Some(context) = self.caption_context.as_mut() {
+            if depth > 0 && (inherited_env_count != 1 || self.envs[0].0 != "document") {
+                context.refuse_scope();
+            }
+        }
         let bytes = self.bytes[file];
         let facts = &self.result.facts.files[file];
         if facts.truncated || facts.brace_depth_exceeded {
@@ -380,6 +401,17 @@ impl Pass<'_> {
                 continue;
             } // lexer-owned verbatim
             let name = std::str::from_utf8(&raw[1..]).map_err(|_| "InvalidInput")?;
+            // This is the same root traversal. Only the two exact initial
+            // package declarations validated by the 1.7 capability own their
+            // optional and mandatory groups here.
+            if let Some(end) = self
+                .caption_context
+                .as_ref()
+                .and_then(|c| c.package_end(file, t.start_byte))
+            {
+                owned_end = end;
+                continue;
+            }
             if name != "documentclass"
                 && name != "begin"
                 && (!self.document_seen || self.document_closed)
@@ -387,7 +419,7 @@ impl Pass<'_> {
                 self.limitations.insert("outsideDocumentExecution");
             }
             let mut next = i + 1;
-            if name == "cite" && self.p.profile.version == CITATION_NOTES_VERSION {
+            if name == "cite" && self.p.profile.version != LEGACY_VERSION {
                 let (after_notes, end, literal) =
                     citation_notes(tokens, bytes, next, t.end_byte as usize, &mut work)?;
                 next = after_notes;
@@ -593,11 +625,16 @@ impl Pass<'_> {
                     if let Some((a, b, end)) = arg()? {
                         owned_end = end as u64;
                         if let Some((env, count)) = self.envs.last_mut() {
-                            if matches!(env.as_str(), "figure" | "table")
-                                && (bytes[a..b].trim_ascii().is_empty()
-                                    || literal_title(&bytes[a..b]))
+                            if let Some(environment) =
+                                CaptionEnvironment::from_name(env).filter(|_| {
+                                    bytes[a..b].trim_ascii().is_empty()
+                                        || literal_title(&bytes[a..b])
+                                })
                             {
                                 *count += 1;
+                                if let Some(context) = self.caption_context.as_mut() {
+                                    context.record(self.events.len(), environment, *count);
+                                }
                                 self.emit(
                                     file,
                                     "captionTitle",
@@ -670,6 +707,11 @@ impl Pass<'_> {
                     self.limitations
                         .insert("macroOrPackageExecutionUnsupported");
                 }
+            }
+        }
+        if depth > 0 && self.envs.len() != inherited_env_count {
+            if let Some(context) = self.caption_context.as_mut() {
+                context.refuse_scope();
             }
         }
         self.visited[file] = 2;
@@ -769,8 +811,15 @@ impl Pass<'_> {
                 "literal-caption-title-present",
             ),
         ];
-        let catalog: Value =
-            serde_json::from_str(crate::thesis_catalog::JSON).map_err(|_| "InternalError")?;
+        let (catalog_version, catalog_json) = match self.p.profile.version.as_str() {
+            project_caption_roles::VERSION => (
+                project_caption_roles::CATALOG_VERSION,
+                crate::thesis_catalog::CAPTION_ROLES_JSON,
+            ),
+            CITATION_NOTES_VERSION => (CITATION_NOTES_CATALOG_VERSION, crate::thesis_catalog::JSON),
+            _ => (LEGACY_CATALOG_VERSION, crate::thesis_catalog::JSON),
+        };
+        let catalog: Value = serde_json::from_str(catalog_json).map_err(|_| "InternalError")?;
         for (id, (bad, observed, method)) in IDS.iter().zip(conditions) {
             let appendix_scope = appendix_citations
                 && matches!(*id, "KNU-SRC-CITATIONS-001" | "KNU-SRC-BIBLIOGRAPHY-001");
@@ -792,9 +841,14 @@ impl Pass<'_> {
                 "citation":catalog["rules"].as_array().ok_or("InternalError")?.iter().find(|r|r["ruleId"]==*id).ok_or("InternalError")?["citation"],
                 "evidenceIndexes":(0..self.events.len()).collect::<Vec<_>>()}));
         }
-        Ok(
-            json!({"schemaVersion":1,"catalogId":"knu-csc-2025-thesis-support","catalogVersion":if self.p.profile.version == CITATION_NOTES_VERSION {CITATION_NOTES_CATALOG_VERSION}else{LEGACY_CATALOG_VERSION},
-            "guidelineSha256":profiles::SHA256,"rootFileId":self.p.reference_configuration.as_ref().ok_or("InvalidInput")?.root_file_id,
+        let root_file_id = &self
+            .p
+            .reference_configuration
+            .as_ref()
+            .ok_or("InvalidInput")?
+            .root_file_id;
+        let mut report = json!({"schemaVersion":1,"catalogId":"knu-csc-2025-thesis-support","catalogVersion":catalog_version,
+            "guidelineSha256":profiles::SHA256,"rootFileId":root_file_id,
             "workType":self.p.configuration.as_ref().ok_or("InvalidInput")?.work_type,
             "domain":"sourceObservation","globalCoverage":"incomplete","renderedCompliance":"notAssessed",
             "completeLiteralScan":self.limitations.is_empty(),"limitations":self.limitations,
@@ -803,8 +857,17 @@ impl Pass<'_> {
             "firstLiteralCitationKeys":cites,
             "unavailableCells":[{"ruleId":"KNU-STRUCTURE-001","reason":"semantic-content-and-signatures-unavailable"},
                 {"ruleId":"KNU-ABSTRACT-001","reason":"semantic-abstract-classification-unavailable"}],
-            "workTypeDependentTitle":if self.p.configuration.as_ref().is_some_and(|c|c.work_type==super::knu_dto::WorkType::Unspecified){"unavailable-work-type"}else if self.p.configuration.as_ref().is_some_and(|c|c.work_type==super::knu_dto::WorkType::Coursework){"not-applicable-coursework"}else{"unavailable-title-metadata"}}),
-        )
+            "workTypeDependentTitle":if self.p.configuration.as_ref().is_some_and(|c|c.work_type==super::knu_dto::WorkType::Unspecified){"unavailable-work-type"}else if self.p.configuration.as_ref().is_some_and(|c|c.work_type==super::knu_dto::WorkType::Coursework){"not-applicable-coursework"}else{"unavailable-title-metadata"}});
+        if self.p.profile.version == project_caption_roles::VERSION {
+            CaptionContext::add_report_fields(
+                self.caption_context.as_ref(),
+                &mut report,
+                &self.events,
+                self.limitations.is_empty(),
+                root_file_id,
+            );
+        }
+        Ok(report)
     }
 }
 

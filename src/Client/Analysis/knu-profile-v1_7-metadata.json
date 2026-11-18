@@ -1,0 +1,197 @@
+{
+  "approvedUrl": "https://csc.knu.ua/uk/filer/canonical/1740300611/2680/",
+  "guidelineSha256": "8be4d724ac108488e6b1766322e7fd6b3646412aa2b6de12b6945f48fb380714",
+  "guidelineTitle": "Методичні вказівки з підготовки та оформлення кваліфікаційних та курсових робіт для студентів факультету комп’ютерних наук та кібернетики. Т. О. Карнаух, Л. Л. Омельчук, А. Б. Ставровський. Київ, 2025. 58 с.",
+  "limitations": [
+    "Faculty-specific, not university-wide certification",
+    "PDF page 1 is the unnumbered title; PDF pages 2–58 match printed numbers",
+    "Pass covers observed literals only, never rendered compliance or real-thesis acceptance"
+  ],
+  "profile": {
+    "id": "knu-csc-2025-source",
+    "version": "1.7.0"
+  },
+  "rules": [
+    {
+      "applicableWorkTypes": [
+        "unspecified",
+        "coursework",
+        "bachelorQualification",
+        "masterQualification"
+      ],
+      "citation": {
+        "pdfPages": [
+          18
+        ],
+        "printedPages": [
+          18
+        ],
+        "section": "3.1"
+      },
+      "evaluationDomain": "sourceObservation",
+      "expected": "12.7 mm (1.27 cm); rendered uniformity unverified",
+      "limitations": [
+        "Finite syntax/context allowlist; no macro expansion or include resolution",
+        "Source observation only; rendered layout unverified"
+      ],
+      "origin": "knu",
+      "ruleId": "KNU-SRC-PARINDENT-001",
+      "severity": "warning",
+      "severityRationale": "Mandatory requirement, but literal source intent is not effective TeX state or rendered compliance",
+      "supportedSyntax": "Top-level unstarred setlength with parindent target and nonnegative decimal mm/cm; <=9 digits and <=3 fractional digits",
+      "version": "1.0.0"
+    },
+    {
+      "applicableWorkTypes": [
+        "unspecified",
+        "coursework",
+        "bachelorQualification",
+        "masterQualification"
+      ],
+      "citation": {
+        "pdfPages": [
+          18,
+          19
+        ],
+        "printedPages": [
+          18,
+          19
+        ],
+        "section": "3.2"
+      },
+      "evaluationDomain": "sourceObservation",
+      "expected": "No terminal U+002E in a literal heading title",
+      "limitations": [
+        "Finite syntax/context allowlist; no macro expansion or include resolution",
+        "Source observation only; rendered layout unverified"
+      ],
+      "origin": "knu",
+      "ruleId": "KNU-SRC-HEADING-DOT-001",
+      "severity": "warning",
+      "severityRationale": "Mandatory requirement, but literal source intent is not effective TeX state or rendered compliance",
+      "supportedSyntax": "Top-level chapter/section/subsection/subsubsection/paragraph/subparagraph, optional one star, immediate literal short title and literal display title",
+      "version": "1.0.0"
+    },
+    {
+      "applicableWorkTypes": [
+        "unspecified",
+        "coursework",
+        "bachelorQualification",
+        "masterQualification"
+      ],
+      "citation": {
+        "pdfPages": [
+          18
+        ],
+        "printedPages": [
+          18
+        ],
+        "section": "3.1"
+      },
+      "evaluationDomain": "sourceObservation",
+      "expected": "At least top/bottom 20 mm, left 25 mm, right 10 mm; no upper bound; rendered geometry unverified",
+      "limitations": [
+        "Finite syntax/context allowlist; no macro expansion or include resolution",
+        "All four explicit unique sides required; unknown packages/options, dynamic or nested syntax, duplicate imports/declarations and mixed option/command declarations are indeterminate; no precedence inference",
+        "Source observation only; rendered layout unverified; one eligible literal side may be proposed for explicit review"
+      ],
+      "origin": "knu",
+      "ruleId": "KNU-SRC-MARGINS-001",
+      "severity": "warning",
+      "severityRationale": "Mandatory minimum margins, but literal source intent is not effective TeX state or rendered compliance",
+      "supportedSyntax": "Top-level unstarred geometry with four explicit literal side options; or one preamble usepackage{geometry} followed by one geometry declaration; or one usepackage[left/right/top/bottom options]{geometry}. Same nonnegative decimal mm/cm grammar, <=9 digits, <=3 fractional digits and <=4096 argument bytes; immediate lexer-owned optional argument only",
+      "version": "1.2.0"
+    },
+    {
+      "applicableWorkTypes": [
+        "unspecified",
+        "coursework",
+        "bachelorQualification",
+        "masterQualification"
+      ],
+      "citation": {
+        "pdfPages": [
+          18
+        ],
+        "printedPages": [
+          18
+        ],
+        "section": "3.1"
+      },
+      "evaluationDomain": "sourceObservation",
+      "expected": "Declared A4 intent; A3 requires illustration purpose that source size alone cannot establish",
+      "limitations": [
+        "Missing/dynamic/unknown paper syntax, repeated declarations and custom classes are indeterminate; A3 illustration purpose is never inferred; physical sheet size is unverified",
+        "Finite bounded syntax and ownership only; unknown commands, conditions and unresolved includes preserve uncertainty. No automatic fix"
+      ],
+      "origin": "knu",
+      "ruleId": "KNU-SRC-PAPER-001",
+      "severity": "warning",
+      "severityRationale": "Mandatory guideline category, but declared literal source intent is not effective TeX state or physical PDF compliance",
+      "supportedSyntax": "Standard article/report/book immediate documentclass options a4paper/a3paper/a5paper/b5paper/letterpaper/legalpaper/executivepaper; geometry command or geometry package options with those names or paper=a4/a3/a5/b5/letter/legal/executive. Example: documentclass[a4paper]{article}",
+      "version": "1.0.0"
+    },
+    {
+      "applicableWorkTypes": [
+        "unspecified",
+        "coursework",
+        "bachelorQualification",
+        "masterQualification"
+      ],
+      "citation": {
+        "pdfPages": [
+          18
+        ],
+        "printedPages": [
+          18
+        ],
+        "section": "3.1"
+      },
+      "evaluationDomain": "sourceObservation",
+      "expected": "Declared one-and-a-half spacing intent, not measured line/baseline geometry",
+      "limitations": [
+        "onehalfspacing expresses conventional setspace intent (requires one plain preamble setspace import); setstretch also requires that import. linespread/baselinestretch declare nominal factors, not equivalent measured geometry. Missing/custom/dynamic/repeated declarations are indeterminate; fonts, glyph heights and effective baselines are not measured",
+        "Finite bounded syntax and ownership only; unknown commands, conditions and unresolved includes preserve uncertainty. No automatic fix"
+      ],
+      "origin": "knu",
+      "ruleId": "KNU-SRC-LINE-SPACING-001",
+      "severity": "warning",
+      "severityRationale": "Mandatory guideline category, but declared literal source intent is not effective TeX state or physical PDF compliance",
+      "supportedSyntax": "Top-level unstarred onehalfspacing; setstretch{1.5}; linespread{1.5}; renewcommand{\\baselinestretch}{1.5}. Literal nonnegative decimal scalar, <=9 digits and <=3 fractional digits; no units. Example: usepackage{setspace} followed by onehalfspacing",
+      "version": "1.0.0"
+    },
+    {
+      "applicableWorkTypes": [
+        "unspecified",
+        "coursework",
+        "bachelorQualification",
+        "masterQualification"
+      ],
+      "citation": {
+        "pdfPages": [
+          21,
+          22,
+          23
+        ],
+        "printedPages": [
+          21,
+          22,
+          23
+        ],
+        "section": "3.7; 3.8"
+      },
+      "evaluationDomain": "sourceObservation",
+      "expected": "No terminal U+002E in a supported literal figure/table caption title",
+      "limitations": [
+        "Starred captions, optional short titles and float placement arguments are indeterminate; nested/custom environments, dynamic titles, comments inside titles and macro/conditional context are not interpreted. No numbering, prefix, placement, caption presence or rendered layout inference",
+        "Finite bounded syntax and ownership only; unknown commands, conditions and unresolved includes preserve uncertainty. No automatic fix"
+      ],
+      "origin": "knu",
+      "ruleId": "KNU-SRC-CAPTION-DOT-001",
+      "severity": "warning",
+      "severityRationale": "Mandatory guideline category, but declared literal source intent is not effective TeX state or physical PDF compliance",
+      "supportedSyntax": "Unstarred caption{literal title} directly inside one ordinary figure or table in document, without placement arguments. Example: begin{figure} caption{Назва.} end{figure}; exact terminal dot only",
+      "version": "1.0.0"
+    }
+  ]
+}

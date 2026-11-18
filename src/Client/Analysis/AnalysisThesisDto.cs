@@ -18,6 +18,12 @@ public sealed record AnalysisThesisRuleDto(
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 public sealed record AnalysisThesisUnavailableDto(string RuleId, string Reason);
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
+public sealed record AnalysisThesisCaptionRoleDto(int EventIndex, string FileId, AnalysisSpanDto Span,
+    string Environment, string Method, string ContextRootFileId);
+[JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
+public sealed record AnalysisThesisCaptionRoleCapabilityDto(string Id, int RuntimeProfile,
+    string RuntimeClosureSha256, string SourcePinsSha256);
+[JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 public sealed record AnalysisThesisDto(
     int SchemaVersion, string CatalogId, string CatalogVersion, string GuidelineSha256,
     string RootFileId, AnalysisWorkType WorkType, string Domain,
@@ -27,4 +33,9 @@ public sealed record AnalysisThesisDto(
     ImmutableArray<AnalysisThesisRuleDto> RuleResults,
     ImmutableArray<AnalysisThesisUnavailableDto> UnavailableCells,
     string WorkTypeDependentTitle, string BibliographyMode,
-    ImmutableArray<string> FirstLiteralCitationKeys);
+    ImmutableArray<string> FirstLiteralCitationKeys)
+{
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public ImmutableArray<AnalysisThesisCaptionRoleDto> CaptionRoles { get; init; }
+    public AnalysisThesisCaptionRoleCapabilityDto? CaptionRoleCapability { get; init; }
+}

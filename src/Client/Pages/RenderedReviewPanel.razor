@@ -129,7 +129,13 @@
         {
             <details data-testid="rendered-source-binding-panel">
                 <summary>Match analyzed text in the current PDF</summary>
-                <p>First run the KNU source analysis with the same main file and work type as this review. Select a literal heading or caption below, then check its text and source location against the current PDF. This does not establish a whole section, illustration bounds or compliance.</p>
+                <p>Run the KNU source analysis with the same main file and work type as this review. Select an observation to match its text against the current PDF.</p>
+                @if (UsesProjectCaptionRoles)
+                {
+                    <p>Profile 1.7 matches Ukrainian caption titles in the main file and literal includes for supported pdfLaTeX projects containing only TeX source files.</p>
+                    @if (!SourceCandidates.Any())
+                    { <p role="status">No caption titles met the project context needed for a PDF match.</p> }
+                }
                 <label>Source observation
                     <select data-testid="rendered-source-event" value="@SourceChoice" @onchange="SourceEventChanged" disabled="@_controller.Busy">
                         <option value="">Choose analyzed text</option>
@@ -277,10 +283,18 @@
         _shownProject = Workspace.Project?.Id; _shownSession = Workspace.SessionId; _shownWorkType = _controller.WorkType;
         _controller.Changed += Changed;
     }
-    private IEnumerable<(AnalysisThesisEventDto Event, int Index)> SourceCandidates => SourceReport?.Result.Thesis is { } thesis && !thesis.Events.IsDefault
-        ? thesis.Events.Select((item, index) => (Event: item, Index: index))
-            .Where(item => item.Event.Kind is "captionTitle" or "introduction" or "conclusions" or "references" or "appendix")
-        : [];
+    private bool UsesProjectCaptionRoles => SourceReport?.Result.Profile.Version == AnalysisCatalog.CaptionRolesVersion;
+    private IEnumerable<(AnalysisThesisEventDto Event, int Index)> SourceCandidates
+    {
+        get
+        {
+            if (SourceReport?.Result.Thesis is not { } thesis || thesis.Events.IsDefault) return [];
+            if (UsesProjectCaptionRoles)
+                return thesis.CaptionRoles.IsDefault ? [] : thesis.CaptionRoles.Select(role => (thesis.Events[role.EventIndex], role.EventIndex));
+            return thesis.Events.Select((item, index) => (Event: item, Index: index))
+                .Where(item => item.Event.Kind is "captionTitle" or "introduction" or "conclusions" or "references" or "appendix");
+        }
+    }
     private string SourceChoice => _sourceDraft is { } draft && ReferenceEquals(draft.Report, SourceReport)
         ? draft.Index.ToString(CultureInfo.InvariantCulture) : "";
     private bool CanMatchSource => !_draftChanged && _controller.CanBindSourceEvent && _sourceDraft is { } draft

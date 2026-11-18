@@ -3,6 +3,7 @@
 pub const VERSION: &str = "1.1.0";
 pub const SOURCE_PROFILE_VERSION: &str = "1.6.0";
 pub const JSON: &str = include_str!("thesis_catalog/catalog.json");
+pub(crate) const CAPTION_ROLES_JSON: &str = include_str!("thesis_catalog/catalog_v1_7.json");
 
 #[cfg(test)]
 mod tests {

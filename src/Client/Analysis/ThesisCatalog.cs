@@ -9,6 +9,7 @@ public static class ThesisCatalog
 {
     public const string Id = "knu-csc-2025-thesis-support", Version = "1.0.0";
     public const string CitationNotesVersion = "1.1.0";
+    public const string CaptionRolesVersion = "1.2.0";
     public const string GuidelineSha256 = "8be4d724ac108488e6b1766322e7fd6b3646412aa2b6de12b6945f48fb380714";
     private const string ResourceSha256 = "c629ac2804d0d8c8f36c8ed7361242d032c39a5789fba6d2ea00f575219678dc";
     private static readonly Lazy<ImmutableArray<JsonElement>> Bundled = new(() => Load(
@@ -16,17 +17,22 @@ public static class ThesisCatalog
     private static readonly Lazy<ImmutableArray<JsonElement>> CitationNotes = new(() => Load(
         "thesis-support-catalog-v1_6.json", CitationNotesVersion, AnalysisCatalog.CitationNotesVersion,
         "6d88a14c64cb0696ee9a5419be8cddc2891cfb491a2566bfad0c6d4ec3d8646d"));
+    private static readonly Lazy<ImmutableArray<JsonElement>> CaptionRoles = new(() => Load(
+        "thesis-support-catalog-v1_7.json", CaptionRolesVersion, AnalysisCatalog.CaptionRolesVersion,
+        "50e30f785347c3fc9ff00189d7a51a1f4b0d2bd7ee8f75d2b5d548f414c09707"));
     public static ImmutableArray<JsonElement> Rows => Bundled.Value;
     public static string VersionForProfile(string profileVersion) => profileVersion switch
     {
         AnalysisCatalog.ThesisVersion => Version,
         AnalysisCatalog.CitationNotesVersion => CitationNotesVersion,
+        AnalysisCatalog.CaptionRolesVersion => CaptionRolesVersion,
         _ => throw new JsonException("Unknown thesis source profile version."),
     };
     public static ImmutableArray<JsonElement> RowsForCatalog(string catalogVersion) => catalogVersion switch
     {
         Version => Rows,
         CitationNotesVersion => CitationNotes.Value,
+        CaptionRolesVersion => CaptionRoles.Value,
         _ => throw new JsonException("Unknown thesis source catalog version."),
     };
     public static ImmutableArray<string> RuleIds { get; } = [

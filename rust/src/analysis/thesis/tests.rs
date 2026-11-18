@@ -1,6 +1,8 @@
 //! Synthetic thesis fixtures only. Pure source/wire checks, not PDF/browser evidence.
 #[path = "citation_notes.rs"]
 mod citation_notes;
+#[path = "project_caption_roles_tests.rs"]
+mod project_caption_roles;
 #[path = "qualifiers.rs"]
 mod qualifiers;
 #[path = "vectors.rs"]

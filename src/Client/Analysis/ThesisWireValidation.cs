@@ -56,7 +56,10 @@ internal static class ThesisWireValidation
         var profileVersion = p.GetProperty("profile").GetProperty("version").GetString()!;
         Need(JsonElement.DeepEquals(p.GetProperty("knu").GetProperty("metadata"), AnalysisCatalog.MetadataFor(profileVersion)));
         var t = p.GetProperty("thesis");
-        Fields(t, "schemaVersion catalogId catalogVersion guidelineSha256 rootFileId workType domain globalCoverage renderedCompliance completeLiteralScan limitations closureFileIds events ruleResults unavailableCells workTypeDependentTitle bibliographyMode firstLiteralCitationKeys");
+        const string fields = "schemaVersion catalogId catalogVersion guidelineSha256 rootFileId workType domain globalCoverage renderedCompliance completeLiteralScan limitations closureFileIds events ruleResults unavailableCells workTypeDependentTitle bibliographyMode firstLiteralCitationKeys";
+        bool captionRoles = profileVersion == AnalysisCatalog.CaptionRolesVersion;
+        Fields(t, captionRoles ? fields + " captionRoles captionRoleCapability" : fields);
+        if (captionRoles) CaptionRoleShape(t);
         foreach (var name in new[] { "catalogId", "catalogVersion", "guidelineSha256", "rootFileId", "workType", "domain", "globalCoverage", "renderedCompliance", "workTypeDependentTitle", "bibliographyMode" }) Text(t, name, 128);
         Need(t.GetProperty("catalogVersion").GetString() == ThesisCatalog.VersionForProfile(profileVersion));
         Need(t.GetProperty("schemaVersion").TryGetInt32(out var schema) && schema == 1);
@@ -78,6 +81,30 @@ internal static class ThesisWireValidation
             Items(r.GetProperty("evidenceIndexes"),1000,v=>Need(v.TryGetInt32(out var index)&&index is >=0 and <1000));
         });
         Items(t.GetProperty("unavailableCells"),2,c=>{Fields(c,"ruleId reason"); Text(c,"ruleId",128);Text(c,"reason",128);});
+    }
+
+    private static void CaptionRoleShape(JsonElement thesis)
+    {
+        var capability = thesis.GetProperty("captionRoleCapability");
+        if (capability.ValueKind != JsonValueKind.Null)
+        {
+            Fields(capability, "id runtimeProfile runtimeClosureSha256 sourcePinsSha256");
+            Text(capability, "id", 128);
+            Text(capability, "runtimeClosureSha256", 64);
+            Text(capability, "sourcePinsSha256", 64);
+            Need(capability.GetProperty("runtimeProfile").TryGetInt32(out var profile)
+                && profile == ThesisCaptionRoleCapability.Expected.RuntimeProfile);
+        }
+        Items(thesis.GetProperty("captionRoles"), 1000, role =>
+        {
+            Fields(role, "eventIndex fileId span environment method contextRootFileId");
+            Need(role.GetProperty("eventIndex").TryGetInt32(out var index) && index is >= 0 and < 1000);
+            Text(role, "fileId", 128);
+            Text(role, "environment", 16);
+            Text(role, "method", 64);
+            Text(role, "contextRootFileId", 128);
+            SpanShape(role.GetProperty("span"));
+        });
     }
 
     // A bounded legacy-format view reuses the exact accepted 1.4 guards. It does
@@ -125,6 +152,7 @@ internal static class ThesisWireValidation
             Need(facts.TryGetValue(e.FileId,out var f)); KnuWireValidation.Span(e.Span,f!.ByteLength);
             Need(e.Kind=="bibliographyKey" || closure.Contains(e.FileId));
         }
+        ValidateCaptionRoles(t, r.Profile.Version);
         Need(t.RuleResults.Length==5);
         bool appendix=t.Events.Any(e=>e.Appendix && e.Kind is "cite" or "bibitem");
         bool external=t.Events.Any(e=>e.Kind=="externalBibliography");
@@ -153,6 +181,34 @@ internal static class ThesisWireValidation
         Need(t.BibliographyMode is "none" or "manual" or "external" or "mixed");
         Need(t.BibliographyMode==(external?(t.Events.Any(e=>e.Kind=="bibitem"&&!e.Appendix)?"mixed":"external"):(t.Events.Any(e=>e.Kind=="bibitem"&&!e.Appendix)?"manual":"none")));
         Need(t.FirstLiteralCitationKeys.SequenceEqual(t.Events.Where(e=>e.Kind=="cite"&&!e.Appendix).Select(e=>e.Text).Distinct(StringComparer.Ordinal)));
+    }
+
+    private static void ValidateCaptionRoles(AnalysisThesisDto thesis, string profileVersion)
+    {
+        if (profileVersion != AnalysisCatalog.CaptionRolesVersion)
+        {
+            Need(thesis.CaptionRoles.IsDefault && thesis.CaptionRoleCapability is null);
+            return;
+        }
+        Need(!thesis.CaptionRoles.IsDefault && thesis.CaptionRoles.Length <= 1000);
+        if (thesis.CaptionRoles.IsEmpty)
+        {
+            Need(thesis.CaptionRoleCapability is null);
+            return;
+        }
+        Need(thesis.CompleteLiteralScan && thesis.CaptionRoleCapability == ThesisCaptionRoleCapability.Expected);
+        int previousIndex = -1;
+        var uniqueSpans = new HashSet<(string, AnalysisSpanDto)>();
+        foreach (var role in thesis.CaptionRoles)
+        {
+            Need(role.EventIndex > previousIndex && role.EventIndex < thesis.Events.Length);
+            var caption = thesis.Events[role.EventIndex];
+            Need(caption.Kind == "captionTitle" && role.FileId == caption.FileId && role.Span == caption.Span
+                && caption.Span.StartByte < caption.Span.EndByte && !string.IsNullOrWhiteSpace(caption.Text)
+                && role.ContextRootFileId == thesis.RootFileId && role.Environment is "figure" or "table"
+                && role.Method == ThesisCaptionRoleCapability.Method && uniqueSpans.Add((role.FileId, role.Span)));
+            previousIndex = role.EventIndex;
+        }
     }
     // Coverage links only: consume evaluator-labelled roles, do not classify
     // source text, resolve keys, compare order, letters, lengths or typography.
@@ -222,6 +278,8 @@ internal static class ThesisWireValidation
         Need(r.SnapshotId==s.Id.ToString() && r.Profile.Id==s.Profile.Id && r.Profile.Version==s.Profile.Version
             && r.Configuration==s.Configuration && r.ReferenceConfiguration==s.ReferenceConfiguration);
         Need(t.Events.Length+(long)r.Diagnostics.Count<=s.Limits.MaxDiagnosticsPerProject);
+        if (t.CaptionRoleCapability is not null)
+            Need(s.Files.All(f => ThesisCaptionRoleCapability.IsContextFile(f.RelativePath)));
         var files=s.Files.ToDictionary(f=>f.FileId.ToString(),StringComparer.Ordinal);
         foreach(var id in t.ClosureFileIds)Need(files.TryGetValue(id,out var f)&&AnalysisCatalog.IsTex(f.RelativePath));
         foreach(var e in t.Events)

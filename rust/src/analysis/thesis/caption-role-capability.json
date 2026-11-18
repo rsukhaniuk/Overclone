@@ -1,0 +1,65 @@
+{
+  "capability": {
+    "id": "p16-article-t2a-ukrainian-caption-v1",
+    "runtimeProfile": 16,
+    "runtimeClosureSha256": "8e3fcc0c3255613609a423a5440934b261feee32a5cc73510f4633648b4a135e",
+    "sourcePinsSha256": "73d1e45bfccbc0048189e355a3a7989578d120e22eb1a95433fec1813bafa6d3"
+  },
+  "sourcePins": [
+    {
+      "name": "article.cls",
+      "length": 20144,
+      "sha256": "859217b3457cca472e5a96ef193218c87a4e62a6445cdd501ba7e1954fa32afa"
+    },
+    {
+      "name": "babel-ukrainian.tex",
+      "length": 336,
+      "sha256": "411f41d64afcc5d14d5491eba4e469e91d3d0f0c4841b3aafe1b521c76d924d6"
+    },
+    {
+      "name": "babel.sty",
+      "length": 150008,
+      "sha256": "69816de88f658261e7a8ffc34973ca1dca506eb739e92737594274de8e646403"
+    },
+    {
+      "name": "fontenc.sty",
+      "length": 5119,
+      "sha256": "b17f7346c2d881bba3bde28711e53cc7d3125e5ea440672f59bbbdbbd95499ed"
+    },
+    {
+      "name": "l3backend-pdftex.def",
+      "length": 30006,
+      "sha256": "f1081e3391243f0d67554da9841fec0c050d76d9865033e92d3ef82cf537d23e"
+    },
+    {
+      "name": "size10.clo",
+      "length": 8448,
+      "sha256": "c168d18288a2aba793904edf4d836c78d16fff01b8344d1365c6d72a2bd8929c"
+    },
+    {
+      "name": "t2acmr.fd",
+      "length": 2556,
+      "sha256": "193f28c15cf5506b89694f1a155307016cc00a3eec05f07c2c6cb4e6835580b5"
+    },
+    {
+      "name": "t2aenc.def",
+      "length": 12159,
+      "sha256": "f0cb837ec6e01a42e869baf539677f7710825da699551c6469a46b4f03879295"
+    },
+    {
+      "name": "t2aenc.dfu",
+      "length": 9965,
+      "sha256": "17d594fc929ae00cc25c629a4b554cba82be9ab9ec8682161b8d55e0d139993b"
+    },
+    {
+      "name": "txtbabel.def",
+      "length": 6948,
+      "sha256": "393315f45c2027e6b4f334579851f69ed607625b9401af2a6c8e9d48b12f2332"
+    },
+    {
+      "name": "ukraineb.ldf",
+      "length": 17162,
+      "sha256": "fa6c1ae60e24e9318d179c7335fd6722a3eb182de33eb3b8c785546ce8cf7f37"
+    }
+  ]
+}

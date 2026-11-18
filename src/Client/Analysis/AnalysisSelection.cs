@@ -22,6 +22,7 @@ public readonly record struct AnalysisSelection(AnalysisProfile Profile, Analysi
     public static AnalysisSelection KnuWithFormatting(AnalysisWorkType workType) => new(new(AnalysisCatalog.KnuId, AnalysisCatalog.FormattingVersion), new(workType));
     public static AnalysisSelection KnuWithThesis(AnalysisWorkType workType, string? rootFileId) => new(new(AnalysisCatalog.KnuId, AnalysisCatalog.ThesisVersion), new(workType), rootFileId is null ? null : new(rootFileId));
     public static AnalysisSelection KnuWithCitationNotes(AnalysisWorkType workType, string? rootFileId) => new(new(AnalysisCatalog.KnuId, AnalysisCatalog.CitationNotesVersion), new(workType), rootFileId is null ? null : new(rootFileId));
+    public static AnalysisSelection KnuWithCaptionRoles(AnalysisWorkType workType, string? rootFileId) => new(new(AnalysisCatalog.KnuId, AnalysisCatalog.CaptionRolesVersion), new(workType), rootFileId is null ? null : new(rootFileId));
     public bool IsValid => AnalysisCatalog.IsValid(Profile.Id, Profile.Version, Configuration, ReferenceConfiguration);
 }
 
@@ -42,7 +43,9 @@ public static class AnalysisCatalog
     public const string FormattingVersion = "1.4.0";
     public const string ThesisVersion = "1.5.0";
     public const string CitationNotesVersion = "1.6.0";
-    public static bool IsThesis(AnalysisProfile profile) => profile.Id == KnuId && profile.Version is ThesisVersion or CitationNotesVersion;
+    public const string CaptionRolesVersion = "1.7.0";
+    private static bool IsThesisVersion(string? version) => version is ThesisVersion or CitationNotesVersion or CaptionRolesVersion;
+    public static bool IsThesis(AnalysisProfile profile) => profile.Id == KnuId && IsThesisVersion(profile.Version);
     public static bool RequiresRoot(AnalysisProfile profile) => profile.Id == ReferenceId || IsThesis(profile);
     public const string Paper = "KNU-SRC-PAPER-001";
     public const string LineSpacing = "KNU-SRC-LINE-SPACING-001";
@@ -75,6 +78,7 @@ public static class AnalysisCatalog
     private static readonly Lazy<JsonElement> FormattingMetadata = new(() => LoadMetadata("knu-profile-v1_4-metadata.json"));
     private static readonly Lazy<JsonElement> ThesisMetadata = new(() => LoadMetadata("knu-profile-v1_5-metadata.json"));
     private static readonly Lazy<JsonElement> CitationNotesMetadata = new(() => LoadMetadata("knu-profile-v1_6-metadata.json"));
+    private static readonly Lazy<JsonElement> CaptionRolesMetadata = new(() => LoadMetadata("knu-profile-v1_7-metadata.json"));
     private static JsonElement LoadMetadata(string name)
     {
         using var stream = typeof(AnalysisCatalog).Assembly.GetManifestResourceStream("Client.Analysis." + name)
@@ -92,6 +96,7 @@ public static class AnalysisCatalog
         FormattingVersion => FormattingMetadata.Value,
         ThesisVersion => ThesisMetadata.Value,
         CitationNotesVersion => CitationNotesMetadata.Value,
+        CaptionRolesVersion => CaptionRolesMetadata.Value,
         _ => throw new JsonException("Unknown KNU profile version."),
     };
     internal static ImmutableArray<string> SourceRulesFor(string version) => version switch
@@ -101,16 +106,15 @@ public static class AnalysisCatalog
         MarginFixVersion => LatestRules,
         GeometryPackageVersion => LatestRules,
         FormattingVersion => FormattingRules,
-        ThesisVersion => FormattingRules,
-        CitationNotesVersion => FormattingRules,
+        ThesisVersion or CitationNotesVersion or CaptionRolesVersion => FormattingRules,
         _ => throw new JsonException("Unknown KNU profile version."),
     };
     public static bool IsKnown(string? id, string? version)
         => (id == "engine-structural" && version == "0") || (id == ReferenceId && version == ReferenceVersion)
-            || (id == KnuId && version is Version or LatestVersion or MarginFixVersion or GeometryPackageVersion or FormattingVersion or ThesisVersion or CitationNotesVersion);
+            || (id == KnuId && (version is Version or LatestVersion or MarginFixVersion or GeometryPackageVersion or FormattingVersion || IsThesisVersion(version)));
     public static bool IsValid(string? id, string? version, AnalysisConfigurationDto? configuration,
         AnalysisReferenceConfigurationDto? referenceConfiguration = null)
-        => id == KnuId && version is ThesisVersion or CitationNotesVersion
+        => id == KnuId && IsThesisVersion(version)
             ? configuration is not null && Enum.IsDefined(configuration.WorkType) && referenceConfiguration is not null
                 && AnalysisIdentity.IsValidOpaqueId(referenceConfiguration.RootFileId, AnalysisLimits.MaxIdBytes)
             : id == ReferenceId && version == ReferenceVersion

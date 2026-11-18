@@ -1,6 +1,7 @@
 using System.Text;
 using Client.Analysis.RenderedExtent;
 using Client.Compilation;
+using Client.Compilation.Native;
 using Client.Compilation.Presentation;
 using Client.Compilation.SyncTeX;
 using Client.Pdf;
@@ -75,7 +76,7 @@ public sealed class RenderedRoleBinding(WorkspaceCoordinator workspace, CompileW
         static RenderedRoleBindingResult Refuse(string code) => new(null, code);
         var authority = RenderedExtentAuthority.Capture(workspace, compile);
         if (authority is null || !Current(request, authority, ct)) return Refuse("stale-source-or-compile");
-        if (!Candidate(request, out var candidate)) return Refuse("unsupported-or-ambiguous-source-role");
+        if (!Candidate(request, authority, out var candidate)) return Refuse("unsupported-or-ambiguous-source-role");
         var (e, role, rangeKind, file, span) = candidate;
         try
         {
@@ -165,7 +166,7 @@ public sealed class RenderedRoleBinding(WorkspaceCoordinator workspace, CompileW
 
     private sealed record CandidateValue(AnalysisThesisEventDto Event, string Role, string RangeKind,
         CapturedFile File, SpanMappingResult.Exact Span);
-    private static bool Candidate(RenderedRoleBindingRequest request, out CandidateValue value)
+    private static bool Candidate(RenderedRoleBindingRequest request, RenderedExtentAuthority authority, out CandidateValue value)
     {
         value = null!;
         var report = request.Report; var t = report.Result.Thesis!;
@@ -176,6 +177,8 @@ public sealed class RenderedRoleBinding(WorkspaceCoordinator workspace, CompileW
             || e.Text.Any(c => char.IsControl(c) || c == '\ufffd')
             || t.Events.Count(other => other.Text == e.Text) != 1 || !t.ClosureFileIds.Contains(e.FileId)) return false;
         var file = report.Snapshot.Files.SingleOrDefault(f => f.FileId.ToString() == e.FileId);
+        if (report.Result.Profile.Version == AnalysisCatalog.CaptionRolesVersion)
+            return file is not null && ProjectCaption(request.EventIndex, e, t, file, authority, out value);
         var observations = knu.Files.Where(f => f.FileId == e.FileId).ToArray();
         if (file is null || observations.Length != 1 || observations[0] is not { Eligible: true, Complete: true } facts
             // Margin completeness does not classify a caption or heading. Every
@@ -198,6 +201,43 @@ public sealed class RenderedRoleBinding(WorkspaceCoordinator workspace, CompileW
             role = e.Kind switch { "introduction" => "introduction", "conclusions" => "conclusions", "references" => "references", "appendix" => "appendix", _ => null };
         if (role is null) return false;
         value = new(e, role, e.Kind == "captionTitle" ? "captionText" : "headingText", file, span); return true;
+    }
+
+    private static bool ProjectCaption(int index, AnalysisThesisEventDto e, AnalysisThesisDto thesis,
+        CapturedFile file, RenderedExtentAuthority authority, out CandidateValue value)
+    {
+        value = null!;
+        if (e.Kind != "captionTitle" || thesis.CaptionRoleCapability != ThesisCaptionRoleCapability.Expected
+            || thesis.CaptionRoles.IsDefaultOrEmpty || !CompatibleCaptionCompiler(authority)) return false;
+        var typed = thesis.CaptionRoles.SingleOrDefault(r => r.EventIndex == index);
+        if (typed is null || typed.FileId != e.FileId || typed.Span != e.Span || typed.ContextRootFileId != thesis.RootFileId
+            || typed.Method != ThesisCaptionRoleCapability.Method || e.Span.StartByte >= e.Span.EndByte
+            || SpanMapping.Map(file, e.FileId, e.Span.StartByte, e.Span.EndByte) is not SpanMappingResult.Exact span
+            || !TextContent.TryDecode(file.Bytes.ToArray(), out var text, out _)
+            || text[span.SourceStart..span.SourceEnd] != e.Text) return false;
+        var role = typed.Environment switch
+        {
+            "figure" => "figureCaption",
+            "table" => "tableCaption",
+            _ => null,
+        };
+        if (role is null) return false;
+        value = new(e, role, "captionText", file, span);
+        return true;
+    }
+
+    private static bool CompatibleCaptionCompiler(RenderedExtentAuthority authority)
+    {
+        var snapshot = authority.Output.Snapshot;
+        var selection = snapshot.Selection;
+        var component = NativeInputBudgetContract.Component(NativeCompilerEngine.PdfLaTeX);
+        var engine = new CompilationDescriptor(NativeRuntimePackage.EngineId, component.EngineVersion, new(component.WasmHash));
+        return authority.Ports.NativeProfile == NativeInputBudgetContract.Profile
+            && SyncTeXRuntimeBinding.ForProfile(NativeInputBudgetContract.Profile) is { } runtime
+            && selection.Engine == engine && authority.Ports.Engine == engine
+            && authority.Output.OutputAdapter == component.OutputAdapter
+            && selection.Bundles.Length == 1 && selection.Bundles[0] == runtime.Bundle
+            && snapshot.Files.All(file => file.MediaKind == "text" && ThesisCaptionRoleCapability.IsContextFile(file.RelativePath));
     }
 
     private static bool CharacterRange(PdfPageInspection page, string literal, out int start, out int end, out PdfPoint[] points)
