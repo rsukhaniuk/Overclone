@@ -42,10 +42,11 @@ public sealed class PdfInspectRequest
     public bool Raster { get; }
     public bool InspectActions { get; }
     public bool InspectLayout { get; }
+    internal bool InspectObjectLayout { get; init; }
     public int RasterWidth { get; }
     public int RasterHeight { get; }
     public bool IsValid => Document is not null && Budget is not null && Budget.IsValid && Document.Length <= Budget.InputBytes
-        && (!InspectLayout || !Raster && !InspectActions && Search is null)
+        && (!(InspectLayout || InspectObjectLayout) || !Raster && !InspectActions && Search is null)
         && PageIndex >= 0 && PageIndex < Budget.Pages && RasterWidth is > 0 and <= 16384 && RasterHeight is > 0 and <= 16384
         && (long)RasterWidth * RasterHeight <= Budget.RasterPixels
         && (!Raster || (long)RasterWidth * RasterHeight * 4 + 16 <= Budget.OutputBytes)
@@ -125,7 +126,10 @@ public sealed class PdfPageInspection
 public sealed record PdfInspectionOutcome(PdfInspectionStatus Status, string RequestId, string DocumentSha256, long WorkerEpoch,
     int? NativeStatus = null, uint NativeError = 0, bool? EnteredNative = null, PdfPageInspection? Page = null,
     string Code = "", IReadOnlyList<string>? NativeCalls = null,
-    PdfRuntimeIdentity? Runtime = null, PdfActionInspection? Actions = null, PdfLayoutInspection? Layout = null);
+    PdfRuntimeIdentity? Runtime = null, PdfActionInspection? Actions = null, PdfLayoutInspection? Layout = null)
+{
+    internal PdfObjectLayoutInspection? ObjectLayout { get; init; }
+}
 
 public sealed record PdfRuntimeIdentity(string LoaderSha256, string WasmSha256);
 public enum PdfActionAvailability { NotRequested, Unsupported, Available }

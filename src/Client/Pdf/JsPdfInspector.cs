@@ -5,7 +5,7 @@ namespace Client.Pdf;
 
 // Deliberately unregistered. Caller explicitly supplies provisioning; absence does
 // not import a module, launch a worker or select/download a renderer dependency.
-public sealed class JsPdfInspector : IPdfInspector, IPdfLayoutInspector
+public sealed class JsPdfInspector : IPdfInspector, IPdfLayoutInspector, IPdfObjectLayoutInspector
 {
     private readonly IJSRuntime _js;
     private readonly IPdfRuntimeProvider _runtime;
@@ -28,6 +28,12 @@ public sealed class JsPdfInspector : IPdfInspector, IPdfLayoutInspector
                 rasterWidth: 1, rasterHeight: 1, inspectLayout: true) : null!, cancellationToken).ConfigureAwait(false);
         return new(result.Status, result.RequestId, result.DocumentSha256, result.WorkerEpoch, result.Runtime,
             result.Layout?.Capabilities, result.Layout?.Facts, result.Layout?.Code ?? result.Code);
+    }
+
+    public async Task<PdfObjectLayoutOutcome> InspectObjectLayoutAsync(PdfObjectLayoutRequest request, CancellationToken cancellationToken = default)
+    {
+        var result = await InspectAsync(request?.ToInspectRequest()!, cancellationToken).ConfigureAwait(false);
+        return PdfObjectLayoutOutcome.FromInspection(result, request?.PageIndex ?? -1);
     }
 
     public async Task<PdfInspectionOutcome> InspectAsync(PdfInspectRequest request, CancellationToken cancellationToken = default)
@@ -70,7 +76,7 @@ public sealed class JsPdfInspector : IPdfInspector, IPdfLayoutInspector
             if (linked.IsCancellationRequested) return Interrupted();
             using var registration = linked.Token.Register(() => Observe(CancelAsync(port, id)));
             if (linked.IsCancellationRequested) return Interrupted();
-            string metadata = JsonSerializer.Serialize(new
+            var frame = new
             {
                 version = 2,
                 inspectActions = request.InspectActions,
@@ -96,7 +102,15 @@ public sealed class JsPdfInspector : IPdfInspector, IPdfLayoutInspector
                     liveHandles = request.Budget.LiveHandles,
                     deadlineMs = request.Budget.DeadlineMs
                 }
-            });
+            };
+            string metadata;
+            if (request.InspectObjectLayout)
+            {
+                var objectFrame = JsonSerializer.SerializeToNode(frame)!.AsObject();
+                objectFrame.Add("inspectObjectLayout", true);
+                metadata = objectFrame.ToJsonString();
+            }
+            else metadata = JsonSerializer.Serialize(frame);
             // Explicit cancellation-by-id accompanies cancellation of the WAIT;
             // neither late import nor abandoned JS work may create a fresh job.
             var invocation = port.Channel.InvokeAsync<PdfWireReply>("inspect", metadata, request.Document.CopyBytes(), package.CopyLoader(), package.CopyWasm()).AsTask();

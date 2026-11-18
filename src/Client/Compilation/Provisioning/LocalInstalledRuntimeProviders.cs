@@ -16,6 +16,8 @@ public sealed class LocalInstalledRuntimeProviders : INativeRuntimeProvider, IPd
     public const string LayoutPdfLoaderHash = "968aae4935523f528e2314c4dbd831b2dd326ac8d3de3444fd033b73463b0225";
     public const string LayoutPdfWasmHash = "8b715ed561ec644757f305ddad0a99ae728c6705f9868e96ccb53c8c9143c4b3";
     public const string LayoutV1PdfWasmHash = "d1623f880b530b3a6503436d43bcd05d01f6ff8fc8a40c782ba848cd209cb217";
+    public const string ObjectLayoutPdfLoaderHash = "f95ae827b12703999ce1daafebbf6830f5f4d2c14bb7805a8f47abe54772b079";
+    public const string ObjectLayoutPdfWasmHash = "2e2126ead8e00ef7c79d21e3836d66957b19e827523f7c054ca887f3c11ae5b7";
     private readonly RuntimeAssetStore _compilerStore, _pdfStore;
     private readonly ILocalRuntimeSelectionStore _compilerSelection;
     private readonly IPdfRuntimeSelectionStore _pdfSelection;
@@ -78,7 +80,8 @@ public sealed class LocalInstalledRuntimeProviders : INativeRuntimeProvider, IPd
     private static bool TrustedPdf(PdfResourceInstallation selection) => selection.Resources.Length == 2
         && (Pair(selection, 13562, PdfLoaderHash, 3434939, PdfWasmHash)
             || Pair(selection, 14103, LayoutPdfLoaderHash, 3699309, LayoutV1PdfWasmHash)
-            || Pair(selection, 14103, LayoutPdfLoaderHash, 3716447, LayoutPdfWasmHash));
+            || Pair(selection, 14103, LayoutPdfLoaderHash, 3716447, LayoutPdfWasmHash)
+            || Pair(selection, 14175, ObjectLayoutPdfLoaderHash, 3725577, ObjectLayoutPdfWasmHash));
 
     private static bool Pair(PdfResourceInstallation selection, int loaderLength, string loaderHash, int wasmLength, string wasmHash) =>
         selection.Resources.Any(r => r.Role == "loader" && r.Name == "e1.js" && r.Length == loaderLength && r.Sha256 == loaderHash)
@@ -146,7 +149,7 @@ public sealed class LocalInstalledRuntimeProviders : INativeRuntimeProvider, IPd
 
 /// <summary>One app-lifetime inspector, borrowed by project preview controllers. Status probe is
 /// per admitted inspection; neither a cached package nor a positive readiness flag.</summary>
-internal sealed class LocalPdfInspector : IPdfInspector, IPdfLayoutInspector
+internal sealed class LocalPdfInspector : IPdfInspector, IPdfLayoutInspector, IPdfObjectLayoutInspector
 {
     private sealed class Attempt { public RuntimeAssetStatus Status = RuntimeAssetStatus.Missing; }
     private sealed class Probe(LocalInstalledRuntimeProviders resources) : IPdfRuntimeProvider
@@ -171,6 +174,11 @@ internal sealed class LocalPdfInspector : IPdfInspector, IPdfLayoutInspector
                 rasterWidth: 1, rasterHeight: 1, inspectLayout: true) : null!, token).ConfigureAwait(false);
         return new(result.Status, result.RequestId, result.DocumentSha256, result.WorkerEpoch, result.Runtime,
             result.Layout?.Capabilities, result.Layout?.Facts, result.Layout?.Code ?? result.Code);
+    }
+    public async Task<PdfObjectLayoutOutcome> InspectObjectLayoutAsync(PdfObjectLayoutRequest request, CancellationToken cancellationToken = default)
+    {
+        var result = await InspectAsync(request?.ToInspectRequest()!, cancellationToken).ConfigureAwait(false);
+        return PdfObjectLayoutOutcome.FromInspection(result, request?.PageIndex ?? -1);
     }
     public async Task<PdfInspectionOutcome> InspectAsync(PdfInspectRequest request, CancellationToken token = default)
     {

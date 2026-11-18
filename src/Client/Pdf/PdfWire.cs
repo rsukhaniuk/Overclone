@@ -22,6 +22,8 @@ public sealed class PdfWireReply
     public string? LayoutState { get; set; }
     public string? LayoutCapabilitiesJson { get; set; }
     public string? LayoutFactsJson { get; set; }
+    public string? ObjectLayoutState { get; set; }
+    public string? ObjectLayoutFactsJson { get; set; }
     public string Status { get; set; } = "";
     public int? NativeStatus { get; set; }
     public uint NativeError { get; set; }
@@ -61,12 +63,14 @@ public static class PdfWireParser
             if (status == PdfInspectionStatus.InvalidResponse) return Invalid();
             if (status != PdfInspectionStatus.Completed)
             {
-                if (wire.LayoutState is not null || wire.LayoutCapabilitiesJson is not null || wire.LayoutFactsJson is not null || wire.ActionState is not null || wire.CapabilitiesJson is not null || wire.ActionsJson is not null || wire.HasActionsApi || wire.HasCapabilitiesApi || wire.FactsJson is not null || wire.TextJson is not null || wire.SearchJson is not null || wire.Raster is not null || wire.PageCount != 0) return Invalid();
+                if (wire.ObjectLayoutState is not null || wire.ObjectLayoutFactsJson is not null || wire.LayoutState is not null || wire.LayoutCapabilitiesJson is not null || wire.LayoutFactsJson is not null || wire.ActionState is not null || wire.CapabilitiesJson is not null || wire.ActionsJson is not null || wire.HasActionsApi || wire.HasCapabilitiesApi || wire.FactsJson is not null || wire.TextJson is not null || wire.SearchJson is not null || wire.Raster is not null || wire.PageCount != 0) return Invalid();
                 if (status == PdfInspectionStatus.NativeFailure && (wire.NativeStatus is < 1 or > 8 || wire.NativeStatus is null || wire.EnteredNative != true)) return Invalid();
                 if (status != PdfInspectionStatus.NativeFailure && wire.NativeStatus is not null) return Invalid();
                 return new(status, id, request.Document.Sha256, epoch, wire.NativeStatus, wire.NativeError, wire.EnteredNative, Code: wire.Status, NativeCalls: calls, Runtime: runtime);
             }
             if (wire.NativeStatus != 0 || wire.NativeError != 0 || wire.EnteredNative != true || wire.PageCount < 1 || wire.PageCount > request.Budget.Pages || request.PageIndex >= wire.PageCount) return Invalid();
+            if (request.InspectObjectLayout) return ParseObjectLayout(wire, request, id, epoch, runtime, calls);
+            if (wire.ObjectLayoutState is not null || wire.ObjectLayoutFactsJson is not null) return Invalid();
             if (request.InspectLayout)
             {
                 if (wire.FactsJson is not null || wire.TextJson is not null || wire.SearchJson is not null || wire.Raster is not null
@@ -152,6 +156,48 @@ public static class PdfWireParser
         }
         catch (Exception error) when (error is JsonException or InvalidOperationException or FormatException or OverflowException or ArgumentException) { return Invalid(); }
     }
+    private static PdfInspectionOutcome ParseObjectLayout(PdfWireReply wire, PdfInspectRequest request, string id,
+        long epoch, PdfRuntimeIdentity runtime, IReadOnlyList<string> calls)
+    {
+        if (wire.FactsJson is not null || wire.TextJson is not null || wire.SearchJson is not null || wire.Raster is not null
+            || wire.ActionState is not null || wire.HasActionsApi || wire.HasCapabilitiesApi || wire.CapabilitiesJson is not null || wire.ActionsJson is not null)
+            throw new JsonException();
+        string[] open = ["e1_version", "e1_open", "e1_document_pages", "e1_page"];
+        string[] objectOnly = [.. open, "e1_object_layout_facts", "e1_copy", "e1_reset"];
+        string[] paired = [.. open, "e1_layout_capabilities", "e1_copy", "e1_layout_facts", "e1_copy",
+            "e1_object_layout_facts", "e1_copy", "e1_reset"];
+        if (wire.ObjectLayoutState == "unsupported")
+        {
+            if (wire.ObjectLayoutFactsJson is not null || wire.LayoutState is not null || wire.LayoutCapabilitiesJson is not null
+                || wire.LayoutFactsJson is not null || !calls.SequenceEqual([.. open, "e1_reset"])) throw new JsonException();
+            return new(PdfInspectionStatus.Unavailable, id, request.Document.Sha256, epoch, Runtime: runtime, Code: "ObjectLayoutApiAbsent");
+        }
+        if (wire.ObjectLayoutState != "available" || wire.ObjectLayoutFactsJson is not { } objectJson
+            || !calls.SequenceEqual(request.InspectLayout ? paired : objectOnly))
+            throw new JsonException();
+        var facts = PdfObjectLayoutJson.Parse(objectJson, request, wire.PageCount);
+        PdfLayoutInspection? layout = null;
+        string? layoutFactsSha256 = null;
+        if (request.InspectLayout)
+        {
+            if (wire.LayoutState != "available" || wire.LayoutCapabilitiesJson is not { } capJson
+                || wire.LayoutFactsJson is not { } layoutJson || capJson.Length > 4096 || layoutJson.Length > request.Budget.OutputBytes
+                || !PdfHashes.ValidUtf16(capJson) || !PdfHashes.ValidUtf16(layoutJson)
+                || (long)Encoding.UTF8.GetByteCount(objectJson) + Encoding.UTF8.GetByteCount(capJson) + Encoding.UTF8.GetByteCount(layoutJson) > request.Budget.OutputBytes)
+                throw new JsonException();
+            var (capabilities, layoutFacts) = PdfLayoutJson.Parse(capJson, layoutJson, new(request.Document, request.PageIndex, request.Budget));
+            if (layoutFacts.PageCount != facts.PageCount || layoutFacts.PageIndex != facts.PageIndex || layoutFacts.Media != facts.Media
+                || layoutFacts.Crop != facts.Crop || layoutFacts.Effective != facts.Effective || layoutFacts.Rotation != facts.Rotation
+                || layoutFacts.UserUnit != facts.UserUnit) throw new JsonException();
+            layout = new(capabilities, layoutFacts, "");
+            layoutFactsSha256 = PdfHashes.Of(Encoding.UTF8.GetBytes(layoutJson));
+        }
+        else if (wire.LayoutState is not null || wire.LayoutCapabilitiesJson is not null || wire.LayoutFactsJson is not null)
+            throw new JsonException();
+        return new(PdfInspectionStatus.Completed, id, request.Document.Sha256, epoch, 0, 0, true,
+            NativeCalls: calls, Runtime: runtime, Layout: layout) { ObjectLayout = new(facts, layoutFactsSha256) };
+    }
+
     internal static void Unique(JsonElement value)
     {
         if (value.ValueKind == JsonValueKind.Object)

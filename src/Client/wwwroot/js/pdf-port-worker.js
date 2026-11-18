@@ -5,7 +5,8 @@ function pdfWorkerMain() {
         const b=r?.budget, positive=(v,max)=>Number.isSafeInteger(v)&&v>0&&v<=max;
         if(!r||r.version!==2||typeof r.inspectActions!=='boolean'||typeof r.raster!=='boolean'
             ||r.inspectLayout!==undefined&&typeof r.inspectLayout!=='boolean'
-            ||r.inspectLayout&&(r.raster||r.inspectActions||r.search!==null)
+            ||r.inspectObjectLayout!==undefined&&typeof r.inspectObjectLayout!=='boolean'
+            ||(r.inspectLayout||r.inspectObjectLayout)&&(r.raster||r.inspectActions||r.search!==null)
             ||typeof r.requestId!=='string'||r.requestId.length<1||r.requestId.length>64
             ||!Number.isSafeInteger(r.epoch)||r.epoch<1
             ||![r.documentSha256,r.loaderSha256,r.wasmSha256].every(v=>typeof v==='string'&&/^[0-9a-f]{64}$/.test(v))
@@ -114,12 +115,12 @@ function pdfWorkerMain() {
                 }
             };
             let outputBytes = 0;
-            const take = () => {
+            const take = (cap = request.budget.outputBytes) => {
                 const h = m._e1_result();
                 if (!h) throw new Error("Missing native output");
                 buffers.add(h);
                 const size = m._e1_size(h);
-                if (!size || size > request.budget.outputBytes - outputBytes)
+                if (!size || size > cap || size > request.budget.outputBytes - outputBytes)
                     throw { outputLimit: true };
                 outputBytes += size;
                 const dest = input(new Uint8Array(size));
@@ -168,16 +169,27 @@ function pdfWorkerMain() {
                 throw new Error("Page count unavailable");
             checked("e1_page", document, request.pageIndex);
             page = m._e1_result();
-            const decoder = new TextDecoder("utf-8", { fatal: true });
-            if (request.inspectLayout) {
-                const supported = typeof m._e1_layout_capabilities === "function" && typeof m._e1_layout_facts === "function";
-                let layoutCapabilitiesJson = null, layoutFactsJson = null;
-                if (supported) {
-                    checked("e1_layout_capabilities", page); layoutCapabilitiesJson = decoder.decode(take());
-                    checked("e1_layout_facts", page); layoutFactsJson = decoder.decode(take());
+            const decoder = new TextDecoder("utf-8", { fatal: true, ignoreBOM: request.inspectObjectLayout === true });
+            if (request.inspectObjectLayout || request.inspectLayout) {
+                const layoutPresent = !request.inspectLayout ||
+                    typeof m._e1_layout_capabilities === "function" && typeof m._e1_layout_facts === "function";
+                const objectPresent = !request.inspectObjectLayout || typeof m._e1_object_layout_facts === "function";
+                const supported = layoutPresent && objectPresent;
+                response = { ...envelope("completed"), nativeStatus: 0, enteredNative: true, pageCount: pages };
+                if (request.inspectLayout && (!request.inspectObjectLayout || supported)) {
+                    response.layoutState = supported ? "available" : "unsupported";
+                    if (supported) {
+                        checked("e1_layout_capabilities", page); response.layoutCapabilitiesJson = decoder.decode(take());
+                        checked("e1_layout_facts", page); response.layoutFactsJson = decoder.decode(take());
+                    }
                 }
-                response = { ...envelope("completed"), layoutState: supported ? "available" : "unsupported",
-                    layoutCapabilitiesJson, layoutFactsJson, nativeStatus: 0, enteredNative: true, pageCount: pages };
+                if (request.inspectObjectLayout) {
+                    response.objectLayoutState = supported ? "available" : "unsupported";
+                    if (supported) {
+                        checked("e1_object_layout_facts", page);
+                        response.objectLayoutFactsJson = decoder.decode(take(1048576));
+                    }
+                }
             } else {
             checked("e1_facts", page);
             const factsJson = decoder.decode(take());
