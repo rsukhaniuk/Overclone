@@ -4,7 +4,7 @@ namespace Client.Compilation.Native;
 /// closure before enabling readiness; this never selects a bundled default.</summary>
 public static class NativeCompilerInputBudgetPins
 {
-    public static bool Ready => false;
+    public static bool Ready => true;
     public const int ResourceCount = 4557, TotalBytes = 262320783;
     public const string ClosureHash = "8e3fcc0c3255613609a423a5440934b261feee32a5cc73510f4633648b4a135e";
     public const int DviConverterLoaderLength = 13624, DviConverterWasmLength = 697401;

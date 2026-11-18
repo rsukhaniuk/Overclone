@@ -14,7 +14,8 @@ public sealed class LocalInstalledRuntimeProviders : INativeRuntimeProvider, IPd
     public const string PdfLoaderHash = "040bdfac50656b3993f622614b73feaaba31d8253d077ff50f925f316c2f5f6b";
     public const string PdfWasmHash = "1637c1a7798cab443334e559045d88f33864d89e0ff02eeb57b3da4f08f37c20";
     public const string LayoutPdfLoaderHash = "968aae4935523f528e2314c4dbd831b2dd326ac8d3de3444fd033b73463b0225";
-    public const string LayoutPdfWasmHash = "463b434e64eeb265af97d974d81d05e11cc683df6095727d6ec5c4e6bf3717bc";
+    public const string LayoutPdfWasmHash = "8b715ed561ec644757f305ddad0a99ae728c6705f9868e96ccb53c8c9143c4b3";
+    public const string LayoutV1PdfWasmHash = "d1623f880b530b3a6503436d43bcd05d01f6ff8fc8a40c782ba848cd209cb217";
     private readonly RuntimeAssetStore _compilerStore, _pdfStore;
     private readonly ILocalRuntimeSelectionStore _compilerSelection;
     private readonly IPdfRuntimeSelectionStore _pdfSelection;
@@ -76,7 +77,8 @@ public sealed class LocalInstalledRuntimeProviders : INativeRuntimeProvider, IPd
     }, PdfFailure, token);
     private static bool TrustedPdf(PdfResourceInstallation selection) => selection.Resources.Length == 2
         && (Pair(selection, 13562, PdfLoaderHash, 3434939, PdfWasmHash)
-            || Pair(selection, 14103, LayoutPdfLoaderHash, 3698843, LayoutPdfWasmHash));
+            || Pair(selection, 14103, LayoutPdfLoaderHash, 3699309, LayoutV1PdfWasmHash)
+            || Pair(selection, 14103, LayoutPdfLoaderHash, 3716447, LayoutPdfWasmHash));
 
     private static bool Pair(PdfResourceInstallation selection, int loaderLength, string loaderHash, int wasmLength, string wasmHash) =>
         selection.Resources.Any(r => r.Role == "loader" && r.Name == "e1.js" && r.Length == loaderLength && r.Sha256 == loaderHash)

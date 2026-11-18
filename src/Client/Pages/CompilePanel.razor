@@ -4,6 +4,7 @@
 @using Client.Compilation.History
 @using Client.Compilation.Navigation
 @using Client.Compilation.Presentation
+@using Client.Compilation.Provisioning
 @using Client.Compilation.SyncTeX
 @using Client.Pdf.Preview
 @using Client.Workspace
@@ -23,7 +24,7 @@
         </div>
     </header>
     <p role="status" data-testid="pdf-download-status">@_download?.Notice</p>
-    <p class="compiler-readiness" role="status" data-testid="compiler-readiness">@(Session.UsesBundledResources && Session.ReadingTools ? "Preparing included compilers automatically… First open downloads about 180 MiB of compiler resources. Editing and saving remain available." : Session.Readiness.Ready ? "Local compiler checked — compilation available." : "Compiler unavailable — " + Session.Readiness.Message)</p>
+    <p class="compiler-readiness" role="status" data-testid="compiler-readiness">@(Session.UsesBundledResources && Session.ReadingTools ? $"Preparing included compilers automatically… First open downloads about {BundledRuntimeAssets.CompilerAsset.Length / (1024 * 1024)} MiB of compiler resources. Editing and saving remain available." : Session.Readiness.Ready ? "Local compiler checked — compilation available." : "Compiler unavailable — " + Session.Readiness.Message)</p>
     <details class="compiler-settings" data-testid="compiler-settings">
     <summary>Compiler settings</summary>
     <div class="settings-content">

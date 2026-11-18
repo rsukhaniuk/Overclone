@@ -154,7 +154,9 @@ public sealed class CompileWorkspaceSession(WorkspaceCoordinator workspace, ICom
                     && NativeCompilerSuiteContract.MatchesOptions(configuredOptions, NativeThesisCompilerContract.Profile, NativeCompilerEngine.XeLaTeX)
                 || _ports.NativeProfile == NativeOriginCompilerContract.Profile && NativeCompilerOriginPins.Ready
                     && configuredEngine == new CompilationDescriptor("xelatex", NativeOriginCompilerContract.Component(NativeCompilerEngine.XeLaTeX).EngineVersion, new(NativeCompilerThesisPins.XeWasmHash))
-                    && NativeCompilerSuiteContract.MatchesOptions(configuredOptions, NativeOriginCompilerContract.Profile, NativeCompilerEngine.XeLaTeX));
+                    && NativeCompilerSuiteContract.MatchesOptions(configuredOptions, NativeOriginCompilerContract.Profile, NativeCompilerEngine.XeLaTeX)
+                || _ports.NativeProfile == NativeInputBudgetContract.Profile && NativeCompilerInputBudgetPins.Ready
+                    && MatchesInputBudgetXe(configuredEngine, configuredOptions));
         var entryError = main is null ? null : selectedEntry ? unicodeXe
             ? NativeSelectedEntryContract.ValidateEntry(main.RelativePath, NativeUnicodeCompilerContract.Profile, NativeCompilerEngine.XeLaTeX)
             : NativeSelectedEntryContract.ValidateEntry(main.RelativePath)
@@ -174,6 +176,12 @@ public sealed class CompileWorkspaceSession(WorkspaceCoordinator workspace, ICom
             : selection is null ? "Choose a supported .tex root and an available engine. Unsupported engines are not substituted."
             : "Ready to compile unsaved files from project CWD. Settings are session-only.";
         Refresh();
+    }
+    private static bool MatchesInputBudgetXe(CompilationDescriptor engine, IEnumerable<CompilationOption> options)
+    {
+        var component = NativeInputBudgetContract.Component(NativeCompilerEngine.XeLaTeX);
+        return engine == new CompilationDescriptor("xelatex", component.EngineVersion, new(component.WasmHash))
+            && NativeCompilerSuiteContract.MatchesOptions(options, NativeInputBudgetContract.Profile, NativeCompilerEngine.XeLaTeX);
     }
     public Task CompileAsync()
     {

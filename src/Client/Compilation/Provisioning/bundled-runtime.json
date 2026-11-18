@@ -2,17 +2,17 @@
   "version": 1,
   "compiler": {
     "name": "compiler-suite.zip",
-    "length": 260724683,
-    "sha256": "5acb71b3aff3e7e072605124db4487d7583eaed557d99dcbad7b4d240b94b367"
+    "length": 263539405,
+    "sha256": "b30b37a2c27f8bd3182320ed0957f74d567235a79c668b287f40b0e8749d8c49"
   },
   "pdfLoader": {
     "name": "e1.js",
-    "length": 13562,
-    "sha256": "040bdfac50656b3993f622614b73feaaba31d8253d077ff50f925f316c2f5f6b"
+    "length": 14103,
+    "sha256": "968aae4935523f528e2314c4dbd831b2dd326ac8d3de3444fd033b73463b0225"
   },
   "pdfWasm": {
     "name": "e1.wasm",
-    "length": 3434939,
-    "sha256": "1637c1a7798cab443334e559045d88f33864d89e0ff02eeb57b3da4f08f37c20"
+    "length": 3716447,
+    "sha256": "8b715ed561ec644757f305ddad0a99ae728c6705f9868e96ccb53c8c9143c4b3"
   }
 }

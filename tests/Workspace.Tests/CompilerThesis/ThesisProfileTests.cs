@@ -139,6 +139,28 @@ public sealed class ThesisProfileTests
     }
 
     [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void P16_workspace_requires_the_exact_Xe_engine_for_a_supplementary_character_root(bool exact) => LifecycleTestHost.Run(async () =>
+    {
+        await using var fixture = await CompilationTestWorkspace.Open();
+        Assert.True(fixture.Workspace.RenameFile(fixture.Main, "тези/розділ 😀.tex"));
+        var profile = NativeInputBudgetContract.Profile;
+        var engine = NativeInputBudgetContract.Component(NativeCompilerEngine.XeLaTeX);
+        var descriptor = new CompilationDescriptor("xelatex", engine.EngineVersion,
+            new(exact ? engine.WasmHash : new string('0', 64)));
+        var ports = new CompileWorkspacePorts("xelatex", "XeLaTeX", descriptor, [], [], new LifecycleTestHost.Workers(), null,
+            () => Task.FromResult(new CompileReadiness(true, "Ready", "Modeled")),
+            SelectionOptions: NativeCompilerSuiteContract.SelectionOptions(profile, NativeCompilerEngine.XeLaTeX), NativeProfile: profile);
+        await using var session = new CompileWorkspaceSession(fixture.Workspace, new Configuration(ports));
+        session.AttachRenderer(action => { action(); return Task.CompletedTask; });
+        await session.RefreshToolsAsync();
+        session.SelectMain(fixture.Main);
+        session.SelectEngine(ports.CapabilityId);
+        Assert.StartsWith(exact && NativeCompilerInputBudgetPins.Ready ? "Ready to compile" : "Unsupported selected root", session.Notice);
+    });
+
+    [Theory]
     [InlineData(64, null, true)]
     [InlineData(65, null, false)]
     [InlineData(65, 13, false)]
