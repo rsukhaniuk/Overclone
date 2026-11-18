@@ -158,6 +158,51 @@
             </details>
         }
 
+        @if (_controller.ConfirmedCaptions is { Count: > 0 } captions)
+        {
+            <details data-testid="rendered-caption-image-panel">
+                <summary>Measure a caption and image</summary>
+                <label>Confirmed caption
+                    <select data-testid="rendered-caption-image-caption" @bind="_imageCaption" @bind:after="CaptionImageChoiceChanged" disabled="@_controller.Busy">
+                        <option value="">Choose a caption</option>
+                        @foreach (var caption in captions)
+                        {
+                            <option value="@caption.AnnotationId">Page @(caption.PageIndex + 1), @RoleLabel(caption.Role), @AnnotationRange(caption)</option>
+                        }
+                    </select>
+                </label>
+                <button type="button" @onclick="ShowCaptionImagePage" disabled="@(SelectedImageCaption is null || _controller.Busy)">Show caption page</button>
+                <button type="button" data-testid="rendered-caption-image-inspect" @onclick="InspectCaptionImages"
+                        disabled="@(!CanInspectCaptionImages)">Find direct images on the caption page</button>
+                @if (CaptionImageListCurrent && _controller.InspectedImages.Count > 0)
+                {
+                    <label>Image placement
+                        <select data-testid="rendered-caption-image-object" @bind="_captionImageObject" disabled="@_controller.Busy">
+                            <option value="">Choose the matching image</option>
+                            @foreach (var image in _controller.InspectedImages)
+                            {
+                                <option value="@image.ObjectIndex">@ImagePlacementLabel(image)</option>
+                            }
+                        </select>
+                    </label>
+                    <button type="button" data-testid="rendered-caption-image-measure" @onclick="MeasureCaptionImage"
+                            disabled="@(!CanInspectCaptionImages || SelectedCaptionImageObject is null)">Measure selected pair</button>
+                }
+                @if (CaptionImageListCurrent && _controller.CaptionImageObservation is { } observed
+                    && observed.Request.Pair.ObjectIndex == SelectedCaptionImageObject)
+                {
+                    <output role="status" data-testid="rendered-caption-image-result" data-relation="@observed.Relation"
+                            data-object-index="@observed.Request.Pair.ObjectIndex" data-caption-id="@observed.Request.Pair.CaptionAnnotationId"
+                            data-compile-request="@observed.Request.Review.CompileRequestId" data-inspection-request="@observed.Request.Pair.InspectionRequestId"
+                            data-layout-sha256="@observed.Request.Pair.LayoutFactsSha256" data-object-facts-sha256="@observed.Request.Pair.ObjectFactsSha256">
+                        @CaptionImageResult(observed)
+                    </output>
+                    @if (observed.Geometry is not null)
+                    { <p>The gap is between the caption ink box and the image placement box. Image visibility and compliance are unassessed.</p> }
+                }
+            </details>
+        }
+
         <fieldset disabled="@_controller.Busy">
             <legend>Pages to inspect</legend>
             <label><input type="checkbox" data-testid="rendered-review-all-pages" @bind="_allPages" /> Inspect all PDF pages sequentially</label>
@@ -260,6 +305,7 @@
     private string _shownWorkType = "unspecified";
     private string _role = "body", _firstPage = "1", _lastPage = "", _rangeKind = "page", _characterStart = "", _characterEnd = "", _certainty = "tentative";
     private string _checkFirst = "1", _checkLast = "";
+    private string _imageCaption = "", _captionImageObject = "";
     private string? _inputError;
     private SearchLabelDraft? _searchDraft;
     private sealed record SourceEventDraft(AnalysisReport Report, int Index);
@@ -321,6 +367,52 @@
         if (!CanMatchSource || _sourceDraft is not { } draft) return;
         if (await _controller.BindSourceEventAsync(draft.Report, draft.Index) && ReferenceEquals(_sourceDraft, draft))
             _sourceDraft = null;
+    }
+    private RenderedRoleAnnotation? SelectedImageCaption =>
+        long.TryParse(_imageCaption, NumberStyles.None, CultureInfo.InvariantCulture, out long id)
+            ? _controller.ConfirmedCaptions.FirstOrDefault(caption => caption.AnnotationId == id) : null;
+    private bool CanInspectCaptionImages => !_draftChanged && _controller.CanInspectCaptionImages && SelectedImageCaption is not null;
+    private bool CaptionImageListCurrent => !_draftChanged && SelectedImageCaption is { } caption && caption.AnnotationId == _controller.InspectedCaptionId;
+    private int? SelectedCaptionImageObject => Number(_captionImageObject, 0, 9999, out int index) ? index : null;
+    private void CaptionImageChoiceChanged() => _captionImageObject = "";
+    private void ShowCaptionImagePage()
+    {
+        if (SelectedImageCaption is { } caption && !Compile.Preview.GoToPage(caption.PageIndex + 1))
+            _inputError = "The caption page is unavailable in the preview.";
+    }
+    private async Task InspectCaptionImages()
+    {
+        if (!CanInspectCaptionImages || SelectedImageCaption is not { } caption) return;
+        _captionImageObject = "";
+        _inputError = null;
+        await _controller.CheckCaptionImagesAsync(caption.AnnotationId);
+    }
+    private async Task MeasureCaptionImage()
+    {
+        if (!CanInspectCaptionImages || !CaptionImageListCurrent || SelectedImageCaption is not { } caption
+            || SelectedCaptionImageObject is not int index) return;
+        await _controller.CheckCaptionImagesAsync(caption.AnnotationId, index);
+    }
+    private static string ImagePlacementLabel(PdfImagePlacement image) => image.RawBox is { } box
+        ? $"Object {image.ObjectIndex}, x {box.Left:0.##}–{box.Right:0.##}, y {box.Bottom:0.##}–{box.Top:0.##} in PDF coordinates"
+        : $"Object {image.ObjectIndex}, placement unavailable";
+    private static string CaptionImageResult(RenderedCaptionImageObservation observation)
+    {
+        if (observation.Geometry is { } geometry)
+        {
+            string relation = observation.Relation == RenderedCaptionImageRelation.CaptionAbove ? "above" : "below";
+            return $"Caption {relation} the selected image by {Math.Abs(geometry.SignedGapMm):0.###} ± {geometry.AbsoluteErrorMm:0.###} mm.";
+        }
+        return observation.Reason switch
+        {
+            RenderedCaptionImageReason.UnsupportedPageRotation => "This measurement requires an upright PDF page.",
+            RenderedCaptionImageReason.UnavailablePhysicalScale => "The PDF page scale is unavailable.",
+            RenderedCaptionImageReason.UnavailableImagePlacement => "The selected image placement is unavailable.",
+            RenderedCaptionImageReason.UnavailableCaptionInk => "The caption does not have a measurable single line of glyph ink.",
+            RenderedCaptionImageReason.CaptionInkCrossesEffectivePage => "The measured caption ink crosses the page boundary.",
+            RenderedCaptionImageReason.HorizontalOverlapUnestablished => "The caption and image do not have established horizontal overlap.",
+            _ => "Vertical separation could not be established."
+        };
     }
     private void DraftChanged() { if (_rangeKind != "search") _searchDraft = null; _draftChanged = true; _inputError = null; _controller.Cancel(); }
     private void DiscardDraft() { _searchDraft = null; _firstPage = "1"; _lastPage = _characterStart = _characterEnd = ""; _rangeKind = "page"; _draftChanged = false; _inputError = null; }

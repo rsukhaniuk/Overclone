@@ -10,7 +10,7 @@ namespace Client.Analysis.RenderedReview;
 /// <summary>Explicit, revision-bound review; no background compile or fixes.
 /// One actual inspection/evaluation task owns admission until settlement. Only
 /// one page's exact facts are retained; aggregate report is separately bounded.</summary>
-public sealed class CompiledReviewController : IDisposable
+public sealed partial class CompiledReviewController : IDisposable
 {
     private readonly WorkspaceCoordinator _workspace;
     private readonly CompileWorkspaceSession _compile;
@@ -117,6 +117,7 @@ public sealed class CompiledReviewController : IDisposable
             if (Overlapping(copy)) { _notice = "The bound literal range overlaps another incompatible page role. No annotation was added."; return false; }
             _sourceBindings.Add(proof.Annotation, proof); _annotations = Array.AsReadOnly(copy);
             _annotationAuthority = authority; _annotationVersion++;
+            ClearCaptionImages();
             _notice = "Bound literal " + proof.RangeKind + " only. Section extent, glyph ink and normative compliance are not established.";
             return true;
         }
@@ -157,10 +158,11 @@ public sealed class CompiledReviewController : IDisposable
         // on a compile/edit authority change. Its actual task retains admission.
         if (_active is not null && _activeAuthority?.Current(_workspace, _compile) != true)
             Invalidate("Project or PDF changed. Rendered review cancelled as stale.");
+        if (_captionImageDraft is { } draft && !CaptionDraftCurrent(draft)) ClearCaptionImages();
         Notify();
     }
     private RenderedExtentAuthority? _activeAuthority;
-    private void Invalidate(string message) { _intent++; _report = null; _reportAuthority = null; _notice = message; _active?.Cancel(); }
+    private void Invalidate(string message) { _intent++; _report = null; _reportAuthority = null; _notice = message; ClearCaptionImages(); _active?.Cancel(); }
     public void Cancel() { if (CanCancel) { Invalidate("Rendered review cancelled. Continue or retry is explicit."); Notify(); } }
     public async Task CheckAsync(IReadOnlyList<int>? selectedPages = null, CancellationToken cancellationToken = default)
     {
@@ -273,7 +275,7 @@ public sealed class CompiledReviewController : IDisposable
         TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
     public void Dispose()
     {
-        if (_disposed) return; _disposed = true; _intent++; _active?.Cancel(); _report = null;
+        if (_disposed) return; _disposed = true; _intent++; _active?.Cancel(); _report = null; ClearCaptionImages();
         _workspace.WorkspaceChanged -= SourceChanged; _workspace.RevisionCommitted -= Saved; _compile.Changed -= SourceChanged;
         _ = DisposeEvaluatorAsync();
     }
