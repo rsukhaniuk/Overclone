@@ -1,0 +1,77 @@
+{
+  "schemaVersion": 1,
+  "scope": "Optional E1 ABI 1 image placement facts, direct native page objects only",
+  "sourceBuild": "../source-build/inputs.json",
+  "parentArchive": {
+    "bytes": 18061048,
+    "sha256": "a2512bf85e29ea765dffb79aeed34beef2b52d1a439ced40692360309bf9df19"
+  },
+  "toolchainImage": "emscripten/emsdk:6.0.13@sha256:fb7864e398acfda863dfcea78b8bc8adad359fa60c6a0bbeb845931de64aa68a",
+  "parent": {
+    "e1.js": {
+      "bytes": 14103,
+      "sha256": "968aae4935523f528e2314c4dbd831b2dd326ac8d3de3444fd033b73463b0225"
+    },
+    "e1.wasm": {
+      "bytes": 3716447,
+      "sha256": "8b715ed561ec644757f305ddad0a99ae728c6705f9868e96ccb53c8c9143c4b3"
+    }
+  },
+  "candidate": {
+    "e1.js": {
+      "bytes": 14175,
+      "sha256": "f95ae827b12703999ce1daafebbf6830f5f4d2c14bb7805a8f47abe54772b079"
+    },
+    "e1.wasm": {
+      "bytes": 3725577,
+      "sha256": "2e2126ead8e00ef7c79d21e3836d66957b19e827523f7c054ca887f3c11ae5b7"
+    }
+  },
+  "recipeFiles": {
+    "README.md": {
+      "bytes": 7983,
+      "sha256": "0fd6b6478f7a652e0efe34167c0258a87c5328c73a7a8d8ab7892f4bf3d6539a"
+    },
+    "build.py": {
+      "bytes": 2432,
+      "sha256": "2d71b2dcbd0386746fb86400ea565619e024fbb25b22fcdd5d4aa49037597ac0"
+    },
+    "e1_object_layout.h": {
+      "bytes": 471,
+      "sha256": "2d292e9f09e1d867eecdc8457aa94ea3923f8094fe3ec0df1c5a1ebd7f578190"
+    },
+    "make_fixtures.py": {
+      "bytes": 5267,
+      "sha256": "e18bc1ac70c5ddc4d9d2aaf19ce4d0a7e42d2707fe19980685fa3de899bf90db"
+    },
+    "object-layout.inc": {
+      "bytes": 9508,
+      "sha256": "785b162c7d24f66ec3d6b4559d1fa330de583195a6d7e294ebe8b3c09f2ea761"
+    },
+    "prepare.py": {
+      "bytes": 4319,
+      "sha256": "65a7751dce7bed09005b3436fecaa011d6dbdcf8ee48fa3fcf587f42760559fc"
+    },
+    "test.cjs": {
+      "bytes": 16324,
+      "sha256": "23728072fe8414935537c44e12ba900339125ab82d6740c6261d2e1c9a2e9fe7"
+    }
+  },
+  "verification": {
+    "parentAndCandidateIndependentReproductions": 2,
+    "nativePlacementCases": 36,
+    "nativeHandleLifecycleChecks": 5,
+    "parentLegacyByteComparisons": 5,
+    "publicHeaderOnlyUnsupportedStatus": 6,
+    "existingLayoutControls": 23,
+    "existingGlyphInkControls": 25,
+    "existingActualTextControls": 12,
+    "existingUnicodeControls": 17,
+    "existingMalformedUnicodeRefusals": 3,
+    "unchangedOriginalArabicPdf": "613b5eb04c43251ec40e7b54e4d36db402dba1f4ce2289547fcd2be23f874653",
+    "boundedNativeReceipt": {
+      "bytes": 14570,
+      "sha256": "58114e49f722e07d5bde55d6ee4429b8edcda754f92d016283e205070708e219"
+    }
+  }
+}
