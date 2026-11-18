@@ -14,6 +14,8 @@ const MAIN='тези/my thesis.tex',CHAPTER='chapter.tex',P16=Object.freeze({pro
  identity:sha(Buffer.from('native-runtime-profile-v1\nlocal-compiler-input-budget-v1\n8e3fcc0c3255613609a423a5440934b261feee32a5cc73510f4633648b4a135e'))});
 const E1=Object.freeze({loader:{length:14103,sha256:'968aae4935523f528e2314c4dbd831b2dd326ac8d3de3444fd033b73463b0225'},
  wasm:{length:3716447,sha256:'8b715ed561ec644757f305ddad0a99ae728c6705f9868e96ccb53c8c9143c4b3'}});
+const E1_OBJECT_LAYOUT=Object.freeze({loader:{length:14175,sha256:'f95ae827b12703999ce1daafebbf6830f5f4d2c14bb7805a8f47abe54772b079'},
+ wasm:{length:3725577,sha256:'2e2126ead8e00ef7c79d21e3836d66957b19e827523f7c054ca887f3c11ae5b7'}});
 function sameHashControl(before,after){
  const cell={id:'same-hash-new-ticket',required:true,status:'not-observed',reason:'Dedicated same-source recompile control was not reached.'};
  const valid=c=>c&&typeof c.hash==='string'&&typeof c.request==='string'&&/^[0-9a-f]{64}$/.test(c.hash)&&/^[0-9a-f]{32}$/.test(c.request);
@@ -52,7 +54,9 @@ function preflight(root,sdk,ukrainian=false){
  const manifest=JSON.parse(match[1]);assert.equal(manifest.version,sdk);assert.ok(manifest.assets.length>0&&manifest.assets.length<=4096);
  const seen=new Set();for(const a of manifest.assets){assert.ok(!seen.has(a.url));seen.add(a.url);const data=fs.readFileSync(local(root,a.url));assert.equal('sha256-'+createHash('sha256').update(data).digest('base64'),a.hash,a.url);}
  for(const name of ['js/rendered-review-worker.js','js/synctex-query-bridge.js','rust-generated/document_engine_bg.wasm'])assert.ok(seen.has(name),name);
- for(const [name,expected]of [['e1.js',E1.loader],['e1.wasm',E1.wasm]])assert.deepEqual(pin(fs.readFileSync(local(root,'bundled-runtime/'+name))),expected,'exact final ink-v2 E1 required');
+ const renderer={loader:pin(fs.readFileSync(local(root,'bundled-runtime/e1.js'))),wasm:pin(fs.readFileSync(local(root,'bundled-runtime/e1.wasm')))};
+ assert.ok([E1,E1_OBJECT_LAYOUT].some(pair=>['loader','wasm'].every(role=>renderer[role].length===pair[role].length
+  &&renderer[role].sha256===pair[role].sha256)),'exact admitted E1 renderer required');
  const wasm=fs.readFileSync(local(root,'rust-generated/document_engine_bg.wasm')),exports=WebAssembly.Module.exports(new WebAssembly.Module(wasm)).map(x=>x.name);
  for(const name of ['analyze_source','evaluate_rendered_review'])assert.ok(exports.includes(name),'actual bundled Rust export '+name);
  const zip=fs.readFileSync(local(root,'bundled-runtime/compiler-suite.zip')),members=new Map();let at=0;
@@ -67,7 +71,7 @@ function preflight(root,sdk,ukrainian=false){
   assert.ok(Number.isSafeInteger(p.length)&&p.length>=0&&p.length<=134217728);assert.match(p.sha256,/^[0-9a-f]{64}$/);const bytes=members.get('files/'+p.name);assert.ok(bytes);assert.deepEqual(pin(bytes),{length:p.length,sha256:p.sha256});}
  const sorted=pins.slice().sort((a,b)=>a.name<b.name?-1:a.name>b.name?1:0);assert.equal(pins.reduce((n,p)=>n+p.length,0),P16.totalBytes);
  assert.equal(sha(Buffer.from(sorted.map(p=>`${p.name}\t${p.length}\t${p.sha256}`).join('\n'))),P16.closure);
- return {csp,publication:{sdk,assets:manifest.assets.length,manifest:pin(raw),allAssetsSriVerified:true,compilerZip:pin(zip),runtime:P16,renderer:E1,rust:pin(wasm)},
+ return {csp,publication:{sdk,assets:manifest.assets.length,manifest:pin(raw),allAssetsSriVerified:true,compilerZip:pin(zip),runtime:P16,renderer,rust:pin(wasm)},
   sources:fixture(ukrainian).map(([name,bytes])=>({name,...pin(bytes)}))};
 }
 async function main(){
@@ -154,7 +158,8 @@ async function main(){
   async function review(p,authority,labels){const before=record.workers.length;await H.reveal(p,H.$(p,'rendered-review-check'));await H.$(p,'rendered-review-check').click();
    await p.waitForFunction(()=>document.querySelector('[data-testid=rendered-review-status]')?.dataset.busy==='false'&&document.querySelector('[data-testid=rendered-review-report]')?.dataset.current==='true',null,{timeout:130000});
    const report=H.$(p,'rendered-review-report');assert.equal(await report.getAttribute('data-pdf-sha256'),authority.hash);const identity=await H.$(p,'rendered-review-identity').textContent();
-   assert.ok(identity.includes(authority.request)&&identity.includes(authority.digest)&&identity.includes(authority.capture)&&identity.includes(E1.loader.sha256)&&identity.includes(E1.wasm.sha256));
+   const renderer=checked.publication.renderer;
+   assert.ok(identity.includes(authority.request)&&identity.includes(authority.digest)&&identity.includes(authority.capture)&&identity.includes(renderer.loader.sha256)&&identity.includes(renderer.wasm.sha256));
    const row=report.locator('[data-testid=rendered-review-rule][data-rule-id="KNU-CAPTION-RENDERED-001"]');assert.equal(await row.getAttribute('data-outcome'),'indeterminate');
    const evidence=await row.locator('[data-testid=rendered-review-measurement] pre').evaluateAll(es=>es.map(e=>JSON.parse(e.textContent)));
    const captions=labels.map(label=>{
