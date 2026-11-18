@@ -621,6 +621,7 @@ async function awaitTerminalAnalysis(page, timeout = 30000) {
       .count();
     assert.ok(histCount >= 1, "history is available offline");
     await page.locator("[data-testid=select-history]").last().click();
+    await page.locator("[data-testid=history-whole-restore-preview]").click();
     await page
       .locator("[data-testid=comparison]")
       .waitFor({ state: "visible" });
