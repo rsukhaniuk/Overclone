@@ -6,8 +6,7 @@ namespace Client.Pdf;
 // Additive to E1 ABI1. Character indexes are PDFium indexes, never UTF-16 offsets.
 public sealed record PdfLayoutRequest(PdfDocument Document, int PageIndex, PdfInspectionBudget Budget)
 {
-    public bool IsValid => Document is not null && Budget is not null && Budget.IsValid
-        && Document.Length <= Budget.InputBytes && PageIndex >= 0 && PageIndex < Budget.Pages;
+    public bool IsValid => Budget?.Admits(Document) == true && PageIndex >= 0 && PageIndex < Budget.Pages;
 }
 
 public interface IPdfLayoutInspector

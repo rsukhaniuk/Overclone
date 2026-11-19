@@ -5,12 +5,14 @@ namespace Client.Pdf.Preview;
 public enum PdfPreviewStatus { Empty, Loading, Available, Unavailable, Busy, Cancelled, TimedOut, Error, Disposed }
 public enum PdfPreviewSearchStatus { Empty, Scanning, Complete, Partial, Error, Cancelled }
 public enum PdfDisplayProvenance { ProvidedPdf, CallerSaysHistorical, CallerSaysCurrent }
-public sealed record PdfPreviewPolicy(int InputBytes = 8388608, int MaxPixels = 1000000, int MaxRgbaBytes = 4000000,
+public sealed record PdfPreviewPolicy(int InputBytes = PdfDocument.DefaultInputBytes, int MaxPixels = 1000000, int MaxRgbaBytes = 4000000,
     int MaxSearchPages = 32, int MaxHits = 128, int MaxHighlightBoxes = 1024, int DeadlineMs = 25000,
     int MaxDocumentPages = 512)  // PdfInspectionBudget.MaxDocumentPages; default uses literal for C# parameter const requirement
 {
     // On-demand page navigation up to512 document pages; search/raster/per-page bounds unchanged.
-    public bool IsValid => InputBytes is > 0 and <= 8388608 && MaxPixels is > 0 and <= 4000000
+    public PdfCompiledInputCapacity? CompiledInputCapacity { get; init; }
+    public bool IsValid => InputBytes > 0 && InputBytes <= (CompiledInputCapacity?.MaxInputBytes ?? PdfDocument.DefaultInputBytes)
+        && MaxPixels is > 0 and <= 4000000
         && MaxRgbaBytes is > 0 and <= 16000000 && MaxSearchPages is > 0 and <= 32 && MaxHits is > 0 and <= 256
         && MaxHighlightBoxes is > 0 and <= 4096 && DeadlineMs is >= 1 and <= 30000
         && MaxDocumentPages is > 0 and <= PdfInspectionBudget.MaxDocumentPages;

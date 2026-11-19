@@ -20,7 +20,12 @@
 #define API extern "C" EMSCRIPTEN_KEEPALIVE
 namespace {
 constexpr uint32_t INPUT=1,OUTPUT=2,DOC=3,PAGE=4,SLOTS=64;
-constexpr uint32_t MAX_BYTES=8*1024*1024,MAX_OUTPUT=16*1024*1024;
+#if defined(E1_PDF_INPUT_CAPACITY_12_MIB)
+constexpr uint32_t MAX_BYTES=12*1024*1024;
+#else
+constexpr uint32_t MAX_BYTES=8*1024*1024;
+#endif
+constexpr uint32_t MAX_OUTPUT=16*1024*1024;
 constexpr uint64_t TOTAL_BYTES=64*1024*1024;
 struct Slot {
  uint32_t generation=1,kind=0,parent=0,count=0;
@@ -139,6 +144,9 @@ bool text_count(Slot& p,int& count){
 }
 static_assert(sizeof(E1Budget)==36,"ABI v1 budget layout");
 API uint32_t e1_version(){return 1;}
+#if defined(E1_PDF_INPUT_CAPACITY_12_MIB)
+API uint32_t e1_input_bytes_limit(){return MAX_BYTES;}
+#endif
 API uint32_t e1_status(){return status;}
 API uint32_t e1_native_error(){return native_error;}
 API uint32_t e1_result(){return result;}

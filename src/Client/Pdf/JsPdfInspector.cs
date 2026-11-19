@@ -71,6 +71,9 @@ public sealed class JsPdfInspector : IPdfInspector, IPdfLayoutInspector, IPdfObj
             if (package is null) return End(PdfInspectionStatus.Unavailable, "RuntimeAbsent");
             if (!package.IsValid) return End(PdfInspectionStatus.Unavailable, "RuntimeMismatch");
             runtimeIdentity = new(package.LoaderSha256, package.WasmSha256);
+            var capacity = request.Budget.CompiledInputCapacity;
+            if (capacity is not null && capacity.Renderer != runtimeIdentity)
+                return End(PdfInspectionStatus.Unavailable, "CompiledInputRendererMismatch");
             var port = await GetPortAsync(linked.Token).ConfigureAwait(false);
             cancellationPort = port;
             if (linked.IsCancellationRequested) return Interrupted();
@@ -104,10 +107,11 @@ public sealed class JsPdfInspector : IPdfInspector, IPdfLayoutInspector, IPdfObj
                 }
             };
             string metadata;
-            if (request.InspectObjectLayout)
+            if (request.InspectObjectLayout || capacity is not null)
             {
                 var objectFrame = JsonSerializer.SerializeToNode(frame)!.AsObject();
-                objectFrame.Add("inspectObjectLayout", true);
+                if (request.InspectObjectLayout) objectFrame.Add("inspectObjectLayout", true);
+                if (capacity is not null) objectFrame.Add("inputCapacity", capacity.WireName);
                 metadata = objectFrame.ToJsonString();
             }
             else metadata = JsonSerializer.Serialize(frame);

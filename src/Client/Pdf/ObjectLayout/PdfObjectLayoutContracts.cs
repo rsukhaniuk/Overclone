@@ -6,8 +6,7 @@ namespace Client.Pdf;
 public sealed record PdfObjectLayoutRequest(PdfDocument Document, int PageIndex, PdfInspectionBudget Budget,
     bool IncludeTextLayout = false)
 {
-    public bool IsValid => Document is not null && Budget is not null && Budget.IsValid
-        && Document.Length <= Budget.InputBytes && PageIndex >= 0 && PageIndex < Budget.Pages;
+    public bool IsValid => Budget?.Admits(Document) == true && PageIndex >= 0 && PageIndex < Budget.Pages;
 
     internal PdfInspectRequest? ToInspectRequest() => IsValid
         ? new PdfInspectRequest(Document, PageIndex, Budget, raster: false,

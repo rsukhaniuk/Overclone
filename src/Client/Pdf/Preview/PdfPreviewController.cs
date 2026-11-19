@@ -36,14 +36,16 @@ public sealed class PdfPreviewController : IAsyncDisposable
         lock (_gate)
         {
             if (_disposed) return false;
-            if (bytes is null || bytes.Length < 1 || bytes.Length > _policy.InputBytes || displayName is null || displayName.Length > 256
+            if (bytes is null || bytes.Length < 1 || bytes.Length > Math.Min(_policy.InputBytes, PdfDocument.DefaultInputBytes) || displayName is null || displayName.Length > 256
                 || !PdfHashes.ValidUtf16(displayName) || !Enum.IsDefined(provenance)) return Invalid("PDF input/metadata budget rejected before copy.");
             return Provide(new PdfDocument(bytes), displayName, provenance);
         }
     }
     public bool Provide(PdfDocument? document, string displayName = "", PdfDisplayProvenance provenance = PdfDisplayProvenance.ProvidedPdf)
     {
-        if (document is null || document.Length > _policy.InputBytes || displayName is null || displayName.Length > 256 || !PdfHashes.ValidUtf16(displayName) || !Enum.IsDefined(provenance))
+        if (document is null || document.Length > _policy.InputBytes
+            || document.CompiledInputCapacity is { } capacity && !ReferenceEquals(capacity, _policy.CompiledInputCapacity)
+            || displayName is null || displayName.Length > 256 || !PdfHashes.ValidUtf16(displayName) || !Enum.IsDefined(provenance))
             return Invalid("Invalid owned document or display metadata.");
         lock (_gate)
         {
@@ -190,8 +192,10 @@ public sealed class PdfPreviewController : IAsyncDisposable
         async Task<PdfPageInspection?> Inspect(int page, bool raster, int width = 1, int height = 1, bool searchPage = false)
         {
             token.ThrowIfCancellationRequested();
-            var budget = new PdfInspectionBudget(InputBytes: _policy.InputBytes, Pages: _policy.MaxDocumentPages, SearchHits: 256, RasterPixels: _policy.MaxPixels,
-                OutputBytes: 16777216, DeadlineMs: _policy.DeadlineMs);
+            var capacity = selection.Document.CompiledInputCapacity;
+            int inputBytes = Math.Min(_policy.InputBytes, capacity?.MaxInputBytes ?? PdfDocument.DefaultInputBytes);
+            var budget = new PdfInspectionBudget(InputBytes: inputBytes, Pages: _policy.MaxDocumentPages, SearchHits: 256, RasterPixels: _policy.MaxPixels,
+                OutputBytes: 16777216, DeadlineMs: _policy.DeadlineMs) { CompiledInputCapacity = capacity };
             var request = new PdfInspectRequest(selection.Document, page, budget, searchPage ? selection.Query : null, raster, width, height);
             // Await the ACTUAL task, never a cancelled WaitAsync proxy. A
             // noncooperative task occupies this single admission after disposal.
@@ -212,7 +216,8 @@ public sealed class PdfPreviewController : IAsyncDisposable
                     Search = ScanError(s.Search, "Scan failed/unfinished, not zero matches.") });
                 return null;
             }
-            if (outcome.Page is not { } result || result.PageIndex != page || result.PageCount < 1 || result.PageCount > _policy.MaxDocumentPages || outcome.NativeStatus != 0 || outcome.EnteredNative != true
+            if (outcome.Page is not { } result || result.PageIndex != page || result.PageCount < 1 || result.PageCount > _policy.MaxDocumentPages
+                || capacity is not null && outcome.Runtime != capacity.Renderer || outcome.NativeStatus != 0 || outcome.EnteredNative != true
                 || (raster && (result.RasterWidth != width || result.RasterHeight != height))) throw new InvalidOperationException("Foreign page/status/dimensions.");
             Update(s => s with { PageCount = result.PageCount, NativeRequestId = outcome.RequestId, NativeEpoch = outcome.WorkerEpoch, Runtime = outcome.Runtime });
             return result;

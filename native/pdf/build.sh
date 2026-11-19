@@ -18,6 +18,11 @@ if [ -n "${E1_PDFIUM_SOURCE:-}" ]; then
   set -- -std=c++20 -DE1_PDFIUM_SOURCE_USERUNIT=1 -DPDF_ENABLE_FREETYPE=1 -isystem "$E1_PDFIUM_SOURCE" -isystem "$E1_PDFIUM_GENERATED" \
     -isystem "$E1_PDFIUM_SOURCE/third_party/freetype/include" -isystem "$E1_PDFIUM_SOURCE/third_party/freetype/src/include"
 fi
+case "${E1_PDF_INPUT_CAPACITY:-8-mib}" in
+  8-mib) ;;
+  12-mib) set -- "$@" -DE1_PDF_INPUT_CAPACITY_12_MIB=1 ;;
+  *) echo "invalid E1 PDF input capacity" >&2; exit 2 ;;
+esac
 em++ "$@" -O2 -Wall -Wextra -Werror -fno-exceptions -I"$include" -c "$source/e1.cpp" -o "$out/e1.o"
 if [ -n "${E1_PDFIUM_SOURCE:-}" ]; then
   em++ "$@" -O2 -Wall -Wextra -Werror -fno-exceptions -I"$include" -c "$source/pdfium_wasm_platform.cpp" -o "$out/platform.o"

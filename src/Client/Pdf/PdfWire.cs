@@ -44,6 +44,9 @@ public static class PdfWireParser
         PdfInspectionOutcome Invalid() => new(PdfInspectionStatus.InvalidResponse, id, request.Document.Sha256, epoch, Code: "InvalidResponse", Runtime: runtime);
         try
         {
+            var budget = request.Budget;
+            if ((request.Document.CompiledInputCapacity ?? budget?.CompiledInputCapacity) is { } capacity
+                && (!request.IsValid || capacity.Renderer != runtime)) return Invalid();
             if (wire is null || wire.Version != 2 || wire.LoaderSha256 != runtime.LoaderSha256 || wire.WasmSha256 != runtime.WasmSha256 || wire.RequestId != id || wire.DocumentSha256 != request.Document.Sha256 || wire.Epoch != epoch
                 || epoch is < 1 or > 9007199254740991 || wire.LiveAfter != 0 || wire.NativeCalls is null || wire.NativeCalls.Length > 32
                 || wire.NativeCalls.Any(s => s is null || s.Length > 64)) return Invalid();

@@ -1,7 +1,13 @@
 // Standalone CLASSIC release-bound worker entry, never an imported ES module.
 // JS only loads parent-provisioned bytes and invokes/copies the actual C++ E1 ABI.
 function pdfWorkerMain() {
-    function validPdfRequest(r) {
+    function inputByteLimit(r) {
+        if (r.inputCapacity === undefined) return 8388608;
+        return r.inputCapacity === 'compiled-12-mib'
+            && r.loaderSha256 === 'ea2cebb93f554788751e58554b6e16a094ee6d0883774cb697cbb4a5ce8ec38c'
+            && r.wasmSha256 === 'b1630e6501e7715b4e0870a059f4e9b8b5acc4c96aa2af0e4ecacb04071622d7' ? 12582912 : 0;
+    }
+    function validPdfRequest(r, inputLimit) {
         const b=r?.budget, positive=(v,max)=>Number.isSafeInteger(v)&&v>0&&v<=max;
         if(!r||r.version!==2||typeof r.inspectActions!=='boolean'||typeof r.raster!=='boolean'
             ||r.inspectLayout!==undefined&&typeof r.inspectLayout!=='boolean'
@@ -10,7 +16,7 @@ function pdfWorkerMain() {
             ||typeof r.requestId!=='string'||r.requestId.length<1||r.requestId.length>64
             ||!Number.isSafeInteger(r.epoch)||r.epoch<1
             ||![r.documentSha256,r.loaderSha256,r.wasmSha256].every(v=>typeof v==='string'&&/^[0-9a-f]{64}$/.test(v))
-            ||!b||!positive(b.deadlineMs,30000)||!positive(b.inputBytes,8388608)||!positive(b.pages,512)
+            ||!b||!positive(b.deadlineMs,30000)||!positive(b.inputBytes,inputLimit)||!positive(b.pages,512)
             ||!positive(b.textUnits,100000)||!positive(b.searchHits,256)||!positive(b.rasterPixels,4000000)
             ||!positive(b.outputBytes,16777216)||!positive(b.liveHandles,64)
             ||!Number.isSafeInteger(r.pageIndex)||r.pageIndex<0||r.pageIndex>=b.pages
@@ -66,14 +72,23 @@ function pdfWorkerMain() {
             nativeCalls: calls,
         });
         try {
+            const inputLimit = inputByteLimit(request), expandedInput = inputLimit === 12582912;
             const documentLength=typedLength(d.document),loaderLength=typedLength(d.loader),wasmLength=typedLength(d.wasm);
-            if(!validPdfRequest(request)||documentLength<1||documentLength>request.budget.inputBytes
-                ||loaderLength<1||loaderLength>1048576||wasmLength<8||wasmLength>16777216)
+            if(!validPdfRequest(request,inputLimit)||documentLength<1||documentLength>request.budget.inputBytes
+                ||loaderLength<1||loaderLength>1048576||wasmLength<8||wasmLength>16777216
+                ||expandedInput&&(loaderLength!==14243||wasmLength!==3725611))
                 throw new Error('Invalid bounded PDF frame');
-            // Parent owns this validated-loader Blob URL and revokes it AFTER
-            // terminating us, including cancellation that skips this worker's finally.
+            // The bridge hashes the loader before creating this private URL
+            // and owns revocation after termination for either input limit.
             if (typeof d.loaderUrl !== "string" || !d.loaderUrl.startsWith("blob:"))
                 throw new Error("Parent loader URL unavailable");
+            if (expandedInput) {
+                const digest = async bytes => [...new Uint8Array(await crypto.subtle.digest('SHA-256', bytes))]
+                    .map(b => b.toString(16).padStart(2, '0')).join('');
+                const [loaderHash, wasmHash] = await Promise.all([digest(d.loader), digest(d.wasm)]);
+                if (loaderHash !== request.loaderSha256 || wasmHash !== request.wasmSha256)
+                    throw new Error("Expanded PDF renderer identity mismatch");
+            }
             importScripts(d.loaderUrl);
             if (typeof self.E1 !== "function")
                 throw new Error("Runtime factory unavailable");
@@ -135,6 +150,8 @@ function pdfWorkerMain() {
             };
             if (call("e1_version") !== 1)
                 throw new Error("Unsupported runtime ABI");
+            if (expandedInput && (typeof m._e1_input_bytes_limit !== "function" || m._e1_input_bytes_limit() !== inputLimit))
+                throw new Error("Expanded PDF input capability unavailable");
             const b = request.budget,
                 rawBudget = new Uint8Array(36),
                 view = new DataView(rawBudget.buffer);

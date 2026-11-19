@@ -22,6 +22,11 @@ typedef struct E1Budget { uint32_t version,struct_bytes,input_bytes,pages,text_u
 // copy() into a caller input buffer; outputs survive page/document close until
 // release/reset. No borrowed native pointers/text/bitmap handles cross the ABI.
 uint32_t e1_version(void);
+#if defined(E1_PDF_INPUT_CAPACITY_12_MIB)
+// Optional compiled capacity for trusted variant selection. Existing budgets
+// keep their caller-selected ceiling, including the default 8 MiB.
+uint32_t e1_input_bytes_limit(void);
+#endif
 uint32_t e1_status(void);
 uint32_t e1_native_error(void);
 uint32_t e1_result(void);

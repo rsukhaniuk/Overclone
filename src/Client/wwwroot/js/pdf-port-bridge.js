@@ -71,7 +71,13 @@ export function createPdfPort() {
         }
         entry.resolve(response);
     }
-    function validPdfRequest(r) {
+    function inputByteLimit(r) {
+        if (r.inputCapacity === undefined) return 8388608;
+        return r.inputCapacity === 'compiled-12-mib'
+            && r.loaderSha256 === 'ea2cebb93f554788751e58554b6e16a094ee6d0883774cb697cbb4a5ce8ec38c'
+            && r.wasmSha256 === 'b1630e6501e7715b4e0870a059f4e9b8b5acc4c96aa2af0e4ecacb04071622d7' ? 12582912 : 0;
+    }
+    function validPdfRequest(r, inputLimit) {
         const b=r?.budget, positive=(v,max)=>Number.isSafeInteger(v)&&v>0&&v<=max;
         if(!r||r.version!==2||typeof r.inspectActions!=='boolean'||typeof r.raster!=='boolean'
             ||r.inspectLayout!==undefined&&typeof r.inspectLayout!=='boolean'
@@ -80,7 +86,7 @@ export function createPdfPort() {
             ||typeof r.requestId!=='string'||r.requestId.length<1||r.requestId.length>64
             ||!Number.isSafeInteger(r.epoch)||r.epoch<1
             ||![r.documentSha256,r.loaderSha256,r.wasmSha256].every(v=>typeof v==='string'&&/^[0-9a-f]{64}$/.test(v))
-            ||!b||!positive(b.deadlineMs,30000)||!positive(b.inputBytes,8388608)||!positive(b.pages,512)
+            ||!b||!positive(b.deadlineMs,30000)||!positive(b.inputBytes,inputLimit)||!positive(b.pages,512)
             ||!positive(b.textUnits,100000)||!positive(b.searchHits,256)||!positive(b.rasterPixels,4000000)
             ||!positive(b.outputBytes,16777216)||!positive(b.liveHandles,64)
             ||!Number.isSafeInteger(r.pageIndex)||r.pageIndex<0||r.pageIndex>=b.pages
@@ -95,16 +101,17 @@ export function createPdfPort() {
         catch { return Promise.reject(new Error('Invalid PDF transport envelope')); }
         if (!request || typeof request !== 'object' || Array.isArray(request))
             return Promise.reject(new Error('Invalid PDF transport envelope'));
+        const inputLimit = inputByteLimit(request), expandedInput = inputLimit === 12582912;
         if (
             request.version !== 2 || typeof request.inspectActions !== 'boolean' ||
             typeof request.requestId !== 'string' || request.requestId.length === 0 || request.requestId.length > 64 ||
             !Number.isSafeInteger(request.epoch) || request.epoch <= 0 ||
             !request.budget || !Number.isInteger(request.budget.deadlineMs) ||
             request.budget.deadlineMs <= 0 || request.budget.deadlineMs > 30000 ||
-            !Number.isSafeInteger(request.budget.inputBytes) || request.budget.inputBytes <= 0 || request.budget.inputBytes > 8388608 ||
+            !Number.isSafeInteger(request.budget.inputBytes) || request.budget.inputBytes <= 0 || request.budget.inputBytes > inputLimit ||
             !isHash(request.documentSha256) || !isHash(request.loaderSha256) || !isHash(request.wasmSha256)
         ) return Promise.resolve(terminal(request, 'transport-error'));
-        if (!validPdfRequest(request)) return Promise.resolve(terminal(request, 'transport-error'));
+        if (!validPdfRequest(request, inputLimit)) return Promise.resolve(terminal(request, 'transport-error'));
         if (disposed) return Promise.resolve(terminal(request, 'disposed'));
         if (earlyCancel === request.requestId) {
             earlyCancel = null;
@@ -114,8 +121,9 @@ export function createPdfPort() {
         // Existing managed PDF/package byte contracts, checked before any clone,
         // hash or admission. Never treat a plain Array/number as a typed length.
         const documentLength = byteLength(documentBytes), loaderLength = byteLength(loaderBytes), wasmLength = byteLength(wasmBytes);
-        if (documentLength < 1 || documentLength > 8388608 || documentLength > request.budget.inputBytes ||
-            loaderLength < 1 || loaderLength > 1048576 || wasmLength < 8 || wasmLength > 16777216)
+        if (documentLength < 1 || documentLength > inputLimit || documentLength > request.budget.inputBytes ||
+            loaderLength < 1 || loaderLength > 1048576 || wasmLength < 8 || wasmLength > 16777216 ||
+            expandedInput && (loaderLength !== 14243 || wasmLength !== 3725611))
             return Promise.resolve(terminal(request, 'transport-error'));
         // Actual preparation owns a slot BEFORE cloning. Logical cancellation
         // may settle active, but cannot retire unfinished hash operations.
@@ -183,8 +191,6 @@ export function createPdfPort() {
                     worker.onerror = () => { if (active === entry) settle(entry, terminal(request, 'transport-error')); };
                     worker.onmessageerror = () => { if (active === entry) settle(entry, terminal(request, 'transport-error')); };
                     admission.check(binding);
-                    // URL is internal parent-owned transport state, never a field
-                    // selected from C# metadata, a PDF document or a package record.
                     worker.postMessage({ request, document, loader, wasm, loaderUrl: entry.loaderUrl },
                         [document.buffer, loader.buffer, wasm.buffer]);
                 } catch {

@@ -5,29 +5,50 @@ namespace Client.Pdf;
 
 public enum PdfInspectionStatus { Completed, InvalidInput, Unavailable, Busy, Cancelled, Disposed, TimedOut, TransportError, InvalidResponse, NativeFailure, OutputLimit }
 
+/// <summary>Explicit capacity for a trusted compiled-artifact caller and the matching pinned renderer.</summary>
+public sealed class PdfCompiledInputCapacity
+{
+    private PdfCompiledInputCapacity() { }
+    public static PdfCompiledInputCapacity TwelveMiB { get; } = new();
+    public int MaxInputBytes => 12 * 1024 * 1024;
+    public PdfRuntimeIdentity Renderer { get; } = new(
+        "ea2cebb93f554788751e58554b6e16a094ee6d0883774cb697cbb4a5ce8ec38c",
+        "b1630e6501e7715b4e0870a059f4e9b8b5acc4c96aa2af0e4ecacb04071622d7");
+    internal string WireName => "compiled-12-mib";
+}
+
 public sealed class PdfDocument
 {
+    public const int DefaultInputBytes = 8 * 1024 * 1024;
     private readonly byte[] _bytes;
-    public PdfDocument(byte[] bytes)
+    public PdfDocument(byte[] bytes) : this(bytes, null) { }
+    public PdfDocument(byte[] bytes, PdfCompiledInputCapacity? compiledInputCapacity)
     {
         ArgumentNullException.ThrowIfNull(bytes);
-        if (bytes.Length is < 1 or > 8388608) throw new ArgumentException("PDF byte limit.", nameof(bytes));
+        if (bytes.Length < 1 || bytes.Length > (compiledInputCapacity?.MaxInputBytes ?? DefaultInputBytes))
+            throw new ArgumentException("PDF byte limit.", nameof(bytes));
+        CompiledInputCapacity = compiledInputCapacity;
         _bytes = (byte[])bytes.Clone(); Sha256 = PdfHashes.Of(_bytes);
     }
+    public PdfCompiledInputCapacity? CompiledInputCapacity { get; }
     public int Length => _bytes.Length;
     public string Sha256 { get; }
     public byte[] CopyBytes() => (byte[])_bytes.Clone();
 }
 
-public sealed record PdfInspectionBudget(int InputBytes = 8388608, int Pages = 32, int TextUnits = 100000,
+public sealed record PdfInspectionBudget(int InputBytes = PdfDocument.DefaultInputBytes, int Pages = 32, int TextUnits = 100000,
     int SearchHits = 256, int RasterPixels = 4000000, int OutputBytes = 16777216, int LiveHandles = 64, int DeadlineMs = 30000)
 {
     // Finite page-budget maximum; not full Overleaf parity or a global memory theorem.
     // Default32 preserves existing explicit callers; positive selected budgets <=512 are admitted.
     public const int MaxDocumentPages = 512;
-    public bool IsValid => InputBytes is > 0 and <= 8388608 && Pages is > 0 and <= MaxDocumentPages && TextUnits is > 0 and <= 100000
+    public PdfCompiledInputCapacity? CompiledInputCapacity { get; init; }
+    public bool IsValid => InputBytes > 0 && InputBytes <= (CompiledInputCapacity?.MaxInputBytes ?? PdfDocument.DefaultInputBytes)
+        && Pages is > 0 and <= MaxDocumentPages && TextUnits is > 0 and <= 100000
         && SearchHits is > 0 and <= 256 && RasterPixels is > 0 and <= 4000000 && OutputBytes is > 0 and <= 16777216
         && LiveHandles is > 0 and <= 64 && DeadlineMs is >= 1 and <= 30000;
+    internal bool Admits(PdfDocument? document) => document is not null && IsValid
+        && ReferenceEquals(document.CompiledInputCapacity, CompiledInputCapacity) && document.Length <= InputBytes;
 }
 
 public sealed class PdfInspectRequest
@@ -45,7 +66,7 @@ public sealed class PdfInspectRequest
     internal bool InspectObjectLayout { get; init; }
     public int RasterWidth { get; }
     public int RasterHeight { get; }
-    public bool IsValid => Document is not null && Budget is not null && Budget.IsValid && Document.Length <= Budget.InputBytes
+    public bool IsValid => Budget?.Admits(Document) == true
         && (!(InspectLayout || InspectObjectLayout) || !Raster && !InspectActions && Search is null)
         && PageIndex >= 0 && PageIndex < Budget.Pages && RasterWidth is > 0 and <= 16384 && RasterHeight is > 0 and <= 16384
         && (long)RasterWidth * RasterHeight <= Budget.RasterPixels
