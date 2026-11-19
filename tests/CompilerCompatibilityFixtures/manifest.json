@@ -27,8 +27,8 @@
     },
     {
       "name": "scripts/rendered-review-ui-checks.cjs",
-      "length": 35816,
-      "sha256": "bd6d0882064253655e18195b8711cdd07a6522a37c9005f7a1bd1aabb9ae1259"
+      "length": 36086,
+      "sha256": "4d017e4021d23da1e9dbdd2a408476bda15a40bdc3aa5ccded12cbe754ea245e"
     },
     {
       "name": "scripts/review-ui-helpers.cjs",
@@ -52,8 +52,13 @@
     },
     {
       "name": "scripts/test-local-authoring-ui.cjs",
-      "length": 130672,
-      "sha256": "175ad1080d38d3799e0ae88e8edaa69f694f30135e96794446d7b3f926beb537"
+      "length": 131703,
+      "sha256": "85b9ddcd88f4b115d35b6bdeb0fd58df3644f24d605a013b735f4b23664d53bf"
+    },
+    {
+      "name": "scripts/work-page-number-ui-checks.cjs",
+      "length": 5594,
+      "sha256": "c7c4ff2b56a7aefa9ec571feb2716b5d12705263ca3926f150bdc0d775f09e1d"
     },
     {
       "name": "src/Client/wwwroot/icons/icon-192.png",

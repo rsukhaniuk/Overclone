@@ -12,6 +12,7 @@ const CLOSED = [
 ].map(value => Object.freeze({...value,identity:sha(Buffer.from('native-runtime-profile-v1\n'+value.name+'\n'+value.closure))}));
 const RENDERER = Object.freeze({loader:'968aae4935523f528e2314c4dbd831b2dd326ac8d3de3444fd033b73463b0225',wasm:'8b715ed561ec644757f305ddad0a99ae728c6705f9868e96ccb53c8c9143c4b3',loaderBytes:14103,wasmBytes:3716447,schemaVersion:2});
 const V1_RENDERER = Object.freeze({loader:RENDERER.loader,wasm:'d1623f880b530b3a6503436d43bcd05d01f6ff8fc8a40c782ba848cd209cb217',loaderBytes:14103,wasmBytes:3699309,schemaVersion:1});
+const OBJECT_LAYOUT_RENDERER = Object.freeze({loader:'f95ae827b12703999ce1daafebbf6830f5f4d2c14bb7805a8f47abe54772b079',wasm:'2e2126ead8e00ef7c79d21e3836d66957b19e827523f7c054ca887f3c11ae5b7',loaderBytes:14175,wasmBytes:3725577,schemaVersion:2});
 const TYPOGRAPHY = ['letter-ink-height-min','letter-ink-height-max','baseline-distance-min','baseline-distance-max'];
 const HEIGHT_EXPECTED = 'Font height is undefined in section 3.1; letter ink height is an observation only';
 const BASELINE_EXPECTED = '1.5 line spacing has no baseline-distance definition in section 3.1';
@@ -68,7 +69,7 @@ function box(value) { assert.ok(Array.isArray(value)&&value.length===4);value.fo
 function admittedRenderer(renderer) {
   // Exact reviewed tuples are the authority. Optional caller schema/version
   // hints cannot upgrade corrected v1 or admit known bad/private prototypes.
-  const found=[RENDERER,V1_RENDERER].find(row=>renderer&&row.loader===renderer.loader&&row.wasm===renderer.wasm);
+  const found=[RENDERER,V1_RENDERER,OBJECT_LAYOUT_RENDERER].find(row=>renderer&&row.loader===renderer.loader&&row.wasm===renderer.wasm);
   assert.ok(found,'exact reviewed renderer pair required');
   for(const field of ['loaderBytes','wasmBytes'])if(renderer[field]!==undefined)assert.equal(renderer[field],found[field]);
   return found;

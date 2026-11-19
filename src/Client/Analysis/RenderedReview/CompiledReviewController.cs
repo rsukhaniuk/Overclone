@@ -41,6 +41,8 @@ public sealed partial class CompiledReviewController : IDisposable
     public bool CanBindSourceEvent => !_disposed && !Busy && _binding is not null && AnnotationsCurrent
         && WorkType != "unspecified" && _annotations.Count < 512 && RenderedExtentAuthority.Capture(_workspace, _compile)?.Inspector is not null;
     public string WorkType { get; private set; } = "unspecified";
+    public bool ChecksWorkPageNumbers { get; private set; }
+    public bool CanTurnOffWorkPageNumbers => !Overlapping(_annotations, allowTitleNumber: false);
     public IReadOnlyList<RenderedRoleAnnotation> Annotations => _annotations;
     /// <summary>Range metadata for display, including stale bindings. Neither
     /// headingText nor captionText is a section extent or glyph-ink metric.</summary>
@@ -57,6 +59,12 @@ public sealed partial class CompiledReviewController : IDisposable
         if (_disposed || !RenderedExtentContract.WorkType(value) || value == WorkType) return;
         WorkType = value; Invalidate("Work type changed. Check the current PDF again."); Notify();
     }
+    public void SelectWorkPageNumberReview(bool enabled)
+    {
+        if (_disposed || enabled == ChecksWorkPageNumbers || !enabled && !CanTurnOffWorkPageNumbers) return;
+        ChecksWorkPageNumbers = enabled;
+        Invalidate("Page number review settings changed. Check the current PDF again."); Notify();
+    }
     public void SelectAnnotations(IReadOnlyList<RenderedRoleAnnotation> annotations)
     {
         if (_disposed) return;
@@ -65,7 +73,7 @@ public sealed partial class CompiledReviewController : IDisposable
             || annotations.Any(a => !AuthorAnnotation(a) && !RetainSourceAnnotation(a)))
         { Invalidate("Invalid or stale page-role annotations. Bind source events explicitly; copied machine labels cannot be confirmed."); Notify(); return; }
         var copy = annotations.Select(a => AuthorAnnotation(a) ? a with { AnnotationId = ++_annotationId } : a).ToArray();
-        if (Overlapping(copy)) { Invalidate("Incompatible overlapping page roles were refused."); Notify(); return; }
+        if (Overlapping(copy, ChecksWorkPageNumbers)) { Invalidate("Incompatible overlapping page roles were refused."); Notify(); return; }
         _sourceBindings = copy.Where(_sourceBindings.ContainsKey).ToDictionary(a => a, a => _sourceBindings[a],
             (IEqualityComparer<RenderedRoleAnnotation>)ReferenceEqualityComparer.Instance);
         _annotations = Array.AsReadOnly(copy); _annotationVersion++;
@@ -114,7 +122,7 @@ public sealed partial class CompiledReviewController : IDisposable
             { _notice = "Source role was not bound: " + result.Code + ". No machine annotation was added."; return false; }
             if (!await _binding.VerifyCurrentAsync(proof, workType, stop.Token) || !Current() || !_binding.IsCurrent(proof, workType, stop.Token)) return false;
             var copy = annotations.Append(proof.Annotation).ToArray();
-            if (Overlapping(copy)) { _notice = "The bound literal range overlaps another incompatible page role. No annotation was added."; return false; }
+            if (Overlapping(copy, ChecksWorkPageNumbers)) { _notice = "The bound literal range overlaps another incompatible page role. No annotation was added."; return false; }
             _sourceBindings.Add(proof.Annotation, proof); _annotations = Array.AsReadOnly(copy);
             _annotationAuthority = authority; _annotationVersion++;
             ClearCaptionImages();
@@ -136,15 +144,20 @@ public sealed partial class CompiledReviewController : IDisposable
         && a.Role is "title" or "abstract" or "contents" or "introduction" or "body" or "conclusions" or "references" or "appendix" or "headingMajor"
             or "headingMinor" or "paragraph" or "pageNumber" or "figureCaption" or "tableCaption" or "footnote" or "note" or "illustration"
         && (a.CharacterStart is null && a.CharacterEnd is null || a.CharacterStart is >= 0 && a.CharacterEnd > a.CharacterStart);
-    private static bool Overlapping(RenderedRoleAnnotation[] annotations)
+    private static bool Overlapping(IReadOnlyList<RenderedRoleAnnotation> annotations, bool allowTitleNumber)
     {
         static bool Container(RenderedRoleAnnotation a, RenderedRoleAnnotation b) => a.Provenance == "authorLabel" && a.Role is "body" or "appendix"
             && b.Role is "headingMajor" or "headingMinor" or "paragraph" or "pageNumber" or "illustration" or "figureCaption" or "tableCaption" or "footnote" or "note";
-        for (int i = 0; i < annotations.Length; i++) for (int j = i + 1; j < annotations.Length; j++)
+        static bool TitleWithNumber(RenderedRoleAnnotation title, RenderedRoleAnnotation number) =>
+            title is { PageIndex: 0, Role: "title", CharacterStart: null, CharacterEnd: null, Provenance: "authorLabel", Certainty: "confirmedObservation" }
+            && number is { PageIndex: 0, Role: "pageNumber", CharacterStart: >= 0, Provenance: "authorLabel", Certainty: "confirmedObservation" }
+            && number.CharacterEnd > number.CharacterStart;
+        for (int i = 0; i < annotations.Count; i++) for (int j = i + 1; j < annotations.Count; j++)
         {
             var a = annotations[i]; var b = annotations[j];
             bool overlap = a.CharacterStart is null || b.CharacterStart is null || a.CharacterStart < b.CharacterEnd && b.CharacterStart < a.CharacterEnd;
-            if (a.PageIndex == b.PageIndex && overlap && !Container(a, b) && !Container(b, a)) return true;
+            if (a.PageIndex == b.PageIndex && overlap && !Container(a, b) && !Container(b, a)
+                && !(allowTitleNumber && (TitleWithNumber(a, b) || TitleWithNumber(b, a)))) return true;
         }
         return false;
     }
@@ -178,6 +191,7 @@ public sealed partial class CompiledReviewController : IDisposable
         _active = stop; _activeAuthority = authority; long intent = ++_intent, annotationVersion = _annotationVersion;
         using var notification = stop.Token.Register(() => Observe(_dispatch(() => { if (!_disposed && ReferenceEquals(_active, stop)) Notify(); })));
         string workType = WorkType; var annotations = _annotations; _report = null; _reportAuthority = null;
+        string profileVersion = ChecksWorkPageNumbers ? RenderedReviewContract.PaginationProfileVersion : RenderedReviewContract.ProfileVersion;
         var results = new Dictionary<string, RenderedRuleResult>(StringComparer.Ordinal); var pages = new List<RenderedReviewPageEvidence>();
         PdfRuntimeIdentity? runtime = null; RenderedExtentEvidence? compilation = null;
         bool Current() => !_disposed && _intent == intent && annotationVersion == _annotationVersion && WorkType == workType
@@ -234,7 +248,8 @@ public sealed partial class CompiledReviewController : IDisposable
                 if (factBytes.Length > RenderedReviewContract.FactsMaxBytes) { _notice = "Page facts exceed the evaluation quota; coverage is incomplete."; return; }
                 var input = new RenderedReviewRequest(Guid.NewGuid().ToString("N"), document.Sha256, authority.Output.RequestId.Value.ToString("N"),
                     authority.Output.WorkerEpoch, authority.Output.InputContentDigest.Hex, authority.Output.SnapshotIdentity.CaptureId, workType,
-                    annotationVersion, facts.PageCount, Array.AsReadOnly(new[] { index }), Array.AsReadOnly(annotations.Where(a => a.PageIndex == index).ToArray()), PdfHashes.Of(factBytes));
+                    annotationVersion, facts.PageCount, Array.AsReadOnly(new[] { index }), Array.AsReadOnly(annotations.Where(a => a.PageIndex == index).ToArray()), PdfHashes.Of(factBytes))
+                { ProfileVersion = profileVersion };
                 CheckCurrent(); var reply = await _evaluator.EvaluateAsync(input, factBytes, stop.Token); CheckCurrent(); await VerifyBindings(); CheckCurrent();
                 if (reply.Status != RenderedExtentEvaluationStatus.Completed)
                 { _notice = $"Rendered evaluator stopped: {reply.Status}. Coverage is incomplete."; return; }
@@ -247,7 +262,8 @@ public sealed partial class CompiledReviewController : IDisposable
                 compilation ??= new(document.Sha256, document.Length, input.CompileRequestId, input.CompileEpoch, input.InputDigest, input.CaptureId,
                     inspected.RequestId, inspected.WorkerEpoch, measuredRuntime, reply.WorkerEpoch);
                 var report = new RenderedReviewReport(Array.AsReadOnly(results.Values.ToArray()), new(compilation, authority.Output.ContentIdentity!, annotationVersion, Array.AsReadOnly(pages.ToArray())),
-                    total, position, position == total, position == total ? "SelectedPagesCollectedStandardsPartial" : "PageCollectionIncomplete");
+                    total, position, position == total, position == total ? "SelectedPagesCollectedStandardsPartial" : "PageCollectionIncomplete")
+                { ProfileVersion = profileVersion };
                 if (Encoding.UTF8.GetByteCount(JsonSerializer.Serialize(report, Camel)) > RenderedReviewContract.ResponseMaxBytes || results.Count > 512)
                 { _notice = "Rendered report limit reached; coverage is incomplete. Check remaining pages explicitly."; return; }
                 CheckCurrent(); _reportAuthority = authority; _report = report;

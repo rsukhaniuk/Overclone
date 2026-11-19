@@ -21,6 +21,7 @@
 //   PDF_DOWNLOAD_CHECKS=1   optional CASE=plain online/offline/stale export checks (RESULT_DIR required)
 //   SOURCE_PDF_CHECKS=1     plain/golden/portable/biber native forward/inverse checks
 //   RENDERED_REVIEW_CHECKS=1 plain/portable P14+layout-renderer checks; bundled and PDF_DOWNLOAD_CHECKS=1 required
+//   WORK_PAGE_NUMBER_CHECKS=1 plain P16 pdfLaTeX fixture with explicit title and work page-number labels
 //   BUNDLED_RUNTIME=1       mandatory for final R1 cases; automatic embedded tools
 //   CYRILLIC_FIXTURE        mixed-ligature.tex (default) | mixed-semantic.tex, both original unchanged
 //   LUAHARFBUZZ_SOURCE_DIR   approved native LuaHarfbuzz source root, required only for harfbuzz
@@ -54,6 +55,7 @@ const { chromium } = require("playwright");
 const H = require("./review-ui-helpers.cjs");
 const sourcePdfNavigation = require("./source-pdf-navigation-ui-checks.cjs");
 const renderedReview = require("./rendered-review-ui-checks.cjs");
+const workPageNumbers = require("./work-page-number-ui-checks.cjs");
 const { validate: validateCsp } = require("./test-csp.cjs");
 
 const sha256 = (b) => createHash("sha256").update(b).digest("hex");
@@ -86,6 +88,7 @@ const BUNDLED_RUNTIME = process.env.BUNDLED_RUNTIME === "1";
 assert.ok(!FINAL_R1_CASE || BUNDLED_RUNTIME, 'final R1 cases require automatic bundled tools');
 const SOURCE_PDF_CHECKS = process.env.SOURCE_PDF_CHECKS === "1" || STRICT_PACKAGE_CASE;
 const RENDERED_REVIEW_CHECKS = renderedReview.enabled(process.env.RENDERED_REVIEW_CHECKS);
+const WORK_PAGE_NUMBER_CHECKS = renderedReview.enabled(process.env.WORK_PAGE_NUMBER_CHECKS);
 assert.ok(!SOURCE_PDF_CHECKS || ["plain", "golden", "portable", "packages", "biblatex", "biber"].includes(CASE), "source/PDF checks support plain/golden/portable/packages/biblatex/biber fixtures");
 // Opt-in real UI rename of the original input bytes, followed by the same
 // registered compile/BibTeX/render/full-cold-offline workflow.
@@ -102,6 +105,9 @@ assert.ok(repairSetting === undefined || ["", "0", "1"].includes(repairSetting),
 const T2A_UNICODE_REPAIR = repairSetting === "1";
 assert.ok(!T2A_UNICODE_REPAIR || CASE === "font-assets", "T2A_UNICODE_REPAIR=1 is supported only for CASE=font-assets");
 const CHECK_DOWNLOADS = CASE === "font-assets" || PDF_DOWNLOAD_CHECKS || PACKAGE_CASE || FINAL_R1_CASE;
+assert.ok(!WORK_PAGE_NUMBER_CHECKS || CASE === 'plain' && COMPILER_CHOICE === 'local-authoring-v4'
+  && BUNDLED_RUNTIME && PDF_DOWNLOAD_CHECKS && !RENDERED_REVIEW_CHECKS && !SOURCE_PDF_CHECKS,
+  'work page-number workflow uses its explicit plain, bundled pdfLaTeX case');
 if (CHECK_DOWNLOADS) assert.ok(RESULT_DIR, "RESULT_DIR is required to retain actual PDF downloads");
 
 // --- Validate the published SDK manifest: EVERY asset byte hash, as in the
@@ -1135,8 +1141,8 @@ let profile, base;
     let expectedMainBytes;
     let importedCount = 1;
     if (CASE === "plain") {
-      await H.$(page, "import-input").setInputFiles({ name: "main.tex", mimeType: "text/plain", buffer: PLAIN_MAIN });
-      expectedMainBytes = PLAIN_MAIN;
+      expectedMainBytes = WORK_PAGE_NUMBER_CHECKS ? workPageNumbers.fixture(PLAIN_MAIN) : PLAIN_MAIN;
+      await H.$(page, "import-input").setInputFiles({ name: "main.tex", mimeType: "text/plain", buffer: expectedMainBytes });
     } else if (['t2a-bundled','font-closure','unicode-fonts'].includes(CASE)) {
       await H.$(page, 'import-input').setInputFiles({name: 'main.tex', mimeType: 'text/plain', buffer: bundledT2a});
       expectedMainBytes = bundledT2a; importedCount = 1;
@@ -1484,6 +1490,10 @@ let profile, base;
       record.online.sourcePdfNavigation = await sourcePdfNavigation.verify(page, project, MAIN_PATH, BIBER_CASE ? "portable" : CASE === "portable" || PACKAGE_CASE ? CASE : CASE === "golden", phase);
     }
     // --- Wait for the offline cache to be genuinely provisioned.
+    if (WORK_PAGE_NUMBER_CHECKS) {
+      phase = 'online-work-page-numbers';
+      record.online.workPageNumbers = await workPageNumbers.verify(page, project, outputHash, () => workers, false);
+    }
     if(RENDERED_REVIEW_CHECKS){
       phase='online-rendered-review';
       record.online.renderedReview=await renderedReview.verify(page,{project,hash:outputHash,pages:await pageCount(page),
@@ -1802,6 +1812,10 @@ let profile, base;
       record.coldOffline.sourcePdfNavigation = await sourcePdfNavigation.verify(page, project, MAIN_PATH, BIBER_CASE ? "portable" : CASE === "portable" || PACKAGE_CASE ? CASE : CASE === "golden", phase);
     }
     if (CHECK_DOWNLOADS) {
+      if (WORK_PAGE_NUMBER_CHECKS) {
+        phase = 'offline-work-page-numbers';
+        record.coldOffline.workPageNumbers = await workPageNumbers.verify(page, project, offlineOutputHash, () => workers, true);
+      }
       if(RENDERED_REVIEW_CHECKS){
         phase='offline-rendered-review';
         record.coldOffline.renderedReview=await renderedReview.verify(page,{project,hash:offlineOutputHash,pages:await pageCount(page),

@@ -11,6 +11,7 @@ const P15={count:4453,totalBytes:261178860,closure:'e20e5f5e14f2088d4c8e67185668
 const P16={count:4557,totalBytes:262320783,closure:'8e3fcc0c3255613609a423a5440934b261feee32a5cc73510f4633648b4a135e'};
 const renderer={loader:'968aae4935523f528e2314c4dbd831b2dd326ac8d3de3444fd033b73463b0225',wasm:'8b715ed561ec644757f305ddad0a99ae728c6705f9868e96ccb53c8c9143c4b3'};
 const rendererV1={...renderer,wasm:'d1623f880b530b3a6503436d43bcd05d01f6ff8fc8a40c782ba848cd209cb217'};
+const objectLayoutRenderer={loader:'f95ae827b12703999ce1daafebbf6830f5f4d2c14bb7805a8f47abe54772b079',wasm:'2e2126ead8e00ef7c79d21e3836d66957b19e827523f7c054ca887f3c11ae5b7'};
 test('mode defaults off and invalid flag values never silently enable/disable checks',()=>{
   for(const value of [undefined,'','0'])assert.equal(R.enabled(value),false);
   assert.equal(R.enabled('1'),true);
@@ -122,11 +123,11 @@ test('genuine metric and placement shapes require exact corrected v2; old v1 sta
   assert.throws(()=>R.preflight({caseName:'plain',bundled:true,downloads:true,resultDirectory:'/evidence',runtime:R.closedIdentity(P15),renderer:prototype}));
 });
 
-test('both exact renderer tuples retain their own schema and preflight identity; prototypes and mixtures refuse',()=>{
-  for(const [pair,version,bytes] of [[renderer,2,3716447],[rendererV1,1,3699309]]){
+test('each exact renderer tuple retains its schema and preflight identity; prototypes and mixtures refuse',()=>{
+  for(const [pair,version,loaderBytes,wasmBytes] of [[renderer,2,14103,3716447],[rendererV1,1,14103,3699309],[objectLayoutRenderer,2,14175,3725577]]){
     assert.equal(R.rendererVersion(pair),version);
     const result=R.preflight({caseName:'plain',bundled:true,downloads:true,resultDirectory:'/evidence',runtime:R.closedIdentity(P15),renderer:{...pair,inkSchema:3-version}});
-    assert.equal(result.renderer.wasm,pair.wasm);assert.equal(result.renderer.schemaVersion,version);assert.equal(result.renderer.loaderBytes,14103);assert.equal(result.renderer.wasmBytes,bytes);
+    assert.equal(result.renderer.wasm,pair.wasm);assert.equal(result.renderer.schemaVersion,version);assert.equal(result.renderer.loaderBytes,loaderBytes);assert.equal(result.renderer.wasmBytes,wasmBytes);
   }
   assert.equal(R.rendererVersion(),2,'canonical next candidate is corrected v2');
   for(const bad of [
@@ -135,6 +136,7 @@ test('both exact renderer tuples retain their own schema and preflight identity;
     {...renderer,wasm:'463b434e64eeb265af97d974d81d05e11cc683df6095727d6ec5c4e6bf3717bc'},
     {...renderer,loader:'040bdfac50656b3993f622614b73feaaba31d8253d077ff50f925f316c2f5f6b'},
     {...renderer,loaderBytes:14104},{...renderer,wasmBytes:3699309},{...rendererV1,wasmBytes:3716447},
+    {...objectLayoutRenderer,loader:renderer.loader},{...objectLayoutRenderer,wasm:renderer.wasm},
     {...renderer,wasm:'0'.repeat(64),inkSchema:2},null,
   ]){
     assert.throws(()=>R.rendererVersion(bad));

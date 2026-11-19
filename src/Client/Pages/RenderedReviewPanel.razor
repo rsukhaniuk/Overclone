@@ -27,6 +27,18 @@
                 <option value="masterQualification">Master qualification</option>
             </select>
         </label>
+        <label>
+            <input type="checkbox" data-testid="rendered-review-work-numbers" checked="@_controller.ChecksWorkPageNumbers"
+                   disabled="@(_controller.Busy || _controller.ChecksWorkPageNumbers && !_controller.CanTurnOffWorkPageNumbers)"
+                   @onchange="PageNumberReviewChanged" />
+            Inspect confirmed work page numbers
+        </label>
+        @if (_controller.ChecksWorkPageNumbers)
+        {
+            <p>Confirm the first page as the title page and select each printed number by its PDF text range. Use the numbering for the whole work, including appendices.</p>
+            @if (!_controller.CanTurnOffWorkPageNumbers)
+            { <p>Remove either confirmed title-page label to turn off this check.</p> }
+        }
 
         <details data-testid="rendered-review-labels">
             <summary>Identify page roles for this PDF</summary>
@@ -35,7 +47,8 @@
                 <legend>Add a page role</legend>
                 <label>Role
                     <select data-testid="rendered-role" @bind="_role" @bind:after="DraftChanged">
-                        @foreach (var role in Roles) { <option value="@role.Id">@role.Label</option> }
+                        @foreach (var role in Roles)
+                        { <option value="@role.Id">@(role.Id == "pageNumber" && _controller.ChecksWorkPageNumbers ? "Work page number" : role.Label)</option> }
                     </select>
                 </label>
                 <button type="button" data-testid="rendered-role-use-search" @onclick="UseSelectedSearch" disabled="@(!CanUseSelectedSearch)">Use selected PDF search result</button>
@@ -250,6 +263,13 @@
                                             <button type="button" @onclick="() => ShowPage(page)" disabled="@(!CanShowPage(page))">Show page @(page + 1) in PDF preview</button>
                                         }
                                         <p>Measured: @JsonText(evidence, "measured"). Expected observation: @JsonText(evidence, "expected"). Unit: @JsonText(evidence, "unit"). Method: @JsonText(evidence, "method").</p>
+                                        @if (result.RuleId == "KNU-PAGINATION-001" && evidence.TryGetProperty("observation", out var observation)
+                                            && observation.TryGetProperty("placement", out var placement))
+                                        {
+                                            <p>Work page number ink is @JsonText(placement, "topClearanceMm") mm from the media top
+                                                and @JsonText(placement, "rightClearanceMm") mm from the right, with a measurement uncertainty
+                                                of @JsonText(placement, "absoluteErrorMm") mm.</p>
+                                        }
                                         <details><summary>Exact measurement evidence</summary><pre style="white-space:pre-wrap">@evidence.GetRawText()</pre></details>
                                     </li>
                                 }
@@ -272,7 +292,7 @@
                     <p>PDF SHA256: @report.Evidence.Compilation.PdfSha256; @report.Evidence.Compilation.PdfBytes bytes.</p>
                     <p>Compile request: @report.Evidence.Compilation.CompileRequestId; epoch: @report.Evidence.Compilation.CompileEpoch; capture: @report.Evidence.Compilation.CaptureId.</p>
                     <p>Input digest: @report.Evidence.Compilation.InputDigest. Artifact digest: @report.Evidence.ContentIdentity.Digest.Hex.</p>
-                    <p>Annotation version: @report.Evidence.AnnotationVersion; profile: @RenderedReviewContract.ProfileId @RenderedReviewContract.ProfileVersion.</p>
+                    <p>Annotation version: @report.Evidence.AnnotationVersion; profile: @RenderedReviewContract.ProfileId @report.ProfileVersion.</p>
                     <p>Inspector loader SHA256: @report.Evidence.Compilation.Runtime.LoaderSha256; WASM SHA256: @report.Evidence.Compilation.Runtime.WasmSha256.</p>
                     <p>@report.Evidence.Pages.Count pages have recorded inspection, facts-hash and evaluation identities. These identify the observations; they do not establish unassessed rules.</p>
                     <ul>
@@ -531,6 +551,7 @@
     }
     private void Cancel() => _controller.Cancel();
     private void WorkTypeChanged(ChangeEventArgs args) { _controller.SelectWorkType(args.Value as string ?? ""); _inputError = null; }
+    private void PageNumberReviewChanged(ChangeEventArgs args) { _controller.SelectWorkPageNumberReview(args.Value is true); _inputError = null; }
     private void Changed() { if (!_disposed) _ = Render(); }
     private async Task Render()
     {
