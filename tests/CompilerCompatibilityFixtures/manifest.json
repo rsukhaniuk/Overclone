@@ -52,8 +52,13 @@
     },
     {
       "name": "scripts/test-local-authoring-ui.cjs",
-      "length": 131703,
-      "sha256": "85b9ddcd88f4b115d35b6bdeb0fd58df3644f24d605a013b735f4b23664d53bf"
+      "length": 134273,
+      "sha256": "2435c1353b587bcbdd8f144a925594b12562b6434440e190767beab24be308f0"
+    },
+    {
+      "name": "scripts/work-major-heading-ui-checks.cjs",
+      "length": 12230,
+      "sha256": "f55561f67cdb42e69e5360dad9c6818b6e5f9211fd99894e037939ffacb9df36"
     },
     {
       "name": "scripts/work-page-number-ui-checks.cjs",

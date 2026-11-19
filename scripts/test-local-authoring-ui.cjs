@@ -22,6 +22,7 @@
 //   SOURCE_PDF_CHECKS=1     plain/golden/portable/biber native forward/inverse checks
 //   RENDERED_REVIEW_CHECKS=1 plain/portable P14+layout-renderer checks; bundled and PDF_DOWNLOAD_CHECKS=1 required
 //   WORK_PAGE_NUMBER_CHECKS=1 plain P16 pdfLaTeX fixture with explicit title and work page-number labels
+//   WORK_MAJOR_HEADING_CHECKS=1 plain P16 pdfLaTeX fixture with a separate three-line heading-order page
 //   BUNDLED_RUNTIME=1       mandatory for final R1 cases; automatic embedded tools
 //   CYRILLIC_FIXTURE        mixed-ligature.tex (default) | mixed-semantic.tex, both original unchanged
 //   LUAHARFBUZZ_SOURCE_DIR   approved native LuaHarfbuzz source root, required only for harfbuzz
@@ -89,6 +90,8 @@ assert.ok(!FINAL_R1_CASE || BUNDLED_RUNTIME, 'final R1 cases require automatic b
 const SOURCE_PDF_CHECKS = process.env.SOURCE_PDF_CHECKS === "1" || STRICT_PACKAGE_CASE;
 const RENDERED_REVIEW_CHECKS = renderedReview.enabled(process.env.RENDERED_REVIEW_CHECKS);
 const WORK_PAGE_NUMBER_CHECKS = renderedReview.enabled(process.env.WORK_PAGE_NUMBER_CHECKS);
+const WORK_MAJOR_HEADING_CHECKS = renderedReview.enabled(process.env.WORK_MAJOR_HEADING_CHECKS);
+const workMajorHeading = WORK_MAJOR_HEADING_CHECKS ? require("./work-major-heading-ui-checks.cjs") : null;
 assert.ok(!SOURCE_PDF_CHECKS || ["plain", "golden", "portable", "packages", "biblatex", "biber"].includes(CASE), "source/PDF checks support plain/golden/portable/packages/biblatex/biber fixtures");
 // Opt-in real UI rename of the original input bytes, followed by the same
 // registered compile/BibTeX/render/full-cold-offline workflow.
@@ -108,6 +111,9 @@ const CHECK_DOWNLOADS = CASE === "font-assets" || PDF_DOWNLOAD_CHECKS || PACKAGE
 assert.ok(!WORK_PAGE_NUMBER_CHECKS || CASE === 'plain' && COMPILER_CHOICE === 'local-authoring-v4'
   && BUNDLED_RUNTIME && PDF_DOWNLOAD_CHECKS && !RENDERED_REVIEW_CHECKS && !SOURCE_PDF_CHECKS,
   'work page-number workflow uses its explicit plain, bundled pdfLaTeX case');
+assert.ok(!WORK_MAJOR_HEADING_CHECKS || CASE === 'plain' && COMPILER_CHOICE === 'local-authoring-v4'
+  && BUNDLED_RUNTIME && PDF_DOWNLOAD_CHECKS && !WORK_PAGE_NUMBER_CHECKS && !RENDERED_REVIEW_CHECKS && !SOURCE_PDF_CHECKS,
+  'major heading order uses its explicit plain, bundled pdfLaTeX case');
 if (CHECK_DOWNLOADS) assert.ok(RESULT_DIR, "RESULT_DIR is required to retain actual PDF downloads");
 
 // --- Validate the published SDK manifest: EVERY asset byte hash, as in the
@@ -277,9 +283,13 @@ const pdfFiles = pdfManifest.resources.map((r) => {
   assert.equal(sha256(bytes), r.sha256, `pdf byte hash: ${r.name}`);
   return fp;
 });
-const renderedReviewPreflight = RENDERED_REVIEW_CHECKS ? renderedReview.preflight({caseName:CASE,bundled:BUNDLED_RUNTIME,
+const renderedReviewPreflight = RENDERED_REVIEW_CHECKS || WORK_MAJOR_HEADING_CHECKS ? renderedReview.preflight({caseName:CASE,bundled:BUNDLED_RUNTIME,
   downloads:CHECK_DOWNLOADS,resultDirectory:RESULT_DIR,runtime:renderedReview.classifyRuntime(pins),
   renderer:{loader:loaderResource.sha256,wasm:wasmResource.sha256}}) : null;
+if (WORK_MAJOR_HEADING_CHECKS) {
+  assert.equal(renderedReviewPreflight.profile,16,'heading order fixture requires exact P16');
+  assert.equal(renderedReviewPreflight.renderer.schemaVersion,2,'heading order fixture requires exact layout2 renderer');
+}
 
 // --- Plain fixture: exact independently-accepted plain baseline extracted from
 // the controlled repo file tests/ModernCompilerBrowserHarness/ModernApi.cs
@@ -302,6 +312,7 @@ const PLAIN_MAIN = (() => {
   assert.equal(sha256(bytes), PLAIN_HASH, "plain fixture hash mismatch");
   return bytes;
 })();
+const MAJOR_HEADING_MAIN = workMajorHeading?.fixture(PLAIN_MAIN);
 
 // --- Golden fixture: exact accepted bytes extracted from the controlled
 // repository file tests/ModernCompilerBrowserHarness/AuthoringFixture.cs
@@ -442,6 +453,7 @@ if (PREFLIGHT_ONLY) {
   assert.equal(entries.length, 64); assert.equal(new Set(entries.map(file => file.name)).size, 64);
   process.stdout.write(JSON.stringify({ result: "PREFLIGHT_ONLY", browserNativeProof: false, sdkVerified: false, pdfDownloadChecksEnabled: CHECK_DOWNLOADS, bundledRuntime: BUNDLED_RUNTIME,
     plain: { bytes: PLAIN_MAIN.length, sha256: sha256(PLAIN_MAIN) },
+    ...(MAJOR_HEADING_MAIN ? {majorHeadingFixture:{bytes:MAJOR_HEADING_MAIN.length,sha256:sha256(MAJOR_HEADING_MAIN)}} : {}),
     golden: [["main.tex", goldenMain], ["chapter.tex", goldenChapter], ["references.bib", goldenRefs]]
       .map(([name, bytes]) => ({ name, bytes: bytes.length, sha256: sha256(bytes) })),
     long: entries.map(file => ({ name: file.name, bytes: file.buffer.length, sha256: sha256(file.buffer) })),
@@ -509,6 +521,7 @@ const record = {
   harnessSha256: sha256(fs.readFileSync(__filename)),
   sourcePdfHelperSha256: sha256(fs.readFileSync(path.join(__dirname, 'source-pdf-navigation-ui-checks.cjs'))),
   renderedReviewHelperSha256:sha256(fs.readFileSync(path.join(__dirname,'rendered-review-ui-checks.cjs'))),
+  ...(MAJOR_HEADING_MAIN ? {workMajorHeadingHelperSha256:sha256(fs.readFileSync(path.join(__dirname,'work-major-heading-ui-checks.cjs')))} : {}),
   sdk: { cspValid: true, manifestVersion: manifest.version, manifestAssets: manifest.assets.length, allAssetHashesVerified: true },
   resources: {
     compilerPins: pins.length, pinsSha256: sha256(fs.readFileSync(pinsPath)),
@@ -1141,7 +1154,7 @@ let profile, base;
     let expectedMainBytes;
     let importedCount = 1;
     if (CASE === "plain") {
-      expectedMainBytes = WORK_PAGE_NUMBER_CHECKS ? workPageNumbers.fixture(PLAIN_MAIN) : PLAIN_MAIN;
+      expectedMainBytes = MAJOR_HEADING_MAIN ?? (WORK_PAGE_NUMBER_CHECKS ? workPageNumbers.fixture(PLAIN_MAIN) : PLAIN_MAIN);
       await H.$(page, "import-input").setInputFiles({ name: "main.tex", mimeType: "text/plain", buffer: expectedMainBytes });
     } else if (['t2a-bundled','font-closure','unicode-fonts'].includes(CASE)) {
       await H.$(page, 'import-input').setInputFiles({name: 'main.tex', mimeType: 'text/plain', buffer: bundledT2a});
@@ -1494,6 +1507,10 @@ let profile, base;
       phase = 'online-work-page-numbers';
       record.online.workPageNumbers = await workPageNumbers.verify(page, project, outputHash, () => workers, false);
     }
+    if (WORK_MAJOR_HEADING_CHECKS) {
+      phase = 'online-work-major-heading';
+      record.online.workMajorHeading = await workMajorHeading.verify(page, project, outputHash, () => workers, renderedReviewPreflight.renderer, false);
+    }
     if(RENDERED_REVIEW_CHECKS){
       phase='online-rendered-review';
       record.online.renderedReview=await renderedReview.verify(page,{project,hash:outputHash,pages:await pageCount(page),
@@ -1617,7 +1634,7 @@ let profile, base;
     // that token, and preserve any original following newline.
     const token = "\\end{document}";
     assert.equal(editorContent.split(token).length - 1, 1, "exactly one \\end{document} token");
-    const changedBaseSource = T2A_UNICODE_REPAIR ? editorContent.replace(
+    const changedBaseSource = WORK_MAJOR_HEADING_CHECKS ? editorContent : T2A_UNICODE_REPAIR ? editorContent.replace(
       token,
       "% cold-offline fresh source marker\n" +
         "{\\fontencoding{OT1}\\selectfont\n\\noindent Edited offline proof: Kyiv 456. \\par}\n" + token,
@@ -1639,20 +1656,28 @@ let profile, base;
       phase='cold-offline-bibliography-edit';
       record.coldOffline.changedBibliography=await editBiberBibliography(page,project,await H.head(page,project),expectedMainBytes);
     }
-    assert.ok(
-      changedSource.indexOf("Edited offline") < changedSource.indexOf(token, changedSource.indexOf("Edited offline")),
-      "offline marker precedes \\end{document} token",
-    );
-    phase='cold-offline-source-edit';
-    await H.$(page, "editor").fill(changedSource);
-    await H.save(page);
+    if (!WORK_MAJOR_HEADING_CHECKS) {
+      assert.ok(
+        changedSource.indexOf("Edited offline") < changedSource.indexOf(token, changedSource.indexOf("Edited offline")),
+        "offline marker precedes \\end{document} token",
+      );
+      phase='cold-offline-source-edit';
+      await H.$(page, "editor").fill(changedSource);
+      await H.save(page);
+    }
     const offlineSavedHead = await H.head(page, project);
-    record.coldOffline.editedHeadId = offlineSavedHead.id;
-    record.coldOffline.editedSourceSha256 = sha256(Buffer.from(offlineSavedHead.files.find((f) => f.path === MAIN_PATH).bytes));
+    if (WORK_MAJOR_HEADING_CHECKS) {
+      assert.deepEqual(offlineSavedHead,savedHead,"unchanged heading fixture reopens at its exact saved revision");
+      record.coldOffline.unchangedHeadingFixture = true;
+    } else {
+      record.coldOffline.editedHeadId = offlineSavedHead.id;
+      record.coldOffline.editedSourceSha256 = sha256(Buffer.from(offlineSavedHead.files.find((f) => f.path === MAIN_PATH).bytes));
+    }
     if (PACKAGE_CASE) record.coldOffline.packageInputs = assertPackageHead(offlineSavedHead, Buffer.from(changedSource, 'utf8'));
     if(FINAL_R1_CASE)record.coldOffline.capturedInputs=assertCapturedR1Head(offlineSavedHead,Buffer.from(changedSource,'utf8'),BIBER_CASE);
     if(BIBER_CASE)record.coldOffline.changedBibliography={...record.coldOffline.changedBibliography,...captureBiberEdit(offlineSavedHead,savedHead,Buffer.from(changedSource,'utf8'))};
-    assert.notEqual(record.coldOffline.editedSourceSha256, record.online.sourceSha256, "source actually changed offline");
+    if (!WORK_MAJOR_HEADING_CHECKS)
+      assert.notEqual(record.coldOffline.editedSourceSha256, record.online.sourceSha256, "source actually changed offline");
     await H.selectKnu(page);
     assert.deepEqual(await H.head(page, project), offlineSavedHead, "analyze did not mutate source");
     record.coldOffline.analyzed = true;
@@ -1694,7 +1719,7 @@ let profile, base;
     const offlineOutputHash = await H.$(page, "compile-panel").getAttribute("data-output-hash");
     assert.equal(await H.$(page, "compile-panel").getAttribute("data-is-current"), "true", "offline PDF current");
     assert.ok(offlineOutputHash && /^[0-9a-f]{64}$/.test(offlineOutputHash), "offline displayed PDF hash");
-    assert.notEqual(offlineOutputHash, outputHash, "fresh compile produced a new PDF (changed source)");
+    if (!WORK_MAJOR_HEADING_CHECKS) assert.notEqual(offlineOutputHash, outputHash, "fresh compile produced a new PDF (changed source)");
     record.coldOffline.outputHash = offlineOutputHash;
     if (CASE === "font-assets") {
       assert.match(await H.$(page, "compile-details").textContent(), /Outcome: Succeeded/);
@@ -1754,7 +1779,8 @@ let profile, base;
         if(HARFBUZZ_CASE)assert.match(offlineLog,/This is LuaHBTeX, Version/);
       }
       assert.ok(offlineText.trim().length > 0, "offline page text nonblank");
-      assert.match(offlineText, /Edited offline/, "offline edited section rendered");
+      if (WORK_MAJOR_HEADING_CHECKS) assert.match(offlineText, /Modern CSharp pipeline/, "offline original heading fixture rendered");
+      else assert.match(offlineText, /Edited offline/, "offline edited section rendered");
       if (FONT_CLOSURE || UNICODE_FONTS) {
         record.coldOffline.fontCoverage = assertFontClosure(await H.$(page, 'compiler-log').textContent(), offlineText);
       } else if (CASE === 't2a-bundled') {
@@ -1816,6 +1842,12 @@ let profile, base;
         phase = 'offline-work-page-numbers';
         record.coldOffline.workPageNumbers = await workPageNumbers.verify(page, project, offlineOutputHash, () => workers, true);
       }
+      if (WORK_MAJOR_HEADING_CHECKS) {
+        phase = 'offline-work-major-heading';
+        record.coldOffline.workMajorHeading = await workMajorHeading.verify(page, project, offlineOutputHash, () => workers, renderedReviewPreflight.renderer, true);
+        assert.notEqual(record.coldOffline.workMajorHeading.authority.request,record.online.workMajorHeading.authority.request,
+          "fresh accepted offline compile ticket for the same saved heading fixture");
+      }
       if(RENDERED_REVIEW_CHECKS){
         phase='offline-rendered-review';
         record.coldOffline.renderedReview=await renderedReview.verify(page,{project,hash:offlineOutputHash,pages:await pageCount(page),
@@ -1830,6 +1862,8 @@ let profile, base;
         CASE === "font-assets" ? "offline-font.pdf" : "offline.pdf", offlineOutputHash);
       if(FINAL_R1_CASE)record.coldOffline.downloadInspection=await inspectR1Download('offline.pdf',BIBER_CASE);
       record.coldOffline.freshCurrentVerified = true;
+    }
+    if (CHECK_DOWNLOADS && !WORK_MAJOR_HEADING_CHECKS) {
       // Deliberately finish stale: never restore/recompile to hide the changed source.
       // Establish an ordinary user-save boundary before testing download; autosave may run during preview refresh.
       phase = CASE === "font-assets" ? "controlled-stale-font-source" : "controlled-stale-plain-source";
