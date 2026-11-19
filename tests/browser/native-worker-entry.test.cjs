@@ -137,8 +137,12 @@ const deadline = setTimeout(() => { console.error('Native entry Node test deadli
 
     const optional = harness({ missingRole: true }); await optional.install();
     assert.equal((await optional.message()).ok, false, 'missing native role must not prevent source release install');
-    const oversized = harness({ body: Buffer.alloc(32769, 32) }); await oversized.install();
-    assert.equal((await oversized.message()).ok, false, 'streaming native-source size bound independent of valid SRI');
+    const atCompileBound = harness({ body: Buffer.alloc(36 * 1024, 32) }); await atCompileBound.install();
+    assert.equal((await atCompileBound.message()).ok, true, 'compiler source fits its scoped larger limit');
+    const oversized = harness({ body: Buffer.alloc(36 * 1024 + 1, 32), pdfBody: Buffer.alloc(32 * 1024 + 1, 32) });
+    await oversized.install();
+    assert.equal((await oversized.message()).ok, false, 'compiler streaming source bound is independent of valid SRI');
+    assert.equal((await oversized.message({ kind: 'pdf' })).ok, false, 'PDF role retains its 32 KiB source bound');
 
     const p = harness(); await p.install();
     const pdf = await p.message({ kind: 'pdf' });

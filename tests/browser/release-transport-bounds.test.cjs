@@ -28,7 +28,7 @@ const csPdf = 'src/Client/Pdf/PdfContracts.cs';
 const limits = {
     files: csharp('src/Client/Compilation/Native/NativeCompilerSuiteContract.cs', /Files = (\d+)/) + 192,
     outputCount: csharp('src/Client/Compilation/Native/NativeAuthoringV4Contract.cs', /Outputs = (\d+)/),
-    output: csharp(csPdf, /InputBytes = (\d+)/),
+    output: csharp(csPdf, /\bDefaultInputBytes = (\d+) \* 1024 \* 1024\b/) * 1024 * 1024,
     pdfOutput: csharp(csPdf, /OutputBytes = (\d+)/),
     pdfPages: csharp(csPdf, /MaxDocumentPages = (\d+)/),
     queryMap: csharp('src/Client/Compilation/Native/NativeSyncTeXContract.cs', /MaxMapBytes = (\d+)/),
@@ -172,7 +172,9 @@ function pdfRequest() {
 function queryRequest() { return { version: 1, requestId: 'c'.repeat(32), deadlineMs: 15000,
     direction: 'forward', file: 'розділ/main.tex', line: 1, page: 0, h: 0, v: 0 }; }
 async function until(predicate) {
-    for (let i = 0; i < 100 && !predicate(); i++) await tick();
+    const deadline = performance.now() + 1000;
+    while (!predicate() && performance.now() < deadline)
+        await new Promise(resolve => setTimeout(resolve, 1));
     assert.ok(predicate(), 'bounded modeled preparation completed');
 }
 async function stoppedBeforeWork(kind, mutate) {
