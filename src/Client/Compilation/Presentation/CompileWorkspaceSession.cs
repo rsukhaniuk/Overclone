@@ -66,7 +66,7 @@ public sealed class CompileWorkspaceSession(WorkspaceCoordinator workspace, ICom
     private int ProjectFileBytes => NativeRuntimeProfiles.ProjectFileBytes(_ports?.NativeProfile ?? NativeRuntimeProfile.Legacy);
     private int ProjectTotalBytes => NativeRuntimeProfiles.ProjectTotalBytes(_ports?.NativeProfile ?? NativeRuntimeProfile.Legacy);
     private CompileLifecycleOptions Options => new(new(ProjectFileLimit, ProjectFileBytes, ProjectTotalBytes, 131072),
-        new(8388608, 2097152, 64, 128, 4096, 1048576), 65536,
+        new(_ports?.CompiledPdfCapacity?.MaxInputBytes ?? PdfDocument.DefaultInputBytes, 2097152, 64, 128, 4096, 1048576), 65536,
         _ports?.SelectionOptions is { } options && SuiteOptions(options)
             ? NativeCompilerSuiteContract.LifecycleDeadline : TimeSpan.FromSeconds(30), NativeRuntimePackage.Pdf,
         _ports?.OutputAdapter ?? NativeRuntimePackage.Adapter);
@@ -108,7 +108,7 @@ public sealed class CompileWorkspaceSession(WorkspaceCoordinator workspace, ICom
                         || engines.Select(p => p.CapabilityId).Distinct(StringComparer.Ordinal).Count() != engines.Length)
                         throw new InvalidOperationException("Invalid configured compiler choices.");
                     _engines = Array.AsReadOnly(engines);
-                    _ports = ports; await Preview.DisposeAsync(); Preview = new(ports.Inspector); Preview.Changed += PreviewChanged;
+                    _ports = ports; await Preview.DisposeAsync(); Preview = CreatePreview(); Preview.Changed += PreviewChanged;
                 }
             }
             else Readiness = await _ports.Readiness();
@@ -155,8 +155,8 @@ public sealed class CompileWorkspaceSession(WorkspaceCoordinator workspace, ICom
                 || _ports.NativeProfile == NativeOriginCompilerContract.Profile && NativeCompilerOriginPins.Ready
                     && configuredEngine == new CompilationDescriptor("xelatex", NativeOriginCompilerContract.Component(NativeCompilerEngine.XeLaTeX).EngineVersion, new(NativeCompilerThesisPins.XeWasmHash))
                     && NativeCompilerSuiteContract.MatchesOptions(configuredOptions, NativeOriginCompilerContract.Profile, NativeCompilerEngine.XeLaTeX)
-                || _ports.NativeProfile == NativeInputBudgetContract.Profile && NativeCompilerInputBudgetPins.Ready
-                    && MatchesInputBudgetXe(configuredEngine, configuredOptions));
+                || _ports.NativeProfile is { } nativeProfile && NativeInputBudgetContract.Enabled(nativeProfile)
+                    && NativeRuntimeProfiles.SuitePinsReady(nativeProfile) && MatchesInputBudgetXe(nativeProfile, configuredEngine, configuredOptions));
         var entryError = main is null ? null : selectedEntry ? unicodeXe
             ? NativeSelectedEntryContract.ValidateEntry(main.RelativePath, NativeUnicodeCompilerContract.Profile, NativeCompilerEngine.XeLaTeX)
             : NativeSelectedEntryContract.ValidateEntry(main.RelativePath)
@@ -177,11 +177,11 @@ public sealed class CompileWorkspaceSession(WorkspaceCoordinator workspace, ICom
             : "Ready to compile unsaved files from project CWD. Settings are session-only.";
         Refresh();
     }
-    private static bool MatchesInputBudgetXe(CompilationDescriptor engine, IEnumerable<CompilationOption> options)
+    private static bool MatchesInputBudgetXe(NativeRuntimeProfile profile, CompilationDescriptor engine, IEnumerable<CompilationOption> options)
     {
-        var component = NativeInputBudgetContract.Component(NativeCompilerEngine.XeLaTeX);
+        var component = NativeCompilerComponents.For(profile, NativeCompilerEngine.XeLaTeX);
         return engine == new CompilationDescriptor("xelatex", component.EngineVersion, new(component.WasmHash))
-            && NativeCompilerSuiteContract.MatchesOptions(options, NativeInputBudgetContract.Profile, NativeCompilerEngine.XeLaTeX);
+            && NativeCompilerSuiteContract.MatchesOptions(options, profile, NativeCompilerEngine.XeLaTeX);
     }
     public Task CompileAsync()
     {
@@ -226,7 +226,7 @@ public sealed class CompileWorkspaceSession(WorkspaceCoordinator workspace, ICom
         if (_session != workspace.SessionId)
         {
             _session = workspace.SessionId; MainFile = null; EngineChoice = ""; BibliographyTool = BibliographyToolKind.None; _selection.SetSelection(null);
-            Preview.Changed -= PreviewChanged; _ = Preview.DisposeAsync(); Preview = new(_ports?.Inspector); Preview.Changed += PreviewChanged;
+            Preview.Changed -= PreviewChanged; _ = Preview.DisposeAsync(); Preview = CreatePreview(); Preview.Changed += PreviewChanged;
             _shown = null; _previousCurrent = false; _presented = null; Attempt = null; LastTicket = null; LastReason = null;
         }
         Refresh();
@@ -251,7 +251,7 @@ public sealed class CompileWorkspaceSession(WorkspaceCoordinator workspace, ICom
             if (output is not null && (!ReferenceEquals(output, _shown) || _previousCurrent && !state.IsCurrent))
             {
                 _shown = output; _previousCurrent = state.IsCurrent;
-                Preview.Cancel(); Preview.Provide(new PdfDocument(output.ToPayloadArray()!), "Compiled PDF", state.IsCurrent ? PdfDisplayProvenance.ProvidedPdf : PdfDisplayProvenance.CallerSaysHistorical);
+                Preview.Cancel(); Preview.Provide(CreatePdfDocument(output), "Compiled PDF", state.IsCurrent ? PdfDisplayProvenance.ProvidedPdf : PdfDisplayProvenance.CallerSaysHistorical);
             }
             _previousCurrent = output is not null && state.IsCurrent;
             if (state.LastAttempt is { } attempt && attempt.Snapshot.Identity.ProjectId == workspace.Project?.Id && !ReferenceEquals(attempt, _presented))
@@ -259,6 +259,20 @@ public sealed class CompileWorkspaceSession(WorkspaceCoordinator workspace, ICom
         }
         finally { _refreshing = false; }
         Changed?.Invoke();
+    }
+    private PdfPreviewController CreatePreview()
+    {
+        var capacity = _engines.FirstOrDefault()?.CompiledPdfCapacity;
+        return new(_ports?.Inspector, capacity is null ? null
+            : new PdfPreviewPolicy(InputBytes: capacity.MaxInputBytes) { CompiledInputCapacity = capacity });
+    }
+    internal PdfDocument CreatePdfDocument(AcceptedCompileOutput output)
+    {
+        var selection = output.Snapshot.Selection;
+        var capacity = _engines.FirstOrDefault(ports => ports.CompiledPdfCapacity is not null
+            && ports.Engine == selection.Engine && output.OutputAdapter == ports.OutputAdapter
+            && selection.Bundles.SequenceEqual(ports.Bundles))?.CompiledPdfCapacity;
+        return new(output.ToPayloadArray()!, output.OutputLength > PdfDocument.DefaultInputBytes ? capacity : null);
     }
     private void PreviewChanged() => _owner?.ForwardWorkspaceEvent(() =>
     {

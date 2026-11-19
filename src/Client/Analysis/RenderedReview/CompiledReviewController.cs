@@ -220,13 +220,13 @@ public sealed partial class CompiledReviewController : IDisposable
         {
             await VerifyBindings(); CheckCurrent(); var payload = authority.Output.ToPayloadArray();
             if (payload is null || payload.LongLength != authority.Output.OutputLength) throw new JsonException();
-            var document = new PdfDocument(payload);
+            var document = authority.CreateDocument(payload);
             if (document.Sha256 != authority.Output.OutputHash!.Value.Hex) throw new JsonException();
             int total = selection?.Length ?? 1; int position = 0;
             while (position < total)
             {
                 CheckCurrent(); int index = selection is null ? position : selection[position];
-                var inspected = await inspector.InspectLayoutAsync(new(document, index, new PdfInspectionBudget(Pages: 512)), stop.Token);
+                var inspected = await inspector.InspectLayoutAsync(new(document, index, RenderedExtentAuthority.InspectionBudget(document)), stop.Token);
                 CheckCurrent(); await VerifyBindings(); CheckCurrent();
                 if (inspected.Status != PdfInspectionStatus.Completed)
                 { _notice = $"Rendered review stopped: {inspected.Status} ({inspected.Code}). Completed pages remain an incomplete observation."; return; }

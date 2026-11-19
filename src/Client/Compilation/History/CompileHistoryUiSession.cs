@@ -60,7 +60,7 @@ public sealed class CompileHistoryUiSession : IAsyncDisposable
         if (artifactBudget is not { IsValid: true } || indexBudget is not { IsValid: true }) throw new ArgumentException("Explicit history budgets required.");
         _workspace = workspace; _compile = compile; _store = store; _index = index; _artifactBudget = artifactBudget; _indexBudget = indexBudget;
         _historicalInspector = historicalInspector;
-        _preview = new(_historicalInspector ?? compile.ConfiguredPorts?.Inspector); _preview.Changed += PreviewChanged;
+        _preview = CreatePreview(); _preview.Changed += PreviewChanged;
         _viewStamp = Capture(); _sourceStamp = CaptureSource();
         _workspace.WorkspaceChanged += WorkspaceChanged; _workspace.RevisionCommitted += RevisionCommitted; _compile.Changed += CompileChanged;
     }
@@ -101,6 +101,11 @@ public sealed class CompileHistoryUiSession : IAsyncDisposable
         catch (Exception error) when (error is not OutOfMemoryException) { /* A view observer cannot release or strand operation ownership. */ }
     }
     private void CompileChanged() { SynchronizeWorkspace(false); Notify(); }
+    private PdfPreviewController CreatePreview() =>
+        new(_historicalInspector ?? _compile.ConfiguredPorts?.Inspector,
+            _artifactBudget.CompiledInputCapacity is { } capacity
+                ? new PdfPreviewPolicy(InputBytes: capacity.MaxInputBytes) { CompiledInputCapacity = capacity }
+                : null);
     private void PreviewChanged() => Notify();
     private void WorkspaceChanged() => SynchronizeWorkspace(true);
     private void RevisionCommitted(WorkspaceSaveReceipt receipt)
@@ -153,7 +158,7 @@ public sealed class CompileHistoryUiSession : IAsyncDisposable
     {
         var previous = _preview; previous.Changed -= PreviewChanged; _ = previous.DisposeAsync();
         if (previous.ActualWorkPending) _retiringPreview = previous.WhenSettled;
-        _preview = new(_historicalInspector ?? _compile.ConfiguredPorts?.Inspector); _preview.Changed += PreviewChanged;
+        _preview = CreatePreview(); _preview.Changed += PreviewChanged;
     }
     private Task Start(Func<Stamp, Task> action, Func<Stamp, bool>? admit = null)
     {
@@ -254,7 +259,8 @@ public sealed class CompileHistoryUiSession : IAsyncDisposable
             if (!Current(stamp)) return;
             _view = _view with { Opened = read.Artifact, Association = read.Association?.Scope,
                 SourceAssociation = read.Association, Notice = "Saved PDF opened. It may differ from the current source." };
-            if (_retiringPreview.IsCompleted) _preview.Provide(new PdfDocument(read.Artifact.CopyPdf()), "Saved PDF", PdfDisplayProvenance.CallerSaysHistorical);
+            if (_retiringPreview.IsCompleted) _preview.Provide(new PdfDocument(read.Artifact.CopyPdf(), read.Artifact.PdfLength > PdfDocument.DefaultInputBytes
+                ? _artifactBudget.CompiledInputCapacity : null), "Saved PDF", PdfDisplayProvenance.CallerSaysHistorical);
             else _view = _view with { Notice = "Saved PDF opened. Previous preview is finishing; retry Open when ready." };
         }
         Notify();

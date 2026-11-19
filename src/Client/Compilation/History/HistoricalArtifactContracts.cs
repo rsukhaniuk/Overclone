@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using Client.RuntimeAssets;
+using Client.Pdf;
 using Client.Workspace.Domain;
 
 namespace Client.Compilation.History;
@@ -7,7 +8,9 @@ namespace Client.Compilation.History;
 public sealed record ArtifactHistoryBudget(CompilationCaptureBudget Input, int MaxPdfBytes, int MaxMetadataBytes,
     RuntimeAssetBudget Storage)
 {
-    public bool IsValid => Input is { IsValid: true } && Storage is { IsValid: true } && MaxPdfBytes is > 0 and <= 8388608
+    public PdfCompiledInputCapacity? CompiledInputCapacity { get; init; }
+    public bool IsValid => Input is { IsValid: true } && Storage is { IsValid: true } && MaxPdfBytes > 0
+        && MaxPdfBytes <= (CompiledInputCapacity?.MaxInputBytes ?? PdfDocument.DefaultInputBytes)
         && MaxMetadataBytes is > 0 and <= 262144 && MaxPdfBytes <= Storage.Inventory.MaxAssetBytes && MaxMetadataBytes <= Storage.Inventory.MaxAssetBytes
         && (long)MaxPdfBytes + MaxMetadataBytes <= Storage.Inventory.MaxTotalBytes && Storage.Inventory.MaxAssets >= 2;
 }

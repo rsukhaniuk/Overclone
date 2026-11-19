@@ -163,13 +163,13 @@ public sealed class RenderedExtentController : IDisposable
             var bytes = authority.Output.ToPayloadArray();
             if (bytes is null || bytes.LongLength != authority.Output.OutputLength)
             { State = RenderedExtentCheckState.InvalidResponse; return; }
-            var document = new PdfDocument(bytes);
+            var document = authority.CreateDocument(bytes);
             if (document.Sha256 != authority.Output.OutputHash!.Value.Hex)
             { State = RenderedExtentCheckState.InvalidResponse; return; }
             if (!Continue(op, inspection)) return;
             if (authority.Inspector is not { } inspector)
             { State = RenderedExtentCheckState.RendererUnavailable; return; }
-            var request = new PdfInspectRequest(document, 0, new PdfInspectionBudget(Pages: 512), search: null,
+            var request = new PdfInspectRequest(document, 0, RenderedExtentAuthority.InspectionBudget(document), search: null,
                 raster: false, rasterWidth: 1, rasterHeight: 1, inspectActions: false);
             var outcome = await inspector.InspectAsync(request, inspection.Token); // ACTUAL task, never WaitAsync/WhenAny.
             if (!Continue(op, inspection)) return;

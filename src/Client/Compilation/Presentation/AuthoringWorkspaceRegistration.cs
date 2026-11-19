@@ -8,6 +8,7 @@ using Client.Compilation.Provisioning;
 using Client.Compilation.SyncTeX;
 using Microsoft.JSInterop;
 using Client.Review;
+using Client.Pdf;
 using Client.Workspace;
 using Client.Workspace.History;
 using Client.Workspace.Transfer;
@@ -62,13 +63,17 @@ public static class AuthoringWorkspaceRegistration
                 provider.GetRequiredService<IProjectRepository>(), NativeRuntimePackage.Pdf, NativeRuntimePackage.Adapter,
                 HistoricalOutputAdapters());
             var index = new CompileHistoryIndex(new JsHistoryIndexBackend(js));
+            var config = provider.GetRequiredService<ICompileWorkspaceConfiguration>() as LocalCompileWorkspaceConfiguration;
+            var capacity = config?.UsesBundledResources == true ? BundledRuntimeAssets.SelectedPdfCapacity : null;
+            int maxPdfBytes = capacity?.MaxInputBytes ?? PdfDocument.DefaultInputBytes;
             return new(workspace, compile, store, index,
                 new(new(NativeThesisCompilerContract.ProjectFiles,
                     NativeRuntimeProfiles.ProjectFileBytes(NativeInputBudgetContract.Profile),
-                    NativeRuntimeProfiles.ProjectTotalBytes(NativeInputBudgetContract.Profile), 131072), 8388608, 262144,
-                    new(new(2, 256, 8388608, 16777216, 65536, 256, 256), 16384, 64, 128, 15000)),
+                    NativeRuntimeProfiles.ProjectTotalBytes(NativeInputBudgetContract.Profile), 131072), maxPdfBytes, 262144,
+                    new(new(2, 256, maxPdfBytes, 16777216, 65536, 256, 256), 16384, 64, 128, 15000))
+                    { CompiledInputCapacity = capacity },
                 new(64, 65536, 15000),
-                (provider.GetRequiredService<ICompileWorkspaceConfiguration>() as LocalCompileWorkspaceConfiguration)?.PdfInspector);
+                config?.PdfInspector);
         });
         return services;
     }

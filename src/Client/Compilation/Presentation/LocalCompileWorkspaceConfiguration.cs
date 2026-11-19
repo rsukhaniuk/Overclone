@@ -112,7 +112,9 @@ public sealed class LocalCompileWorkspaceConfiguration : ICompileWorkspaceConfig
                         _factory, _inspector, () => CheckAsync(), this, SelectableBibliography: true,
                         SelectionOptions: suite ? NativeCompilerSuiteContract.SelectionOptions(package.Profile, NativeCompilerEngine.PdfLaTeX)
                             : mapped ? NativeSyncTeXContract.SelectionOptions : NativeSelectedEntryContract.SelectionOptions,
-                        OutputAdapter: package.OutputAdapter, NativeProfile: package.Profile);
+                        OutputAdapter: package.OutputAdapter, NativeProfile: package.Profile,
+                        CompiledPdfCapacity: _resources.HasSelectedPdfCapacity && package.Identity.Hex == NativeSelectedPdfContract.RuntimeIdentity
+                            ? PdfCompiledInputCapacity.TwelveMiB : null);
                     if (suite || package.Profile == NativeRuntimeProfile.LocalLatex2023Dvi)
                     {
                         _dviFactory = new(_resources, _module.Transport, suite ? NativeCompilerSuiteContract.CreatePlan(NativeCompilerEngine.LaTeXDvi, profile: package.Profile)

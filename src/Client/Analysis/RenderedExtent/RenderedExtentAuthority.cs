@@ -19,6 +19,13 @@ internal sealed class RenderedExtentAuthority
     internal CompileAttemptPresentation Presentation { get; }
     internal CompileWorkspacePorts Ports { get; }
     internal IPdfInspector? Inspector => Ports.Inspector;
+    internal PdfRuntimeIdentity? ExpandedRenderer => Ports.NativeProfile == NativeSelectedPdfContract.Profile
+        ? Compilation.Provisioning.BundledRuntimeAssets.SelectedPdfCapacity?.Renderer : null;
+    internal PdfDocument CreateDocument(byte[] bytes) =>
+        new(bytes, Output.OutputLength > PdfDocument.DefaultInputBytes ? Ports.CompiledPdfCapacity : null);
+    internal static PdfInspectionBudget InspectionBudget(PdfDocument document) =>
+        new(InputBytes: document.CompiledInputCapacity?.MaxInputBytes ?? PdfDocument.DefaultInputBytes, Pages: 512)
+        { CompiledInputCapacity = document.CompiledInputCapacity };
     internal static RenderedExtentAuthority? Capture(WorkspaceCoordinator workspace, CompileWorkspaceSession compile)
     {
         if (compile.Disposed || compile.ReadingTools || compile.DisplayedOutput is not { } output
@@ -50,7 +57,10 @@ internal sealed class RenderedExtentAuthority
                     .Any(engine => Output.OutputAdapter == NativeOriginCompilerContract.Component(engine).OutputAdapter))
                 && !(NativeCompilerInputBudgetPins.Ready && Enum.GetValues<NativeCompilerEngine>()
                     .Any(engine => Output.OutputAdapter == NativeInputBudgetContract.Component(engine).OutputAdapter))
-            || Output.OutputLength is < 1 or > 8388608 || !PdfHashes.IsSha(Output.OutputHash?.Hex)
+                && !(ports.NativeProfile == NativeSelectedPdfContract.Profile && NativeCompilerSelectedPdfPins.Ready
+                    && Enum.GetValues<NativeCompilerEngine>()
+                        .Any(engine => Output.OutputAdapter == NativeCompilerComponents.For(NativeSelectedPdfContract.Profile, engine).OutputAdapter))
+            || Output.OutputLength < 1 || Output.OutputLength > (Ports.CompiledPdfCapacity?.MaxInputBytes ?? PdfDocument.DefaultInputBytes) || !PdfHashes.IsSha(Output.OutputHash?.Hex)
             || Output.WorkerEpoch <= 0 || Output.RequestId.Value == Guid.Empty) return false;
         var snapshot = Output.Snapshot; var identity = snapshot.Identity;
         if (project.Id != identity.ProjectId || workspace.SessionId != identity.SessionId

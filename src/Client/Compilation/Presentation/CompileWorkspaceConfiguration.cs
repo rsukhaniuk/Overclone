@@ -11,7 +11,8 @@ public sealed record CompileWorkspacePorts(string CapabilityId, string Label, Co
     CompilationDescriptor[] Bundles, CompilationDescriptor[] Tools, ICompilationWorkerFactory Factory,
     IPdfInspector? Inspector, Func<Task<CompileReadiness>> Readiness, IAsyncDisposable? Lifetime = null,
     bool SelectableBibliography = false, IReadOnlyList<CompilationOption>? SelectionOptions = null,
-    CompileOutputDescriptor? OutputAdapter = null, NativeRuntimeProfile? NativeProfile = null);
+    CompileOutputDescriptor? OutputAdapter = null, NativeRuntimeProfile? NativeProfile = null,
+    PdfCompiledInputCapacity? CompiledPdfCapacity = null);
 // Additional engines share the configuration's inspector and lifetime. Each
 // engine still owns its descriptor, selection options and worker factory.
 public sealed record CompileWorkspaceConfigurationResult(CompileReadiness Compiler, CompileWorkspacePorts? Ports,

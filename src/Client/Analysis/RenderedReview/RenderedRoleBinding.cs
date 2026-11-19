@@ -87,9 +87,9 @@ public sealed class RenderedRoleBinding(WorkspaceCoordinator workspace, CompileW
                 || forward!.Matches[0] is not { } match || match.File.FileId != file.FileId
                 || match.File.RelativePath != file.RelativePath || match.Line != span.Line)
                 return Refuse("native-forward-not-exact");
-            var document = new PdfDocument(authority.Output.ToPayloadArray()!);
+            var document = authority.CreateDocument(authority.Output.ToPayloadArray()!);
             var facts = await authority.Inspector!.InspectAsync(new(document, match.Page - 1,
-                new(Pages: 512), raster: false), ct);
+                RenderedExtentAuthority.InspectionBudget(document), raster: false), ct);
             if (!Current(request, authority, ct) || !QueryCurrent(forward, authority)) return Refuse("stale-pdf-inspection");
             if (facts is not { Status: PdfInspectionStatus.Completed, Page: { } page, WorkerEpoch: > 0, Runtime: { } runtime }
                 || facts.DocumentSha256 != document.Sha256 || !RenderedExtentContract.RequestId(facts.RequestId)
@@ -230,10 +230,13 @@ public sealed class RenderedRoleBinding(WorkspaceCoordinator workspace, CompileW
     {
         var snapshot = authority.Output.Snapshot;
         var selection = snapshot.Selection;
-        var component = NativeInputBudgetContract.Component(NativeCompilerEngine.PdfLaTeX);
+        if (authority.Ports.NativeProfile is not (NativeInputBudgetContract.Profile or NativeSelectedPdfContract.Profile)) return false;
+        var profile = authority.Ports.NativeProfile.Value;
+        // The additive runtime contains identical bytes for the 11 pinned article/T2A
+        // caption context files. Membership and project shadowing are checked separately.
+        var component = NativeCompilerComponents.For(profile, NativeCompilerEngine.PdfLaTeX);
         var engine = new CompilationDescriptor(NativeRuntimePackage.EngineId, component.EngineVersion, new(component.WasmHash));
-        return authority.Ports.NativeProfile == NativeInputBudgetContract.Profile
-            && SyncTeXRuntimeBinding.ForProfile(NativeInputBudgetContract.Profile) is { } runtime
+        return SyncTeXRuntimeBinding.ForProfile(profile) is { } runtime
             && selection.Engine == engine && authority.Ports.Engine == engine
             && authority.Output.OutputAdapter == component.OutputAdapter
             && selection.Bundles.Length == 1 && selection.Bundles[0] == runtime.Bundle

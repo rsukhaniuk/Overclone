@@ -199,7 +199,7 @@ public sealed class NativeCompilationWorkerFactory : ICompilationWorkerFactory
                     .Concat(snapshot.Files.Where(f => f.RelativePath.EndsWith(".tex", StringComparison.Ordinal) && f.RelativePath != "main.tex")
                         .Select(f => f.RelativePath[..^4] + ".aux")).Distinct(StringComparer.Ordinal).ToArray();
                 if (outputs.Length > (v4 ? NativeRuntimeProfiles.OutputDeclarationLimit(factory._plan.Profile) : 64)
-                    || factory._plan.Profile is NativeInputBudgetContract.Profile or NativeThesisCompilerContract.Profile or NativeOriginCompilerContract.Profile && lua && !NativeThesisCompilerContract.LuaOutputDeclarationsFit(outputs)
+                    || factory._plan.Profile is NativeSelectedPdfContract.Profile or NativeInputBudgetContract.Profile or NativeThesisCompilerContract.Profile or NativeOriginCompilerContract.Profile && lua && !NativeThesisCompilerContract.LuaOutputDeclarationsFit(outputs)
                     || snapshot.Files.Any(f => outputs.Contains(f.RelativePath, StringComparer.Ordinal)))
                     return Finish(CompileOutputStatus.Failed, "generated-input-collision");
                 var generated = new Dictionary<string, byte[]>(StringComparer.Ordinal);
@@ -417,12 +417,12 @@ public sealed class NativeCompilationWorkerFactory : ICompilationWorkerFactory
                             throw new InvalidDataException("Mapped phase destination collision.");
                         if (lengths.Length > factory._plan.MaxPhaseFiles || lengths.Any(f => f.Item2 > factory._plan.MaxFileBytes)
                             || snapshot.Files.Any(f => f.ByteLength > factory._plan.SourceFileBytes)
-                            || factory._plan.Profile == NativeInputBudgetContract.Profile && snapshot.Files.Sum(f => f.ByteLength) > factory._plan.ProjectTotalBytes
+                            || NativeInputBudgetContract.Enabled(factory._plan.Profile) && snapshot.Files.Sum(f => f.ByteLength) > factory._plan.ProjectTotalBytes
                             || generated.Values.Any(f => f.Length > factory._plan.ProjectFileBytes)
                             || lengths.Sum(f => (long)f.Item2) > factory._plan.MaxInputBytes) throw new NativeResourceLimitException();
                         if (suite)
                         {
-                            int resourceCap = tool == "bibtex" ? NativeCompilerSuiteContract.TotalBytes : lua ? factory._plan.Profile is NativeUnicodeCompilerContract.Profile or NativeBiberCompilerContract.Profile or NativeThesisCompilerContract.Profile or NativeOriginCompilerContract.Profile or NativeInputBudgetContract.Profile ? NativeUnicodeCompilerContract.LuaResourceBytes : 96 * 1024 * 1024 : xe ? 160 * 1024 * 1024 : NativeCompilerSuiteContract.TotalBytes;
+                            int resourceCap = tool == "bibtex" ? NativeCompilerSuiteContract.TotalBytes : lua ? factory._plan.Profile is NativeUnicodeCompilerContract.Profile or NativeBiberCompilerContract.Profile or NativeThesisCompilerContract.Profile or NativeOriginCompilerContract.Profile or NativeInputBudgetContract.Profile or NativeSelectedPdfContract.Profile ? NativeUnicodeCompilerContract.LuaResourceBytes : 96 * 1024 * 1024 : xe ? 160 * 1024 * 1024 : NativeCompilerSuiteContract.TotalBytes;
                             int resourceCount = tool == "latex" && lua ? 4608 : NativeCompilerSuiteContract.Files;
                             if (phaseLengths.Length > resourceCount || phaseLengths.Sum(f => (long)f.Length) > resourceCap
                                 || snapshot.Files.Sum(f => f.ByteLength) + generated.Sum(f => (long)f.Value.Length) > 32 * 1024 * 1024)
@@ -459,7 +459,8 @@ public sealed class NativeCompilationWorkerFactory : ICompilationWorkerFactory
                     var request = new NativePhaseRequest(tag, toolEntry, all.Select(x => new NativeFileTransfer(x.Key, x.Value)).ToArray(),
                         phaseOutputs, runtime.Copy(component + ".js"), runtime.Copy(component + ".wasm"),
                         Math.Min(limits.MaxLogBytes, 256 * 1024), biberPhase ? Math.Min(limits.MaxPayloadBytes, NativeBiberCompilerContract.OutputBytes)
-                            : converting || lua ? Math.Min(limits.MaxPayloadBytes, NativeLatexDviContract.PdfBytes) : limits.MaxPayloadBytes,
+                            : converting || lua ? Math.Min(limits.MaxPayloadBytes, NativeLatexDviContract.PdfBytes)
+                                : NativeSelectedPdfContract.PhaseOutputBytes(tag, limits.MaxPayloadBytes),
                         entry?.SelectedPath, resourceNames, generatedNames, biberPhase ? runtime.Copy("biber.data") : null,
                         NativeRuntimeProfiles.SupportsBiber(runtime.Profile) ? bibliographyTool : null);
                     var reply = await factory.Operations.RunAsync(() => { lock (_dispatch) { Check(); return factory._transport.ExecuteAsync(request); } }, token).ConfigureAwait(false);
@@ -491,7 +492,10 @@ public sealed class NativeCompilationWorkerFactory : ICompilationWorkerFactory
                     foreach (var f in reply.Files)
                     {
                         if (f is null || f.Bytes is null || !phaseOutputs.Contains(f.Name, StringComparer.Ordinal) || !names.Add(f.Name)
-                            || f.Bytes.Length > request.MaxOutputBytes || f.Bytes.Length > 2L * limits.MaxPayloadBytes - total
+                            || f.Bytes.Length > (!successful && request.Tag.Profile == NativeSelectedPdfContract.Profile
+                                ? Math.Min(request.MaxOutputBytes, NativeSelectedPdfContract.OtherOutputBytes)
+                                : NativeSelectedPdfContract.FileOutputBytes(request, f.Name))
+                            || f.Bytes.Length > NativeSelectedPdfContract.PhaseAggregateBytes(request, limits.MaxPayloadBytes) - total
                             || lua && f.Name == entry!.JobName + ".log" && f.Bytes.Length > request.MaxLogBytes) return null;
                         total += f.Bytes.Length;
                     }

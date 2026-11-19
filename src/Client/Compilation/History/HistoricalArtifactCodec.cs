@@ -6,6 +6,8 @@ using Client.Workspace.Domain;
 using Client.Workspace.Transfer;
 using Client.RuntimeAssets;
 using Client.Compilation.SyncTeX;
+using Client.Compilation.Native;
+using Client.Pdf;
 using Hash = Client.Workspace.Domain.SHA256;
 
 namespace Client.Compilation.History;
@@ -53,6 +55,15 @@ internal static class HistoricalArtifactCodec
             if (value.SourceMapGeometry is not null) descriptors.Geometry(value.SourceMapGeometry);
         }
         var selection = CompilationSelection.Create(value.Selection, budget.Input.MaxMetadataBytes).Selection; Check(selection is not null);
+        if (value.PdfLength > PdfDocument.DefaultInputBytes)
+        {
+            var component = NativeCompilerComponents.For(NativeSelectedPdfContract.Profile, NativeCompilerEngine.PdfLaTeX);
+            var engine = new CompilationDescriptor(NativeRuntimePackage.EngineId, component.EngineVersion, new(component.WasmHash));
+            var binding = SyncTeXRuntimeBinding.ForProfile(NativeSelectedPdfContract.Profile);
+            Check(selection!.Engine == engine && selection.Bundles.Length == 1 && binding is not null
+                && selection.Bundles[0] == binding.Bundle && value.Adapter == component.OutputAdapter
+                && NativeCompilerSuiteContract.MatchesOptions(selection.Options, NativeSelectedPdfContract.Profile, NativeCompilerEngine.PdfLaTeX));
+        }
         Check(value.Files is not null && value.Files.Length > 0 && value.Files.Length <= budget.Input.MaxFiles);
         long total = 0; var ids = new HashSet<FileId>();
         using (var measure = new CompilationCanonical(budget.Input.MaxMetadataBytes))

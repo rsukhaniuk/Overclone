@@ -27,6 +27,7 @@ public sealed class LocalInstalledRuntimeProviders : INativeRuntimeProvider, IPd
     private bool _disposed;
     private Task? _closing;
     private readonly BundledRuntimeAssets? _bundled;
+    public bool HasSelectedPdfCapacity => _bundled is not null && BundledRuntimeAssets.SelectedPdfCapacity is not null;
     public bool UsesBundledResources => _bundled is not null;
     public LocalInstalledRuntimeProviders(IJSRuntime js) : this(new(new JsRuntimeAssetBackend(js)), new JsLocalRuntimeSelectionStore(js),
         new(new JsRuntimeAssetBackend(js)), new JsPdfRuntimeSelectionStore(js)) { }

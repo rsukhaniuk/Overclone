@@ -77,14 +77,14 @@ public sealed partial class CompiledReviewController
             {
                 var payload = authority.Output.ToPayloadArray();
                 if (payload is null || payload.LongLength != authority.Output.OutputLength) throw new JsonException();
-                var document = new PdfDocument(payload);
+                var document = authority.CreateDocument(payload);
                 if (document.Sha256 != authority.Output.OutputHash!.Value.Hex) throw new JsonException();
-                var request = new PdfObjectLayoutRequest(document, caption.PageIndex, new PdfInspectionBudget(Pages: 512), IncludeTextLayout: true);
+                var request = new PdfObjectLayoutRequest(document, caption.PageIndex, RenderedExtentAuthority.InspectionBudget(document), IncludeTextLayout: true);
                 var inspection = await inspector.InspectObjectLayoutAsync(request, stop.Token);
                 await RequireCurrentAsync();
                 if (inspection.Status != PdfInspectionStatus.Completed)
                 { _notice = $"Image placement inspection was unavailable ({inspection.Status})."; return; }
-                if (inspection.Runtime != CaptionImageRuntime || inspection.DocumentSha256 != document.Sha256
+                if (inspection.Runtime != (authority.ExpandedRenderer ?? CaptionImageRuntime) || inspection.DocumentSha256 != document.Sha256
                     || inspection.PageIndex != caption.PageIndex || !RenderedExtentContract.RequestId(inspection.RequestId)
                     || !RenderedExtentContract.Epoch(inspection.WorkerEpoch)
                     || ReferenceEquals(_lastObjectInspector, inspector) && inspection.WorkerEpoch <= _objectInspectionEpoch
@@ -109,7 +109,7 @@ public sealed partial class CompiledReviewController
             var review = new RenderedReviewRequest(Guid.NewGuid().ToString("N"), activeDraft.Request.Document.Sha256,
                 output.RequestId.Value.ToString("N"), output.WorkerEpoch, output.InputContentDigest.Hex, output.SnapshotIdentity.CaptureId,
                 workType, annotationVersion, activeDraft.Inspection.Facts!.PageCount, [caption.PageIndex], [caption], string.Empty);
-            var input = RenderedCaptionImageRequest.Create(review, activeDraft.Request, activeDraft.Inspection, CaptionImageRuntime, annotationId, index);
+            var input = RenderedCaptionImageRequest.Create(review, activeDraft.Request, activeDraft.Inspection, authority.ExpandedRenderer ?? CaptionImageRuntime, annotationId, index);
             var reply = await evaluator.EvaluateCaptionImageAsync(input, stop.Token);
             await RequireCurrentAsync();
             if (!ReferenceEquals(_captionImageDraft, activeDraft) || !CaptionDraftCurrent(activeDraft)) return;

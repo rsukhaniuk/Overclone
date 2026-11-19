@@ -18,7 +18,16 @@ public sealed class BundledRuntimeAssets(HttpClient http, IJSRuntime? browser = 
         .GetManifestResourceStream("Client.Compilation.Provisioning.bundled-runtime.json")!);
     public static Asset CompilerAsset => Pin("compiler");
     // Promotion is explicit: a ready closure may never fall back to older bytes.
-    public static NativeRuntimeProfile CompilerProfile => NativeRuntimeProfile.LocalCompilerInputBudget;
+    public static NativeRuntimeProfile CompilerProfile => CompilerAsset is
+        { Length: 267842942, Sha256: "7494e9fd1f6fa3195ad4d6d15a5cb2c7845e00cd6e3a81d928c60d10345cb8fe" }
+        ? NativeSelectedPdfContract.Profile : NativeInputBudgetContract.Profile;
+    public static PdfCompiledInputCapacity? SelectedPdfCapacity =>
+        CompilerProfile == NativeSelectedPdfContract.Profile
+        && PdfLoaderAsset is { Length: 14243 } loader
+        && loader.Sha256 == PdfCompiledInputCapacity.TwelveMiB.Renderer.LoaderSha256
+        && PdfWasmAsset is { Length: 3725611 } wasm
+        && wasm.Sha256 == PdfCompiledInputCapacity.TwelveMiB.Renderer.WasmSha256
+        ? PdfCompiledInputCapacity.TwelveMiB : null;
     public static Asset PdfLoaderAsset => Pin("pdfLoader");
     public static Asset PdfWasmAsset => Pin("pdfWasm");
     private static Asset Pin(string role)
@@ -94,7 +103,8 @@ public sealed class BundledRuntimeAssets(HttpClient http, IJSRuntime? browser = 
         await archive.PrepareOwnedAsync(bytes, token); bytes = [];
         var pins = LocalRuntimeSelection.ParsePins(archive.Pins);
         var profile = CompilerProfile;
-        if (LocalRuntimeSelection.ProfileFor(pins) != profile) throw new InvalidDataException();
+        if (LocalRuntimeSelection.ProfileFor(pins) != profile
+            || profile == NativeSelectedPdfContract.Profile && SelectedPdfCapacity is null) throw new InvalidDataException();
         var inputs = new List<NativeResourceInput>(pins.Length);
         foreach (var file in archive.Files)
         {
