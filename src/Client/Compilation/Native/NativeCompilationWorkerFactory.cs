@@ -44,6 +44,25 @@ public sealed class NativeCompilationWorkerFactory : ICompilationWorkerFactory
         return false;
         static bool Identifier(char value) => char.IsLetterOrDigit(value) || value == '_';
     }
+    private static bool RequiresAnotherPass(string log)
+    {
+        if (HasLogWord(log, "rerun") || log.Contains("Label(s) may have changed", StringComparison.Ordinal)) return true;
+        ReadOnlySpan<char> text = log;
+        const string fontShape = "LaTeX Font Warning: Font shape `";
+        const string undefined = "' undefined";
+        foreach (var range in text.Split('\n'))
+        {
+            var line = text[range].Trim();
+            if (!HasLogWord(line, "undefined")) continue;
+            // TeX has already selected a fallback for this exact font warning.
+            // Another reference pass cannot repair it. Retain the line in the log.
+            if (line.Length > fontShape.Length + undefined.Length
+                && line.StartsWith(fontShape, StringComparison.Ordinal) && line.EndsWith(undefined, StringComparison.Ordinal)
+                && line[fontShape.Length..^undefined.Length].IndexOfAny('`', '\'') < 0) continue;
+            return true;
+        }
+        return false;
+    }
     private sealed class Worker(NativeCompilationWorkerFactory factory, CompileJobId id, long epoch) : ICompilationWorker
     {
         private readonly CancellationTokenSource _stop = new();
@@ -263,10 +282,7 @@ public sealed class NativeCompilationWorkerFactory : ICompilationWorkerFactory
                             .Select(name => name + ":" + (generated.TryGetValue(name, out var state) ? NativeRuntimePackage.Digest(state).Hex : "absent")))
                         : string.Join("\n", generated.OrderBy(x => x.Key, StringComparer.Ordinal).Select(x => x.Key + ":" + NativeRuntimePackage.Digest(x.Value).Hex));
                     stable = previous == fingerprint ? stable + 1 : 0; previous = fingerprint;
-                    bool warnings = HasLogWord(latex.Value.Reply.Log, "undefined")
-                        || HasLogWord(latex.Value.Reply.Log, "rerun")
-                        || latex.Value.Reply.Log.Contains("Label(s) may have changed", StringComparison.Ordinal);
-                    if (stable >= 1 && pass >= (runBibtex || runBiber ? 3 : 2) && !warnings)
+                    if (stable >= 1 && pass >= (runBibtex || runBiber ? 3 : 2) && !RequiresAnotherPass(latex.Value.Reply.Log))
                     {
                         Check();
                         if (convertingOutput)

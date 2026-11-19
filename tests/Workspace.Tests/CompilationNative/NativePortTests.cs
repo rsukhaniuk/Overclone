@@ -288,6 +288,30 @@ public sealed class NativePortTests
         await factory.Operations.WhenIdle;
     });
     [Theory]
+    [InlineData("", true)]
+    [InlineData("LaTeX Warning: Reference `work' undefined on input line 42.", false)]
+    [InlineData("Package natbib Warning: There were undefined citations.", false)]
+    [InlineData("LaTeX Warning: Label(s) may have changed.", false)]
+    [InlineData("Package rerunfilecheck Warning: Rerun to get outlines right.", false)]
+    public void Font_shape_fallback_does_not_keep_stable_aux_state_from_converging(string remainingWarning, bool converges)
+        => LifecycleTestHost.Run(async () =>
+    {
+        const string shape = "LaTeX Font Warning: Font shape `OML/cmr/m/up' undefined";
+        string log = shape + "\r\n(Font)              using `OML/cmr/m/it' instead.\r\n" + remainingWarning;
+        await using var f = await Fixture(); SelectTools(f);
+        var transport = new Transport { Handler = request => Task.FromResult(Transport.Reply(request) with { Log = log }) };
+        var factory = Factory(transport, plan: Plan with { BibtexRequired = false });
+        var id = new CompileJobId(Guid.NewGuid());
+        var result = await Execute(factory.Create(id, 1), id, await Context(f));
+        Assert.NotNull(result);
+        Assert.Equal(converges ? CompileOutputStatus.Succeeded : CompileOutputStatus.Failed, result.Status);
+        Assert.Equal(converges ? 2 : Plan.MaxLatexPasses, transport.Calls.Count);
+        Assert.Equal(converges, result.Payload is not null);
+        Assert.Contains(shape, result.LogText);
+        if (!converges) Assert.Equal("pass-limit-unknown", Assert.Single(result.Diagnostics!).Code);
+        await factory.Operations.WhenIdle;
+    });
+    [Theory]
     [InlineData("bibtex")]
     [InlineData("latex")]
     public void Numeric_failure_is_preserved_and_never_promotes_pdf(string tool) => LifecycleTestHost.Run(async () =>
