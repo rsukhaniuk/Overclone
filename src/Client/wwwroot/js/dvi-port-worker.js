@@ -1,7 +1,7 @@
 // Mechanical byte/C-ABI glue only. C# chooses the engine, passes, resources,
 // convergence and revision authority; the native converter owns its virtual IO.
 (() => {
-    const pB=p=>p===13||p===14||p===15||p===16;
+    const pB=p=>p===13||p===14||p===15||p===16||p===17;
     const emit = self.postMessage.bind(self), encoder = new TextEncoder();
     let state = 'boot', module = null, loaderSha256 = null, wasmSha256 = null, nativeAbi;
     const hash = async bytes => [...new Uint8Array(await crypto.subtle.digest('SHA-256', bytes))]
@@ -55,13 +55,13 @@
         let sourceMapGeometryPayload = null;
         try {
             const tag = frame.tag, resources = frame.runtimeResourceNames;
-            const expanded = tag?.profile === 16, origins = expanded || tag?.profile === 15;
+            const expanded = [16,17].includes(tag?.profile), origins = expanded || tag?.profile === 15;
             const semantic = pB(tag?.profile) && tag.engineId === 'latex-dvi';
-            const graphics = [10, 12, 13,14,15,16].includes(tag?.profile);
-            const xeNavigation = (tag?.profile === 9 && tag.version === 13 || graphics && tag.version === ([12,13,14,15,16].includes(tag.profile) ? 21 : 16)) && tag.engineId === 'xelatex';
+            const graphics = [10, 12, 13,14,15,16,17].includes(tag?.profile);
+            const xeNavigation = (tag?.profile === 9 && tag.version === 13 || graphics && tag.version === ([12,13,14,15,16,17].includes(tag.profile) ? 21 : 16)) && tag.engineId === 'xelatex';
             const dviNavigation = ([8, 9].includes(tag?.profile) && tag.version === 12 || graphics && tag.version === (pB(tag.profile) ? 24 : 15)) && tag.engineId === 'latex-dvi';
             const navigation = xeNavigation || dviNavigation;
-            const suite = [5, 6, 7, 8, 9, 10, 12, 13,14,15,16].includes(tag?.profile), xe = xeNavigation || [5, 6, 7, 8].includes(tag?.profile) && tag.version === 8 && tag.engineId === 'xelatex';
+            const suite = [5, 6, 7, 8, 9, 10, 12, 13,14,15,16,17].includes(tag?.profile), xe = xeNavigation || [5, 6, 7, 8].includes(tag?.profile) && tag.version === 8 && tag.engineId === 'xelatex';
             const dvi = dviNavigation || tag?.version === 7 && [4, 5, 6, 7].includes(tag.profile) && tag.engineId === 'latex-dvi';
             const prefix = '__oop_runtime__/', resourceName = name => suite ? name.slice(prefix.length) : name;
             if (!(dvi || xe) || tag.tool !== 'dvipdfmx' || nativeAbi !== (xeNavigation ? 3 : navigation ? 2 : 1)
@@ -78,6 +78,7 @@
                     || ['_oc_dvi_geometry_configure','_oc_dvi_geometry_length','_oc_dvi_geometry_copy','_oc_dvi_geometry_data','_oc_dvi_geometry_size']
                         .some(n => typeof module[n] !== 'function'))
                 || frame.operation !== 'dvipdfmx' || !/^[0-9a-f]{64}$/.test(tag.runtimeIdentity)
+                || tag.profile === 17 && tag.runtimeIdentity !== '41d0bb841b4832771327e44c84ada913e75204e25c5f39d6e52204e7350bf109'
                 || !path(frame.mainEntry) || !path(frame.selectedRoot) || !/\.tex$/i.test(frame.selectedRoot)
                 || !Array.isArray(frame.files) || frame.files.length < 1 || frame.files.length > 4096
                 || !Array.isArray(resources) || resources.length > frame.files.length
@@ -99,7 +100,10 @@
                 names.add(file.name);
                 if (suite && !resourceNames.has(file.name) && file.name.startsWith(prefix)) throw 0;
                 if (resourceNames.has(file.name)) resourceBytes += file.bytes.length;
-                else projectBytes += file.bytes.length;
+                else {
+                    if (tag.profile === 17 && file.name !== frame.mainEntry && file.bytes.length > 2097152) throw 0;
+                    projectBytes += file.bytes.length;
+                }
                 if (projectBytes > (expanded ? 16777216 : 8388608) || resourceBytes > 100663296) throw 0;
             }
             if (resources.some(name => !names.has(name)) || resourceNames.has(frame.mainEntry)

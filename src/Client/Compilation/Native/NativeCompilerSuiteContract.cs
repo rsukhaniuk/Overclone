@@ -61,7 +61,7 @@ public static class NativeCompilerSuiteContract
         if (Phase(profile, engine) == 0) { error = "unsupported-suite-engine"; return null; }
         error = NativeSelectedEntryContract.ValidateEntry(selected, profile, engine);
         if (error is not null) return null;
-        if (engine == NativeCompilerEngine.XeLaTeX && profile is not (NativeUnicodeCompilerContract.Profile or NativeBiberCompilerContract.Profile or NativeThesisCompilerContract.Profile or NativeInputBudgetContract.Profile or NativeOriginCompilerContract.Profile) && selected.Any(char.IsSurrogate))
+        if (engine == NativeCompilerEngine.XeLaTeX && profile is not (NativeUnicodeCompilerContract.Profile or NativeBiberCompilerContract.Profile or NativeThesisCompilerContract.Profile or NativeSelectedPdfContract.Profile or NativeInputBudgetContract.Profile or NativeOriginCompilerContract.Profile) && selected.Any(char.IsSurrogate))
         { error = "xetex-non-bmp-main-unsupported"; return null; }
         if (engine != NativeCompilerEngine.LuaLaTeX)
         {

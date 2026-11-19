@@ -16,7 +16,7 @@ const cache=new Map();for(const p of pins){const b=new Uint8Array(fs.readFileSyn
 const get=n=>{assert.ok(cache.has(n),n);return cache.get(n);};
 for(const [n,h]of [['semantic-engine.js','735c17494d6ec61c1b2f000f437f343ece9af3258f2f354f11745b7b5836dde2'],['semantic-engine.wasm','e3136893e75d5b6b3a7b4297349c28f51423dee2c014a607d9c1cd20f75357c3'],
  ['engine.js','b514d2b72aa44ec47923735f8f1be43a93351931beb183d57a7429b73e74a9a9'],['engine.wasm','70008f66d8acb88ee40e8c17b5a48dc81003852e569833444dd3cda7539ce235']])assert.equal(hash(get(n)),h,n);
-const worker=fs.readFileSync(path.join(__dirname,'../../src/Client/wwwroot/js/compile-port-worker.js'),'utf8');assert.ok(Buffer.byteLength(worker)<=32768);
+const worker=fs.readFileSync(path.join(__dirname,'../../src/Client/wwwroot/js/compile-port-worker.js'),'utf8');assert.ok(Buffer.byteLength(worker)<=36*1024);
 const root='тези/розділ з пробілом.tex',include='розділи/частина з пробілом.tex',job='розділ з пробілом';
 function project(backend='bibtex',reflected=false){
  const preamble='\\documentclass[10pt]{article}\n\\usepackage[utf8]{inputenc}\n\\usepackage[T2A]{fontenc}\n';

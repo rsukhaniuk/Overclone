@@ -7,7 +7,12 @@ public static class NativeInputBudgetContract
     public const NativeRuntimeProfile Profile = NativeRuntimeProfile.LocalCompilerInputBudget;
     public const int InputBudgetAbi = 1, ProjectFileBytes = 2 * 1024 * 1024, ProjectTotalBytes = 16 * 1024 * 1024;
     public const int ConverterProjectBytes = 16 * 1024 * 1024, PdfOutputBytes = 8 * 1024 * 1024;
-    public static bool Enabled(NativeRuntimeProfile profile) => profile == Profile && NativeCompilerInputBudgetPins.Ready;
+    public static bool Enabled(NativeRuntimeProfile profile) => profile switch
+    {
+        Profile => NativeCompilerInputBudgetPins.Ready,
+        NativeSelectedPdfContract.Profile => NativeCompilerSelectedPdfPins.Ready,
+        _ => false
+    };
     public static NativeCompilerComponent Component(NativeCompilerEngine engine)
     {
         var previous = NativeOriginCompilerContract.Component(engine);

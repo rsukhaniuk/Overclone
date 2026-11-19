@@ -1,11 +1,14 @@
 // Native compiler/VFS glue.
 const pB=p=>p===13||pT(p);
-const pT=p=>p===14||p===15||p===16;
+const pT=p=>p===14||p===15||p===16||p===17;
 const pU=p=>p===12||pB(p);
+const selectedPdfIdentity="41d0bb841b4832771327e44c84ada913e75204e25c5f39d6e52204e7350bf109";
+const pdf12=d=>d.tag?.profile===17&&d.tag.runtimeIdentity===selectedPdfIdentity&&d.tag.version===23&&d.tag?.engineId==='pdftex'&&d.operation==='latex';
+const pdfLeaf=d=>d.selectedRoot.split('/').at(-1).slice(0,-4)+'.pdf';
 const emit=self.postMessage.bind(self);let phase='boot',lookups=[],wasmSha256=null,loaderSha256=null;
 let dviModule=null,dviWriteGuard=null,semanticModule=false;
 const sLoader='735c17494d6ec61c1b2f000f437f343ece9af3258f2f354f11745b7b5836dde2';
-const rid=t=>typeof t.runtimeIdentity==='string'&&/^[0-9a-f]{64}$/.test(t.runtimeIdentity);
+const rid=t=>t.profile===17?t.runtimeIdentity===selectedPdfIdentity:/^[0-9a-f]{64}$/.test(t.runtimeIdentity??'');
 const sha=async bytes=>[...new Uint8Array(await crypto.subtle.digest('SHA-256',bytes))].map(v=>v.toString(16).padStart(2,'0')).join('');
 self.postMessage=m=>{if(!m.cmd&&m.result==='ok')emit({kind:'ready'});};
 self.onmessage=async({data:d})=>{
@@ -75,11 +78,11 @@ const nativeVfsShapes={
 'FS.createDataFile':'0aa3bd705398912b818dc1d64ab4585265b7827072bd2b66c0db99715a3eb11b',
 'FS.createLazyFile':'e03412f5831199bccd5931a12195045461b6ae4c20982974092ca99d00a88387'
 };
-async function installNativeVfsBudget(fs,mem,maximum,maximumLog=65536,nodeLimit=64,adapter=null,baselineLimit=8192){
+async function installNativeVfsBudget(fs,mem,maximum,maximumLog=65536,nodeLimit=64,adapter=null,baselineLimit=8192,bufferedPdf=null){
 const shape=(name='')=>{throw new Error('unsupported pinned VFS shape'+(name?': '+name:''));};
 const isBytes=value=>value instanceof Uint8Array||value instanceof Int8Array;
-if(!Number.isSafeInteger(maximum)||maximum<1||maximum>8388608||!Number.isSafeInteger(maximumLog)||maximumLog<0||maximumLog>8388608||![64,128].includes(nodeLimit)||![8192,12288].includes(baselineLimit))shape();
-const cap=2*maximum,workCap=baselineLimit===12288?67108864:cap,records=new Map(),tables=new Map();
+if(!Number.isSafeInteger(maximum)||maximum<1||maximum>(bufferedPdf===null?8388608:12582912)||!Number.isSafeInteger(maximumLog)||maximumLog<0||maximumLog>8388608||![64,128].includes(nodeLimit)||![8192,12288].includes(baselineLimit))shape();
+const standard=Math.min(8388608,maximum),cap=2*standard,workCap=baselineLimit===12288?67108864:cap,records=new Map(),tables=new Map();
 const original={},root=fs?.root,ops=mem?.ops_table;
 if(!root||!ops||!fs.streams||fs.streams.length>4096||fs.allocate!==undefined)shape();
 for(const key of ['lookupPath','isFile','isDir','isLink','isChrdev','write','open','doSetAttr','doTruncate','mknod','rename','unlink','rmdir','mmap','msync'])if(typeof fs[key]!=='function')shape();
@@ -140,18 +143,27 @@ const regular=node=>{
 project(node);if(!fs.isFile(node.mode)||!isBytes(node.contents)||uint(node.usedBytes)>node.contents.length)fail('regular node');
 return records.get(node);
 };
-const logicalPlan=(record,size)=>{
-uint(size);if(size>Math.max(record.base,maximum))fail('file bytes');
+const logicalPlan=(record,size,ceiling=standard)=>{
+uint(size);if(size>Math.max(record.base,ceiling))fail('file bytes');
 const high=Math.max(record.high,Math.max(0,size-record.base)),delta=high-record.high;
 if(delta>cap-growthBytes)fail('aggregate growth');return{record,high,delta};
 };
-const plan=(node,size)=>logicalPlan(regular(node),size);
+const selectedPdf=node=>bufferedPdf!==null&&node.parent===work&&node.name===bufferedPdf&&records.get(node).base===0;
+const plan=(node,size)=>logicalPlan(regular(node),size,selectedPdf(node)?maximum:standard);
 const commit=p=>{growthBytes+=p.delta;p.record.high=p.high;};
 const capacity=bytes=>{uint(bytes);if(bytes>workCap-backingBytes)fail('backing work');};
 const reserve=bytes=>{capacity(bytes);backingBytes+=bytes;};
+// Reserve the original allocator's real capacity. Check logical extent against
+// size separately, so this does not add bytes to the admitted PDF. Scope the
+// lower-churn growth to the fresh selected PDF on the new profile.
+const allocationTarget=(node,size)=>{
+const previous=node.contents.length;
+if(!selectedPdf(node)||previous<1048576||previous>=size)return size;
+return Math.max(size,Math.min(maximum,2*previous));
+};
 const expanded=(node,size)=>{
 const previous=node.contents.length;if(previous>=size)return 0;
-let next=Math.max(size,Math.floor(previous*(previous<1048576?2:1.125)));
+let next=Math.max(allocationTarget(node,size),Math.floor(previous*(previous<1048576?2:1.125)));
 if(previous)next=Math.max(next,256);uint(next);return next;
 };
 const resizePlan=(node,size)=>{
@@ -161,7 +173,7 @@ const bytesOnly=buffer=>{if(!isBytes(buffer))fail('byte input only');};
 const copy=bytes=>{uint(bytes);if(bytes>workCap-copyBytes)fail('read/vector copy work');copyBytes+=bytes;};
 const allocating=(fn,...args)=>{try{return fn(...args);}catch(error){failed=true;throw error;}};
 const wrap={
-expandFileStorage(node,size){const p=plan(node,size),bytes=expanded(node,size);capacity(bytes);commit(p);reserve(bytes);return allocating(original.expandFileStorage,node,size);},
+expandFileStorage(node,size){const p=plan(node,size),bytes=expanded(node,size);capacity(bytes);commit(p);reserve(bytes);return allocating(original.expandFileStorage,node,allocationTarget(node,size));},
 resizeFileStorage(node,size){const {p,bytes}=resizePlan(node,size);commit(p);reserve(bytes);return allocating(original.resizeFileStorage,node,size);},
 createNode(parent,name,mode,dev){
 project(parent);if(!fs.isDir(parent.mode)||(!fs.isFile(mode)&&!fs.isDir(mode)))fail('new node type');
@@ -259,7 +271,7 @@ const t=d.tag,s=pB(t?.profile);
 if((semanticModule?!s||!(t.version===23&&t.engineId==='pdftex'||t.version===24&&t.engineId==='latex-dvi')
 :![8,9,10,12].includes(t?.profile)||t.version!==([10,12].includes(t.profile)?15:12)||t.engineId!=='latex-dvi')||t.tool!=='latex'||d.operation!=='latex'
 ||!Number.isSafeInteger(t.ordinal)||t.ordinal<1||t.ordinal>4294967295
-||!(/^[0-9a-f]{64}$/.test(t.runtimeIdentity)))throw 0;
+||!rid(t))throw 0;
 validateAuthoringV4Frame(d);
 if(!Array.isArray(d.runtimeResourceNames)||!Array.isArray(d.generatedInputNames)
 ||d.runtimeResourceNames.length>8192||d.generatedInputNames.length>128)throw 0;
@@ -267,10 +279,17 @@ const resources=new Set(d.runtimeResourceNames),generated=new Set(d.generatedInp
 if(resources.size!==d.runtimeResourceNames.length||generated.size!==d.generatedInputNames.length
 ||[...resources].some(n=>!n.startsWith(prefix)||!d.files.some(f=>f.name===n))
 ||[...generated].some(n=>resources.has(n)||!d.files.some(f=>f.name===n))||resources.has(d.selectedRoot)||generated.has(d.selectedRoot))throw 0;
-let resourceBytes=0,workBytes=0,captured=0;
+let resourceBytes=0,workBytes=0,captured=0,sourceBytes=0;
 for(const f of d.files){
 if(resources.has(f.name)){if(f.bytes.length>67108864)throw 0;resourceBytes+=f.bytes.length;}
-else{if(f.name.startsWith(prefix)||f.bytes.length>8388608)throw 0;workBytes+=f.bytes.length;if(!generated.has(f.name))captured++;}
+else{
+ if(f.name.startsWith(prefix)||f.bytes.length>8388608)throw 0;
+ workBytes+=f.bytes.length;
+ if(!generated.has(f.name)){
+  captured++;
+  if(t.profile===17&&(f.bytes.length>2097152||(sourceBytes+=f.bytes.length)>16777216))throw 0;
+ }
+}
 }
 if(resourceBytes>(s?134217728:167772160)||workBytes>33554432||resourceBytes+workBytes>167772160||captured>(pT(t.profile)?128:64))throw 0;
 if(s){const name=prefix+'swiftlatexpdftex.fmt',fmt=d.files.find(f=>f.name===name),pdf=t.version===23;
@@ -286,7 +305,7 @@ inputs.push({name:f.name,length:f.bytes.length,sha256:await sha(f.bytes)});
 budget=await installNativeVfsBudget(F,m.MEMFS,d.maxOutputBytes,d.maxLogBytes,128,{
 heap:()=>m.HEAPU8,
 install:guard=>{dviWriteGuard=(fd,iov,count,pnum,original)=>guard(F.getStreamChecked(fd),iov,count,undefined,()=>original(fd,iov,count,pnum));}
-},s?12288:8192);
+},s?12288:8192,pdf12(d)?pdfLeaf(d):null);
 if(m._oc_mem_configure(1,1048575,t.ordinal)!==1||m.ccall('setMainEntry','number',['string'],[d.mainEntry])!==0)throw 0;
 emit({kind:'entered'});entered=true;const start=performance.now();nativeReturn=m._compileLaTeX();elapsedMs=performance.now()-start;
 if(!Number.isInteger(nativeReturn)||budget.failed||dviLogLimited)throw 0;
@@ -296,7 +315,10 @@ outcome='font-semantics-unsupported';
 }else{
 let total=0;
 for(const name of d.outputs){const p='/work/'+name;if(!F.analyzePath(p).exists)continue;const s=F.stat(p);
-if(!F.isFile(s.mode)||s.size>d.maxOutputBytes||s.size>2*d.maxOutputBytes-total)throw 0;
+const selected=pdf12(d)&&name===pdfLeaf(d),standard=Math.min(8388608,d.maxOutputBytes);
+if(selected&&nativeReturn!==0&&s.size>standard)continue;
+const maxFile=selected?d.maxOutputBytes:standard;
+if(!F.isFile(s.mode)||s.size>maxFile||s.size>2*Math.min(8388608,d.maxOutputBytes)-total)throw 0;
 total+=s.size;files.push({name,bytes:F.readFile(p)});
 }
 if(nativeReturn===0&&files.some(f=>s&&t.version===23?f.name.endsWith('.pdf')&&f.bytes.length>=5&&[37,80,68,70,45].every((v,i)=>f.bytes[i]===v)
@@ -323,13 +345,13 @@ const bad=()=>{throw new Error('v4 FFI');};
 const key=n=>d.tag.version>=5?n.normalize('NFC').toUpperCase():n.normalize('NFC').replace(/[a-z]/g,c=>c.toUpperCase());
 const p13=pB(d.tag.profile),backend=d.bibliographyTool;
 if(p13?!['none','bibtex','biber'].includes(backend)||d.operation==='bibtex'&&backend!=='bibtex':backend!=null)bad();
-const suite=[5,6,7,8,9,10,12,13,14,15,16].includes(d.tag.profile),lua=suite&&[9,14,17,22].includes(d.tag.version);
+const suite=[5,6,7,8,9,10,12,13,14,15,16,17].includes(d.tag.profile),lua=suite&&[9,14,17,22].includes(d.tag.version);
 const selected=d.tag.version>=5,root=selected?d.selectedRoot:'main.tex';
 if(typeof root!=='string')bad();
 const leaf=root.slice(root.lastIndexOf('/')+1),job=lua?'result':leaf.slice(0,-4);
 if(selected&&(!(pU(d.tag.profile)&&d.tag.engineId==='xelatex'?/^[\p{L}\p{Nd}\p{Mn}\p{Mc}\u{10000}-\u{10FFFF}._/ -]+$/u:/^[\p{L}\p{Nd}\p{Mn}\p{Mc}._/ -]+$/u).test(root)||!/^.+\.tex$/i.test(leaf)||/^[.-]/.test(leaf)||leaf.startsWith(' ')||job.endsWith(' ')))bad();
 const latexEntry=selected&&root.includes(' ')?'"'+root+'"':root;
-const bibliography=[7,8,9,10,12,13,14,15,16].includes(d.tag.profile),blx=job.replaceAll(' ','_')+'-blx.bib',blxEnabled=bibliography&&!(p13&&backend==='biber');
+const bibliography=[7,8,9,10,12,13,14,15,16,17].includes(d.tag.profile),blx=job.replaceAll(' ','_')+'-blx.bib',blxEnabled=bibliography&&!(p13&&backend==='biber');
 const state=n=>n.endsWith('.aux')||['.bbl','.toc','.lof','.lot','.out'].some(ext=>n===job+ext)||blxEnabled&&n===blx;
 const fixed=['.pdf','.aux','.bbl','.blg','.log','.toc','.lof','.lot','.out',...([7,12,15,24].includes(d.tag.version)?['.dvi']:[]),...([8,13,16,21].includes(d.tag.version)?['.xdv']:[]),...(p13&&backend==='biber'&&d.operation==='latex'?['.bcf','.run.xml']:[])].map(ext=>job+ext).concat(blxEnabled?[blx]:[]);
 const valid=n=>typeof n==='string'&&n.length>0&&n===n.trim()&&new TextEncoder().encode(n).length<=249
@@ -337,7 +359,7 @@ const valid=n=>typeof n==='string'&&n.length>0&&n===n.trim()&&new TextEncoder().
 &&n.split('/').length<=32&&n.split('/').every(s=>s&&s!=='.'&&s!=='..'&&!/[. ]$/.test(s)
 &&!['.GIT','.SVN','.HG','.SSH','.AWS'].includes(s.toUpperCase())&&!/^(CON|PRN|AUX|NUL|COM[1-4]|COM[5-9]|LPT[1-4]|LPT[5-9])(?:\.|$)/i.test(s));
 if(!Array.isArray(d.files)||!Array.isArray(d.outputs)||d.files.length<1||d.files.length>(suite?(pT(d.tag.profile)?8448:8384):768)||d.outputs.length>(pT(d.tag.profile)?256:128)
-||d.mainEntry!==(selected&&d.operation==='bibtex'?(lua?'result.tex':leaf):latexEntry)||d.tag.tool!==d.operation||!Number.isSafeInteger(d.maxOutputBytes)||d.maxOutputBytes<1||d.maxOutputBytes>8388608
+||d.mainEntry!==(selected&&d.operation==='bibtex'?(lua?'result.tex':leaf):latexEntry)||d.tag.tool!==d.operation||!Number.isSafeInteger(d.maxOutputBytes)||d.maxOutputBytes<1||d.maxOutputBytes>(pdf12(d)?12582912:8388608)
 ||!Number.isSafeInteger(d.maxLogBytes)||d.maxLogBytes<0||d.maxLogBytes>8388608)bad();
 const carried=bibliography&&Array.isArray(d.generatedInputNames)?new Set(d.generatedInputNames):null;
 if(bibliography&&(!carried||carried.size!==d.generatedInputNames.length||carried.size>128
@@ -362,7 +384,7 @@ try{
 const legacy=d.tag.version===1&&(d.tag.profile===undefined||d.tag.profile===0)&&d.tag.runtimeIdentity==null;
 const modern=d.tag.version===2&&d.tag.profile===1&&rid(d.tag);
 const authoring=d.tag.version===3&&d.tag.profile===2&&rid(d.tag);
-const identity=rid(d.tag),suite=[5,6,7,8,9,10,12,13,14,15,16].includes(d.tag.profile),p13=pB(d.tag.profile);
+const identity=rid(d.tag),suite=[5,6,7,8,9,10,12,13,14,15,16,17].includes(d.tag.profile),p13=pB(d.tag.profile);
 const p13Bibtex=p13&&d.operation==='bibtex'&&[[23,'pdftex'],[24,'latex-dvi'],[21,'xelatex'],[22,'lualatex']].some(([v,e])=>d.tag.version===v&&d.tag.engineId===e)&&identity;
 const mapped=d.tag.version===6&&([3,4].includes(d.tag.profile)&&d.tag.engineId==null
 ||suite&&!p13&&d.tag.engineId==='pdftex')&&identity;
@@ -371,7 +393,7 @@ const unicodeBibtex=suite&&d.operation==='bibtex'&&((d.tag.version===8&&[5,6,7,8
 const navigationBibtex=[8,9,10,12].includes(d.tag.profile)&&d.tag.version===([10,12].includes(d.tag.profile)?15:12)&&d.tag.engineId==='latex-dvi'&&d.operation==='bibtex'&&identity;
 const v4=p13Bibtex||mapped||dvi||unicodeBibtex||navigationBibtex||[4,5].includes(d.tag.version)&&d.tag.profile===2&&identity;
 if((!legacy&&!modern&&!authoring&&!v4)||!['latex','bibtex'].includes(d.operation)||d.files.length>(suite?(pT(d.tag.profile)?8448:8384):v4?768:512)||d.outputs.length>(pT(d.tag.profile)?256:v4?128:64))throw new Error('FFI frame');
-if([8,9,10,12,13,14,15,16].includes(d.tag.profile)&&(loaderSha256!=='b514d2b72aa44ec47923735f8f1be43a93351931beb183d57a7429b73e74a9a9'
+if([8,9,10,12,13,14,15,16,17].includes(d.tag.profile)&&(loaderSha256!=='b514d2b72aa44ec47923735f8f1be43a93351931beb183d57a7429b73e74a9a9'
 ||wasmSha256!=='70008f66d8acb88ee40e8c17b5a48dc81003852e569833444dd3cda7539ce235'
 ||cwrap('oc_synctex_abi','number',[])()!==65536))throw new Error('legacy identity');
 if(v4)validateAuthoringV4Frame(d);
@@ -386,6 +408,16 @@ if(suite&&(generatedNames.size!==d.generatedInputNames.length||generatedNames.ha
 if(suite&&(!Array.isArray(d.runtimeResourceNames)||resourceNames.size!==d.runtimeResourceNames.length
 ||resourceNames.size>8192||d.runtimeResourceNames.some(n=>!n.startsWith(prefix)||!d.files.some(f=>f.name===n))
 ||d.files.some(f=>!resourceNames.has(f.name)&&f.name.startsWith(prefix))))throw new Error('resources');
+if(d.tag.profile===17){
+let sourceBytes=0,workBytes=0,sourceFiles=0,resourceBytes=0;
+for(const f of d.files){
+ if(resourceNames.has(f.name)){resourceBytes+=f.bytes.length;if(f.bytes.length>67108864)throw new Error('resource bounds');continue;}
+ workBytes+=f.bytes.length;
+ if(f.bytes.length>8388608||workBytes>33554432)throw new Error('work bounds');
+ if(!generatedNames.has(f.name)&&(++sourceFiles>128||f.bytes.length>2097152||(sourceBytes+=f.bytes.length)>16777216))throw new Error('source bounds');
+}
+if(resourceBytes+workBytes>167772160)throw new Error('phase bounds');
+}
 const destination=f=>resourceNames.has(f.name)?'/tex/'+f.name.slice(prefix.length):'/work/'+f.name;
 for(const f of d.files){const p=destination(f);const slash=p.lastIndexOf('/');FS.mkdirTree(p.slice(0,slash));FS.writeFile(p,f.bytes);}
 if(suite)for(const f of d.files)if(resourceNames.has(f.name)){

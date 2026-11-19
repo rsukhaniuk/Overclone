@@ -1,4 +1,4 @@
-const pB=p=>p===13||p===14||p===15||p===16;
+const pB=p=>p===13||p===14||p===15||p===16||p===17;
 // Browser/WASM/owned-byte glue only. C# selects the backend and admits BCF.
 // Genuine Perl/Biber, filesystem confinement and output limits live in C++/WASM.
 const send=self.postMessage.bind(self),encode=new TextEncoder(),decode=new TextDecoder('utf-8',{fatal:true});
@@ -17,6 +17,7 @@ function validate(d){
   ||!['pdftex','latex-dvi','xelatex','lualatex'].includes(t.engineId)||!Number.isSafeInteger(t.ordinal)||t.ordinal<1||t.ordinal>4294967295
   ||typeof t.nonce!=='string'||t.nonce.length<1||t.nonce.length>128||!t.nonce.isWellFormed()
   ||typeof t.runtimeIdentity!=='string'||!/^[0-9a-f]{64}$/.test(t.runtimeIdentity)
+  ||t.profile===17&&t.runtimeIdentity!=='41d0bb841b4832771327e44c84ada913e75204e25c5f39d6e52204e7350bf109'
   ||!path(d.selectedRoot)||!/\.tex$/i.test(d.selectedRoot)||!path(d.mainEntry)
   ||!Array.isArray(d.files)||d.files.length<1||d.files.length>64||!Array.isArray(d.outputs)||d.outputs.length!==2
   ||!Number.isSafeInteger(d.maxLogBytes)||d.maxLogBytes<1||d.maxLogBytes>262144

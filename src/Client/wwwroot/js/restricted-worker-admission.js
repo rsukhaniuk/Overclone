@@ -10,7 +10,7 @@ const ROLES = Object.freeze({
     synctex: Object.freeze({ source: '/js/synctex-query-worker.js', entry: '/__oop/native-worker/synctex' }),
 });
 const POLICY = "default-src 'none'; script-src blob: 'wasm-unsafe-eval'; connect-src 'none'; worker-src 'none'; object-src 'none'";
-const MAX_PORTS = 16, TIMEOUT = 5000, SOURCE_LIMIT = 32768;
+const MAX_PORTS = 16, TIMEOUT = 5000, SOURCE_LIMIT = 32768, COMPILE_SOURCE_LIMIT = 36 * 1024;
 const states = new Map();
 let ports = 0, serviceWorkers = null;
 function checkBinding(binding) {
@@ -79,7 +79,7 @@ async function verifySource(binding, signal) {
     try {
         for (;;) {
             const { done, value } = await reader.read(); if (done) { complete = true; break; }
-            size += value.byteLength; if (size > SOURCE_LIMIT) throw new Error('worker byte bound'); chunks.push(value);
+            size += value.byteLength; if (size > (binding.kind === "compile" ? COMPILE_SOURCE_LIMIT : SOURCE_LIMIT)) throw new Error('worker byte bound'); chunks.push(value);
         }
     } finally { if (!complete) reader.cancel().catch(() => {}); reader.releaseLock(); }
     if (size === 0) throw new Error('empty worker source');

@@ -28,7 +28,7 @@ public sealed class BiberPipelineTests
         Assert.Equal(new[] { 23, 24, 21, 22 }, Enum.GetValues<NativeCompilerEngine>().Select(e => NativeCompilerSuiteContract.Phase(P, e)));
         Assert.Equal(new[] { 6, 15, 21, 22 }, Enum.GetValues<NativeCompilerEngine>().Select(e => NativeCompilerSuiteContract.Phase(NativeUnicodeCompilerContract.Profile, e)));
         Assert.False(NativeRuntimeProfiles.Known((NativeRuntimeProfile)11));
-        Assert.False(NativeRuntimeProfiles.Known((NativeRuntimeProfile)17));
+        Assert.False(NativeRuntimeProfiles.Known((NativeRuntimeProfile)18));
         Assert.True(LocalRuntimeSelection.LimitsFor(P).IsValid);
         Assert.Equal(NativeRuntimeProfiles.SyncTeXCompilerWasmHash, NativeBiberCompilerContract.BibtexComponent.WasmHash);
         foreach (var e in Enum.GetValues<NativeCompilerEngine>()) Assert.True(NativeCompilerSuiteContract.CreatePlan(e, profile: P).IsValid);

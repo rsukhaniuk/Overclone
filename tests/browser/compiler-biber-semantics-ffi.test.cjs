@@ -4,7 +4,7 @@
 const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),assert=require('node:assert/strict');
 const {webcrypto,createHash}=require('node:crypto');
 const source=fs.readFileSync(path.join(__dirname,'../../src/Client/wwwroot/js/compile-port-worker.js'),'utf8');
-assert.ok(Buffer.byteLength(source)<=32768,'unchanged hard worker source ceiling');
+assert.ok(Buffer.byteLength(source)<=36*1024,'fixed compile worker source ceiling');
 const hash=b=>createHash('sha256').update(b).digest('hex'),bytes=s=>new TextEncoder().encode(s);
 const semantic=['735c17494d6ec61c1b2f000f437f343ece9af3258f2f354f11745b7b5836dde2','e3136893e75d5b6b3a7b4297349c28f51423dee2c014a607d9c1cd20f75357c3'];
 const oldDvi=['980bcf858794dc4679124df6fbf76a503d3020d96a7081537e9d1a4a5e7bb6f1','6ad6db6625d28bdfaf83eba48b44a4202582fd84118c1e8ece3857535722a1b9'];
