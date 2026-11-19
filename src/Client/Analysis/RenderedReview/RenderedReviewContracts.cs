@@ -8,6 +8,7 @@ public static class RenderedReviewContract
 {
     public const int RequestMaxBytes = 262144, FactsMaxBytes = 4194304, ResponseMaxBytes = 524288, EvaluationDeadlineMs = 5000;
     public const string ProfileId = "knu-csc-2025-rendered-review", ProfileVersion = "1.0.0";
+    public const string PaginationProfileVersion = "1.2.0";
 }
 public sealed record RenderedRoleAnnotation(long AnnotationId, string Role, int PageIndex, int? CharacterStart,
     int? CharacterEnd, string? SourceFileId, AnalysisSpanDto? SourceSpan, string Provenance, string Certainty);
@@ -15,7 +16,10 @@ public sealed record RenderedReviewRequest(string RequestId, string PdfSha256, s
     string InputDigest, Guid CaptureId, string WorkType, long AnnotationVersion, int PageCount,
     IReadOnlyList<int> RequestedPages, IReadOnlyList<RenderedRoleAnnotation> Annotations, string FactsSha256)
 {
-    public bool IsValid => RenderedExtentContract.RequestId(RequestId) && RenderedExtentContract.RequestId(CompileRequestId)
+    public string ProfileVersion { get; init; } = RenderedReviewContract.ProfileVersion;
+
+    public bool IsValid => ProfileVersion is RenderedReviewContract.ProfileVersion or RenderedReviewContract.PaginationProfileVersion
+        && RenderedExtentContract.RequestId(RequestId) && RenderedExtentContract.RequestId(CompileRequestId)
         && PdfHashes.IsSha(PdfSha256) && PdfHashes.IsSha(InputDigest) && PdfHashes.IsSha(FactsSha256)
         && RenderedExtentContract.Epoch(CompileEpoch) && CaptureId != Guid.Empty && AnnotationVersion is >= 0 and <= 9007199254740991
         && RenderedExtentContract.WorkType(WorkType) && PageCount is >= 1 and <= 512 && RequestedPages is { Count: > 0 and <= 8 }
@@ -35,4 +39,7 @@ public sealed record RenderedReviewPageEvidence(int PageIndex, string Inspection
 public sealed record RenderedReviewEvidence(RenderedExtentEvidence Compilation, Client.Compilation.CompileArtifactContentIdentity ContentIdentity,
     long AnnotationVersion, IReadOnlyList<RenderedReviewPageEvidence> Pages);
 public sealed record RenderedReviewReport(IReadOnlyList<RenderedRuleResult> Results, RenderedReviewEvidence Evidence,
-    int RequestedPages, int EvaluatedPages, bool Complete, string Code);
+    int RequestedPages, int EvaluatedPages, bool Complete, string Code)
+{
+    public string ProfileVersion { get; init; } = RenderedReviewContract.ProfileVersion;
+}

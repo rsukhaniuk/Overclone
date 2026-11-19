@@ -5,7 +5,7 @@ using System.Text.Json;
 
 namespace Client.Analysis.RenderedReview;
 
-public static class RenderedReviewJson
+public static partial class RenderedReviewJson
 {
     private static readonly JsonSerializerOptions Camel = new() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
     // Profile wire vocabulary, not a second threshold/evaluation table.
@@ -29,7 +29,7 @@ public static class RenderedReviewJson
         if (request is not { IsValid: true }) throw new ArgumentException("Invalid rendered review request.");
         string result = JsonSerializer.Serialize(new { protocolVersion = 1, requestId = request.RequestId, operation = "evaluateRenderedReview", payload = new {
             pdfSha256 = request.PdfSha256, compileRequestId = request.CompileRequestId, compileEpoch = request.CompileEpoch, inputDigest = request.InputDigest,
-            captureId = request.CaptureId, profile = new { id = RenderedReviewContract.ProfileId, version = RenderedReviewContract.ProfileVersion },
+            captureId = request.CaptureId, profile = new { id = RenderedReviewContract.ProfileId, version = request.ProfileVersion },
             workType = request.WorkType, annotationVersion = request.AnnotationVersion, pageCount = request.PageCount, requestedPages = request.RequestedPages,
             annotations = request.Annotations, factsSha256 = request.FactsSha256 } }, Camel);
         if (Encoding.UTF8.GetByteCount(result) > RenderedReviewContract.RequestMaxBytes) throw new ArgumentException("Rendered review request limit.");
@@ -57,7 +57,7 @@ public static class RenderedReviewJson
             && p.GetProperty("annotationVersion").GetInt64() == expected.AnnotationVersion && p.GetProperty("pageCount").GetInt32() == expected.PageCount
             && Text(p, "factsSha256") == expected.FactsSha256 && Text(p, "guidelineSha256") == RenderedExtentContract.GuidelineSha256);
         var profile = p.GetProperty("profile"); Keys(profile, "id", "version");
-        Require(Text(profile, "id") == RenderedReviewContract.ProfileId && Text(profile, "version") == RenderedReviewContract.ProfileVersion);
+        Require(Text(profile, "id") == RenderedReviewContract.ProfileId && Text(profile, "version") == expected.ProfileVersion);
         Require(p.GetProperty("requestedPages").EnumerateArray().Select(v => v.GetInt32()).SequenceEqual(expected.RequestedPages));
         var coverage = p.GetProperty("coverage"); Keys(coverage, "pagesEvaluated", "complete", "standardsComplete");
         Require(coverage.GetProperty("pagesEvaluated").GetInt32() == expected.RequestedPages.Count && coverage.GetProperty("complete").GetBoolean()
@@ -70,10 +70,18 @@ public static class RenderedReviewJson
         {
             Keys(item, "ruleId", "ruleVersion", "domain", "supportState", "outcome", "reason", "severity", "citation", "evidence", "limitations");
             string id = Text(item, "ruleId"), outcome = Text(item, "outcome"), support = Text(item, "supportState"), reason = Text(item, "reason");
-            Require(Ids.Contains(id) && Text(item, "ruleVersion") == "1.0.0" && Text(item, "domain") == "renderedObservation"
+            Require(Ids.Contains(id) && Text(item, "domain") == "renderedObservation" && Text(item, "severity") == "warning");
+            int occurrence = counts.GetValueOrDefault(id);
+            counts[id] = occurrence + 1;
+            if (id == PaginationRuleId && expected.ProfileVersion == RenderedReviewContract.PaginationProfileVersion)
+            {
+                Require(occurrence < expected.RequestedPages.Count);
+                results.Add(ParsePagination(item, expected, expected.RequestedPages[occurrence], outcome, support, reason));
+                continue;
+            }
+            Require(Text(item, "ruleVersion") == "1.0.0"
                 && support is "supported" or "partial" or "unsupported" && outcome is "pass" or "fail" or "indeterminate" or "unavailable" or "notApplicable"
-                && Reasons.Contains(reason) && Text(item, "severity") == "warning" && (support != "unsupported" || outcome == "unavailable"));
-            counts[id] = counts.GetValueOrDefault(id) + 1;
+                && Reasons.Contains(reason) && (support != "unsupported" || outcome == "unavailable"));
             var citation = item.GetProperty("citation"); Keys(citation, "section", "printedPages", "pdfPages");
             Require(Text(citation, "section").Length is > 0 and <= 64);
             var printed = citation.GetProperty("printedPages").EnumerateArray().Select(v => v.GetInt32()).ToArray();
@@ -115,7 +123,8 @@ public static class RenderedReviewJson
                     foreach (var group in owned.GroupBy(e => e.GetProperty("roleProvenance").GetProperty("annotationId").GetInt64()))
                         Require(group.Select(e => Text(e, "metric")).Order().SequenceEqual(new[] { "margin-bottom", "margin-left", "margin-right", "margin-top" }));
             }
-            Require(outcome is not ("pass" or "fail") || id == "KNU-PAPER-001" && owned.Count > 0);
+            Require(outcome is not ("pass" or "fail") || id == "KNU-PAPER-001" && owned.Count > 0
+                && (outcome == "pass" || expected.ProfileVersion == RenderedReviewContract.ProfileVersion));
             results.Add(new(id, "1.0.0", "renderedObservation", support, outcome, reason, "warning", citation.Clone(), owned.AsReadOnly(), Codes(item.GetProperty("limitations"))));
         }
         Require(Ids.All(id => counts.GetValueOrDefault(id) == expected.RequestedPages.Count));
