@@ -11,6 +11,9 @@ use serde_json::{json, Value};
 mod tests;
 
 pub(super) const PROFILE_VERSION: &str = "1.2.0";
+pub(super) fn enabled(version: &str) -> bool {
+    matches!(version, PROFILE_VERSION | super::heading::PROFILE_VERSION)
+}
 pub(super) const LIMITATIONS: &[&str] = &[
     "empty-text-does-not-prove-number-absence",
     "extracted-unicode-not-visual-digit-proof",

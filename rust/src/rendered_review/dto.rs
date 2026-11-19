@@ -303,7 +303,7 @@ impl Request {
                                 | "footnote"
                                 | "note"
                         );
-                let title_number = version == super::pagination::PROFILE_VERSION
+                let title_number = super::pagination::enabled(version)
                     && super::pagination::title_number_pair(a, b);
                 if overlap && !containment && !title_number {
                     return Err("InvalidAnnotations");

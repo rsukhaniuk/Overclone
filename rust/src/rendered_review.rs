@@ -5,6 +5,7 @@ mod caption_placement;
 pub mod catalog;
 mod classify;
 mod dto;
+mod heading;
 mod pagination;
 mod roles;
 mod rules;
@@ -52,8 +53,8 @@ fn run(metadata: &str, bytes: &str) -> Result<Value, &'static str> {
     // fields which Value parsing alone would silently overwrite.
     let request: Request = serde_json::from_str(metadata).map_err(|_| "InvalidInput")?;
     let facts: FactBatch = serde_json::from_str(bytes).map_err(|_| "InvalidFacts")?;
-    if request.payload.profile.version == pagination::PROFILE_VERSION {
-        request.validate_profile(&facts, pagination::PROFILE_VERSION)?;
+    if pagination::enabled(&request.payload.profile.version) {
+        request.validate_profile(&facts, &request.payload.profile.version)?;
     } else {
         request.validate(&facts)?;
     }

@@ -1,0 +1,39 @@
+{
+  "pdf": {
+    "bytes": 14906,
+    "sha256": "42433c0d90c94d675b4f339f2a4ae4fbe98a2d460ea57ca9f1adc5a752050beb"
+  },
+  "batch": {
+    "bytes": 14219,
+    "sha256": "76b8b65bf8c431e86e4b6f5c69cb5bbd9ddd45e36484aca559c574e22888884f"
+  },
+  "runtime": {
+    "loader": {
+      "bytes": 14175,
+      "sha256": "f95ae827b12703999ce1daafebbf6830f5f4d2c14bb7805a8f47abe54772b079"
+    },
+    "wasm": {
+      "bytes": 3725577,
+      "sha256": "2e2126ead8e00ef7c79d21e3836d66957b19e827523f7c054ca887f3c11ae5b7"
+    }
+  },
+  "pages": [
+    {
+      "pageIndex": 0,
+      "ranges": {
+        "Bodyabove": [
+          0,
+          9
+        ],
+        "HEADWORD": [
+          11,
+          19
+        ],
+        "Bodybelow": [
+          21,
+          30
+        ]
+      }
+    }
+  ]
+}

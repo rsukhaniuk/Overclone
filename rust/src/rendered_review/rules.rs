@@ -1,4 +1,4 @@
-use super::{catalog, classify, dto::*, pagination, roles, typography};
+use super::{catalog, classify, dto::*, heading, pagination, roles, typography};
 use serde_json::{json, Value};
 
 fn metrics(
@@ -148,9 +148,13 @@ pub fn evaluate(request: &Request, batch: &FactBatch) -> Vec<Value> {
             let f = &page.facts;
             let mut evidence = Vec::new();
             let with_pagination = descriptor.rule_id == "KNU-PAGINATION-001"
-                && request.payload.profile.version == pagination::PROFILE_VERSION;
+                && pagination::enabled(&request.payload.profile.version);
+            let with_heading = descriptor.rule_id == heading::RULE_ID
+                && request.payload.profile.version == heading::PROFILE_VERSION;
             let (rule_version, citation, limitations) = if with_pagination {
                 ("1.1.0", pagination::citation(), pagination::LIMITATIONS)
+            } else if with_heading {
+                ("1.1.0", heading::citation(), heading::LIMITATIONS)
             } else {
                 (
                     descriptor.rule_version,
@@ -247,6 +251,11 @@ pub fn evaluate(request: &Request, batch: &FactBatch) -> Vec<Value> {
                     let measured = metrics(request, page, true);
                     evidence = measured.3;
                     (measured.0, measured.1, measured.2)
+                }
+                heading::RULE_ID if with_heading => {
+                    let observation = heading::evaluate(request, page);
+                    evidence = observation.2;
+                    ("partial", observation.0, observation.1)
                 }
                 "KNU-HEADINGS-RENDERED-001" => {
                     let observed = roles::evaluate(request, page, descriptor.rule_id);
