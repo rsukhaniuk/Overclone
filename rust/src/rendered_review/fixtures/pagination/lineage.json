@@ -1,0 +1,112 @@
+{
+  "pdf": {
+    "bytes": 16717,
+    "sha256": "9731e35b54ea1a11474ae53c3b7375842d07a9d8370a15f3822c73de6c9dc0fe"
+  },
+  "batch": {
+    "bytes": 30602,
+    "sha256": "37fb924c02ea11b2aa90fb62d7df5ef0fc01ac49801c2b683bd0b2c454c552c6"
+  },
+  "runtime": {
+    "loader": {
+      "bytes": 14175,
+      "sha256": "f95ae827b12703999ce1daafebbf6830f5f4d2c14bb7805a8f47abe54772b079"
+    },
+    "wasm": {
+      "bytes": 3725577,
+      "sha256": "2e2126ead8e00ef7c79d21e3836d66957b19e827523f7c054ca887f3c11ae5b7"
+    }
+  },
+  "pages": [
+    {
+      "pageIndex": 0,
+      "numbers": [
+        {
+          "index": 0,
+          "literal": "1",
+          "ink": [
+            408.786865234375,
+            703.1400146484375,
+            412.1434020996094,
+            709.3374633789062
+          ],
+          "uncertainty": {
+            "absoluteErrorRaw": 0.07747800540970638,
+            "method": "native-outline-fill-witness"
+          }
+        }
+      ]
+    },
+    {
+      "pageIndex": 1,
+      "numbers": [
+        {
+          "index": 0,
+          "literal": "2",
+          "ink": [
+            408.2590637207031,
+            703.1400146484375,
+            412.4425964355469,
+            709.3374633789062
+          ],
+          "uncertainty": {
+            "absoluteErrorRaw": 0.07747800540970638,
+            "method": "native-outline-fill-witness"
+          }
+        }
+      ]
+    },
+    {
+      "pageIndex": 2,
+      "numbers": [
+        {
+          "index": 0,
+          "literal": "1",
+          "ink": [
+            408.786865234375,
+            703.1400146484375,
+            412.1434020996094,
+            709.3374633789062
+          ],
+          "uncertainty": {
+            "absoluteErrorRaw": 0.07747800540970638,
+            "method": "native-outline-fill-witness"
+          }
+        }
+      ]
+    },
+    {
+      "pageIndex": 3,
+      "numbers": [
+        {
+          "index": 0,
+          "literal": "4",
+          "ink": [
+            408.0304260253906,
+            703.1400146484375,
+            412.67364501953125,
+            709.34716796875
+          ],
+          "uncertainty": {
+            "absoluteErrorRaw": 0.07759476156719028,
+            "method": "native-outline-fill-witness"
+          }
+        },
+        {
+          "index": 20,
+          "literal": "1",
+          "ink": [
+            254.3658905029297,
+            559.677978515625,
+            257.722412109375,
+            565.8754272460938
+          ],
+          "uncertainty": {
+            "absoluteErrorRaw": 0.07734118935046717,
+            "method": "native-outline-fill-witness"
+          }
+        }
+      ]
+    }
+  ]
+}

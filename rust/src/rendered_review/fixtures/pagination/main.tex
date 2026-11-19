@@ -1,0 +1,15 @@
+\documentclass{article}
+\pagestyle{empty}
+\pdfpageattr{/CropBox [8 10 594 780] /UserUnit 2}
+\newcommand{\reviewpage}[3]{%
+  \noindent\begin{picture}(320,180)
+    \put(275,166){\ttfamily #2}
+    \put(35,120){\ttfamily #1}
+    \put(120,22){\ttfamily #3}
+  \end{picture}\par}
+\begin{document}
+\reviewpage{Title leaf}{1}{}\newpage
+\reviewpage{Body text}{2}{}\newpage
+\reviewpage{Appendix restart}{1}{}\newpage
+\reviewpage{Copied appendix}{4}{1}
+\end{document}

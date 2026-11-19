@@ -1,4 +1,4 @@
-use super::{catalog, classify, dto::*, roles, typography};
+use super::{catalog, classify, dto::*, pagination, roles, typography};
 use serde_json::{json, Value};
 
 fn metrics(
@@ -147,6 +147,17 @@ pub fn evaluate(request: &Request, batch: &FactBatch) -> Vec<Value> {
         for page in &batch.pages {
             let f = &page.facts;
             let mut evidence = Vec::new();
+            let with_pagination = descriptor.rule_id == "KNU-PAGINATION-001"
+                && request.payload.profile.version == pagination::PROFILE_VERSION;
+            let (rule_version, citation, limitations) = if with_pagination {
+                ("1.1.0", pagination::citation(), pagination::LIMITATIONS)
+            } else {
+                (
+                    descriptor.rule_version,
+                    json!(descriptor.citation),
+                    descriptor.limitations,
+                )
+            };
             let (support, outcome, reason) = match descriptor.rule_id {
                 "KNU-PAPER-001" => {
                     if let Some(unit) = f
@@ -252,6 +263,11 @@ pub fn evaluate(request: &Request, batch: &FactBatch) -> Vec<Value> {
                     "notApplicable",
                     "delegated-to-reference-predicates",
                 ),
+                "KNU-PAGINATION-001" if with_pagination => {
+                    let observation = pagination::evaluate(request, page);
+                    evidence = observation.2;
+                    ("partial", observation.0, observation.1)
+                }
                 "KNU-PAGINATION-001" | "KNU-CAPTION-RENDERED-001" => {
                     let observed = roles::evaluate(request, page, descriptor.rule_id);
                     evidence = observed.3;
@@ -283,9 +299,9 @@ pub fn evaluate(request: &Request, batch: &FactBatch) -> Vec<Value> {
                     "confirmed-caption-and-illustration-roles-required",
                 ),
             };
-            results.push(json!({"ruleId":descriptor.rule_id,"ruleVersion":descriptor.rule_version,"domain":"renderedObservation",
-                "supportState":support,"outcome":outcome,"reason":reason,"severity":"warning","citation":descriptor.citation,
-                "evidence":evidence,"limitations":descriptor.limitations}));
+            results.push(json!({"ruleId":descriptor.rule_id,"ruleVersion":rule_version,"domain":"renderedObservation",
+                "supportState":support,"outcome":outcome,"reason":reason,"severity":"warning","citation":citation,
+                "evidence":evidence,"limitations":limitations}));
         }
     }
     results
