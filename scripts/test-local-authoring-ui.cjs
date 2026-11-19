@@ -287,7 +287,7 @@ const renderedReviewPreflight = RENDERED_REVIEW_CHECKS || WORK_MAJOR_HEADING_CHE
   downloads:CHECK_DOWNLOADS,resultDirectory:RESULT_DIR,runtime:renderedReview.classifyRuntime(pins),
   renderer:{loader:loaderResource.sha256,wasm:wasmResource.sha256}}) : null;
 if (WORK_MAJOR_HEADING_CHECKS) {
-  assert.equal(renderedReviewPreflight.profile,16,'heading order fixture requires exact P16');
+  assert.ok([16,17].includes(renderedReviewPreflight.profile), 'heading order fixture requires exact P16 or P17');
   assert.equal(renderedReviewPreflight.renderer.schemaVersion,2,'heading order fixture requires exact layout2 renderer');
 }
 

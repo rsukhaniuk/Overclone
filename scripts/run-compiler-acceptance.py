@@ -247,7 +247,11 @@ def main(argv=None):
     require(not any(results==p or results in p.parents or p in results.parents for p in inputs),'results/input overlap is refused')
     required=sorted({n for f in fixtures for n in f.get('requiredRuntimeInputs',[])})
     runtime_fact=verify_runtime(runtime,required);pdf_fact=verify_pdf(pdf);publication_fact=verify_publication(publication,args.publication_id)
-    for key in ['resources','totalBytes','closureSha256']:require(runtime_fact[key]==manifest['runtimeProfile'][key],'mixed/unexpected compiler runtime profile')
+    profiles=[manifest['runtimeProfile'],*manifest.get('compatibleRuntimeProfiles',[])]
+    profile=next((p for p in profiles if all(runtime_fact[key]==p[key] for key in ('resources','totalBytes','closureSha256'))),None)
+    require(profile is not None,'mixed/unexpected compiler runtime profile')
+    if profile.get('bundledArchive'):
+        checked_file(publication,'bundled-runtime/compiler-suite.zip',profile['bundledArchive'])
     pdf_profile=manifest['pdfRuntime']
     approved_pdf_pairs=[pdf_profile['resources'], *pdf_profile.get('compatibleResources', [])]
     require(pdf_fact['resources'] in approved_pdf_pairs,'unexpected PDF runtime identity')

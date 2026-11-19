@@ -9,10 +9,12 @@ const CLOSED = [
   {profile:14,count:4453,totalBytes:261154796,closure:'f0c9ff2492565b273130a4596ea608d646728cacf5dd73294c88e0d03c6e86a6',name:'local-compiler-thesis-v1'},
   {profile:15,count:4453,totalBytes:261178860,closure:'e20e5f5e14f2088d4c8e6718566824b9ce0911120be519386f09709f292f5e03',name:'local-compiler-origins-v1'},
   {profile:16,count:4557,totalBytes:262320783,closure:'8e3fcc0c3255613609a423a5440934b261feee32a5cc73510f4633648b4a135e',name:'local-compiler-input-budget-v1'},
+  {profile:17,count:5106,totalBytes:266486260,closure:'b646803e08bc431d358c3ffe66718218b544880d28497020af1570595d921705',name:'private-r1-pdfa-official-ec-tc'},
 ].map(value => Object.freeze({...value,identity:sha(Buffer.from('native-runtime-profile-v1\n'+value.name+'\n'+value.closure))}));
 const RENDERER = Object.freeze({loader:'968aae4935523f528e2314c4dbd831b2dd326ac8d3de3444fd033b73463b0225',wasm:'8b715ed561ec644757f305ddad0a99ae728c6705f9868e96ccb53c8c9143c4b3',loaderBytes:14103,wasmBytes:3716447,schemaVersion:2});
 const V1_RENDERER = Object.freeze({loader:RENDERER.loader,wasm:'d1623f880b530b3a6503436d43bcd05d01f6ff8fc8a40c782ba848cd209cb217',loaderBytes:14103,wasmBytes:3699309,schemaVersion:1});
 const OBJECT_LAYOUT_RENDERER = Object.freeze({loader:'f95ae827b12703999ce1daafebbf6830f5f4d2c14bb7805a8f47abe54772b079',wasm:'2e2126ead8e00ef7c79d21e3836d66957b19e827523f7c054ca887f3c11ae5b7',loaderBytes:14175,wasmBytes:3725577,schemaVersion:2});
+const LARGE_INPUT_RENDERER = Object.freeze({loader:'ea2cebb93f554788751e58554b6e16a094ee6d0883774cb697cbb4a5ce8ec38c',wasm:'b1630e6501e7715b4e0870a059f4e9b8b5acc4c96aa2af0e4ecacb04071622d7',loaderBytes:14243,wasmBytes:3725611,schemaVersion:2});
 const TYPOGRAPHY = ['letter-ink-height-min','letter-ink-height-max','baseline-distance-min','baseline-distance-max'];
 const HEIGHT_EXPECTED = 'Font height is undefined in section 3.1; letter ink height is an observation only';
 const BASELINE_EXPECTED = '1.5 line spacing has no baseline-distance definition in section 3.1';
@@ -24,7 +26,7 @@ function closedIdentity(value) {
   const found = CLOSED.find(row => row.count === value.count && row.totalBytes === value.totalBytes && row.closure === value.closure);
   return found ? {...found} : null;
 }
-function identityProfile(identity) { const found=CLOSED.find(row=>row.identity===identity); assert.ok(found,'only exact P13/P14/P15/P16 runtime identities are admitted');return found.profile; }
+function identityProfile(identity) { const found=CLOSED.find(row=>row.identity===identity); assert.ok(found,'only exact P13/P14/P15/P16/P17 runtime identities are admitted');return found.profile; }
 function classifyRuntime(pins) {
   assert.ok(Array.isArray(pins) && pins.length <= 8192);
   const ordered=pins.slice().sort((a,b)=>a.name<b.name?-1:a.name>b.name?1:0);
@@ -37,7 +39,7 @@ function preflight({caseName,bundled,downloads,resultDirectory,runtime,renderer}
   assert.equal(downloads,true,'rendered review requires the existing final stale-source/download flow');
   assert.ok(resultDirectory,'retain the existing acceptance receipt directory');
   const closed=runtime&&closedIdentity(runtime);
-  assert.ok(closed && [14,15,16].includes(closed.profile) && runtime.profile === closed.profile && runtime.identity === closed.identity,'exact closed P14/P15/P16 runtime required');
+  assert.ok(closed && [14,15,16,17].includes(closed.profile) && runtime.profile === closed.profile && runtime.identity === closed.identity,'exact closed P14/P15/P16/P17 runtime required');
   const admitted=admittedRenderer(renderer);
   return {enabled:true,profile:closed.profile,runtimeIdentity:runtime.identity,renderer:{...admitted},caseName,
     scope:'real registered PDF/Rust rendered observations; partial standards coverage; no overall compliance claim'};
@@ -69,7 +71,7 @@ function box(value) { assert.ok(Array.isArray(value)&&value.length===4);value.fo
 function admittedRenderer(renderer) {
   // Exact reviewed tuples are the authority. Optional caller schema/version
   // hints cannot upgrade corrected v1 or admit known bad/private prototypes.
-  const found=[RENDERER,V1_RENDERER,OBJECT_LAYOUT_RENDERER].find(row=>renderer&&row.loader===renderer.loader&&row.wasm===renderer.wasm);
+  const found=[RENDERER,V1_RENDERER,OBJECT_LAYOUT_RENDERER,LARGE_INPUT_RENDERER].find(row=>renderer&&row.loader===renderer.loader&&row.wasm===renderer.wasm);
   assert.ok(found,'exact reviewed renderer pair required');
   for(const field of ['loaderBytes','wasmBytes'])if(renderer[field]!==undefined)assert.equal(renderer[field],found[field]);
   return found;

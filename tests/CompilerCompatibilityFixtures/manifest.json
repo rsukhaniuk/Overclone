@@ -27,8 +27,8 @@
     },
     {
       "name": "scripts/rendered-review-ui-checks.cjs",
-      "length": 36086,
-      "sha256": "4d017e4021d23da1e9dbdd2a408476bda15a40bdc3aa5ccded12cbe754ea245e"
+      "length": 36524,
+      "sha256": "f504bf03215ece4bb1fd0e99c8f331ee43b487c97002d5082903b22658022c02"
     },
     {
       "name": "scripts/review-ui-helpers.cjs",
@@ -37,8 +37,8 @@
     },
     {
       "name": "scripts/run-compiler-acceptance.py",
-      "length": 22521,
-      "sha256": "a19cb3fa9de3102d1d0d7ffcfe246c54bc11a682238bfbc695d6ba672b4ca024"
+      "length": 22792,
+      "sha256": "e65eddc90faabd27b14b12bcf116e9f69f7993403f5bfa872417d93bff2f7019"
     },
     {
       "name": "scripts/source-pdf-navigation-ui-checks.cjs",
@@ -52,8 +52,8 @@
     },
     {
       "name": "scripts/test-local-authoring-ui.cjs",
-      "length": 134273,
-      "sha256": "2435c1353b587bcbdd8f144a925594b12562b6434440e190767beab24be308f0"
+      "length": 134293,
+      "sha256": "3d1573906f4534e1e08cca0d5b03e2017a8de5f95aa81f23b635356d3d2a4d41"
     },
     {
       "name": "scripts/work-major-heading-ui-checks.cjs",
@@ -2516,6 +2516,20 @@
           "length": 3725577,
           "sha256": "2e2126ead8e00ef7c79d21e3836d66957b19e827523f7c054ca887f3c11ae5b7"
         }
+      ],
+      [
+        {
+          "role": "loader",
+          "name": "e1.js",
+          "length": 14243,
+          "sha256": "ea2cebb93f554788751e58554b6e16a094ee6d0883774cb697cbb4a5ce8ec38c"
+        },
+        {
+          "role": "wasm",
+          "name": "e1.wasm",
+          "length": 3725611,
+          "sha256": "b1630e6501e7715b4e0870a059f4e9b8b5acc4c96aa2af0e4ecacb04071622d7"
+        }
       ]
     ]
   },
@@ -2537,5 +2551,17 @@
     "RESULT_DIR or --results",
     "--publication; --publication-id for actual browser execution"
   ],
-  "versioning": "Recheck and review sourceFiles after any harness/fixture change; never silently refresh hashes during execution."
+  "versioning": "Recheck and review sourceFiles after any harness/fixture change; never silently refresh hashes during execution.",
+  "compatibleRuntimeProfiles": [
+    {
+      "profile": 17,
+      "resources": 5106,
+      "totalBytes": 266486260,
+      "closureSha256": "b646803e08bc431d358c3ffe66718218b544880d28497020af1570595d921705",
+      "bundledArchive": {
+        "length": 267842942,
+        "sha256": "7494e9fd1f6fa3195ad4d6d15a5cb2c7845e00cd6e3a81d928c60d10345cb8fe"
+      }
+    }
+  ]
 }
