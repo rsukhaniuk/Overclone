@@ -36,6 +36,13 @@
         @if (_controller.ChecksWorkPageNumbers)
         {
             <p>Confirm the first page as the title page and select each printed number by its PDF text range. Use the numbering for the whole work, including appendices.</p>
+            <label>
+                <input type="checkbox" data-testid="rendered-review-major-heading-order" checked="@_controller.ChecksMajorHeadingOrder"
+                       disabled="@_controller.Busy" @onchange="MajorHeadingReviewChanged" />
+                Also inspect major heading placement
+            </label>
+            @if (_controller.ChecksMajorHeadingOrder)
+            { <p>On each page to check, confirm one major heading and one ordinary body-text line using their PDF text ranges.</p> }
             @if (!_controller.CanTurnOffWorkPageNumbers)
             { <p>Remove either confirmed title-page label to turn off this check.</p> }
         }
@@ -552,6 +559,7 @@
     private void Cancel() => _controller.Cancel();
     private void WorkTypeChanged(ChangeEventArgs args) { _controller.SelectWorkType(args.Value as string ?? ""); _inputError = null; }
     private void PageNumberReviewChanged(ChangeEventArgs args) { _controller.SelectWorkPageNumberReview(args.Value is true); _inputError = null; }
+    private void MajorHeadingReviewChanged(ChangeEventArgs args) { _controller.SelectMajorHeadingOrderReview(args.Value is true); _inputError = null; }
     private void Changed() { if (!_disposed) _ = Render(); }
     private async Task Render()
     {

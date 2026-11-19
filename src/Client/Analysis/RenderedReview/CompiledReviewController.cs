@@ -42,6 +42,7 @@ public sealed partial class CompiledReviewController : IDisposable
         && WorkType != "unspecified" && _annotations.Count < 512 && RenderedExtentAuthority.Capture(_workspace, _compile)?.Inspector is not null;
     public string WorkType { get; private set; } = "unspecified";
     public bool ChecksWorkPageNumbers { get; private set; }
+    public bool ChecksMajorHeadingOrder { get; private set; }
     public bool CanTurnOffWorkPageNumbers => !Overlapping(_annotations, allowTitleNumber: false);
     public IReadOnlyList<RenderedRoleAnnotation> Annotations => _annotations;
     /// <summary>Range metadata for display, including stale bindings. Neither
@@ -63,7 +64,14 @@ public sealed partial class CompiledReviewController : IDisposable
     {
         if (_disposed || enabled == ChecksWorkPageNumbers || !enabled && !CanTurnOffWorkPageNumbers) return;
         ChecksWorkPageNumbers = enabled;
+        if (!enabled) ChecksMajorHeadingOrder = false;
         Invalidate("Page number review settings changed. Check the current PDF again."); Notify();
+    }
+    public void SelectMajorHeadingOrderReview(bool enabled)
+    {
+        if (_disposed || !ChecksWorkPageNumbers || enabled == ChecksMajorHeadingOrder) return;
+        ChecksMajorHeadingOrder = enabled;
+        Invalidate("Major heading review settings changed. Check the current PDF again."); Notify();
     }
     public void SelectAnnotations(IReadOnlyList<RenderedRoleAnnotation> annotations)
     {
@@ -191,7 +199,8 @@ public sealed partial class CompiledReviewController : IDisposable
         _active = stop; _activeAuthority = authority; long intent = ++_intent, annotationVersion = _annotationVersion;
         using var notification = stop.Token.Register(() => Observe(_dispatch(() => { if (!_disposed && ReferenceEquals(_active, stop)) Notify(); })));
         string workType = WorkType; var annotations = _annotations; _report = null; _reportAuthority = null;
-        string profileVersion = ChecksWorkPageNumbers ? RenderedReviewContract.PaginationProfileVersion : RenderedReviewContract.ProfileVersion;
+        string profileVersion = ChecksMajorHeadingOrder ? RenderedReviewContract.HeadingProfileVersion
+            : ChecksWorkPageNumbers ? RenderedReviewContract.PaginationProfileVersion : RenderedReviewContract.ProfileVersion;
         var results = new Dictionary<string, RenderedRuleResult>(StringComparer.Ordinal); var pages = new List<RenderedReviewPageEvidence>();
         PdfRuntimeIdentity? runtime = null; RenderedExtentEvidence? compilation = null;
         bool Current() => !_disposed && _intent == intent && annotationVersion == _annotationVersion && WorkType == workType

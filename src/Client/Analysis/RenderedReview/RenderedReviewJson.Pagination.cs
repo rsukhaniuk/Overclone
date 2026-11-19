@@ -118,9 +118,9 @@ public static partial class RenderedReviewJson
 
         var placement = observation.GetProperty("placement");
         Keys(placement, "media", "effective", "topClearanceMm", "rightClearanceMm", "absoluteErrorMm");
-        var ink = PaginationBox(item.GetProperty("rawBox"));
-        var media = PaginationBox(placement.GetProperty("media"));
-        var effective = PaginationBox(placement.GetProperty("effective"));
+        var ink = PositiveReviewBox(item.GetProperty("rawBox"));
+        var media = PositiveReviewBox(placement.GetProperty("media"));
+        var effective = PositiveReviewBox(placement.GetProperty("effective"));
         Require(Contains(media, effective) && Contains(effective, ink));
         double top = placement.GetProperty("topClearanceMm").GetDouble();
         double right = placement.GetProperty("rightClearanceMm").GetDouble();
@@ -132,7 +132,7 @@ public static partial class RenderedReviewJson
         => annotation.Provenance == "authorLabel" && annotation.Certainty == "confirmedObservation"
             && annotation.SourceFileId is null && annotation.SourceSpan is null;
 
-    private static PdfBox PaginationBox(JsonElement value)
+    private static PdfBox PositiveReviewBox(JsonElement value)
     {
         var box = PdfWireParser.Box(value);
         Require(box.Left < box.Right && box.Bottom < box.Top && Math.Abs(box.Left) <= 1_000_000
