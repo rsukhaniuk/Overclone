@@ -248,7 +248,11 @@ def main(argv=None):
     required=sorted({n for f in fixtures for n in f.get('requiredRuntimeInputs',[])})
     runtime_fact=verify_runtime(runtime,required);pdf_fact=verify_pdf(pdf);publication_fact=verify_publication(publication,args.publication_id)
     for key in ['resources','totalBytes','closureSha256']:require(runtime_fact[key]==manifest['runtimeProfile'][key],'mixed/unexpected compiler runtime profile')
-    require(pdf_fact['resources']==manifest['pdfRuntime']['resources'],'unexpected PDF runtime identity')
+    pdf_profile=manifest['pdfRuntime']
+    approved_pdf_pairs=[pdf_profile['resources'], *pdf_profile.get('compatibleResources', [])]
+    require(pdf_fact['resources'] in approved_pdf_pairs,'unexpected PDF runtime identity')
+    for resource in pdf_fact['resources']:
+        checked_file(publication, 'bundled-runtime/'+resource['name'], resource)
     toolchains=dict(line.split('=',1)for line in (source/'toolchains.env').read_text().splitlines()if line and not line.startswith('#'))
     base=toolchains['BROWSER_IMAGE'];require('@sha256:'in base,'immutable browser base required')
     require(re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9._/@:+-]*',args.browser_image),'invalid cached browser image reference')

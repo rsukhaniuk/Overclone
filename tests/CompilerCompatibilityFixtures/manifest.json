@@ -37,8 +37,8 @@
     },
     {
       "name": "scripts/run-compiler-acceptance.py",
-      "length": 22278,
-      "sha256": "1dfcf9078e05da71fa0f99d3dafe12881bc15ca31770d2c2c7bc114c8c3a12ab"
+      "length": 22521,
+      "sha256": "a19cb3fa9de3102d1d0d7ffcfe246c54bc11a682238bfbc695d6ba672b4ca024"
     },
     {
       "name": "scripts/source-pdf-navigation-ui-checks.cjs",
@@ -2496,6 +2496,22 @@
         "length": 3716447,
         "sha256": "8b715ed561ec644757f305ddad0a99ae728c6705f9868e96ccb53c8c9143c4b3"
       }
+    ],
+    "compatibleResources": [
+      [
+        {
+          "role": "loader",
+          "name": "e1.js",
+          "length": 14175,
+          "sha256": "f95ae827b12703999ce1daafebbf6830f5f4d2c14bb7805a8f47abe54772b079"
+        },
+        {
+          "role": "wasm",
+          "name": "e1.wasm",
+          "length": 3725577,
+          "sha256": "2e2126ead8e00ef7c79d21e3836d66957b19e827523f7c054ca887f3c11ae5b7"
+        }
+      ]
     ]
   },
   "limitations": [
