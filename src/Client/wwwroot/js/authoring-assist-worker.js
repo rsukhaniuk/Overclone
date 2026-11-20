@@ -20,19 +20,20 @@ const bounded = (s, n) =>
 self.onmessage = async ({ data }) => {
     if (used) return;
     used = true;
+    const compiled = data?.operation === "compiledBibliography";
     if (
         !data ||
         Object.keys(data).sort().join(",") !==
             "metadataJson,operation,packedBytes,requestId,version,workerEpoch" ||
         data.version !== 1 ||
-        data.operation !== "authoringAssist" ||
+        (!compiled && data.operation !== "authoringAssist") ||
         !bounded(data.requestId, 128) ||
         !data.requestId.length ||
         !Number.isSafeInteger(data.workerEpoch) ||
         data.workerEpoch < 1 ||
-        !bounded(data.metadataJson, 4 * 1024 * 1024) ||
+        !bounded(data.metadataJson, compiled ? 16 * 1024 : 4 * 1024 * 1024) ||
         !(data.packedBytes instanceof ArrayBuffer) ||
-        data.packedBytes.byteLength > 64 * 1024 * 1024
+        data.packedBytes.byteLength > (compiled ? 512 * 1024 : 64 * 1024 * 1024)
     )
         return;
     const { requestId, workerEpoch, metadataJson, packedBytes } = data;
@@ -49,17 +50,18 @@ self.onmessage = async ({ data }) => {
         if (
             meta?.requestId !== requestId ||
             meta?.protocolVersion !== 1 ||
-            meta?.operation !== "authoringAssist"
+            meta?.operation !== data.operation
         ) {
             send("invalidResponse");
             return;
         }
         await init(); // Bundled same-release WASM only; no CDN/provider/runtime downloads.
-        if (typeof engine.authoring_assist !== "function") {
+        const evaluate = compiled ? engine.evaluate_compiled_bibliography : engine.authoring_assist;
+        if (typeof evaluate !== "function") {
             send("unavailable");
             return;
         }
-        const responseJson = engine.authoring_assist(
+        const responseJson = evaluate(
             metadataJson,
             new Uint8Array(packedBytes),
         );

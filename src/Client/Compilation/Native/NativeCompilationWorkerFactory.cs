@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using System.Text;
+using Client.Compilation.Bibliography;
 using Client.Compilation.Lifecycle;
 using Client.Compilation.SyncTeX;
 
@@ -204,6 +205,7 @@ public sealed class NativeCompilationWorkerFactory : ICompilationWorkerFactory
                     return Finish(CompileOutputStatus.Failed, "generated-input-collision");
                 var generated = new Dictionary<string, byte[]>(StringComparer.Ordinal);
                 string? previous = null, lastBibtexInput = null; int stable = 0, ordinal = 0;
+                Client.Workspace.Domain.SHA256? producedBibtexBbl = null;
                 string? lastBiberInput = null;
                 NativeBiberControl? currentBiberControl = null;
                 Dictionary<string, byte[]>? currentBiberFiles = null;
@@ -270,6 +272,7 @@ public sealed class NativeCompilationWorkerFactory : ICompilationWorkerFactory
                                 if (!generated.TryGetValue(file.Key, out var prior) || !prior.AsSpan().SequenceEqual(file.Value))
                                     return Finish(CompileOutputStatus.Failed, "bibliography-control-reclassified");
                             generated[bblName] = bbl;
+                            producedBibtexBbl = bbl.Length <= CompiledBibliographyEvidence.MaxBytes ? NativeRuntimePackage.Digest(bbl) : null;
                             ValidateState(generated.Select(f => (f.Key, f.Value.Length)));
                             lastBibtexInput = bibtexInput;
                             previous = null; stable = 0;
@@ -302,26 +305,31 @@ public sealed class NativeCompilationWorkerFactory : ICompilationWorkerFactory
                             if (!conversion.Value.Files.TryGetValue(pdfName, out var converted) || converted.Length < 5
                                 || !converted.AsSpan(0, 5).SequenceEqual("%PDF-"u8))
                                 return Finish(CompileOutputStatus.Failed, "missing-converted-pdf");
-                            return Complete(latex.Value.Reply, converted.ToArray(), conversion.Value.Reply.SourceMapGeometryPayload, dvi);
+                            return Complete(latex.Value.Reply, files, converted.ToArray(), conversion.Value.Reply.SourceMapGeometryPayload, dvi);
                         }
                         if (!files.TryGetValue(pdfName, out var pdf) || pdf.Length < 5 || !pdf.AsSpan(0, 5).SequenceEqual("%PDF-"u8)) continue;
                         // Retain only this final LaTeX reply's map. Earlier maps
                         // never enter carried state or survive a failed pass.
-                        return Complete(latex.Value.Reply, pdf.ToArray(), latex.Value.Reply.SourceMapGeometryPayload, null);
+                        return Complete(latex.Value.Reply, files, pdf.ToArray(), latex.Value.Reply.SourceMapGeometryPayload, null);
                     }
                 }
                 return Finish(CompileOutputStatus.Failed, "pass-limit-unknown");
 
-                CompileOutputEnvelopeInput Complete(NativePhaseReply finalLatex, byte[] pdf, byte[]? sidecar, byte[]? intermediate)
+                CompileOutputEnvelopeInput Complete(NativePhaseReply finalLatex, IReadOnlyDictionary<string, byte[]> files,
+                    byte[] pdf, byte[]? sidecar, byte[]? intermediate)
                 {
                     var map = finalLatex.SourceMapPayload?.ToArray();
-                    if (!measuredMapping) return Finish(CompileOutputStatus.Succeeded, "converged", pdf, map);
+                    var bibliography = entry is not null && producedBibtexBbl is { } produced
+                        ? CompiledBibliographyEvidence.Capture(snapshot, finalLatex, entry, files, produced) : null;
+                    if (!measuredMapping)
+                        return Finish(CompileOutputStatus.Succeeded, "converged", pdf, map) with { BibliographyEvidence = bibliography };
                     var assembled = NativeNavigationContract.Assemble(engine, finalLatex.Tag, sidecar, map, pdf, intermediate, limits);
                     // Never let optional native data invalidate a usable PDF, or
                     // allow measured engines to fall back to guessed zero origins.
-                    return assembled.Artifact is { } geometry
+                    var result = assembled.Artifact is { } geometry
                         ? Finish(CompileOutputStatus.Succeeded, "converged", pdf, map, geometry)
                         : Finish(CompileOutputStatus.Succeeded, "converged", pdf, navigationLimited: true);
+                    return result with { BibliographyEvidence = bibliography };
                 }
                 void ValidateState(IEnumerable<(string Name, int Length)> state)
                 {

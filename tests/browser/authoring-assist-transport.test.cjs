@@ -17,7 +17,7 @@ const workerSource = fs.readFileSync(
 const cases = [];
 const metadata = (requestId = "request-1", operation = "authoringAssist") =>
     JSON.stringify({ protocolVersion: 1, requestId, operation, payload: {} });
-function bridgeHarness() {
+function bridgeHarness(compiled = false) {
     const workers = [],
         timers = new Map();
     let sequence = 0,
@@ -72,10 +72,7 @@ function bridgeHarness() {
     // Only ES module registration/import.meta resolution are adapted for vm;
     // the implementation body under test is unchanged.
     const script = bridgeSource
-        .replace(
-            "export function createAuthoringAssistPort",
-            "function createAuthoringAssistPort",
-        )
+        .replaceAll("export function ", "function ")
         .replaceAll(
             "import.meta.url",
             JSON.stringify(
@@ -84,7 +81,7 @@ function bridgeHarness() {
             ),
         );
     vm.runInContext(script, context);
-    const port = context.createAuthoringAssistPort();
+    const port = compiled ? context.createCompiledBibliographyPort() : context.createAuthoringAssistPort();
     return {
         port,
         workers,
@@ -337,6 +334,29 @@ async function test(name, work) {
             assert.equal(h.replies[0].responseJson, null);
             assert.ok(!JSON.stringify(h.replies).includes("private"));
         }
+    });
+    await test("compiled bibliography uses its own closed route and retires stale requests", async () => {
+        const route = "compiledBibliography";
+        const h = bridgeHarness(true);
+        const request = metadata("bibliography-request", route);
+        assert.equal((await h.port.evaluate(metadata(), new Uint8Array(1))).status, "invalidInput");
+        assert.equal((await h.port.evaluate(request, new Uint8Array(512 * 1024 + 1))).status, "invalidInput");
+        assert.equal(h.workers.length, 0);
+        const pending = h.port.evaluate(request, new Uint8Array([9, 8]));
+        assert.equal(h.workers[0].message.operation, route);
+        h.port.cancel("bibliography-request");
+        assert.equal((await pending).status, "cancelled");
+        assert.equal(h.workers[0].terminated, 1);
+        const worker = workerHarness({
+            authoring_assist() { assert.fail("wrong export"); },
+            evaluate_compiled_bibliography(json, bytes) {
+                assert.equal(json, request);
+                assert.deepEqual([...bytes], [9, 8]);
+                return "{}";
+            },
+        });
+        await worker.send(h.workers[0].message);
+        assert.equal(worker.replies[0].status, "completed");
     });
     if (process.env.AUTHORING_ASSIST_WASM_JS) {
         await test("actual accepted Rust WASM export through worker body matches all eight exact vectors", async () => {

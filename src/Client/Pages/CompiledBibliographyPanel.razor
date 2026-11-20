@@ -1,0 +1,160 @@
+@using Client.Compilation
+@using Client.Compilation.Bibliography
+@using Client.Compilation.Presentation
+@using Microsoft.JSInterop
+@implements IDisposable
+@inject IJSRuntime Js
+
+@if (_current is not null)
+{
+    <details data-testid="compiled-bibliography">
+        <summary>Compiled bibliography</summary>
+        @if (_current.BibliographyEvidence is null)
+        {
+            <p role="status">Classic BibTeX evidence is unavailable for this compile.</p>
+        }
+        else
+        {
+            <label>
+                <input type="checkbox" @bind="_confirmMainWork" disabled="@(_active is not null)" data-testid="bibliography-main-work" />
+                The citations and bibliography belong to one main work.
+            </label>
+            <button type="button" disabled="@(!_confirmMainWork || _active is not null)" @onclick="EvaluateAsync" data-testid="audit-compiled-bibliography">
+                Check order and membership
+            </button>
+            <p><a href="https://csc.knu.ua/uk/filer/canonical/1740300611/2680/" target="_blank" rel="noopener noreferrer">KNU CSC 2025, §§2.8 and 3.15</a></p>
+            @if (_notice is not null)
+            {
+                <p role="status" data-testid="bibliography-audit-status">@_notice</p>
+            }
+            @if (_report is { Status: "match" or "difference" } report && ReferenceEquals(_current, GetCurrentOutput()))
+            {
+                <dl data-testid="bibliography-audit-result">
+                    <dt>List membership</dt><dd>@(report.MembershipMatches == true ? "Matches cited keys" : "Keys are missing or uncited")</dd>
+                    <dt>First recorded use</dt><dd>@(report.OrderMatches == true ? "Matches list order for shared keys" : "Differs from list order")</dd>
+                    <dt>Assigned numbers</dt><dd>@(report.NumbersMatch == true ? "Consecutive from 1" : "Differ from consecutive numbering")</dd>
+                </dl>
+                <table>
+                    <caption>Final AUX and consumed BBL records</caption>
+                    <thead><tr><th>Key</th><th>First use</th><th>List position</th><th>Assigned number</th></tr></thead>
+                    <tbody>
+                        @foreach (var row in report.Rows)
+                        {
+                            <tr data-testid="bibliography-audit-row"><th scope="row">@row.Key</th>
+                                <td>@(row.FirstUse?.ToString() ?? "Uncited")</td>
+                                <td>@(row.ListPosition?.ToString() ?? "Missing")</td>
+                                <td>@(row.AssignedNumber?.ToString() ?? "Unassigned")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        }
+    </details>
+}
+
+@code {
+    [Parameter, EditorRequired] public CompileWorkspaceSession Session { get; set; } = default!;
+    private AcceptedCompileOutput? _current;
+    private CompiledBibliographyReport? _report;
+    private bool _confirmMainWork, _disposed;
+    private string? _notice;
+    private Attempt? _active;
+
+    private AcceptedCompileOutput? GetCurrentOutput() =>
+        Session.State is { IsCurrent: true, Active: null, Pending: null, LastSuccessful: { } current } && ReferenceEquals(current, Session.DisplayedOutput)
+            ? current : null;
+
+    protected override void OnParametersSet()
+    {
+        var current = GetCurrentOutput();
+        if (ReferenceEquals(_current, current)) return;
+        _current = current;
+        _confirmMainWork = false;
+        _report = null;
+        _notice = null;
+        Retire();
+    }
+
+    private async Task EvaluateAsync()
+    {
+        if (_disposed || _active is not null || !_confirmMainWork || _current is not { BibliographyEvidence: { } evidence } output)
+            return;
+        if (!ReferenceEquals(output, GetCurrentOutput())) return;
+        var attempt = new Attempt(Guid.NewGuid().ToString("N"), output);
+        _active = attempt;
+        _report = null;
+        _notice = "Checking the current bibliography.";
+        try
+        {
+            await using var module = await Js.InvokeAsync<IJSObjectReference>("import", "./js/authoring-assist-bridge.js");
+            if (!StillCurrent(attempt)) return;
+            await using var port = await module.InvokeAsync<IJSObjectReference>("createCompiledBibliographyPort");
+            if (!StillCurrent(attempt)) return;
+            attempt.Port = port;
+            var (metadata, bytes) = evidence.Pack(attempt.Id);
+            var reply = await port.InvokeAsync<CompiledBibliographyBridgeReply>("evaluate", metadata, bytes);
+            if (!StillCurrent(attempt)) return;
+            var report = reply is { Version: 1, WorkerEpoch: > 0 and <= 9007199254740991, Status: "completed" } && reply.RequestId == attempt.Id
+                ? CompiledBibliographyReport.Read(attempt.Id, reply.ResponseJson) : null;
+            _report = report;
+            _notice = report?.Status switch
+            {
+                "match" => "The compiler records agree.",
+                "difference" => "The compiler records disagree.",
+                "unavailable" => Describe(report.Reason),
+                _ => "The local bibliography check was unavailable."
+            };
+        }
+        catch (JSException)
+        {
+            if (StillCurrent(attempt)) _notice = "The local bibliography check was unavailable.";
+        }
+        finally
+        {
+            attempt.Port = null;
+            if (ReferenceEquals(_active, attempt)) _active = null;
+        }
+    }
+
+    private bool StillCurrent(Attempt attempt) =>
+        !_disposed && !attempt.Retired && ReferenceEquals(attempt.Output, GetCurrentOutput());
+
+    private static string Describe(string? reason) => reason switch
+    {
+        "missing-captured-aux" or "missing-captured-source" => "A required include was absent from the final compile capture.",
+        "unsupported-bibcite-label" or "unsupported-bibliography-style" or "unsupported-bbl-control" =>
+            "The bibliography format is outside the supported classic numeric forms.",
+        "key-limit" or "invalid-capture" => "The captured bibliography exceeded the limits of this check.",
+        "source-and-aux-disagree" or "bbl-and-labels-disagree" => "The final compiler records do not establish one unambiguous bibliography.",
+        _ => "The project requires a citation or bibliography form outside this check."
+    };
+
+    private void Retire()
+    {
+        if (_active is not { } attempt) return;
+        attempt.Retired = true;
+        if (attempt.Port is { } port) _ = CancelAsync(port, attempt.Id);
+    }
+
+    private static async Task CancelAsync(IJSObjectReference port, string id)
+    {
+        try { await port.InvokeVoidAsync("cancel", id); }
+        catch (JSException) { }
+        catch (ObjectDisposedException) { }
+    }
+
+    public void Dispose()
+    {
+        _disposed = true;
+        Retire();
+    }
+
+    private sealed class Attempt(string id, AcceptedCompileOutput output)
+    {
+        internal string Id { get; } = id;
+        internal AcceptedCompileOutput Output { get; } = output;
+        internal IJSObjectReference? Port { get; set; }
+        internal bool Retired { get; set; }
+    }
+}

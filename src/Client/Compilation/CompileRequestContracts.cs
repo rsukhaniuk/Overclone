@@ -112,6 +112,7 @@ public sealed record CompileOutputEnvelopeInput
     /// Empty provided geometry is malformed; null is absence.</summary>
     public byte[]? SourceMapGeometryPayload { get; init; }
     public SourceMapGeometryIdentity? SourceMapGeometry { get; init; }
+    internal Bibliography.CompiledBibliographyEvidence? BibliographyEvidence { get; init; }
     public IReadOnlyList<CompileDiagnosticEntry>? Diagnostics { get; init; }
     public string? LogText { get; init; }
 }

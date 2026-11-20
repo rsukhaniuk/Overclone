@@ -25,18 +25,21 @@ public sealed class CompileOutputEnvelope
     private readonly byte[]? _sourceMapPayload; // Optional opaque owned bytes; never public on an envelope.
     private readonly SourceMapGeometryArtifact? _geometry; // privately copied/validated wrapper, never live authority
 
+    internal Bibliography.CompiledBibliographyEvidence? BibliographyEvidence { get; }
+
     private CompileOutputEnvelope(CompileRequestId echoedRequestId, CompilationSnapshotIdentity echoedSnapshotIdentity,
         ContentHash echoedInputDigest, long echoedWorkerEpoch, CompileOutputStatus status,
         CompileOutputDescriptor? outputFormat, CompileOutputDescriptor? outputAdapter,
         CompileSourceMappingIdentity? sourceMapping, ImmutableArray<CompileDiagnosticEntry> diagnostics,
         string logText, byte[]? payload, byte[]? sourceMapPayload, SourceMapGeometryArtifact? geometry, long outputLength, ContentHash? outputHash,
-        CompileArtifactContentIdentity? contentIdentity, long metadataByteLength)
+        CompileArtifactContentIdentity? contentIdentity, long metadataByteLength, Bibliography.CompiledBibliographyEvidence? bibliography)
     {
         EchoedRequestId = echoedRequestId; EchoedSnapshotIdentity = echoedSnapshotIdentity; EchoedInputContentDigest = echoedInputDigest;
         EchoedWorkerEpoch = echoedWorkerEpoch; Status = status; OutputFormat = outputFormat; OutputAdapter = outputAdapter;
         SourceMapping = sourceMapping; Diagnostics = diagnostics; LogText = logText; _payload = payload;
         _sourceMapPayload = sourceMapPayload; _geometry = geometry;
         OutputLength = outputLength; OutputHash = outputHash; ContentIdentity = contentIdentity; MetadataByteLength = metadataByteLength;
+        BibliographyEvidence = bibliography;
     }
 
     public CompileRequestId EchoedRequestId { get; }
@@ -188,7 +191,8 @@ public sealed class CompileOutputEnvelope
         catch (OutOfMemoryException) { throw; }
 
         return new(new(input.RequestId, input.SnapshotIdentity, input.InputContentDigest, input.WorkerEpoch, status,
-            format, adapter, mapping, diagnostics, logText, owned, ownedSourceMap, ownedGeometry, outputLength, outputHash, identity, metadataLength), null);
+            format, adapter, mapping, diagnostics, logText, owned, ownedSourceMap, ownedGeometry, outputLength, outputHash, identity, metadataLength,
+            status == CompileOutputStatus.Succeeded ? input.BibliographyEvidence : null), null);
     }
 
     /// <summary>Read-only view of the privately owned payload. The backing array
@@ -280,6 +284,7 @@ public sealed class AcceptedCompileOutput
     public byte[]? ToSourceMapGeometryArray() => _envelope.SourceMapGeometryArray;
     public ImmutableArray<CompileDiagnosticEntry> Diagnostics => _envelope.Diagnostics;
     public string LogText => _envelope.LogText;
+    internal Bibliography.CompiledBibliographyEvidence? BibliographyEvidence => _envelope.BibliographyEvidence;
     public long MetadataByteLength => _envelope.MetadataByteLength;
     /// <summary>Content identity for Succeeded only; null for non-success.</summary>
     public CompileArtifactContentIdentity? ContentIdentity => _envelope.ContentIdentity;

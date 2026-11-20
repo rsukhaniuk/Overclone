@@ -23,6 +23,12 @@ const viewOf = (b) =>
           ? b
           : null;
 export function createAuthoringAssistPort() {
+    return createPort("authoringAssist", 4 * 1024 * 1024, 64 * 1024 * 1024);
+}
+export function createCompiledBibliographyPort() {
+    return createPort("compiledBibliography", 16 * 1024, 512 * 1024);
+}
+function createPort(route, metadataLimit, packedLimit) {
     let active = null,
         epoch = 0,
         disposed = false,
@@ -45,7 +51,7 @@ export function createAuthoringAssistPort() {
         active?.finish("disposed");
     }
     function evaluate(metadataJson, packedBytes) {
-        if (!bounded(metadataJson, 4 * 1024 * 1024))
+        if (!bounded(metadataJson, metadataLimit))
             return Promise.resolve(reply("", 0, "invalidInput"));
         let meta;
         try {
@@ -57,7 +63,7 @@ export function createAuthoringAssistPort() {
         if (
             !id(requestId) ||
             meta?.protocolVersion !== 1 ||
-            meta?.operation !== "authoringAssist"
+            meta?.operation !== route
         )
             return Promise.resolve(
                 reply(id(requestId) ? requestId : "", 0, "invalidInput"),
@@ -69,7 +75,7 @@ export function createAuthoringAssistPort() {
             return Promise.resolve(reply(requestId, 0, "cancelled"));
         }
         const bytes = viewOf(packedBytes);
-        if (!bytes || bytes.byteLength > 64 * 1024 * 1024)
+        if (!bytes || bytes.byteLength > packedLimit)
             return Promise.resolve(reply(requestId, 0, "invalidInput"));
         if (epoch >= Number.MAX_SAFE_INTEGER)
             return Promise.resolve(reply(requestId, 0, "unavailable"));
@@ -136,7 +142,7 @@ export function createAuthoringAssistPort() {
                 worker.postMessage(
                     {
                         version: 1,
-                        operation: "authoringAssist",
+                        operation: route,
                         requestId,
                         workerEpoch: ownEpoch,
                         metadataJson,
