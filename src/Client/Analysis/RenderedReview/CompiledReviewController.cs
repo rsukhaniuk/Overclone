@@ -180,6 +180,11 @@ public sealed partial class CompiledReviewController : IDisposable
         if (_active is not null && _activeAuthority?.Current(_workspace, _compile) != true)
             Invalidate("Project or PDF changed. Rendered review cancelled as stale.");
         if (_captionImageDraft is { } draft && !CaptionDraftCurrent(draft)) ClearCaptionImages();
+        if (_referencePairAuthority is not null && !ReferenceSelectionsCurrent)
+        {
+            ResetReferencePair();
+            ReferencePairNotice = "The PDF changed. Select both printed numbers again.";
+        }
         Notify();
     }
     private RenderedExtentAuthority? _activeAuthority;
@@ -301,6 +306,7 @@ public sealed partial class CompiledReviewController : IDisposable
     public void Dispose()
     {
         if (_disposed) return; _disposed = true; _intent++; _active?.Cancel(); _report = null; ClearCaptionImages();
+        ResetReferencePair();
         _workspace.WorkspaceChanged -= SourceChanged; _workspace.RevisionCommitted -= Saved; _compile.Changed -= SourceChanged;
         _ = DisposeEvaluatorAsync();
     }

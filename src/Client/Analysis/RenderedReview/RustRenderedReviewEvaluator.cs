@@ -13,7 +13,7 @@ namespace Client.Analysis.RenderedReview;
 /// uncancellable tasks; caller cancellation signals JS but never abandons their
 /// settlement or frees admission. Disposal invalidates synchronously and observes
 /// late cleanup without waiting on a noncooperative import.</summary>
-public sealed class RustRenderedReviewEvaluator(IJSRuntime js) : IRenderedReviewEvaluator, IRenderedCaptionImageEvaluator
+public sealed class RustRenderedReviewEvaluator(IJSRuntime js) : IRenderedReviewEvaluator, IRenderedCaptionImageEvaluator, IRenderedReferencePairEvaluator
 {
     private readonly object _gate = new();
     private readonly CancellationTokenSource _shutdown = new();
@@ -36,6 +36,18 @@ public sealed class RustRenderedReviewEvaluator(IJSRuntime js) : IRenderedReview
         if (reply.Status != RenderedExtentEvaluationStatus.Completed)
             return new(reply.Status, reply.RequestId, reply.WorkerEpoch);
         try { return RenderedCaptionImageJson.Parse(request!, reply.WorkerEpoch, reply.ResponseJson!); }
+        catch (JsonException) { return new(RenderedExtentEvaluationStatus.InvalidResponse, reply.RequestId, reply.WorkerEpoch); }
+    }
+
+    public async Task<RenderedReferencePairReply> EvaluateReferencePairAsync(RenderedReferencePairRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var reply = await EvaluateTransportAsync(request?.Review.RequestId ?? "", request?.Review.FactsSha256,
+            request?.FactsUtf8 ?? ReadOnlyMemory<byte>.Empty, () => RenderedReviewJson.PackReferencePair(request!),
+            cancellationToken).ConfigureAwait(false);
+        if (reply.Status != RenderedExtentEvaluationStatus.Completed)
+            return new(reply.Status, reply.RequestId, reply.WorkerEpoch);
+        try { return RenderedReviewJson.ParseReferencePair(request!, reply.WorkerEpoch, reply.ResponseJson!); }
         catch (JsonException) { return new(RenderedExtentEvaluationStatus.InvalidResponse, reply.RequestId, reply.WorkerEpoch); }
     }
 

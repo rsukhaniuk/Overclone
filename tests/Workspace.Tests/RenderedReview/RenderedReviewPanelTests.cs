@@ -191,6 +191,45 @@ public sealed class RenderedReviewPanelTests
         });
     });
 
+    [Fact]
+    public void Reference_slots_require_selected_search_and_expire_on_same_hash_compile() => Run(async () =>
+    {
+        await using var f = await Host.Open(preview: true);
+        using var services = Services(f);
+        await using var renderer = new Events(services, services.GetRequiredService<ILoggerFactory>());
+        await renderer.Dispatcher.InvokeAsync(async () =>
+        {
+            int id = await renderer.Mount(f);
+            Assert.True(renderer.Element(id, "rendered-reference-pair-citation").Attributes.ContainsKey("disabled"));
+            await renderer.Click(id, "rendered-role-add");
+            Assert.NotEmpty(f.Controller.Annotations);
+            Assert.Null(f.Controller.ReferenceCitation);
+            await f.Search();
+            await renderer.Click(id, "rendered-reference-pair-citation");
+            Assert.Equal("😀", f.Controller.ReferenceCitation?.Selection.Literal);
+            Assert.Equal(1, f.Controller.ReferenceCitation?.Selection.CharacterStart);
+            Assert.Equal(2, f.Controller.ReferenceCitation?.Selection.CharacterEnd);
+            Assert.True(renderer.Element(id, "rendered-reference-pair-compare").Attributes.ContainsKey("disabled"));
+            var citation = f.Controller.ReferenceCitation;
+            await f.Search("І", hit: 1);
+            await renderer.Click(id, "rendered-reference-pair-entry");
+            Assert.Same(citation, f.Controller.ReferenceCitation);
+            Assert.Equal(1, f.Controller.ReferenceEntry?.Selection.PageIndex);
+            await renderer.Click(id, "rendered-reference-pair-compare");
+            Assert.StartsWith("Indeterminate", f.Controller.ReferencePairNotice);
+            Assert.Null(f.Controller.ReferencePairObservation);
+            Assert.Equal(1, f.Inspector.LayoutCalls);
+            Assert.Equal(0, f.Evaluator.PairCalls);
+            var output = f.Session.DisplayedOutput;
+            await f.Compile();
+            Assert.Equal(output!.OutputHash, f.Session.DisplayedOutput!.OutputHash);
+            Assert.Null(f.Controller.ReferenceCitation);
+            Assert.Null(f.Controller.ReferenceEntry);
+            Assert.Null(f.Controller.ReferencePairObservation);
+            Assert.True(renderer.Element(id, "rendered-reference-pair-compare").Attributes.ContainsKey("disabled"));
+        });
+    });
+
     private static ParameterView Parameters(Host host) => ParameterView.FromDictionary(new Dictionary<string, object?> { ["Session"] = host.Controller });
     private static ServiceProvider Services(Host host) => new ServiceCollection().AddLogging().AddSingleton(host.Work.Workspace)
         .AddSingleton(host.Session).AddSingleton<IRenderedReviewEvaluator>(host.Evaluator).BuildServiceProvider();
@@ -211,11 +250,14 @@ public sealed class RenderedReviewPanelTests
         { LayoutCalls++; return Task.FromResult(new PdfLayoutOutcome(PdfInspectionStatus.Unavailable, Guid.NewGuid().ToString("N"), request.Document.Sha256, 1)); }
         public ValueTask DisposeAsync() => ValueTask.CompletedTask;
     }
-    private sealed class Evaluator : IRenderedReviewEvaluator
+    private sealed class Evaluator : IRenderedReviewEvaluator, IRenderedReferencePairEvaluator
     {
-        public int Calls;
+        public int Calls, PairCalls;
         public Task<RenderedReviewEvaluationReply> EvaluateAsync(RenderedReviewRequest request, ReadOnlyMemory<byte> factsUtf8, CancellationToken cancellationToken = default)
         { Calls++; return Task.FromResult(new RenderedReviewEvaluationReply(RenderedExtentEvaluationStatus.Unavailable, request.RequestId, 0)); }
+        public Task<RenderedReferencePairReply> EvaluateReferencePairAsync(RenderedReferencePairRequest request,
+            CancellationToken cancellationToken = default)
+        { PairCalls++; return Task.FromResult(new RenderedReferencePairReply(RenderedExtentEvaluationStatus.Unavailable, request.Review.RequestId, 0)); }
         public ValueTask DisposeAsync() => ValueTask.CompletedTask;
     }
     private sealed class Host : IAsyncDisposable

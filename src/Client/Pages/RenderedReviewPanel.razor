@@ -47,6 +47,47 @@
             { <p>Remove either confirmed title-page label to turn off this check.</p> }
         }
 
+        <details data-testid="rendered-reference-pair">
+            <summary>Compare a printed citation and bibliography number</summary>
+            <p>In the current PDF, search for and select one printed number such as <code>[1]</code>. Confirm each selection's role in the main work.</p>
+            <button type="button" data-testid="rendered-reference-pair-citation" disabled="@(!CanCaptureReferenceNumber)"
+                    @onclick="() => CaptureReferenceNumber(RenderedReferencePairRole.Citation)">Use selected in-text reference</button>
+            @if (_controller.ReferenceCitation is { } citation)
+            {
+                <output data-testid="rendered-reference-pair-citation-selection" data-generation="@citation.PreviewGeneration"
+                        data-page-index="@citation.Selection.PageIndex" data-character-start="@citation.Selection.CharacterStart"
+                        data-character-end="@citation.Selection.CharacterEnd">
+                    @citation.Selection.Literal on PDF page @(citation.Selection.PageIndex + 1)
+                </output>
+            }
+            <button type="button" data-testid="rendered-reference-pair-entry" disabled="@(!CanCaptureReferenceNumber)"
+                    @onclick="() => CaptureReferenceNumber(RenderedReferencePairRole.Entry)">Use selected bibliography-entry number</button>
+            @if (_controller.ReferenceEntry is { } entry)
+            {
+                <output data-testid="rendered-reference-pair-entry-selection" data-generation="@entry.PreviewGeneration"
+                        data-page-index="@entry.Selection.PageIndex" data-character-start="@entry.Selection.CharacterStart"
+                        data-character-end="@entry.Selection.CharacterEnd">
+                    @entry.Selection.Literal on PDF page @(entry.Selection.PageIndex + 1)
+                </output>
+            }
+            <button type="button" data-testid="rendered-reference-pair-compare" disabled="@(!_controller.CanCheckReferencePair)"
+                    @onclick="CheckReferencePair">Compare selected printed numbers</button>
+            @if (_controller.ReferenceCitation is not null || _controller.ReferenceEntry is not null)
+            {
+                <button type="button" data-testid="rendered-reference-pair-clear" disabled="@_controller.Busy"
+                        @onclick="_controller.ClearReferencePair">Clear selections</button>
+            }
+            @if (_controller.ReferencePairObservation is { } pair)
+            {
+                <output data-testid="rendered-reference-pair-result" data-comparison="@pair.Comparison"
+                        data-reason="@pair.Reason" data-compile-request="@pair.Request.Review.CompileRequestId"
+                        data-facts-sha256="@pair.Request.Review.FactsSha256">@ReferencePairResult(pair)</output>
+                <p>Scope is limited to the selected numbers. Citation keys, order and bibliography completeness remain unassessed. KNU CSC 2025 §§2.8, 3.15.</p>
+            }
+            @if (_controller.ReferencePairNotice.Length > 0)
+            { <p role="status" data-testid="rendered-reference-pair-notice">@_controller.ReferencePairNotice</p> }
+        </details>
+
         <details data-testid="rendered-review-labels">
             <summary>Identify page roles for this PDF</summary>
             <p>These are your labels, not verified structural classifications. They apply only to the compiled PDF you confirm them against. Reconfirm after recompiling or reopening. Source text is never changed.</p>
@@ -457,10 +498,33 @@
             && Workspace.SessionId == identity.SessionId && Workspace.WorkingGeneration == identity.WorkingGeneration
             && Workspace.CurrentRevision?.Id == identity.BaseHeadRevisionId && Compile.SelectionVersion == identity.SelectionVersion;
     }
-    private bool TrySearchSelection(out SearchLabelDraft? draft)
+    private bool CanCaptureReferenceNumber => _controller.CanCaptureReferenceSelection
+        && TrySearchSelection(out var draft, requireCurrentAnnotations: false)
+        && draft!.Hit.CharacterCount <= RenderedReferenceSelection.MaxCharacters;
+    private void CaptureReferenceNumber(RenderedReferencePairRole role)
+    {
+        if (TrySearchSelection(out var draft, requireCurrentAnnotations: false) && draft is not null)
+            _controller.CaptureReferenceSelection(role, draft.State, draft.Hit);
+    }
+    private Task CheckReferencePair() => _controller.CheckReferencePairAsync();
+    private static string ReferencePairResult(RenderedReferencePairObservation observation)
+    {
+        if (observation.Comparison == RenderedReferenceComparison.NumbersMatch)
+            return $"The selected printed numbers match ([{observation.CitationNumber}]).";
+        if (observation.Comparison == RenderedReferenceComparison.NumbersDiffer)
+            return $"The in-text number [{observation.CitationNumber}] differs from the selected entry number [{observation.EntryNumber}].";
+        return observation.Reason switch
+        {
+            "overlapping-selection-ranges" => "Indeterminate. Select two distinct occurrences.",
+            "unsupported-printed-number" => "Indeterminate. Select one positive decimal number in square brackets for each role.",
+            "selection-glyph-mismatch" => "Indeterminate. The selected glyphs could not be verified.",
+            _ => "Indeterminate. The selected numbers lack a measurable PDF glyph run."
+        };
+    }
+    private bool TrySearchSelection(out SearchLabelDraft? draft, bool requireCurrentAnnotations = true)
     {
         draft = null;
-        if (!_controller.AnnotationsCurrent || Compile.DisplayedOutput is not { } output || Compile.LastTicket is not { } ticket
+        if (requireCurrentAnnotations && !_controller.AnnotationsCurrent || Compile.DisplayedOutput is not { } output || Compile.LastTicket is not { } ticket
             || !CurrentOutput(output, ticket)) return false;
         var state = Compile.Preview.State;
         if (state.Status != PdfPreviewStatus.Available || state.Frame is not { } frame || state.DocumentSha256 != output.OutputHash?.Hex
