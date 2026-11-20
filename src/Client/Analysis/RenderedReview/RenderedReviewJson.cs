@@ -27,11 +27,19 @@ public static partial class RenderedReviewJson
     public static string Pack(RenderedReviewRequest request)
     {
         if (request is not { IsValid: true }) throw new ArgumentException("Invalid rendered review request.");
-        string result = JsonSerializer.Serialize(new { protocolVersion = 1, requestId = request.RequestId, operation = "evaluateRenderedReview", payload = new {
+        var envelope = new { protocolVersion = 1, requestId = request.RequestId, operation = "evaluateRenderedReview", payload = new {
             pdfSha256 = request.PdfSha256, compileRequestId = request.CompileRequestId, compileEpoch = request.CompileEpoch, inputDigest = request.InputDigest,
             captureId = request.CaptureId, profile = new { id = RenderedReviewContract.ProfileId, version = request.ProfileVersion },
             workType = request.WorkType, annotationVersion = request.AnnotationVersion, pageCount = request.PageCount, requestedPages = request.RequestedPages,
-            annotations = request.Annotations, factsSha256 = request.FactsSha256 } }, Camel);
+            annotations = request.Annotations, factsSha256 = request.FactsSha256 } };
+        string result;
+        if (request.AuthorConfirmedPageTextCoverage)
+        {
+            var node = JsonSerializer.SerializeToNode(envelope, Camel)!;
+            node["payload"]!["authorConfirmedPageTextCoverage"] = true;
+            result = node.ToJsonString(Camel);
+        }
+        else result = JsonSerializer.Serialize(envelope, Camel);
         if (Encoding.UTF8.GetByteCount(result) > RenderedReviewContract.RequestMaxBytes) throw new ArgumentException("Rendered review request limit.");
         return result;
     }
@@ -84,6 +92,12 @@ public static partial class RenderedReviewJson
             {
                 Require(occurrence < expected.RequestedPages.Count);
                 results.Add(ParseHeading(item, expected, expected.RequestedPages[occurrence], outcome, support, reason));
+                continue;
+            }
+            if (id == HeadingRuleId && expected.ProfileVersion == RenderedReviewContract.HeadingPageEndProfileVersion)
+            {
+                Require(occurrence == 0);
+                results.Add(ParseHeadingPageEnd(item, expected, expected.RequestedPages[0], outcome, support, reason));
                 continue;
             }
             if (id == ParagraphIndentRuleId && expected.ProfileVersion == RenderedReviewContract.ParagraphIndentProfileVersion)

@@ -282,6 +282,20 @@
             <button type="button" data-testid="rendered-paragraph-indent-check" disabled="@(ParagraphIndentPage is null)"
                     @onclick="CheckParagraphIndent">Check paragraph indent on current page</button>
         </details>
+        <details data-testid="rendered-heading-page-end-controls">
+            <summary>Check whether a minor heading ends the page</summary>
+            <p>In PDF search, select the complete heading on the current page and confirm its Minor heading role.
+                Compare the page image with Extracted page text in the preview before confirming text coverage.</p>
+            <label>
+                <input type="checkbox" data-testid="rendered-heading-page-end-confirm"
+                       checked="@(HeadingPage is { } confirmedPage && _confirmedHeadingPage == confirmedPage)"
+                       disabled="@(HeadingPage is null)" @onchange="ConfirmHeadingPage" />
+                I verified that all visible text on this PDF page is present in the extracted page text.
+            </label>
+            <button type="button" data-testid="rendered-heading-page-end-check"
+                    disabled="@(HeadingPage is not { } current || _confirmedHeadingPage != current)"
+                    @onclick="CheckHeadingPageEnd">Check heading on current page</button>
+        </details>
         <button type="button" data-testid="rendered-review-cancel" @onclick="Cancel" disabled="@(!_controller.CanCancel)">Cancel rendered review</button>
         <p role="status" data-testid="rendered-review-status" data-busy="@_controller.Busy.ToString().ToLowerInvariant()">@_controller.Notice</p>
         @if (_inputError is not null) { <p role="alert" data-testid="rendered-review-input-error">@_inputError</p> }
@@ -308,6 +322,10 @@
                         @if (report.ProfileVersion == RenderedReviewContract.ParagraphIndentProfileVersion && result.RuleId == "KNU-PARAGRAPH-RENDERED-001")
                         {
                             <p data-testid="rendered-paragraph-indent" data-reason="@result.Reason">@ParagraphIndentSummary(result)</p>
+                        }
+                        @if (report.ProfileVersion == RenderedReviewContract.HeadingPageEndProfileVersion && result.RuleId == "KNU-HEADINGS-RENDERED-001")
+                        {
+                            <p data-testid="rendered-heading-page-end-result" data-reason="@result.Reason">@HeadingPageEndSummary(result.Reason)</p>
                         }
                         <p><a href="@RenderedExtentContract.SourceUrl" target="_blank" rel="noopener noreferrer">KNU CSC 2025, @CitationLabel(result.Citation)</a></p>
                         @if (result.Evidence.Count > 0)
@@ -387,6 +405,7 @@
     private string _imageCaption = "", _captionImageObject = "";
     private string? _inputError;
     private SearchLabelDraft? _searchDraft;
+    private (int PageIndex, long PreviewGeneration, long AnnotationVersion, string WorkType)? _confirmedHeadingPage;
     private sealed record SourceEventDraft(AnalysisReport Report, int Index);
     private SourceEventDraft? _sourceDraft;
     private int _labelPage, _identityPage;
@@ -631,15 +650,16 @@
             await _controller.CheckAsync(Enumerable.Range(start - 1, end - start + 1).ToArray());
         else _inputError = "Choose ordered PDF pages from 1 to 512. No inspection was started.";
     }
-    private int? ParagraphIndentPage
+    private PdfPreviewState? CurrentReviewPage
     {
         get
         {
             var preview = Compile.Preview.State;
             return _controller.CanCheck && !_draftChanged && preview.Status == PdfPreviewStatus.Available
-                && preview.DocumentSha256 == Compile.DisplayedOutput?.OutputHash?.Hex ? preview.PageIndex : null;
+                && preview.DocumentSha256 == Compile.DisplayedOutput?.OutputHash?.Hex ? preview : null;
         }
     }
+    private int? ParagraphIndentPage => CurrentReviewPage?.PageIndex;
     private Task CheckParagraphIndent() => ParagraphIndentPage is int page
         ? _controller.CheckParagraphIndentAsync(page) : Task.CompletedTask;
     private static string ParagraphIndentSummary(RenderedRuleResult result)
@@ -661,6 +681,34 @@
             _ => "The selected text does not establish isolated, aligned continuation lines."
         };
     }
+    private (int PageIndex, long PreviewGeneration, long AnnotationVersion, string WorkType)? HeadingPage
+    {
+        get
+        {
+            if (CurrentReviewPage is not { } preview || !_controller.Annotations.Any(label =>
+                label.PageIndex == preview.PageIndex && label.Role == "headingMinor" && label.CharacterStart is not null
+                && label.Provenance == "authorLabel" && label.Certainty == "confirmedObservation"))
+                return null;
+            return (preview.PageIndex, preview.Generation, _controller.AnnotationVersion, _controller.WorkType);
+        }
+    }
+    private void ConfirmHeadingPage(ChangeEventArgs args) => _confirmedHeadingPage = args.Value is true ? HeadingPage : null;
+    private Task CheckHeadingPageEnd()
+    {
+        var page = HeadingPage;
+        if (page is null || page != _confirmedHeadingPage) return Task.CompletedTask;
+        _confirmedHeadingPage = null;
+        return _controller.CheckMinorHeadingPageEndAsync(page.Value.PageIndex);
+    }
+    private static string HeadingPageEndSummary(string reason) => reason switch
+    {
+        "confirmed-minor-heading-is-final-page-text-line" => "The confirmed minor heading is the final rendered text line. KNU §3.2 prohibits placing a heading on that line.",
+        "conditional-minor-heading-has-following-page-text" => "Rendered text follows the confirmed heading on this page. Heading spacing remains unassessed.",
+        "confirmed-minor-heading-range-required" => "Confirm the complete heading using a PDF text range.",
+        "ambiguous-minor-heading-ranges" => "Keep one confirmed minor heading range on this page.",
+        "minor-heading-not-complete-single-line" => "Select a complete heading that fits on one rendered text line.",
+        _ => "Page text or its visual order could not be established for the confirmed heading."
+    };
     private void Cancel() => _controller.Cancel();
     private void WorkTypeChanged(ChangeEventArgs args) { _controller.SelectWorkType(args.Value as string ?? ""); _inputError = null; }
     private void PageNumberReviewChanged(ChangeEventArgs args) { _controller.SelectWorkPageNumberReview(args.Value is true); _inputError = null; }

@@ -191,12 +191,15 @@ public sealed partial class CompiledReviewController : IDisposable
     private void Invalidate(string message) { _intent++; _report = null; _reportAuthority = null; _notice = message; ClearCaptionImages(); _active?.Cancel(); }
     public void Cancel() { if (CanCancel) { Invalidate("Rendered review cancelled. Continue or retry is explicit."); Notify(); } }
     public Task CheckAsync(IReadOnlyList<int>? selectedPages = null, CancellationToken cancellationToken = default)
-        => CheckPagesAsync(selectedPages, paragraphIndent: false, cancellationToken);
+        => CheckPagesAsync(selectedPages, profile: null, cancellationToken);
 
     public Task CheckParagraphIndentAsync(int pageIndex, CancellationToken cancellationToken = default)
-        => CheckPagesAsync([pageIndex], paragraphIndent: true, cancellationToken);
+        => CheckPagesAsync([pageIndex], RenderedReviewContract.ParagraphIndentProfileVersion, cancellationToken);
 
-    private async Task CheckPagesAsync(IReadOnlyList<int>? selectedPages, bool paragraphIndent, CancellationToken cancellationToken)
+    public Task CheckMinorHeadingPageEndAsync(int confirmedPageIndex, CancellationToken cancellationToken = default)
+        => CheckPagesAsync([confirmedPageIndex], RenderedReviewContract.HeadingPageEndProfileVersion, cancellationToken);
+
+    private async Task CheckPagesAsync(IReadOnlyList<int>? selectedPages, string? profile, CancellationToken cancellationToken)
     {
         if (_disposed || Busy) return;
         if (!AnnotationsCurrent) { Notify(); return; }
@@ -210,11 +213,15 @@ public sealed partial class CompiledReviewController : IDisposable
         _active = stop; _activeAuthority = authority; long intent = ++_intent, annotationVersion = _annotationVersion;
         using var notification = stop.Token.Register(() => Observe(_dispatch(() => { if (!_disposed && ReferenceEquals(_active, stop)) Notify(); })));
         string workType = WorkType;
-        var annotations = paragraphIndent ? _annotations.Where(a => a.Role == "paragraph").ToArray() : _annotations;
+        var annotations = profile switch
+        {
+            RenderedReviewContract.ParagraphIndentProfileVersion => _annotations.Where(a => a.Role == "paragraph").ToArray(),
+            RenderedReviewContract.HeadingPageEndProfileVersion => _annotations.Where(a => a.Role == "headingMinor").ToArray(),
+            _ => _annotations
+        };
         _report = null; _reportAuthority = null;
-        string profileVersion = paragraphIndent ? RenderedReviewContract.ParagraphIndentProfileVersion
-            : ChecksMajorHeadingOrder ? RenderedReviewContract.HeadingProfileVersion
-            : ChecksWorkPageNumbers ? RenderedReviewContract.PaginationProfileVersion : RenderedReviewContract.ProfileVersion;
+        string profileVersion = profile ?? (ChecksMajorHeadingOrder ? RenderedReviewContract.HeadingProfileVersion
+            : ChecksWorkPageNumbers ? RenderedReviewContract.PaginationProfileVersion : RenderedReviewContract.ProfileVersion);
         var results = new Dictionary<string, RenderedRuleResult>(StringComparer.Ordinal); var pages = new List<RenderedReviewPageEvidence>();
         PdfRuntimeIdentity? runtime = null; RenderedExtentEvidence? compilation = null;
         bool Current() => !_disposed && _intent == intent && annotationVersion == _annotationVersion && WorkType == workType
@@ -272,7 +279,10 @@ public sealed partial class CompiledReviewController : IDisposable
                 var input = new RenderedReviewRequest(Guid.NewGuid().ToString("N"), document.Sha256, authority.Output.RequestId.Value.ToString("N"),
                     authority.Output.WorkerEpoch, authority.Output.InputContentDigest.Hex, authority.Output.SnapshotIdentity.CaptureId, workType,
                     annotationVersion, facts.PageCount, Array.AsReadOnly(new[] { index }), Array.AsReadOnly(annotations.Where(a => a.PageIndex == index).ToArray()), PdfHashes.Of(factBytes))
-                { ProfileVersion = profileVersion };
+                {
+                    ProfileVersion = profileVersion,
+                    AuthorConfirmedPageTextCoverage = profileVersion == RenderedReviewContract.HeadingPageEndProfileVersion
+                };
                 CheckCurrent(); var reply = await _evaluator.EvaluateAsync(input, factBytes, stop.Token); CheckCurrent(); await VerifyBindings(); CheckCurrent();
                 if (reply.Status != RenderedExtentEvaluationStatus.Completed)
                 { _notice = $"Rendered evaluator stopped: {reply.Status}. Coverage is incomplete."; return; }
