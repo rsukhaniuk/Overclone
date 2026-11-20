@@ -7,6 +7,7 @@ mod classify;
 mod dto;
 mod heading;
 mod pagination;
+mod reference_pair;
 mod roles;
 mod rules;
 #[cfg(test)]
@@ -43,6 +44,12 @@ fn run(metadata: &str, bytes: &str) -> Result<Value, &'static str> {
     let fact_shape: Value = serde_json::from_str(bytes).map_err(|_| "InvalidFacts")?;
     dto::object_shapes(&shape, &fact_shape)?;
     let payload = &shape["payload"];
+    if payload["profile"]["id"] == reference_pair::PROFILE_ID {
+        return reference_pair::run(metadata, bytes, payload);
+    }
+    if payload.get("printedReferencePair").is_some() {
+        return Err("InvalidInput");
+    }
     if payload["profile"]["version"] == caption_placement::PROFILE_VERSION {
         return caption_placement::run(metadata, bytes, payload, &fact_shape);
     }

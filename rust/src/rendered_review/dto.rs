@@ -25,6 +25,7 @@ pub struct Payload {
     pub requested_pages: Vec<u16>,
     pub annotations: Vec<Annotation>,
     pub facts_sha256: String,
+    pub printed_reference_pair: Option<super::reference_pair::Pair>,
     pub caption_image_pair: Option<super::caption_placement::Pair>,
 }
 #[derive(Deserialize, Serialize)]
@@ -155,6 +156,15 @@ impl Request {
         batch: &FactBatch,
         version: &str,
     ) -> Result<(), &'static str> {
+        self.validate_identity(batch, "knu-csc-2025-rendered-review", version)
+    }
+
+    pub(super) fn validate_identity(
+        &self,
+        batch: &FactBatch,
+        profile_id: &str,
+        version: &str,
+    ) -> Result<(), &'static str> {
         let p = &self.payload;
         if self.protocol_version != 1
             || self.operation != "evaluateRenderedReview"
@@ -174,7 +184,7 @@ impl Request {
                     b.is_ascii_hexdigit()
                 }
             })
-            || p.profile.id != "knu-csc-2025-rendered-review"
+            || p.profile.id != profile_id
             || p.profile.version != version
             || !matches!(
                 p.work_type.as_str(),
