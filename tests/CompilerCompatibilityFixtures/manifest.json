@@ -37,8 +37,8 @@
     },
     {
       "name": "scripts/run-compiler-acceptance.py",
-      "length": 22792,
-      "sha256": "e65eddc90faabd27b14b12bcf116e9f69f7993403f5bfa872417d93bff2f7019"
+      "length": 23158,
+      "sha256": "d8e4c8490bda3911236ad07730a82ae4015461ab531fa972091f30217a27e2bf"
     },
     {
       "name": "scripts/source-pdf-navigation-ui-checks.cjs",

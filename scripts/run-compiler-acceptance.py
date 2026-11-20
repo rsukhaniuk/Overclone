@@ -261,10 +261,17 @@ def main(argv=None):
     base=toolchains['BROWSER_IMAGE'];require('@sha256:'in base,'immutable browser base required')
     require(re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9._/@:+-]*',args.browser_image),'invalid cached browser image reference')
     image=None if args.preflight else image_identity(args.browser_image,base)
-    results.mkdir(mode=0o755);browser=results/'browser';browser.mkdir(mode=0o755);browser.chmod(0o777)
+    results.mkdir(mode=0o755)
+    browser=results/'browser'
+    uid,gid=os.geteuid(),os.getegid()
+    # The harness creates private artifacts. Give the non-root writer the
+    # recipient's identity so the host can verify those bytes afterward.
+    browser_user=f'{uid}:{gid}' if uid else '65534:65534'
+    browser.mkdir(mode=0o700)
+    if uid==0:browser.chmod(0o733)
     snapshot=results/'source';snapshot.mkdir();snapshot_source(source,manifest,snapshot)
     name='oop-compiler-acceptance-'+uuid.uuid4().hex[:16]
-    command=['docker','run','--rm','--pull=never','--name',name,'--network','none','--read-only','--user','65534:65534',
+    command=['docker','run','--rm','--pull=never','--name',name,'--network','none','--read-only','--user',browser_user,
              '--cpus','2','--memory','4g','--pids-limit','256','--shm-size','1g','--tmpfs','/tmp:rw,nosuid,nodev,size=1g']
     for host,guest in [(snapshot,'/source'),(runtime,'/runtime'),(pdf,'/pdf'),(publication,'/publication')]:
         command+=['--mount',f'type=bind,src={host},dst={guest},readonly']
@@ -299,9 +306,13 @@ def main(argv=None):
     if args.preflight:
         print(json.dumps({'status':'preflight-pass','receipt':str(output),'browserNativeProof':False}));return 0
     started=time.monotonic();code=1
+    receipt['artifacts']=[]
     try:
         with(results/'browser.stdout.log').open('wb')as stdout,(results/'browser.stderr.log').open('wb')as stderr:
             run=subprocess.run(command,stdout=stdout,stderr=stderr,timeout=420);code=run.returncode
+        for artifact in sorted(browser.rglob('*')):
+            if artifact.is_file() and not artifact.is_symlink():
+                receipt['artifacts'].append({'name':str(artifact.relative_to(results)),**pin(artifact)})
         candidate=browser/'local-authoring-receipt.json'
         if candidate.exists():receipt['browserReceipt']=load_json(candidate);receipt['browserReceiptIdentity']=pin(candidate)
         passed=code==0 and receipt.get('browserReceipt',{}).get('result')=='PASS'
@@ -319,7 +330,6 @@ def main(argv=None):
         receipt.update(status='fail',exitCode=2,executionError=str(error));return 2
     finally:
         receipt['elapsedSeconds']=time.monotonic()-started
-        receipt['artifacts']=[{'name':str(p.relative_to(results)),**pin(p)}for p in sorted(browser.rglob('*'))if p.is_file()and not p.is_symlink()]
         save()
         print(json.dumps({'status':receipt['status'],'receipt':str(output),'browserNativeProof':receipt['browserNativeProof']}))
 
