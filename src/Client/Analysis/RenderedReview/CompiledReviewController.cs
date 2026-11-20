@@ -190,7 +190,13 @@ public sealed partial class CompiledReviewController : IDisposable
     private RenderedExtentAuthority? _activeAuthority;
     private void Invalidate(string message) { _intent++; _report = null; _reportAuthority = null; _notice = message; ClearCaptionImages(); _active?.Cancel(); }
     public void Cancel() { if (CanCancel) { Invalidate("Rendered review cancelled. Continue or retry is explicit."); Notify(); } }
-    public async Task CheckAsync(IReadOnlyList<int>? selectedPages = null, CancellationToken cancellationToken = default)
+    public Task CheckAsync(IReadOnlyList<int>? selectedPages = null, CancellationToken cancellationToken = default)
+        => CheckPagesAsync(selectedPages, paragraphIndent: false, cancellationToken);
+
+    public Task CheckParagraphIndentAsync(int pageIndex, CancellationToken cancellationToken = default)
+        => CheckPagesAsync([pageIndex], paragraphIndent: true, cancellationToken);
+
+    private async Task CheckPagesAsync(IReadOnlyList<int>? selectedPages, bool paragraphIndent, CancellationToken cancellationToken)
     {
         if (_disposed || Busy) return;
         if (!AnnotationsCurrent) { Notify(); return; }
@@ -203,8 +209,11 @@ public sealed partial class CompiledReviewController : IDisposable
         using var stop = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, deadline.Token);
         _active = stop; _activeAuthority = authority; long intent = ++_intent, annotationVersion = _annotationVersion;
         using var notification = stop.Token.Register(() => Observe(_dispatch(() => { if (!_disposed && ReferenceEquals(_active, stop)) Notify(); })));
-        string workType = WorkType; var annotations = _annotations; _report = null; _reportAuthority = null;
-        string profileVersion = ChecksMajorHeadingOrder ? RenderedReviewContract.HeadingProfileVersion
+        string workType = WorkType;
+        var annotations = paragraphIndent ? _annotations.Where(a => a.Role == "paragraph").ToArray() : _annotations;
+        _report = null; _reportAuthority = null;
+        string profileVersion = paragraphIndent ? RenderedReviewContract.ParagraphIndentProfileVersion
+            : ChecksMajorHeadingOrder ? RenderedReviewContract.HeadingProfileVersion
             : ChecksWorkPageNumbers ? RenderedReviewContract.PaginationProfileVersion : RenderedReviewContract.ProfileVersion;
         var results = new Dictionary<string, RenderedRuleResult>(StringComparer.Ordinal); var pages = new List<RenderedReviewPageEvidence>();
         PdfRuntimeIdentity? runtime = null; RenderedExtentEvidence? compilation = null;

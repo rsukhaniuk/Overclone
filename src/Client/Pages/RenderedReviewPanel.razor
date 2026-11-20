@@ -275,6 +275,13 @@
             <p>At most 512 pages per review. If collection stops early, explicitly check the remaining pages; uninspected pages do not pass.</p>
         </fieldset>
         <button type="button" data-testid="rendered-review-check" @onclick="Check" disabled="@(!_controller.CanCheck || _draftChanged)">Check current compiled PDF</button>
+        <details data-testid="rendered-paragraph-indent-controls">
+            <summary>Check first-line paragraph indent</summary>
+            <p>Open the paragraph’s PDF page. In PDF search, enter its first three complete lines with spaces between them.
+                Label the matching result Paragraph and choose “I have confirmed this role in the PDF.” Use one ordinary left-aligned paragraph on the current page.</p>
+            <button type="button" data-testid="rendered-paragraph-indent-check" disabled="@(ParagraphIndentPage is null)"
+                    @onclick="CheckParagraphIndent">Check paragraph indent on current page</button>
+        </details>
         <button type="button" data-testid="rendered-review-cancel" @onclick="Cancel" disabled="@(!_controller.CanCancel)">Cancel rendered review</button>
         <p role="status" data-testid="rendered-review-status" data-busy="@_controller.Busy.ToString().ToLowerInvariant()">@_controller.Notice</p>
         @if (_inputError is not null) { <p role="alert" data-testid="rendered-review-input-error">@_inputError</p> }
@@ -298,6 +305,10 @@
                         <h4>@result.RuleId — @RuleLabel(result.RuleId)</h4>
                         <p>Observation: @OutcomeLabel(result.Outcome). Support: @result.SupportState. Severity: @result.Severity.</p>
                         <p data-testid="rendered-review-reason">@result.Reason.Replace('-', ' ')</p>
+                        @if (report.ProfileVersion == RenderedReviewContract.ParagraphIndentProfileVersion && result.RuleId == "KNU-PARAGRAPH-RENDERED-001")
+                        {
+                            <p data-testid="rendered-paragraph-indent" data-reason="@result.Reason">@ParagraphIndentSummary(result)</p>
+                        }
                         <p><a href="@RenderedExtentContract.SourceUrl" target="_blank" rel="noopener noreferrer">KNU CSC 2025, @CitationLabel(result.Citation)</a></p>
                         @if (result.Evidence.Count > 0)
                         {
@@ -619,6 +630,36 @@
         else if (PageRange(_checkFirst, _checkLast, out var start, out var end))
             await _controller.CheckAsync(Enumerable.Range(start - 1, end - start + 1).ToArray());
         else _inputError = "Choose ordered PDF pages from 1 to 512. No inspection was started.";
+    }
+    private int? ParagraphIndentPage
+    {
+        get
+        {
+            var preview = Compile.Preview.State;
+            return _controller.CanCheck && !_draftChanged && preview.Status == PdfPreviewStatus.Available
+                && preview.DocumentSha256 == Compile.DisplayedOutput?.OutputHash?.Hex ? preview.PageIndex : null;
+        }
+    }
+    private Task CheckParagraphIndent() => ParagraphIndentPage is int page
+        ? _controller.CheckParagraphIndentAsync(page) : Task.CompletedTask;
+    private static string ParagraphIndentSummary(RenderedRuleResult result)
+    {
+        if (result.Evidence.Count == 1)
+        {
+            var evidence = result.Evidence[0];
+            double measured = evidence.GetProperty("measured").GetDouble();
+            double error = evidence.GetProperty("uncertainty").GetProperty("absoluteError").GetDouble();
+            string comparison = result.Outcome == "fail" ? "lies outside this measurement interval" : "lies within this measurement interval";
+            return $"The first line starts {measured:0.###} ± {error:0.###} mm from the continuation line starts. KNU §3.1 specifies 12.7 mm, which {comparison}.";
+        }
+        return result.Reason switch
+        {
+            "ambiguous-paragraph-selected-range" => "Select one confirmed paragraph range on this page.",
+            "confirmed-paragraph-three-line-range-required" => "Confirm the first three complete lines of one ordinary paragraph to measure its indent.",
+            "paragraph-physical-scale-unavailable" => "The PDF does not supply a usable physical page scale.",
+            "paragraph-line-ink-unavailable" => "Measurable glyphs are unavailable for one or more selected lines.",
+            _ => "The selected text does not establish isolated, aligned continuation lines."
+        };
     }
     private void Cancel() => _controller.Cancel();
     private void WorkTypeChanged(ChangeEventArgs args) { _controller.SelectWorkType(args.Value as string ?? ""); _inputError = null; }

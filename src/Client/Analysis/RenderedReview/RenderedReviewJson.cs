@@ -73,7 +73,8 @@ public static partial class RenderedReviewJson
             Require(Ids.Contains(id) && Text(item, "domain") == "renderedObservation" && Text(item, "severity") == "warning");
             int occurrence = counts.GetValueOrDefault(id);
             counts[id] = occurrence + 1;
-            if (id == PaginationRuleId && expected.ProfileVersion != RenderedReviewContract.ProfileVersion)
+            if (id == PaginationRuleId && expected.ProfileVersion is RenderedReviewContract.PaginationProfileVersion
+                or RenderedReviewContract.HeadingProfileVersion)
             {
                 Require(occurrence < expected.RequestedPages.Count);
                 results.Add(ParsePagination(item, expected, expected.RequestedPages[occurrence], outcome, support, reason));
@@ -83,6 +84,12 @@ public static partial class RenderedReviewJson
             {
                 Require(occurrence < expected.RequestedPages.Count);
                 results.Add(ParseHeading(item, expected, expected.RequestedPages[occurrence], outcome, support, reason));
+                continue;
+            }
+            if (id == ParagraphIndentRuleId && expected.ProfileVersion == RenderedReviewContract.ParagraphIndentProfileVersion)
+            {
+                Require(occurrence == 0);
+                results.Add(ParseParagraphIndent(item, expected, expected.RequestedPages[0], outcome, support, reason));
                 continue;
             }
             Require(Text(item, "ruleVersion") == "1.0.0"

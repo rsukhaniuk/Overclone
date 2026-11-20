@@ -10,6 +10,7 @@ public static class RenderedReviewContract
     public const string ProfileId = "knu-csc-2025-rendered-review", ProfileVersion = "1.0.0";
     public const string PaginationProfileVersion = "1.2.0";
     public const string HeadingProfileVersion = "1.3.0";
+    public const string ParagraphIndentProfileVersion = "1.4.0";
 }
 public sealed record RenderedRoleAnnotation(long AnnotationId, string Role, int PageIndex, int? CharacterStart,
     int? CharacterEnd, string? SourceFileId, AnalysisSpanDto? SourceSpan, string Provenance, string Certainty);
@@ -20,11 +21,12 @@ public sealed record RenderedReviewRequest(string RequestId, string PdfSha256, s
     public string ProfileVersion { get; init; } = RenderedReviewContract.ProfileVersion;
 
     public bool IsValid => ProfileVersion is RenderedReviewContract.ProfileVersion or RenderedReviewContract.PaginationProfileVersion
-        or RenderedReviewContract.HeadingProfileVersion
+        or RenderedReviewContract.HeadingProfileVersion or RenderedReviewContract.ParagraphIndentProfileVersion
         && RenderedExtentContract.RequestId(RequestId) && RenderedExtentContract.RequestId(CompileRequestId)
         && PdfHashes.IsSha(PdfSha256) && PdfHashes.IsSha(InputDigest) && PdfHashes.IsSha(FactsSha256)
         && RenderedExtentContract.Epoch(CompileEpoch) && CaptureId != Guid.Empty && AnnotationVersion is >= 0 and <= 9007199254740991
         && RenderedExtentContract.WorkType(WorkType) && PageCount is >= 1 and <= 512 && RequestedPages is { Count: > 0 and <= 8 }
+        && (ProfileVersion != RenderedReviewContract.ParagraphIndentProfileVersion || RequestedPages.Count == 1)
         && RequestedPages.All(i => i >= 0 && i < PageCount) && RequestedPages.Zip(RequestedPages.Skip(1)).All(p => p.First < p.Second)
         && Annotations is { Count: <= 512 };
 }

@@ -65,7 +65,7 @@ public static partial class RenderedReviewJson
             && Text(source, "certainty") == "confirmedObservation");
         long headingId = source.GetProperty("annotationId").GetInt64();
         int headingStart = item.GetProperty("characterStart").GetInt32(), headingEnd = item.GetProperty("characterEnd").GetInt32();
-        ValidateHeadingRole(request, pageIndex, "headingMajor", headingId, headingStart, headingEnd);
+        ValidateSingleConfirmedRange(request, pageIndex, "headingMajor", headingId, headingStart, headingEnd);
 
         var observation = item.GetProperty("observation");
         Keys(observation, "kind", "bodyAnnotationId", "bodyCharacterStart", "bodyCharacterEnd", "bodyInkBox",
@@ -73,7 +73,7 @@ public static partial class RenderedReviewJson
         Require(Text(observation, "kind") == "confirmed-major-heading-page-order");
         long bodyId = observation.GetProperty("bodyAnnotationId").GetInt64();
         int bodyStart = observation.GetProperty("bodyCharacterStart").GetInt32(), bodyEnd = observation.GetProperty("bodyCharacterEnd").GetInt32();
-        ValidateHeadingRole(request, pageIndex, "body", bodyId, bodyStart, bodyEnd);
+        ValidateSingleConfirmedRange(request, pageIndex, "body", bodyId, bodyStart, bodyEnd);
         Require(headingId != bodyId);
 
         var heading = PositiveReviewBox(item.GetProperty("rawBox"));
@@ -108,7 +108,7 @@ public static partial class RenderedReviewJson
         }
     }
 
-    private static void ValidateHeadingRole(RenderedReviewRequest request, int pageIndex, string role, long annotationId,
+    private static void ValidateSingleConfirmedRange(RenderedReviewRequest request, int pageIndex, string role, long annotationId,
         int start, int end)
     {
         Require(annotationId is > 0 and <= SafeInteger && start >= 0 && end > start && end <= 100000);

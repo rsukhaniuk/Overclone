@@ -230,6 +230,30 @@ public sealed class RenderedReviewPanelTests
         });
     });
 
+    [Fact]
+    public void Paragraph_indent_has_a_current_pdf_page_action_separate_from_default_review() => Run(async () =>
+    {
+        await using var f = await Host.Open(preview: true);
+        using var services = Services(f);
+        await using var renderer = new Events(services, services.GetRequiredService<ILoggerFactory>());
+        await renderer.Dispatcher.InvokeAsync(async () =>
+        {
+            int id = await renderer.Mount(f);
+            await f.Search("І", hit: 1);
+            Assert.Equal(1, f.Session.Preview.State.PageIndex);
+            var button = renderer.Element(id, "rendered-paragraph-indent-check");
+            Assert.False(button.Attributes.ContainsKey("disabled"));
+            await renderer.Click(id, "rendered-paragraph-indent-check");
+            Assert.Equal(1, f.Inspector.LayoutCalls);
+            Assert.Equal(1, f.Inspector.LastLayoutPage);
+            Assert.Null(f.Controller.Report);
+            Assert.True(f.Work.Workspace.EditText(f.Work.Main, "Changed source\n"));
+            Assert.True(renderer.Element(id, "rendered-paragraph-indent-check").Attributes.ContainsKey("disabled"));
+            await renderer.Click(id, "rendered-paragraph-indent-check");
+            Assert.Equal(1, f.Inspector.LayoutCalls);
+        });
+    });
+
     private static ParameterView Parameters(Host host) => ParameterView.FromDictionary(new Dictionary<string, object?> { ["Session"] = host.Controller });
     private static ServiceProvider Services(Host host) => new ServiceCollection().AddLogging().AddSingleton(host.Work.Workspace)
         .AddSingleton(host.Session).AddSingleton<IRenderedReviewEvaluator>(host.Evaluator).BuildServiceProvider();
@@ -241,13 +265,13 @@ public sealed class RenderedReviewPanelTests
     }
     private sealed class Inspector : IPdfInspector, IPdfLayoutInspector
     {
-        public int LayoutCalls;
+        public int LayoutCalls, LastLayoutPage;
         public bool EnablePreview;
         public readonly PreviewInspector Preview = new();
         public Task<PdfInspectionOutcome> InspectAsync(PdfInspectRequest request, CancellationToken cancellationToken = default)
             => EnablePreview ? Preview.InspectAsync(request, cancellationToken) : Task.FromResult(new PdfInspectionOutcome(PdfInspectionStatus.Unavailable, Guid.NewGuid().ToString("N"), request.Document.Sha256, 1));
         public Task<PdfLayoutOutcome> InspectLayoutAsync(PdfLayoutRequest request, CancellationToken cancellationToken = default)
-        { LayoutCalls++; return Task.FromResult(new PdfLayoutOutcome(PdfInspectionStatus.Unavailable, Guid.NewGuid().ToString("N"), request.Document.Sha256, 1)); }
+        { LayoutCalls++; LastLayoutPage = request.PageIndex; return Task.FromResult(new PdfLayoutOutcome(PdfInspectionStatus.Unavailable, Guid.NewGuid().ToString("N"), request.Document.Sha256, 1)); }
         public ValueTask DisposeAsync() => ValueTask.CompletedTask;
     }
     private sealed class Evaluator : IRenderedReviewEvaluator, IRenderedReferencePairEvaluator
