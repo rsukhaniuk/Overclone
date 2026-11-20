@@ -1,4 +1,4 @@
-use super::{catalog, classify, dto::*, heading, pagination, roles, typography};
+use super::{catalog, classify, dto::*, heading, pagination, paragraph, roles, typography};
 use serde_json::{json, Value};
 
 fn metrics(
@@ -151,10 +151,14 @@ pub fn evaluate(request: &Request, batch: &FactBatch) -> Vec<Value> {
                 && pagination::enabled(&request.payload.profile.version);
             let with_heading = descriptor.rule_id == heading::RULE_ID
                 && request.payload.profile.version == heading::PROFILE_VERSION;
+            let with_paragraph = descriptor.rule_id == paragraph::RULE_ID
+                && request.payload.profile.version == paragraph::PROFILE_VERSION;
             let (rule_version, citation, limitations) = if with_pagination {
                 ("1.1.0", pagination::citation(), pagination::LIMITATIONS)
             } else if with_heading {
                 ("1.1.0", heading::citation(), heading::LIMITATIONS)
+            } else if with_paragraph {
+                ("1.1.0", paragraph::citation(), paragraph::LIMITATIONS)
             } else {
                 (
                     descriptor.rule_version,
@@ -246,6 +250,11 @@ pub fn evaluate(request: &Request, batch: &FactBatch) -> Vec<Value> {
                     let observed = typography::evaluate(request, page);
                     evidence = observed.3;
                     (observed.0, observed.1, observed.2)
+                }
+                paragraph::RULE_ID if with_paragraph => {
+                    let measured = paragraph::evaluate(request, page);
+                    evidence = measured.2;
+                    ("partial", measured.0, measured.1)
                 }
                 "KNU-PARAGRAPH-RENDERED-001" => {
                     let measured = metrics(request, page, true);

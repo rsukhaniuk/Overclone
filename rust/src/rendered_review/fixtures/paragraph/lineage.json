@@ -1,0 +1,42 @@
+{
+  "pdf": {
+    "bytes": 16175,
+    "sha256": "43dcda52daf4c111b80d5df910906621b18334a1a4117c17d6233006c3126920"
+  },
+  "batch": {
+    "bytes": 90668,
+    "sha256": "aabb8ef263345ab76e907d2c3c09c863de098e72fa1f7b7b26c50b551038f4c3"
+  },
+  "runtime": {
+    "loader": {
+      "bytes": 14175,
+      "sha256": "f95ae827b12703999ce1daafebbf6830f5f4d2c14bb7805a8f47abe54772b079"
+    },
+    "wasm": {
+      "bytes": 3725577,
+      "sha256": "2e2126ead8e00ef7c79d21e3836d66957b19e827523f7c054ca887f3c11ae5b7"
+    }
+  },
+  "pages": [
+    {
+      "pageIndex": 0,
+      "previewSearch": {
+        "Samplefirst starts the paragraph. Samplemiddle follows directly. Samplelast concludes the paragraph.": [
+          {
+            "start": 0,
+            "count": 102,
+            "glyphText": "Samplefirst starts the paragraph.\r\nSamplemiddle follows directly.\r\nSamplelast concludes the paragraph."
+          }
+        ],
+        "Shortfirst starts the paragraph. Shortmiddle follows directly. Shortlast concludes the paragraph.": [
+          {
+            "start": 104,
+            "count": 99,
+            "glyphText": "Shortfirst starts the paragraph.\r\nShortmiddle follows directly.\r\nShortlast concludes the paragraph."
+          }
+        ]
+      },
+      "nonWhitespaceWithoutInk": 0
+    }
+  ]
+}

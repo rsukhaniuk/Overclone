@@ -7,6 +7,7 @@ mod classify;
 mod dto;
 mod heading;
 mod pagination;
+mod paragraph;
 mod reference_pair;
 mod roles;
 mod rules;
@@ -62,6 +63,11 @@ fn run(metadata: &str, bytes: &str) -> Result<Value, &'static str> {
     let facts: FactBatch = serde_json::from_str(bytes).map_err(|_| "InvalidFacts")?;
     if pagination::enabled(&request.payload.profile.version) {
         request.validate_profile(&facts, &request.payload.profile.version)?;
+    } else if request.payload.profile.version == paragraph::PROFILE_VERSION {
+        request.validate_profile(&facts, paragraph::PROFILE_VERSION)?;
+        if request.payload.requested_pages.len() != 1 {
+            return Err("InvalidInput");
+        }
     } else {
         request.validate(&facts)?;
     }
