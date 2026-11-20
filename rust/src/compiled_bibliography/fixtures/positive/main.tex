@@ -1,0 +1,11 @@
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T2A]{fontenc}
+\usepackage[ukrainian]{babel}
+\begin{document}
+Спочатку \cite{first,second}.
+\include{chapters/part}
+Повторне посилання \cite{first}.
+\bibliographystyle{plain}
+\bibliography{references}
+\end{document}

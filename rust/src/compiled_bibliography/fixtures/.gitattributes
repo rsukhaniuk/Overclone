@@ -1,0 +1,2 @@
+# Preserve the exact AUX bytes written by the native compiler.
+*.aux -text whitespace=-blank-at-eol

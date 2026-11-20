@@ -2,6 +2,7 @@ use wasm_bindgen::prelude::*;
 
 pub mod analysis;
 pub mod authoring;
+mod compiled_bibliography;
 pub mod rendered_extent;
 pub mod rendered_review;
 pub mod thesis_catalog;
@@ -72,4 +73,10 @@ mod tests {
             assert_eq!(count_words(text), expected, "input: {text:?}");
         }
     }
+}
+
+/// Read classic bibliography evidence from an accepted compile capture.
+#[wasm_bindgen]
+pub fn evaluate_compiled_bibliography(metadata_json: &str, packed: &[u8]) -> String {
+    compiled_bibliography::evaluate(metadata_json, packed)
 }

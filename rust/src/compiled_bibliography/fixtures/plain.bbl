@@ -1,0 +1,18 @@
+\begin{thebibliography}{1}
+
+\bibitem{first}
+Ada Alpha.
+\newblock {\em First Reference}.
+\newblock Fixture Press, 2020.
+
+\bibitem{second}
+Bea Bravo.
+\newblock {\em Second Reference}.
+\newblock Fixture Press, 2021.
+
+\bibitem{third}
+Zoe Zeta.
+\newblock {\em Third Citation}.
+\newblock Fixture Press, 2022.
+
+\end{thebibliography}
