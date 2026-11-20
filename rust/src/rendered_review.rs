@@ -6,6 +6,7 @@ pub mod catalog;
 mod classify;
 mod dto;
 mod heading;
+mod heading_page_end;
 mod pagination;
 mod paragraph;
 mod reference_pair;
@@ -45,6 +46,11 @@ fn run(metadata: &str, bytes: &str) -> Result<Value, &'static str> {
     let fact_shape: Value = serde_json::from_str(bytes).map_err(|_| "InvalidFacts")?;
     dto::object_shapes(&shape, &fact_shape)?;
     let payload = &shape["payload"];
+    let checks_page_end = payload["profile"]["id"] == "knu-csc-2025-rendered-review"
+        && payload["profile"]["version"] == heading_page_end::PROFILE_VERSION;
+    if !checks_page_end && payload.get("authorConfirmedPageTextCoverage").is_some() {
+        return Err("InvalidInput");
+    }
     if payload["profile"]["id"] == reference_pair::PROFILE_ID {
         return reference_pair::run(metadata, bytes, payload);
     }
@@ -63,6 +69,13 @@ fn run(metadata: &str, bytes: &str) -> Result<Value, &'static str> {
     let facts: FactBatch = serde_json::from_str(bytes).map_err(|_| "InvalidFacts")?;
     if pagination::enabled(&request.payload.profile.version) {
         request.validate_profile(&facts, &request.payload.profile.version)?;
+    } else if checks_page_end {
+        request.validate_profile(&facts, heading_page_end::PROFILE_VERSION)?;
+        if request.payload.requested_pages.len() != 1
+            || request.payload.author_confirmed_page_text_coverage != Some(true)
+        {
+            return Err("InvalidInput");
+        }
     } else if request.payload.profile.version == paragraph::PROFILE_VERSION {
         request.validate_profile(&facts, paragraph::PROFILE_VERSION)?;
         if request.payload.requested_pages.len() != 1 {

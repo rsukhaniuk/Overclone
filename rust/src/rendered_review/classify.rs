@@ -35,6 +35,17 @@ fn whitespace(ch: &Character) -> bool {
     char::from_u32(ch.unicode).is_some_and(char::is_whitespace)
 }
 pub fn measure(page: &Page, annotation: &Annotation) -> Result<Measurement, &'static str> {
+    let start = annotation.character_start.unwrap_or(0);
+    let end = annotation
+        .character_end
+        .unwrap_or(page.facts.characters.len());
+    measure_range(page, start, end)
+}
+pub(super) fn measure_range(
+    page: &Page,
+    start: usize,
+    end: usize,
+) -> Result<Measurement, &'static str> {
     let f = &page.facts;
     if page.capabilities.schema_version != 2 {
         return Err("glyph-ink-uncertainty-unavailable");
@@ -42,8 +53,6 @@ pub fn measure(page: &Page, annotation: &Annotation) -> Result<Measurement, &'st
     if f.rotation != 0 {
         return Err("metric-horizontal-frame-required");
     }
-    let start = annotation.character_start.unwrap_or(0);
-    let end = annotation.character_end.unwrap_or(f.characters.len());
     if end - start > MAX_CHARACTERS {
         return Err("metric-classification-quota");
     }

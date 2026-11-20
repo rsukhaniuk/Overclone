@@ -27,6 +27,7 @@ pub struct Payload {
     pub facts_sha256: String,
     pub printed_reference_pair: Option<super::reference_pair::Pair>,
     pub caption_image_pair: Option<super::caption_placement::Pair>,
+    pub author_confirmed_page_text_coverage: Option<bool>,
 }
 #[derive(Deserialize, Serialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]

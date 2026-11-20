@@ -1,0 +1,42 @@
+{
+  "pdf": {
+    "bytes": 22515,
+    "sha256": "bef3ed1d25b203683a171572ba2190a23863d229927477767a7153c49faedeeb"
+  },
+  "batch": {
+    "bytes": 47572,
+    "sha256": "dec8602ef7584e73392440dd6f8fb20a169407935668ca2b381ba4cfd30b3b93"
+  },
+  "runtime": {
+    "loader": {
+      "bytes": 14243,
+      "sha256": "ea2cebb93f554788751e58554b6e16a094ee6d0883774cb697cbb4a5ce8ec38c"
+    },
+    "wasm": {
+      "bytes": 3725611,
+      "sha256": "b1630e6501e7715b4e0870a059f4e9b8b5acc4c96aa2af0e4ecacb04071622d7"
+    }
+  },
+  "pages": [
+    {
+      "pageIndex": 0,
+      "previewSearch": {
+        "Earlier minor heading": [
+          {
+            "start": 33,
+            "count": 21,
+            "glyphText": "Earlier minor heading"
+          }
+        ],
+        "Final minor heading": [
+          {
+            "start": 89,
+            "count": 19,
+            "glyphText": "Final minor heading"
+          }
+        ]
+      },
+      "nonWhitespaceWithoutInk": 0
+    }
+  ]
+}

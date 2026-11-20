@@ -151,12 +151,20 @@ pub fn evaluate(request: &Request, batch: &FactBatch) -> Vec<Value> {
                 && pagination::enabled(&request.payload.profile.version);
             let with_heading = descriptor.rule_id == heading::RULE_ID
                 && request.payload.profile.version == heading::PROFILE_VERSION;
+            let with_heading_page_end = descriptor.rule_id == heading::RULE_ID
+                && request.payload.profile.version == super::heading_page_end::PROFILE_VERSION;
             let with_paragraph = descriptor.rule_id == paragraph::RULE_ID
                 && request.payload.profile.version == paragraph::PROFILE_VERSION;
             let (rule_version, citation, limitations) = if with_pagination {
                 ("1.1.0", pagination::citation(), pagination::LIMITATIONS)
             } else if with_heading {
                 ("1.1.0", heading::citation(), heading::LIMITATIONS)
+            } else if with_heading_page_end {
+                (
+                    "1.2.0",
+                    heading::citation(),
+                    super::heading_page_end::LIMITATIONS,
+                )
             } else if with_paragraph {
                 ("1.1.0", paragraph::citation(), paragraph::LIMITATIONS)
             } else {
@@ -263,6 +271,11 @@ pub fn evaluate(request: &Request, batch: &FactBatch) -> Vec<Value> {
                 }
                 heading::RULE_ID if with_heading => {
                     let observation = heading::evaluate(request, page);
+                    evidence = observation.2;
+                    ("partial", observation.0, observation.1)
+                }
+                heading::RULE_ID if with_heading_page_end => {
+                    let observation = super::heading_page_end::evaluate(request, page);
                     evidence = observation.2;
                     ("partial", observation.0, observation.1)
                 }
