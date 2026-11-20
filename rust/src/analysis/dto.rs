@@ -211,6 +211,8 @@ pub struct AnalysisResult {
     )]
     pub reference_configuration: Option<super::references::ReferenceConfiguration>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub project_margin_context: Option<super::project_margins::Context>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub knu: Option<super::knu_dto::KnuAnalysis>,
 }
 

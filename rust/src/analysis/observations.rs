@@ -117,6 +117,7 @@ struct Pass<'a> {
     formatting_safe: bool,
     setspace_imports: u32,
     caption_environment: Option<super::knu_dto::CaptionEnvironment>,
+    resolved_input: Option<(u64, u64)>,
 }
 
 impl Pass<'_> {
@@ -559,6 +560,13 @@ impl Pass<'_> {
             if t.start_byte < owned_end {
                 continue;
             }
+            if let Some((_, end)) = self
+                .resolved_input
+                .filter(|(start, _)| *start == t.start_byte)
+            {
+                owned_end = end;
+                continue;
+            }
             match t.kind {
                 TokenKind::Comment
                 | TokenKind::Verbatim
@@ -876,7 +884,7 @@ pub fn observe(
 enum GeometrySupport {
     None,
     Command,
-    Package,
+    Package(Option<(u64, u64)>),
     Formatting,
 }
 
@@ -914,7 +922,27 @@ pub fn observe_geometry_package(
         work,
         per_file_cap,
         project_remaining,
-        GeometrySupport::Package,
+        GeometrySupport::Package(None),
+    )
+}
+
+pub(super) fn observe_project_margins(
+    facts: &SourceFileFacts,
+    bytes: &[u8],
+    eligible: bool,
+    work: LookaheadBudget,
+    per_file_cap: u32,
+    project_remaining: &mut u32,
+    input: Option<(u64, u64)>,
+) -> FileObservations {
+    observe_features(
+        facts,
+        bytes,
+        eligible,
+        work,
+        per_file_cap,
+        project_remaining,
+        GeometrySupport::Package(input),
     )
 }
 
@@ -975,12 +1003,16 @@ fn observe_features(
         margins_enabled: !matches!(support, GeometrySupport::None),
         packages_enabled: matches!(
             support,
-            GeometrySupport::Package | GeometrySupport::Formatting
+            GeometrySupport::Package(_) | GeometrySupport::Formatting
         ),
         formatting_enabled: matches!(support, GeometrySupport::Formatting),
         formatting_safe: true,
         setspace_imports: 0,
         caption_environment: None,
+        resolved_input: match support {
+            GeometrySupport::Package(input) => input,
+            _ => None,
+        },
         geometry_count: 0,
         geometry_imports: 0,
         package_needs_declaration: false,
@@ -999,7 +1031,11 @@ fn observe_features(
         pass.depths[i] = stack.len();
         if t.kind == TokenKind::Command {
             let raw = &bytes[t.start_byte as usize..t.end_byte as usize];
-            if matches!(raw, b"\\input" | b"\\include" | b"\\input*" | b"\\include*") {
+            if pass
+                .resolved_input
+                .is_none_or(|(start, _)| start != t.start_byte)
+                && matches!(raw, b"\\input" | b"\\include" | b"\\input*" | b"\\include*")
+            {
                 pass.result.limit(Limitation::IncludeNotResolved);
             }
         }

@@ -66,6 +66,10 @@ pub(crate) fn keys(value: &Value, allowed: &[&str]) -> bool {
 }
 
 pub(super) fn validate(json: &str) -> bool {
+    validate_profile(json, false)
+}
+
+pub(super) fn validate_profile(json: &str, knu: bool) -> bool {
     let Ok(Unique(root)) = serde_json::from_str(json) else {
         return false;
     };
@@ -76,21 +80,24 @@ pub(super) fn validate(json: &str) -> bool {
         return false;
     }
     let p = &root["payload"];
-    if !keys(
-        p,
-        &[
-            "snapshotId",
-            "projectId",
-            "sessionId",
-            "workingGeneration",
-            "baseHeadRevisionId",
-            "profile",
-            "referenceConfiguration",
-            "limits",
-            "files",
-        ],
-    ) || !keys(&p["profile"], &["id", "version"])
+    let mut fields = vec![
+        "snapshotId",
+        "projectId",
+        "sessionId",
+        "workingGeneration",
+        "baseHeadRevisionId",
+        "profile",
+        "referenceConfiguration",
+        "limits",
+        "files",
+    ];
+    if knu {
+        fields.push("configuration");
+    }
+    if !keys(p, &fields)
+        || !keys(&p["profile"], &["id", "version"])
         || !keys(&p["referenceConfiguration"], &["rootFileId"])
+        || knu && !keys(&p["configuration"], &["workType"])
     {
         return false;
     }

@@ -34,6 +34,7 @@ pub enum Profile {
     KnuWithMarginFixes,
     KnuWithGeometryPackage,
     KnuWithFormatting,
+    KnuWithProjectMargins,
 }
 
 impl Profile {
@@ -45,6 +46,7 @@ impl Profile {
                 | Self::KnuWithMarginFixes
                 | Self::KnuWithGeometryPackage
                 | Self::KnuWithFormatting
+                | Self::KnuWithProjectMargins
         )
     }
 }
@@ -58,6 +60,7 @@ pub fn resolve(p: &ProfileRef) -> Option<Profile> {
         (KNU_ID, MARGIN_FIX_VERSION) => Some(Profile::KnuWithMarginFixes),
         (KNU_ID, GEOMETRY_PACKAGE_VERSION) => Some(Profile::KnuWithGeometryPackage),
         (KNU_ID, FORMATTING_VERSION) => Some(Profile::KnuWithFormatting),
+        (KNU_ID, super::project_margins::VERSION) => Some(Profile::KnuWithProjectMargins),
         _ => None,
     }
 }
@@ -111,7 +114,8 @@ pub fn rule_for(id: &str, version: &str) -> SourceRule {
         return formatting_rule(id);
     }
     // 1.4 retains the exact existing three rule metadata/semantics.
-    let version = if version == FORMATTING_VERSION {
+    let project_margins = version == super::project_margins::VERSION;
+    let version = if version == FORMATTING_VERSION || project_margins {
         GEOMETRY_PACKAGE_VERSION
     } else {
         version
@@ -126,6 +130,9 @@ pub fn rule_for(id: &str, version: &str) -> SourceRule {
         result.supported_syntax = "Top-level unstarred geometry with four explicit literal side options; or one preamble usepackage{geometry} followed by one geometry declaration; or one usepackage[left/right/top/bottom options]{geometry}. Same nonnegative decimal mm/cm grammar, <=9 digits, <=3 fractional digits and <=4096 argument bytes; immediate lexer-owned optional argument only".into();
         result.limitations[1] = "All four explicit unique sides required; unknown packages/options, dynamic or nested syntax, duplicate imports/declarations and mixed option/command declarations are indeterminate; no precedence inference".into();
     }
+    if id == MARGINS && project_margins {
+        result.limitations[0] = super::project_margins::LIMITATION.into();
+    }
     result
 }
 
@@ -133,7 +140,11 @@ pub fn metadata_for(version: &str) -> ProfileMetadata {
     let mut result = metadata();
     if matches!(
         version,
-        LATEST_VERSION | MARGIN_FIX_VERSION | GEOMETRY_PACKAGE_VERSION | FORMATTING_VERSION
+        LATEST_VERSION
+            | MARGIN_FIX_VERSION
+            | GEOMETRY_PACKAGE_VERSION
+            | FORMATTING_VERSION
+            | super::project_margins::VERSION
     ) {
         result.profile.version = version.into();
         result.rules.push(rule_for(MARGINS, version));

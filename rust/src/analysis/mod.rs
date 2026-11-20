@@ -12,6 +12,7 @@ pub mod mapping;
 pub mod observations;
 pub(crate) mod ownership;
 pub mod profiles;
+mod project_margins;
 pub(crate) mod reference_wire;
 pub mod references;
 pub mod rules;
@@ -360,11 +361,16 @@ pub fn analyze_source(metadata_json: &str, packed_bytes: &[u8]) -> String {
         );
     }
     let is_references = selected_profile == profiles::Profile::SourceReferences;
-    if is_references != payload.reference_configuration.is_some() {
+    let is_project_margins = selected_profile == profiles::Profile::KnuWithProjectMargins;
+    if (is_references || is_project_margins) != payload.reference_configuration.is_some() {
         return failed_response(
             Some(request_id),
             "InvalidInput",
-            "referenceConfiguration is required only for source references",
+            if is_project_margins {
+                "project margins require referenceConfiguration"
+            } else {
+                "referenceConfiguration is required only for source references"
+            },
         );
     }
     if selected_profile.is_knu()
@@ -421,6 +427,24 @@ pub fn analyze_source(metadata_json: &str, packed_bytes: &[u8]) -> String {
             return failed_response(Some(request_id), "InvalidInput", message);
         }
     }
+
+    let margin_root = if is_project_margins {
+        if !reference_wire::validate_profile(metadata_json, true)
+            || !(0..=9_007_199_254_740_991).contains(&payload.working_generation)
+        {
+            return failed_response(
+                Some(request_id),
+                "InvalidInput",
+                "invalid project-margin request shape",
+            );
+        }
+        match references::validate(&payload) {
+            Ok(root) => Some(root),
+            Err(message) => return failed_response(Some(request_id), "InvalidInput", message),
+        }
+    } else {
+        None
+    };
 
     // Validate slices, UTF-8, BOM consistency, and total/size caps BEFORE lexing.
     // Collect the validated (offset, length) pairs so the lexing pass does not
@@ -558,9 +582,20 @@ pub fn analyze_source(metadata_json: &str, packed_bytes: &[u8]) -> String {
         unavailable_capabilities: vec!["pdfFacts".to_string(), "pdfChecks".to_string()],
         configuration: None,
         reference_configuration: None,
+        project_margin_context: None,
         knu: None,
     };
     if selected_profile.is_knu() {
+        let context = margin_root.and_then(|root| {
+            project_margins::recognize(
+                &payload,
+                root,
+                packed_bytes,
+                &validated,
+                &result.facts.files,
+                &mut lookaheads,
+            )
+        });
         let mut remaining = resolved
             .max_tokens_per_project
             .saturating_sub(budget.tokens_per_project_used);
@@ -586,6 +621,19 @@ pub fn analyze_source(metadata_json: &str, packed_bytes: &[u8]) -> String {
                         resolved.max_tokens_per_file,
                         &mut remaining,
                     )
+                } else if is_project_margins {
+                    observations::observe_project_margins(
+                        facts,
+                        &packed_bytes[off..off + len as usize],
+                        eligible,
+                        work,
+                        resolved.max_tokens_per_file,
+                        &mut remaining,
+                        context
+                            .as_ref()
+                            .filter(|c| c.root_file_id == f.file_id)
+                            .map(|c| (c.input_span.start_byte, c.input_span.end_byte)),
+                    )
                 } else if selected_profile == profiles::Profile::KnuWithGeometryPackage {
                     observations::observe_geometry_package(
                         facts,
@@ -610,6 +658,24 @@ pub fn analyze_source(metadata_json: &str, packed_bytes: &[u8]) -> String {
                     )
                 },
             );
+        }
+        if is_project_margins {
+            result.reference_configuration = payload.reference_configuration.clone();
+            if let Some(context) = context {
+                let counterexamples = observations
+                    .iter()
+                    .flat_map(|f| &f.observations)
+                    .filter(|o| o.agrees == Some(false))
+                    .count();
+                if context.complete(&observations)
+                    && !result.coverage.diagnostics_truncated
+                    && counterexamples <= diag_cap_remaining as usize
+                {
+                    result.project_margin_context = Some(context);
+                } else if let Some(root) = margin_root {
+                    observations[root].limit(knu_dto::Limitation::IncludeNotResolved);
+                }
+            }
         }
         rules::evaluate(
             &mut result,

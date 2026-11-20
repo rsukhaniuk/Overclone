@@ -128,7 +128,15 @@ fn indent_fix(
     }]
 }
 
-fn fix(payload: &AnalyzePayload, files: &[FileObservations], bytes: &[u8]) -> Vec<FixDescriptor> {
+fn fix(
+    payload: &AnalyzePayload,
+    files: &[FileObservations],
+    bytes: &[u8],
+    project_scope: bool,
+) -> Vec<FixDescriptor> {
+    if payload.profile.version == super::project_margins::VERSION && !project_scope {
+        return vec![];
+    }
     // Broader declaration admission is not correlated fix admission.
     if payload.profile.version == profiles::FORMATTING_VERSION {
         return vec![];
@@ -137,7 +145,9 @@ fn fix(payload: &AnalyzePayload, files: &[FileObservations], bytes: &[u8]) -> Ve
     if !indent.is_empty()
         || !matches!(
             payload.profile.version.as_str(),
-            profiles::MARGIN_FIX_VERSION | profiles::GEOMETRY_PACKAGE_VERSION
+            profiles::MARGIN_FIX_VERSION
+                | profiles::GEOMETRY_PACKAGE_VERSION
+                | super::project_margins::VERSION
         )
     {
         return indent;
@@ -161,6 +171,12 @@ fn fix(payload: &AnalyzePayload, files: &[FileObservations], bytes: &[u8]) -> Ve
         })
         .collect();
     if margins.len() != 4
+        || project_scope
+            && margins
+                .iter()
+                .filter(|(_, o)| o.agrees == Some(false))
+                .count()
+                != 1
         || margins
             .iter()
             .any(|(_, o)| o.reason.is_some() || o.agrees.is_none())
@@ -246,7 +262,8 @@ pub fn evaluate(
     let latest = payload.profile.version == profiles::LATEST_VERSION
         || payload.profile.version == profiles::MARGIN_FIX_VERSION
         || payload.profile.version == profiles::GEOMETRY_PACKAGE_VERSION
-        || payload.profile.version == profiles::FORMATTING_VERSION;
+        || payload.profile.version == profiles::FORMATTING_VERSION
+        || payload.profile.version == super::project_margins::VERSION;
     let formatting = payload.profile.version == profiles::FORMATTING_VERSION;
     let paper_count = files
         .iter()
@@ -275,6 +292,10 @@ pub fn evaluate(
     let includes = files
         .iter()
         .any(|f| f.limitations.contains(&Limitation::IncludeNotResolved));
+    let scoped_child = result
+        .project_margin_context
+        .as_ref()
+        .map(|scope| scope.included_file_id.as_str());
     for file in &mut files {
         if !file.eligible {
             continue;
@@ -293,7 +314,10 @@ pub fn evaluate(
         if latest {
             if multiple_geometry {
                 file.limit(Limitation::MultipleGeometryDeclarations);
-                if payload.profile.version == profiles::GEOMETRY_PACKAGE_VERSION {
+                if matches!(
+                    payload.profile.version.as_str(),
+                    profiles::GEOMETRY_PACKAGE_VERSION | super::project_margins::VERSION
+                ) {
                     file.limit(Limitation::UnsupportedArgument);
                 }
             }
@@ -305,7 +329,7 @@ pub fn evaluate(
                     _ => None,
                 })
                 .fold(0, |all, side| all | side);
-            if sides != 15 {
+            if sides != 15 && scoped_child != Some(file.file_id.as_str()) {
                 file.limit(Limitation::MissingMarginSides);
             }
         }
@@ -366,7 +390,11 @@ pub fn evaluate(
             .iter()
             .map(|f| PerFileOutcome {
                 file_id: f.file_id.clone(),
-                outcome: outcome(f, rule),
+                outcome: if rule == MARGINS && scoped_child == Some(f.file_id.as_str()) {
+                    Outcome::Unavailable // The declaration was scoped to the selected root.
+                } else {
+                    outcome(f, rule)
+                },
                 diagnostic_ids: result
                     .diagnostics
                     .iter()
@@ -403,7 +431,12 @@ pub fn evaluate(
     }
     let engine_aggregate_outcome = result.aggregate_outcome;
     result.aggregate_outcome = aggregate(summary);
-    let mut fix_descriptors = fix(payload, &files, packed);
+    let mut fix_descriptors = fix(
+        payload,
+        &files,
+        packed,
+        result.project_margin_context.is_some(),
+    );
     if !result.coverage.truncated_files.is_empty()
         && fix_descriptors
             .first()
