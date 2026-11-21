@@ -18,9 +18,8 @@ public sealed class CompileWorkspaceSession(WorkspaceCoordinator workspace, ICom
     private readonly CompilationSelectionState _selection = new();
     private CompileWorkspacePorts? _ports;
     private IReadOnlyList<CompileWorkspacePorts> _engines = Array.Empty<CompileWorkspacePorts>();
-    private Task? _configurationTask;
     private Guid _session;
-    private bool _disposed, _refreshing, _previousCurrent;
+    private bool _disposed, _refreshing, _previousCurrent, _readingTools;
     private AcceptedCompileOutput? _shown;
     private ValidatedCompileAttempt? _presented;
     public PdfPreviewController Preview { get; private set; } = new();
@@ -46,7 +45,7 @@ public sealed class CompileWorkspaceSession(WorkspaceCoordinator workspace, ICom
     public CompileWorkspacePorts? ConfiguredPorts => _ports;
     public IReadOnlyList<CompileWorkspacePorts> AvailableEngines => _engines;
     public AcceptedCompileOutput? DisplayedOutput => _shown;
-    public bool ReadingTools => _configurationTask is { IsCompleted: false };
+    public bool ReadingTools => _readingTools;
     public bool UsesBundledResources => configuration is LocalCompileWorkspaceConfiguration { UsesBundledResources: true };
     public bool Disposed => _disposed;
     public long SelectionVersion => _selection.Current.Version;
@@ -88,11 +87,13 @@ public sealed class CompileWorkspaceSession(WorkspaceCoordinator workspace, ICom
     public Task RefreshToolsAsync()
     {
         if (_disposed || _owner is null || ReadingTools) return Task.CompletedTask;
-        _configurationTask = _owner.Run(ReadTools);
-        _owner.ObserveOwnedOperation(_configurationTask, CompilationOwnedOperationKind.Workflow); return _configurationTask;
+        var operation = _owner.Run(ReadTools);
+        _owner.ObserveOwnedOperation(operation, CompilationOwnedOperationKind.Workflow);
+        return operation;
     }
     private async Task ReadTools()
     {
+        _readingTools = true;
         try
         {
             if (_ports is null)
@@ -115,7 +116,12 @@ public sealed class CompileWorkspaceSession(WorkspaceCoordinator workspace, ICom
         }
         catch (OperationCanceledException) { if (!_disposed) Readiness = new(false, "Unavailable", "Tool readiness was cancelled; retry explicitly."); }
         catch (Exception error) when (error is not OutOfMemoryException) { if (!_disposed) Readiness = new(false, "Unavailable", "Tools could not be checked. Retry explicitly."); }
-        if (!_disposed) { Notice = Readiness.Message; Refresh(); }
+        finally
+        {
+            // Publish the settled state before notifying the renderer.
+            _readingTools = false;
+            if (!_disposed) { Notice = Readiness.Message; Refresh(); }
+        }
     }
     public void SelectMain(FileId? id) => Run(() => { MainFile = id; ApplySelection(); });
     public void SelectEngine(string id) => Run(() =>

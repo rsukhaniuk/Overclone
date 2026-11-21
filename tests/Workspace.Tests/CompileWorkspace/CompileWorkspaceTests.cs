@@ -40,6 +40,30 @@ public sealed class CompileWorkspaceTests
         try { await session.RefreshToolsAsync(); Assert.False(session.Readiness.Ready); await session.CompileAsync(); Assert.Null(session.LastTicket); Assert.True(f.Workspace.EditText(f.Main, "local Україна 😀")); Assert.Empty(config.Workers.Created); }
         finally { await Drain(session); }
     });
+    [Fact] public void Settled_readiness_notification_enables_the_compiler_without_another_workspace_event() => Run(async () =>
+    {
+        await using var fixture = await CompilationTestWorkspace.Open();
+        var configuration = new DeferredConfiguration();
+        var session = Attach(fixture, configuration);
+        var updates = new List<(bool Reading, bool Ready)>();
+        session.Changed += () => updates.Add((session.ReadingTools, session.Readiness.Ready));
+        try
+        {
+            var checking = session.RefreshToolsAsync();
+            Assert.True(session.ReadingTools);
+            await session.RefreshToolsAsync();
+            Assert.Equal(1, configuration.Opens);
+            configuration.Permit.SetResult();
+            await checking.WaitAsync(Bound);
+            Assert.Equal((false, true), updates[^1]);
+            Assert.Single(session.AvailableEngines);
+        }
+        finally
+        {
+            configuration.Permit.TrySetResult();
+            await Drain(session);
+        }
+    });
     [Fact] public void Owner_entry_restores_ambient_context_and_defers_post() => Run(async () =>
     {
         var original = SynchronizationContext.Current; var owner = new CompileOwnerContext(Dispatcher()); bool called = false;
@@ -474,6 +498,17 @@ public sealed class CompileWorkspaceTests
         }
         public Task<CompileWorkspaceConfigurationResult> OpenAsync() => Task.FromResult(new CompileWorkspaceConfigurationResult(
             new(true, "Ready", "Modeled engines"), _first, Additional));
+    }
+    private sealed class DeferredConfiguration : ICompileWorkspaceConfiguration
+    {
+        internal readonly TaskCompletionSource Permit = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        internal int Opens { get; private set; }
+        public async Task<CompileWorkspaceConfigurationResult> OpenAsync()
+        {
+            Opens++;
+            await Permit.Task;
+            return await new Configuration().OpenAsync();
+        }
     }
     private sealed class Configuration(bool available = true, bool selectableBibliography = false, CompilationDescriptor[]? tools = null,
         IReadOnlyList<CompilationOption>? selectionOptions = null) : ICompileWorkspaceConfiguration
