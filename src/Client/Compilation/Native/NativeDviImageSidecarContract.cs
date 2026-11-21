@@ -7,6 +7,8 @@ namespace Client.Compilation.Native;
 /// <summary>Volatile PNG bounding boxes for the P19 LaTeX/DVI input phase.</summary>
 public static class NativeDviImageSidecarContract
 {
+    internal static bool Supports(NativeRuntimeProfile profile) => profile is NativeRuntimeProfile.LocalCompilerDviGraphics or NativeRuntimeProfile.LocalCompilerPdfOrigins or NativeRuntimeProfile.LocalCompilerPageLabels;
+
     private static ReadOnlySpan<byte> PngSignature => [137, 80, 78, 71, 13, 10, 26, 10];
     private static ReadOnlySpan<byte> PngEnd => [0, 0, 0, 0, 73, 69, 78, 68, 174, 66, 96, 130];
     private const int MaxHeaderChunks = 256;

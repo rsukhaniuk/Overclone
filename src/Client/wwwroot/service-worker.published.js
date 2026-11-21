@@ -211,7 +211,7 @@ const NATIVE_ROLES = Object.freeze({
 });
 const NATIVE_WORKER_POLICY = "default-src 'none'; script-src blob: 'wasm-unsafe-eval'; connect-src 'none'; worker-src 'none'; object-src 'none'";
 const NATIVE_DENY_POLICY = "default-src 'none'; script-src 'none'; connect-src 'none'; worker-src 'none'; object-src 'none'";
-const NATIVE_SOURCE_LIMIT = 32768, COMPILE_SOURCE_LIMIT = 36 * 1024;
+const NATIVE_SOURCE_LIMIT = 32768, COMPILE_SOURCE_LIMIT = 40 * 1024;
 const NATIVE_PENDING_LIMIT = 4;
 let nativePending = 0;
 

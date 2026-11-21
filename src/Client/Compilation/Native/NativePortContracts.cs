@@ -17,6 +17,7 @@ public sealed record NativePhaseReply(NativePhaseTag Tag, string Outcome, int? N
 {
     // Raw native schema1 sidecar only, not the correlated output wrapper.
     public byte[]? SourceMapGeometryPayload { get; init; }
+    public bool? SourceMapLegacyZeroOrigin { get; init; }
     public string? BootstrapSha256 { get; init; }
 }
 

@@ -10,7 +10,7 @@ const ROLES = Object.freeze({
     synctex: Object.freeze({ source: '/js/synctex-query-worker.js', entry: '/__oop/native-worker/synctex' }),
 });
 const POLICY = "default-src 'none'; script-src blob: 'wasm-unsafe-eval'; connect-src 'none'; worker-src 'none'; object-src 'none'";
-const MAX_PORTS = 16, TIMEOUT = 5000, SOURCE_LIMIT = 32768, COMPILE_SOURCE_LIMIT = 36 * 1024;
+const MAX_PORTS = 16, TIMEOUT = 5000, SOURCE_LIMIT = 32768, COMPILE_SOURCE_LIMIT = 40 * 1024;
 const states = new Map();
 let ports = 0, serviceWorkers = null;
 function checkBinding(binding) {

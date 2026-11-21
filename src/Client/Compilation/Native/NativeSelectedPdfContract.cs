@@ -1,6 +1,6 @@
 namespace Client.Compilation.Native;
 
-/// <summary>Limits for the selected pdfLaTeX result from the admitted P17–P19 closures.</summary>
+/// <summary>Limits for the selected pdfLaTeX result from the admitted P17–P21 closures.</summary>
 public static class NativeSelectedPdfContract
 {
     public const NativeRuntimeProfile Profile = NativeRuntimeProfile.LocalCompilerSelectedPdf;
@@ -15,6 +15,8 @@ public static class NativeSelectedPdfContract
         Profile => NativeCompilerSelectedPdfPins.Ready,
         NativeRuntimeProfile.LocalCompilerCoursework => NativeCompilerCourseworkPins.Ready,
         NativeRuntimeProfile.LocalCompilerDviGraphics => NativeCompilerDviGraphicsPins.Ready,
+        NativeRuntimeProfile.LocalCompilerPdfOrigins => NativeCompilerPdfOriginPins.Ready,
+        NativeRuntimeProfile.LocalCompilerPageLabels => NativeCompilerPageLabelPins.Ready,
         _ => false
     };
 
@@ -24,6 +26,8 @@ public static class NativeSelectedPdfContract
             Profile => RuntimeIdentity,
             NativeRuntimeProfile.LocalCompilerCoursework => NativeCompilerCourseworkPins.RuntimeIdentity,
             NativeRuntimeProfile.LocalCompilerDviGraphics => NativeCompilerDviGraphicsPins.RuntimeIdentity,
+            NativeRuntimeProfile.LocalCompilerPdfOrigins => NativeCompilerPdfOriginPins.RuntimeIdentity,
+            NativeRuntimeProfile.LocalCompilerPageLabels => NativeCompilerPageLabelPins.RuntimeIdentity,
             _ => null
         });
 

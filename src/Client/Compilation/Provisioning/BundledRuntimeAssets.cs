@@ -20,6 +20,10 @@ public sealed class BundledRuntimeAssets(HttpClient http, IJSRuntime? browser = 
     // Promotion is explicit: a ready closure may never fall back to older bytes.
     public static NativeRuntimeProfile CompilerProfile => CompilerAsset switch
     {
+        { Length: NativeCompilerPageLabelPins.ArchiveLength, Sha256: NativeCompilerPageLabelPins.ArchiveSha256 }
+            => NativeRuntimeProfile.LocalCompilerPageLabels,
+        { Length: NativeCompilerPdfOriginPins.ArchiveLength, Sha256: NativeCompilerPdfOriginPins.ArchiveSha256 }
+            => NativeRuntimeProfile.LocalCompilerPdfOrigins,
         { Length: NativeCompilerDviGraphicsPins.ArchiveLength, Sha256: NativeCompilerDviGraphicsPins.ArchiveSha256 }
             => NativeRuntimeProfile.LocalCompilerDviGraphics,
         { Length: NativeCompilerCourseworkPins.ArchiveLength, Sha256: NativeCompilerCourseworkPins.ArchiveSha256 }

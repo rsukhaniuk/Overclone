@@ -16,6 +16,8 @@ public sealed record NativeRuntimeLimits(int MaxFiles, int MaxFileBytes, int Max
         {
             NativeRuntimeProfile.LocalCompilerCoursework => NativeCompilerCourseworkPins.TotalBytes,
             NativeRuntimeProfile.LocalCompilerDviGraphics => NativeCompilerDviGraphicsPins.TotalBytes,
+            NativeRuntimeProfile.LocalCompilerPdfOrigins => NativeCompilerPdfOriginPins.TotalBytes,
+            NativeRuntimeProfile.LocalCompilerPageLabels => NativeCompilerPageLabelPins.TotalBytes,
             _ => NativeRuntimeProfiles.MaxTotalBytes(Profile)
         });
 }
@@ -63,6 +65,8 @@ public sealed class NativeRuntimePackage
         NativeRuntimeProfile.LocalCompilerSelectedPdf => new("local-compiler-selected-pdf", "1", identity),
         NativeRuntimeProfile.LocalCompilerCoursework => new("local-compiler-coursework", "1", identity),
         NativeRuntimeProfile.LocalCompilerDviGraphics => new("local-compiler-dvi-graphics", "1", identity),
+        NativeRuntimeProfile.LocalCompilerPdfOrigins => new("local-compiler-pdftex-origin", "1", identity),
+        NativeRuntimeProfile.LocalCompilerPageLabels => new("local-compiler-dvi-page-labels", "1", identity),
         NativeRuntimeProfile.LocalCompilerInputBudget => new("local-compiler-input-budget", "1", identity),
         _ => throw new InvalidOperationException("Unknown trusted runtime profile.")
     };
@@ -113,30 +117,31 @@ public sealed class NativeRuntimePackage
         .OrderBy(x => x.Key, StringComparer.Ordinal).Select(x => new NativeFileTransfer(x.Key, x.Value.ToArray())).ToArray();
 
     internal NativeCompilerComponent ComponentFor(NativeCompilerEngine engine) => NativeCompilerComponents.For(Profile, engine);
-    internal string ConverterStemFor(NativeCompilerEngine engine) => Profile is NativeRuntimeProfile.LocalCompilerDviGraphics or NativeRuntimeProfile.LocalCompilerCoursework or NativeSelectedPdfContract.Profile or NativeInputBudgetContract.Profile or NativeOriginCompilerContract.Profile or NativeThesisCompilerContract.Profile or NativeBiberCompilerContract.Profile or NativeXeNavigationContract.Profile or NativeGraphicsNavigationContract.Profile or NativeUnicodeCompilerContract.Profile && engine == NativeCompilerEngine.XeLaTeX
+    internal string ConverterStemFor(NativeCompilerEngine engine) => Profile is NativeRuntimeProfile.LocalCompilerPageLabels or NativeRuntimeProfile.LocalCompilerPdfOrigins or NativeRuntimeProfile.LocalCompilerDviGraphics or NativeRuntimeProfile.LocalCompilerCoursework or NativeSelectedPdfContract.Profile or NativeInputBudgetContract.Profile or NativeOriginCompilerContract.Profile or NativeThesisCompilerContract.Profile or NativeBiberCompilerContract.Profile or NativeXeNavigationContract.Profile or NativeGraphicsNavigationContract.Profile or NativeUnicodeCompilerContract.Profile && engine == NativeCompilerEngine.XeLaTeX
         ? "xdv-map-converter" : NativeNavigationContract.IsNavigationProfile(Profile) && engine == NativeCompilerEngine.LaTeXDvi ? "dvi-map-converter" : "dvi-converter";
     internal string ConverterLoaderHashFor(NativeCompilerEngine engine) => NativeInputBudgetContract.Enabled(Profile) && engine is NativeCompilerEngine.LaTeXDvi or NativeCompilerEngine.XeLaTeX
         ? engine == NativeCompilerEngine.LaTeXDvi ? NativeCompilerInputBudgetPins.DviConverterLoaderHash : NativeCompilerInputBudgetPins.XeConverterLoaderHash
         : Profile == NativeOriginCompilerContract.Profile && engine is NativeCompilerEngine.LaTeXDvi or NativeCompilerEngine.XeLaTeX
         ? engine == NativeCompilerEngine.LaTeXDvi ? NativeCompilerOriginPins.DviConverterLoaderHash : NativeCompilerOriginPins.XeConverterLoaderHash
         : NativeRuntimeProfiles.SupportsBiber(Profile) && engine == NativeCompilerEngine.LaTeXDvi
-        ? NativeCompilerBiberPins.ConverterLoaderHash : Profile is NativeRuntimeProfile.LocalCompilerDviGraphics or NativeRuntimeProfile.LocalCompilerCoursework or NativeSelectedPdfContract.Profile or NativeInputBudgetContract.Profile or NativeOriginCompilerContract.Profile or NativeThesisCompilerContract.Profile or NativeBiberCompilerContract.Profile or NativeGraphicsNavigationContract.Profile or NativeUnicodeCompilerContract.Profile && engine is NativeCompilerEngine.LaTeXDvi or NativeCompilerEngine.XeLaTeX
+        ? NativeCompilerBiberPins.ConverterLoaderHash : Profile is NativeRuntimeProfile.LocalCompilerPageLabels or NativeRuntimeProfile.LocalCompilerPdfOrigins or NativeRuntimeProfile.LocalCompilerDviGraphics or NativeRuntimeProfile.LocalCompilerCoursework or NativeSelectedPdfContract.Profile or NativeInputBudgetContract.Profile or NativeOriginCompilerContract.Profile or NativeThesisCompilerContract.Profile or NativeBiberCompilerContract.Profile or NativeGraphicsNavigationContract.Profile or NativeUnicodeCompilerContract.Profile && engine is NativeCompilerEngine.LaTeXDvi or NativeCompilerEngine.XeLaTeX
         ? NativeCompilerGraphicsNavigationPins.ConverterLoaderHash : Profile == NativeXeNavigationContract.Profile && engine == NativeCompilerEngine.XeLaTeX
         ? NativeCompilerXeNavigationPins.ConverterLoaderHash : NativeNavigationContract.IsNavigationProfile(Profile) && engine == NativeCompilerEngine.LaTeXDvi ? NativeCompilerNavigationPins.ConverterLoaderHash : ConverterLoaderHash;
-    internal string ConverterWasmHashFor(NativeCompilerEngine engine) => IsDviGraphics && engine == NativeCompilerEngine.LaTeXDvi
+    internal string ConverterWasmHashFor(NativeCompilerEngine engine) => Profile == NativeRuntimeProfile.LocalCompilerPageLabels && engine == NativeCompilerEngine.LaTeXDvi
+        ? NativeCompilerPageLabelPins.DviConverterWasmHash : IsDviGraphics && engine == NativeCompilerEngine.LaTeXDvi
         ? NativeCompilerDviGraphicsPins.DviConverterWasmHash : NativeInputBudgetContract.Enabled(Profile) && engine is NativeCompilerEngine.LaTeXDvi or NativeCompilerEngine.XeLaTeX
         ? engine == NativeCompilerEngine.LaTeXDvi ? NativeCompilerInputBudgetPins.DviConverterWasmHash : NativeCompilerInputBudgetPins.XeConverterWasmHash
         : Profile == NativeOriginCompilerContract.Profile && engine is NativeCompilerEngine.LaTeXDvi or NativeCompilerEngine.XeLaTeX
         ? engine == NativeCompilerEngine.LaTeXDvi ? NativeCompilerOriginPins.DviConverterWasmHash : NativeCompilerOriginPins.XeConverterWasmHash
         : NativeRuntimeProfiles.SupportsBiber(Profile) && engine == NativeCompilerEngine.LaTeXDvi
-        ? NativeCompilerBiberPins.ConverterWasmHash : Profile is NativeRuntimeProfile.LocalCompilerDviGraphics or NativeRuntimeProfile.LocalCompilerCoursework or NativeSelectedPdfContract.Profile or NativeInputBudgetContract.Profile or NativeOriginCompilerContract.Profile or NativeThesisCompilerContract.Profile or NativeBiberCompilerContract.Profile or NativeGraphicsNavigationContract.Profile or NativeUnicodeCompilerContract.Profile && engine is NativeCompilerEngine.LaTeXDvi or NativeCompilerEngine.XeLaTeX
+        ? NativeCompilerBiberPins.ConverterWasmHash : Profile is NativeRuntimeProfile.LocalCompilerPageLabels or NativeRuntimeProfile.LocalCompilerPdfOrigins or NativeRuntimeProfile.LocalCompilerDviGraphics or NativeRuntimeProfile.LocalCompilerCoursework or NativeSelectedPdfContract.Profile or NativeInputBudgetContract.Profile or NativeOriginCompilerContract.Profile or NativeThesisCompilerContract.Profile or NativeBiberCompilerContract.Profile or NativeGraphicsNavigationContract.Profile or NativeUnicodeCompilerContract.Profile && engine is NativeCompilerEngine.LaTeXDvi or NativeCompilerEngine.XeLaTeX
         ? engine == NativeCompilerEngine.XeLaTeX ? NativeCompilerGraphicsNavigationPins.XeWasmHash : NativeCompilerGraphicsNavigationPins.DviWasmHash
         : Profile == NativeXeNavigationContract.Profile && engine == NativeCompilerEngine.XeLaTeX
         ? NativeCompilerXeNavigationPins.ConverterWasmHash : NativeNavigationContract.IsNavigationProfile(Profile) && engine == NativeCompilerEngine.LaTeXDvi ? NativeCompilerNavigationPins.ConverterWasmHash : ConverterWasmHash;
     public CompilationDescriptor EngineFor(NativeCompilerEngine engine) => engine switch
     {
         NativeCompilerEngine.PdfLaTeX => Engine, NativeCompilerEngine.LaTeXDvi => DviEngine,
-        NativeCompilerEngine.XeLaTeX => Profile is NativeRuntimeProfile.LocalCompilerDviGraphics or NativeRuntimeProfile.LocalCompilerCoursework or NativeSelectedPdfContract.Profile or NativeInputBudgetContract.Profile or NativeOriginCompilerContract.Profile or NativeThesisCompilerContract.Profile or NativeBiberCompilerContract.Profile or NativeXeNavigationContract.Profile or NativeGraphicsNavigationContract.Profile or NativeUnicodeCompilerContract.Profile
+        NativeCompilerEngine.XeLaTeX => Profile is NativeRuntimeProfile.LocalCompilerPageLabels or NativeRuntimeProfile.LocalCompilerPdfOrigins or NativeRuntimeProfile.LocalCompilerDviGraphics or NativeRuntimeProfile.LocalCompilerCoursework or NativeSelectedPdfContract.Profile or NativeInputBudgetContract.Profile or NativeOriginCompilerContract.Profile or NativeThesisCompilerContract.Profile or NativeBiberCompilerContract.Profile or NativeXeNavigationContract.Profile or NativeGraphicsNavigationContract.Profile or NativeUnicodeCompilerContract.Profile
             ? new("xelatex", ComponentFor(engine).EngineVersion, new(ComponentFor(engine).WasmHash))
             : new("xelatex", "native-v1", new(NativeCompilerSuitePins.XeWasmHash)),
         NativeCompilerEngine.LuaLaTeX => new("lualatex", ComponentFor(engine).EngineVersion, new(ComponentFor(engine).WasmHash)),
@@ -145,14 +150,14 @@ public sealed class NativeRuntimePackage
     public CompileOutputDescriptor AdapterFor(NativeCompilerEngine engine) => engine switch
     {
         NativeCompilerEngine.PdfLaTeX => OutputAdapter, NativeCompilerEngine.LaTeXDvi => DviOutputAdapter,
-        NativeCompilerEngine.XeLaTeX => Profile is NativeRuntimeProfile.LocalCompilerDviGraphics or NativeRuntimeProfile.LocalCompilerCoursework or NativeSelectedPdfContract.Profile or NativeInputBudgetContract.Profile or NativeOriginCompilerContract.Profile or NativeThesisCompilerContract.Profile or NativeBiberCompilerContract.Profile or NativeXeNavigationContract.Profile or NativeGraphicsNavigationContract.Profile or NativeUnicodeCompilerContract.Profile ? ComponentFor(engine).OutputAdapter : NativeCompilerSuiteContract.XeOutputAdapter,
+        NativeCompilerEngine.XeLaTeX => Profile is NativeRuntimeProfile.LocalCompilerPageLabels or NativeRuntimeProfile.LocalCompilerPdfOrigins or NativeRuntimeProfile.LocalCompilerDviGraphics or NativeRuntimeProfile.LocalCompilerCoursework or NativeSelectedPdfContract.Profile or NativeInputBudgetContract.Profile or NativeOriginCompilerContract.Profile or NativeThesisCompilerContract.Profile or NativeBiberCompilerContract.Profile or NativeXeNavigationContract.Profile or NativeGraphicsNavigationContract.Profile or NativeUnicodeCompilerContract.Profile ? ComponentFor(engine).OutputAdapter : NativeCompilerSuiteContract.XeOutputAdapter,
         NativeCompilerEngine.LuaLaTeX => ComponentFor(engine).OutputAdapter,
         _ => throw new ArgumentOutOfRangeException(nameof(engine))
     };
     private bool IsSelectedPdfResource(string name) => NativeSelectedPdfContract.Supports(Profile)
         && NativeCompilerSelectedPdfPins.IsAddedResource(name);
-    private bool IsDviGraphics => Profile == NativeRuntimeProfile.LocalCompilerDviGraphics;
-    private bool HasCoursework => Profile is NativeRuntimeProfile.LocalCompilerCoursework or NativeRuntimeProfile.LocalCompilerDviGraphics;
+    private bool IsDviGraphics => NativeDviImageSidecarContract.Supports(Profile);
+    private bool HasCoursework => Profile is NativeRuntimeProfile.LocalCompilerCoursework or NativeRuntimeProfile.LocalCompilerDviGraphics or NativeRuntimeProfile.LocalCompilerPdfOrigins or NativeRuntimeProfile.LocalCompilerPageLabels;
     private bool IsLuaOnlyResource(string name) => HasCoursework && NativeCompilerCourseworkPins.IsLuaOnlyResource(name);
     private IEnumerable<KeyValuePair<string, byte[]>> SuiteFiles(NativeCompilerEngine engine)
     {
@@ -251,9 +256,10 @@ public sealed class NativeRuntimePackage
             .Select(x => FormattableString.Invariant($"{x.Name}\t{x.Length}\t{x.Sha256}")))));
     internal static bool Name(string? name, NativeRuntimeProfile profile) => NativeRuntimeProfiles.IsSuite(profile)
         ? NativeCompilerSuiteContract.ResourceName(name) || (NativeInputBudgetContract.Enabled(profile) && NativeInputBudgetContract.NoticeName(name)
-            || profile is NativeRuntimeProfile.LocalCompilerCoursework or NativeRuntimeProfile.LocalCompilerDviGraphics
+            || profile is NativeRuntimeProfile.LocalCompilerCoursework or NativeRuntimeProfile.LocalCompilerDviGraphics or NativeRuntimeProfile.LocalCompilerPdfOrigins or NativeRuntimeProfile.LocalCompilerPageLabels
                 && NativeCompilerCourseworkPins.NoticeName(name)
-            || profile == NativeRuntimeProfile.LocalCompilerDviGraphics && NativeCompilerDviGraphicsPins.NoticeName(name)
+            || profile is (NativeRuntimeProfile.LocalCompilerDviGraphics or NativeRuntimeProfile.LocalCompilerPdfOrigins or NativeRuntimeProfile.LocalCompilerPageLabels) && NativeCompilerDviGraphicsPins.NoticeName(name)
+            || profile == NativeRuntimeProfile.LocalCompilerPageLabels && NativeCompilerPageLabelPins.NoticeName(name)
             || profile == NativeBiberCompilerContract.Profile && NativeBiberCompilerContract.NoticeName(name)
             || profile is NativeThesisCompilerContract.Profile or NativeOriginCompilerContract.Profile && NativeThesisCompilerContract.NoticeName(name))
         : name is { Length: > 0 and <= 200 } && name.All(c => char.IsAsciiLetterOrDigit(c) || c is '.' or '-' or '_');

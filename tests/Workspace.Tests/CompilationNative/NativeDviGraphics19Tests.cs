@@ -1,8 +1,6 @@
-using System.Net;
 using System.Reflection;
 using Client.Compilation.Native;
 using Client.Compilation.Provisioning;
-using Client.RuntimeAssets;
 using Xunit;
 
 namespace Workspace.Tests.CompilationNative;
@@ -13,9 +11,8 @@ public sealed class NativeDviGraphics19Tests
     private const NativeRuntimeProfile Parent = NativeRuntimeProfile.LocalCompilerCoursework;
 
     [Fact]
-    public async Task Default_admits_exact_P19_without_expanding_ordinary_import()
+    public async Task Exact_P19_still_admits_DVI_without_expanding_ordinary_import()
     {
-        Assert.Equal(Profile, BundledRuntimeAssets.CompilerProfile);
         Assert.NotNull(BundledRuntimeAssets.SelectedPdfCapacity);
         Assert.Equal(NativeCompilerDviGraphicsPins.TotalBytes, LocalRuntimeSelection.LimitsFor(Profile).MaxTotalBytes);
         foreach (var engine in Enum.GetValues<NativeCompilerEngine>())
@@ -42,19 +39,17 @@ public sealed class NativeDviGraphics19Tests
     }
 
     [DviGraphicsFixtureFact]
-    public async Task Authenticated_archive_changes_only_the_DVI_projection()
+    public async Task Authenticated_inventory_changes_only_the_DVI_projection()
     {
         var root = Environment.GetEnvironmentVariable("COURSEWORK18_RUNTIME_DIR")!;
         var parentPins = LocalRuntimeSelection.ParsePins(await File.ReadAllBytesAsync(Path.Combine(root, "pins.json")));
         var parent = Assert.IsType<NativeRuntimePackage>(NativeRuntimePackage.Create(parentPins.Select(pin => new NativeResourceInput(pin.Name,
             File.ReadAllBytes(Path.Combine(root, "files", pin.Name)))).ToArray(), parentPins, LocalRuntimeSelection.LimitsFor(Parent), Parent).Package);
-        using var handler = new ArchiveHandler(Environment.GetEnvironmentVariable("DVI_GRAPHICS19_ARCHIVE")!);
-        await using var resources = new BundledRuntimeAssets(new HttpClient(handler) { BaseAddress = new("http://localhost/") });
-        var installed = await resources.ReadCompilerAsync();
-        Assert.Equal(RuntimeAssetStatus.Ready, installed.Store.Status);
-        var runtime = Assert.IsType<NativeRuntimePackage>(installed.Package);
+        var dviRoot = Environment.GetEnvironmentVariable("DVI_GRAPHICS19_RUNTIME_DIR")!;
+        var dviPins = LocalRuntimeSelection.ParsePins(await File.ReadAllBytesAsync(Path.Combine(dviRoot, "pins.json")));
+        var runtime = Assert.IsType<NativeRuntimePackage>(NativeRuntimePackage.Create(dviPins.Select(pin => new NativeResourceInput(pin.Name,
+            File.ReadAllBytes(Path.Combine(dviRoot, "files", pin.Name)))).ToArray(), dviPins, LocalRuntimeSelection.LimitsFor(Profile), Profile).Package);
         Assert.Equal(NativeCompilerDviGraphicsPins.RuntimeIdentity, runtime.Identity.Hex);
-        Assert.Equal(["/bundled-runtime/compiler-suite.zip"], handler.Requests);
         foreach (var engine in new[] { NativeCompilerEngine.PdfLaTeX, NativeCompilerEngine.LuaLaTeX, NativeCompilerEngine.XeLaTeX })
             Assert.Equal(Projection(parent, engine, "SuiteFileLengths"), Projection(runtime, engine, "SuiteFileLengths"));
         var before = Projection(parent, NativeCompilerEngine.LaTeXDvi, "SuiteFileLengths");
@@ -77,22 +72,12 @@ public sealed class NativeDviGraphics19Tests
             .GetMethod(member, BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(package, [engine])!)
         .OrderBy(p => p.Name, StringComparer.Ordinal).ToArray();
 
-    private sealed class ArchiveHandler(string file) : HttpMessageHandler
-    {
-        public List<string> Requests { get; } = [];
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
-        {
-            Requests.Add(request.RequestUri!.AbsolutePath);
-            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StreamContent(File.OpenRead(file)) });
-        }
-    }
-
     private sealed class DviGraphicsFixtureFactAttribute : FactAttribute
     {
         public DviGraphicsFixtureFactAttribute()
         {
             if (!File.Exists(Path.Combine(Environment.GetEnvironmentVariable("COURSEWORK18_RUNTIME_DIR") ?? "", "pins.json"))
-                || !File.Exists(Environment.GetEnvironmentVariable("DVI_GRAPHICS19_ARCHIVE")))
+                || !File.Exists(Path.Combine(Environment.GetEnvironmentVariable("DVI_GRAPHICS19_RUNTIME_DIR") ?? "", "pins.json")))
                 Skip = "Explicit exact P18 inventory and P19 compiler archive required.";
         }
     }

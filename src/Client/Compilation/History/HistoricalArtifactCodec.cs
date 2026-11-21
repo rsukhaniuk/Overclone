@@ -57,16 +57,20 @@ internal static class HistoricalArtifactCodec
         var selection = CompilationSelection.Create(value.Selection, budget.Input.MaxMetadataBytes).Selection; Check(selection is not null);
         if (value.PdfLength > PdfDocument.DefaultInputBytes)
         {
-            var component = NativeCompilerComponents.For(NativeSelectedPdfContract.Profile, NativeCompilerEngine.PdfLaTeX);
-            var engine = new CompilationDescriptor(NativeRuntimePackage.EngineId, component.EngineVersion, new(component.WasmHash));
-            Check(selection!.Engine == engine && selection.Bundles.Length == 1 && value.Adapter == component.OutputAdapter
-                && (MatchesLargePdfBundle(NativeSelectedPdfContract.Profile)
-                    || MatchesLargePdfBundle(NativeRuntimeProfile.LocalCompilerCoursework)
-                    || MatchesLargePdfBundle(NativeRuntimeProfile.LocalCompilerDviGraphics)));
+            Check(selection!.Bundles.Length == 1
+                && Enum.GetValues<NativeRuntimeProfile>().Any(MatchesLargePdfProfile));
 
-            bool MatchesLargePdfBundle(NativeRuntimeProfile profile) => NativeSelectedPdfContract.Supports(profile)
-                && SyncTeXRuntimeBinding.ForProfile(profile) is { } binding && selection.Bundles[0] == binding.Bundle
-                && NativeCompilerSuiteContract.MatchesOptions(selection.Options, profile, NativeCompilerEngine.PdfLaTeX);
+            bool MatchesLargePdfProfile(NativeRuntimeProfile profile)
+            {
+                if (!NativeSelectedPdfContract.Supports(profile)
+                    || SyncTeXRuntimeBinding.ForProfile(profile) is not { } binding
+                    || selection.Bundles[0] != binding.Bundle) return false;
+                const NativeCompilerEngine pdf = NativeCompilerEngine.PdfLaTeX;
+                var component = NativeCompilerComponents.For(profile, pdf);
+                return selection.Engine == new CompilationDescriptor(NativeRuntimePackage.EngineId, component.EngineVersion, new(component.WasmHash))
+                    && value.Adapter == component.OutputAdapter
+                    && NativeCompilerSuiteContract.MatchesOptions(selection.Options, profile, pdf);
+            }
         }
         Check(value.Files is not null && value.Files.Length > 0 && value.Files.Length <= budget.Input.MaxFiles);
         long total = 0; var ids = new HashSet<FileId>();

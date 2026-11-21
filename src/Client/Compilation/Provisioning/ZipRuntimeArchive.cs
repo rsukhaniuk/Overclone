@@ -48,6 +48,10 @@ public sealed class ZipRuntimeArchive : IAsyncDisposable
                 && bytes.Length == NativeCompilerCourseworkPins.ArchiveLength,
             NativeRuntimeProfile.LocalCompilerDviGraphics => NativeCompilerDviGraphicsPins.Ready
                 && bytes.Length == NativeCompilerDviGraphicsPins.ArchiveLength,
+            NativeRuntimeProfile.LocalCompilerPdfOrigins => NativeCompilerPdfOriginPins.Ready
+                && bytes.Length == NativeCompilerPdfOriginPins.ArchiveLength,
+            NativeRuntimeProfile.LocalCompilerPageLabels => NativeCompilerPageLabelPins.Ready
+                && bytes.Length == NativeCompilerPageLabelPins.ArchiveLength,
             _ => false
         };
         if (_preparation is not null || _closing || bytes.Length < 22 || bytes.Length > MaxZipBytes && !pinnedLargeArchive) throw Invalid();
@@ -168,7 +172,7 @@ internal static class ZipDirectory
         bool legacyEnvelope = count is 498 or 499 or 500 or 501 or 508 or 509;
         bool suiteEnvelope = LocalRuntimeSelection.SupportedSuiteCount(count - 1) || LocalRuntimeSelection.SupportedSuiteCount(count - 2);
         if ((!legacyEnvelope && !suiteEnvelope) || U16(b, end + 8) != count) throw Invalid();
-        bool largeArchive = largeArchiveProfile is NativeRuntimeProfile.LocalCompilerCoursework or NativeRuntimeProfile.LocalCompilerDviGraphics;
+        bool largeArchive = largeArchiveProfile is NativeRuntimeProfile.LocalCompilerCoursework or NativeRuntimeProfile.LocalCompilerDviGraphics or NativeRuntimeProfile.LocalCompilerPdfOrigins or NativeRuntimeProfile.LocalCompilerPageLabels;
         if (largeArchive)
         {
             int installed = NativeRuntimeProfiles.InstalledCount(largeArchiveProfile);
@@ -250,9 +254,10 @@ internal static class ZipDirectory
         if (!name.StartsWith("files/", StringComparison.Ordinal)) return false;
         var flat = name[6..];
         return suite ? NativeCompilerSuiteContract.ResourceName(flat) || NativeThesisCompilerContract.NoticeName(flat) || NativeInputBudgetContract.NoticeName(flat)
-            || largeArchiveProfile is NativeRuntimeProfile.LocalCompilerCoursework or NativeRuntimeProfile.LocalCompilerDviGraphics
+            || largeArchiveProfile is NativeRuntimeProfile.LocalCompilerCoursework or NativeRuntimeProfile.LocalCompilerDviGraphics or NativeRuntimeProfile.LocalCompilerPdfOrigins or NativeRuntimeProfile.LocalCompilerPageLabels
                 && NativeCompilerCourseworkPins.NoticeName(flat)
-            || largeArchiveProfile == NativeRuntimeProfile.LocalCompilerDviGraphics && NativeCompilerDviGraphicsPins.NoticeName(flat)
+            || largeArchiveProfile is (NativeRuntimeProfile.LocalCompilerDviGraphics or NativeRuntimeProfile.LocalCompilerPdfOrigins or NativeRuntimeProfile.LocalCompilerPageLabels) && NativeCompilerDviGraphicsPins.NoticeName(flat)
+            || largeArchiveProfile == NativeRuntimeProfile.LocalCompilerPageLabels && NativeCompilerPageLabelPins.NoticeName(flat)
             : flat.Length is > 0 and <= 200 && flat.All(c => char.IsAsciiLetterOrDigit(c) || c is '.' or '-' or '_')
             && flat is not ("." or "..");
     }

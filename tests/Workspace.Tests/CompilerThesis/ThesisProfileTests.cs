@@ -41,7 +41,7 @@ public sealed class ThesisProfileTests
             Assert.Equal(NativeCompilerSuiteContract.Files + 192, old.MaxPhaseFiles);
             Assert.False((old with { MaxPhaseFiles = NativeCompilerSuiteContract.Files + 256 }).IsValid);
         }
-        foreach (var unknown in new[] { (NativeRuntimeProfile)11, (NativeRuntimeProfile)20, (NativeRuntimeProfile)int.MaxValue })
+        foreach (var unknown in new[] { (NativeRuntimeProfile)11, (NativeRuntimeProfile)22, (NativeRuntimeProfile)int.MaxValue })
         {
             Assert.False(NativeRuntimeProfiles.Known(unknown));
             Assert.Equal(64, NativeRuntimeProfiles.ProjectFileLimit(unknown));
@@ -167,7 +167,7 @@ public sealed class ThesisProfileTests
     [InlineData(65, 17, true)]
     [InlineData(65, 18, true)]
     [InlineData(65, 19, true)]
-    [InlineData(65, 20, false)]
+    [InlineData(65, 22, false)]
     [InlineData(127, 14, true)]
     [InlineData(128, 14, true)]
     [InlineData(129, 14, false)]

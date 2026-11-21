@@ -122,6 +122,7 @@ public sealed class NativeCompilationWorkerFactory : ICompilationWorkerFactory
                 bool dviOutput = factory._plan.DviOutput;
                 bool convertingOutput = dviOutput || xe;
                 bool measuredMapping = NativeNavigationContract.IsMapped(factory._plan.Profile, factory._plan.EffectivePhaseVersion, engine);
+                bool directPdfMapping = NativeNavigationContract.IsDirectPdfMapped(factory._plan.Profile, factory._plan.EffectivePhaseVersion, engine);
                 bool sourceMapping = measuredMapping || factory._plan.EffectivePhaseVersion == NativeSyncTeXContract.Version
                     || NativeRuntimeProfiles.SupportsBiber(factory._plan.Profile) && engine == NativeCompilerEngine.PdfLaTeX;
                 bool selectedEntry = suite || dviOutput || sourceMapping || factory._plan.EffectivePhaseVersion == NativeSelectedEntryContract.Version;
@@ -200,10 +201,10 @@ public sealed class NativeCompilationWorkerFactory : ICompilationWorkerFactory
                     .Concat(snapshot.Files.Where(f => f.RelativePath.EndsWith(".tex", StringComparison.Ordinal) && f.RelativePath != "main.tex")
                         .Select(f => f.RelativePath[..^4] + ".aux")).Distinct(StringComparer.Ordinal).ToArray();
                 if (outputs.Length > (v4 ? NativeRuntimeProfiles.OutputDeclarationLimit(factory._plan.Profile) : 64)
-                    || factory._plan.Profile is NativeRuntimeProfile.LocalCompilerDviGraphics or NativeRuntimeProfile.LocalCompilerCoursework or NativeSelectedPdfContract.Profile or NativeInputBudgetContract.Profile or NativeThesisCompilerContract.Profile or NativeOriginCompilerContract.Profile && lua && !NativeThesisCompilerContract.LuaOutputDeclarationsFit(outputs)
+                    || factory._plan.Profile is NativeRuntimeProfile.LocalCompilerPageLabels or NativeRuntimeProfile.LocalCompilerPdfOrigins or NativeRuntimeProfile.LocalCompilerDviGraphics or NativeRuntimeProfile.LocalCompilerCoursework or NativeSelectedPdfContract.Profile or NativeInputBudgetContract.Profile or NativeThesisCompilerContract.Profile or NativeOriginCompilerContract.Profile && lua && !NativeThesisCompilerContract.LuaOutputDeclarationsFit(outputs)
                     || snapshot.Files.Any(f => outputs.Contains(f.RelativePath, StringComparer.Ordinal)))
                     return Finish(CompileOutputStatus.Failed, "generated-input-collision");
-                var dviImageSidecars = factory._plan.Profile == NativeRuntimeProfile.LocalCompilerDviGraphics && engine == NativeCompilerEngine.LaTeXDvi
+                var dviImageSidecars = dviOutput && NativeDviImageSidecarContract.Supports(factory._plan.Profile)
                     ? NativeDviImageSidecarContract.Create(snapshot.Files, outputs, token) : [];
                 var generated = new Dictionary<string, byte[]>(StringComparer.Ordinal);
                 string? previous = null, lastBibtexInput = null; int stable = 0, ordinal = 0;
@@ -323,12 +324,14 @@ public sealed class NativeCompilationWorkerFactory : ICompilationWorkerFactory
                     var map = finalLatex.SourceMapPayload?.ToArray();
                     var bibliography = entry is not null && producedBibtexBbl is { } produced
                         ? CompiledBibliographyEvidence.Capture(snapshot, finalLatex, entry, files, produced) : null;
-                    if (!measuredMapping)
+                    if (!measuredMapping || directPdfMapping && finalLatex.SourceMapLegacyZeroOrigin == true
+                        && map is { Length: > 0 } && sidecar is null)
                         return Finish(CompileOutputStatus.Succeeded, "converged", pdf, map) with { BibliographyEvidence = bibliography };
                     var assembled = NativeNavigationContract.Assemble(engine, finalLatex.Tag, sidecar, map, pdf, intermediate, limits);
                     // Never let optional native data invalidate a usable PDF, or
                     // allow measured engines to fall back to guessed zero origins.
                     var result = assembled.Artifact is { } geometry
+                        && (!directPdfMapping || geometry.Geometry.Pages.Any(page => page.Status == "available"))
                         ? Finish(CompileOutputStatus.Succeeded, "converged", pdf, map, geometry)
                         : Finish(CompileOutputStatus.Succeeded, "converged", pdf, navigationLimited: true);
                     return result with { BibliographyEvidence = bibliography };
@@ -434,7 +437,7 @@ public sealed class NativeCompilationWorkerFactory : ICompilationWorkerFactory
                             || lengths.Sum(f => (long)f.Item2) > factory._plan.MaxInputBytes) throw new NativeResourceLimitException();
                         if (suite)
                         {
-                            int resourceCap = tool == "bibtex" ? NativeCompilerSuiteContract.TotalBytes : lua ? factory._plan.Profile is NativeUnicodeCompilerContract.Profile or NativeBiberCompilerContract.Profile or NativeThesisCompilerContract.Profile or NativeOriginCompilerContract.Profile or NativeInputBudgetContract.Profile or NativeSelectedPdfContract.Profile or NativeRuntimeProfile.LocalCompilerDviGraphics or NativeRuntimeProfile.LocalCompilerCoursework ? NativeUnicodeCompilerContract.LuaResourceBytes : 96 * 1024 * 1024 : xe ? 160 * 1024 * 1024 : NativeCompilerSuiteContract.TotalBytes;
+                            int resourceCap = tool == "bibtex" ? NativeCompilerSuiteContract.TotalBytes : lua ? factory._plan.Profile is NativeUnicodeCompilerContract.Profile or NativeBiberCompilerContract.Profile or NativeThesisCompilerContract.Profile or NativeOriginCompilerContract.Profile or NativeInputBudgetContract.Profile or NativeSelectedPdfContract.Profile or NativeRuntimeProfile.LocalCompilerPageLabels or NativeRuntimeProfile.LocalCompilerPdfOrigins or NativeRuntimeProfile.LocalCompilerDviGraphics or NativeRuntimeProfile.LocalCompilerCoursework ? NativeUnicodeCompilerContract.LuaResourceBytes : 96 * 1024 * 1024 : xe ? 160 * 1024 * 1024 : NativeCompilerSuiteContract.TotalBytes;
                             int resourceCount = tool == "latex" && lua ? 4608 : NativeCompilerSuiteContract.Files;
                             if (phaseLengths.Length > resourceCount || phaseLengths.Sum(f => (long)f.Length) > resourceCap
                                 || snapshot.Files.Sum(f => f.ByteLength) + generated.Sum(f => (long)f.Value.Length)
@@ -480,7 +483,7 @@ public sealed class NativeCompilationWorkerFactory : ICompilationWorkerFactory
                         sidecars.Length == 0 ? null : sidecars.Select(f => f.Lease).ToArray());
                     var reply = await factory.Operations.RunAsync(() => { lock (_dispatch) { Check(); return factory._transport.ExecuteAsync(request); } }, token).ConfigureAwait(false);
                     Check();
-                    if (reply is { Outcome: "transport-timeout", NativeReturn: null, Files.Length: 0, SourceMapPayload: null, SourceMapGeometryPayload: null } && reply.Tag == tag)
+                    if (reply is { Outcome: "transport-timeout", NativeReturn: null, Files.Length: 0, SourceMapPayload: null, SourceMapGeometryPayload: null, SourceMapLegacyZeroOrigin: null } && reply.Tag == tag)
                     {
                         factory.Observe(new(tag, sent, reply)); return (reply, new Dictionary<string, byte[]>(StringComparer.Ordinal));
                     }
@@ -496,11 +499,13 @@ public sealed class NativeCompilationWorkerFactory : ICompilationWorkerFactory
                         || reply.Files.Length != 0 || reply.SourceMapPayload is not null || reply.SourceMapGeometryPayload is not null)) return null;
                     bool successful = reply.Outcome == "native-return" && reply.NativeReturn == 0;
                     bool mapCell = sourceMapping && tool == "latex";
-                    bool geometryCell = measuredMapping && (lua && tool == "latex" || (dviOutput || xe) && converting);
+                    bool directPdfCell = directPdfMapping && tool == "latex";
+                    bool geometryCell = directPdfCell || measuredMapping && (lua && tool == "latex" || (dviOutput || xe) && converting);
                     // Unexpected fields are a malformed transport frame. Within
                     // the new optional cells, bounded bad data is omitted below.
                     if (reply.SourceMapPayload is not null && (!mapCell || !successful)
-                        || reply.SourceMapGeometryPayload is not null && (!geometryCell || !successful)) return null;
+                        || reply.SourceMapGeometryPayload is not null && (!geometryCell || !successful)
+                        || reply.SourceMapLegacyZeroOrigin is not null && (!directPdfCell || !successful)) return null;
                     if (!measuredMapping && reply.SourceMapPayload is { } oldMap
                         && oldMap.Length is < 1 or > NativeSyncTeXContract.MaxMapBytes) return null;
                     long total = 0; var names = new HashSet<string>(StringComparer.Ordinal);
@@ -519,10 +524,21 @@ public sealed class NativeCompilationWorkerFactory : ICompilationWorkerFactory
                     var owned = reply.Files.ToDictionary(f => f.Name, f => f.Bytes.ToArray(), StringComparer.Ordinal);
                     if (Encoding.UTF8.GetByteCount(log.ToString()) + Encoding.UTF8.GetByteCount(reply.Log) > limits.MaxLogBytes) throw new NativeResourceLimitException();
                     log.Append(reply.Log);
+                    var validMap = reply.SourceMapPayload is { Length: > 0 and <= NativeSyncTeXContract.MaxMapBytes } map ? map : null;
+                    var validGeometry = reply.SourceMapGeometryPayload is { Length: > 0 and <= SourceMapGeometryCodec.MaxBytes } geometry ? geometry : null;
+                    bool legacyZeroOrigin = directPdfCell && reply.SourceMapLegacyZeroOrigin == true
+                        && reply.SourceMapGeometryPayload is null && validMap is not null;
+                    if (directPdfCell && !legacyZeroOrigin
+                        && (reply.SourceMapLegacyZeroOrigin is not null || validMap is null || validGeometry is null))
+                    {
+                        validMap = null;
+                        validGeometry = null;
+                    }
                     reply = reply with
                     {
-                        SourceMapPayload = reply.SourceMapPayload is { Length: > 0 and <= NativeSyncTeXContract.MaxMapBytes } validMap ? validMap.ToArray() : null,
-                        SourceMapGeometryPayload = reply.SourceMapGeometryPayload is { Length: > 0 and <= SourceMapGeometryCodec.MaxBytes } validGeometry ? validGeometry.ToArray() : null
+                        SourceMapPayload = validMap?.ToArray(),
+                        SourceMapGeometryPayload = validGeometry?.ToArray(),
+                        SourceMapLegacyZeroOrigin = legacyZeroOrigin ? true : null
                     };
                     var observation = reply with { Files = owned.Select(x => new NativeFileTransfer(x.Key, x.Value.ToArray())).ToArray(), Inputs = reply.Inputs.ToArray(),
                         SourceMapPayload = reply.SourceMapPayload?.ToArray(), SourceMapGeometryPayload = reply.SourceMapGeometryPayload?.ToArray() };

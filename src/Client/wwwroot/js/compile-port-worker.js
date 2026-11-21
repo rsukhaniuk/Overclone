@@ -1,16 +1,21 @@
 // Native compiler/VFS glue.
 const pB=p=>p===13||pT(p);
-const pT=p=>p===14||p===15||p===16||p===17||p===18||p===19;
+const pT=p=>p===14||p===15||p===16||p===17||p===18||p===19||p===20||p===21;
 const pU=p=>p===12||pB(p);
 const selectedPdfIdentity="41d0bb841b4832771327e44c84ada913e75204e25c5f39d6e52204e7350bf109";
 const courseworkIdentity="f4ad5c7f702efc4f90d7a803ad6c697be0b3664b4ca90f837c8e6bd74ca88a40";
 const dviGraphicsIdentity="1974b526f3a47b33f60d5a5384f14b3c618ac996d950ab514e13ef119d06bc79";
-const selectedPdfProfile=p=>p===17||p===18||p===19;
-const selectedPdfRuntime=p=>p===17?selectedPdfIdentity:p===18?courseworkIdentity:dviGraphicsIdentity;
+const pdfOriginIdentity="84abead5a2feb357d52ff01364f5b72ed099610c40a8c0428ac10f9a64b0e652";
+const pageLabelIdentity="eb47ed92ac9efcdc7277c6b3dd1c5861abde63213e440d40aa7c201af6f4d692";
+const selectedPdfProfile=p=>p===17||p===18||p===19||p===20||p===21;
+const selectedPdfRuntime=p=>p===17?selectedPdfIdentity:p===18?courseworkIdentity:p===19?dviGraphicsIdentity:p===20?pdfOriginIdentity:pageLabelIdentity;
 const pdf12=d=>selectedPdfProfile(d.tag?.profile)&&rid(d.tag)&&d.tag.version===23&&d.tag?.engineId==='pdftex'&&d.operation==='latex';
 const pdfLeaf=d=>d.selectedRoot.split('/').at(-1).slice(0,-4)+'.pdf';
 const emit=self.postMessage.bind(self);let phase='boot',lookups=[],wasmSha256=null,loaderSha256=null;
-let dviModule=null,dviWriteGuard=null,semanticModule=false;
+let dviModule=null,dviWriteGuard=null,semanticModule=false,pdfOriginModule=false;
+const directPdfOrigin=t=>[20,21].includes(t?.profile)&&t.version===23&&t.engineId==='pdftex'&&t.tool==='latex';
+const pdfOriginLoader='57daa24fd7edf922c6ce74a76cf10f97ec8ace1a8db39b0d0b82296fb7168d85';
+const pdfOriginWasm='cf1e37c774fcd112efe739e4768f3d88c508d064d5340af2535395bbbe0508ec';
 const sLoader='735c17494d6ec61c1b2f000f437f343ece9af3258f2f354f11745b7b5836dde2';
 const rid=t=>selectedPdfProfile(t.profile)?t.runtimeIdentity===selectedPdfRuntime(t.profile):/^[0-9a-f]{64}$/.test(t.runtimeIdentity??'');
 const sha=async bytes=>[...new Uint8Array(await crypto.subtle.digest('SHA-256',bytes))].map(v=>v.toString(16).padStart(2,'0')).join('');
@@ -22,10 +27,12 @@ wasmSha256=await sha(d.wasm);loaderSha256=await sha(d.loader);
 self.fetch=async url=>{if(phase==='boot'&&String(url).endsWith('swiftlatexpdftex.wasm'))return new Response(d.wasm,{headers:{'Content-Type':'application/wasm'}});throw new Error('loader request denied');};
 self.XMLHttpRequest=class{constructor(){this.status=301;this.response=null;}open(_method,url){this.url=String(url);}send(){if(lookups.length>=128)throw new Error('lookup log cap');lookups.push(this.url);}getResponseHeader(){return null;}};
 importScripts(d.loaderUrl);console.log=()=>{};console.error=()=>{};
-semanticModule=typeof self.createFontSemantics==='function'||loaderSha256===sLoader;
+pdfOriginModule=loaderSha256===pdfOriginLoader;
+semanticModule=typeof self.createFontSemantics==='function'||loaderSha256===sLoader||pdfOriginModule;
 if(semanticModule||typeof self.createDviMaps==='function'){
 const factory=semanticModule?self.createFontSemantics:self.createDviMaps;
-if(typeof factory!=='function'||(semanticModule?loaderSha256!==sLoader||d.loader.byteLength!==141918||d.wasm.byteLength!==1952801
+if(typeof factory!=='function'||(pdfOriginModule?d.loader.byteLength!==142478||d.wasm.byteLength!==1959300||wasmSha256!==pdfOriginWasm
+:semanticModule?loaderSha256!==sLoader||d.loader.byteLength!==141918||d.wasm.byteLength!==1952801
 ||wasmSha256!=='e3136893e75d5b6b3a7b4297349c28f51423dee2c014a607d9c1cd20f75357c3'
 :loaderSha256!=='980bcf858794dc4679124df6fbf76a503d3020d96a7081537e9d1a4a5e7bb6f1'
 ||wasmSha256!=='6ad6db6625d28bdfaf83eba48b44a4202582fd84118c1e8ece3857535722a1b9'))throw new Error('module hash');
@@ -43,6 +50,8 @@ WebAssembly.instantiate(d.wasm,imports).then(r=>receive(r.instance)).catch(rejec
 if(dviModule._oc_dvi_maps_abi()!==1||dviModule._oc_synctex_abi()!==65536
 ||semanticModule&&(dviModule._oc_font_semantics_abi?.()!==1||typeof dviModule._oc_font_semantics_status!=='function')
 ||['_oc_mem_configure','_oc_synctex_length','_oc_synctex_copy','_oc_synctex_status'].some(n=>typeof dviModule[n]!=='function'))throw new Error('DVI ABI');
+if(pdfOriginModule&&(dviModule._oc_pdftex_origin_abi?.()!==1||
+ ['_oc_pdftex_legacy_zero_origin','_oc_synctex_geometry_length','_oc_synctex_geometry_copy'].some(n=>typeof dviModule[n]!=='function')))throw new Error('pdfTeX origin ABI');
 self.onmessage=executeDvi;emit({kind:'ready'});
 }else self.onmessage=execute;
 }catch(e){emit({kind:'boot-error',error:String(e)});}
@@ -268,7 +277,7 @@ dviLog+=text;dviLogBytes+=n;
 }
 function dviImageSidecars(d,resources,generated){
 const leases=d.dviImageSidecars??[],sidecars=new Set();
-if(d.dviImageSidecars!=null&&!(d.tag.profile===19&&d.tag.version===24&&d.tag.engineId==='latex-dvi'&&d.operation==='latex')
+if(d.dviImageSidecars!=null&&!([19,20,21].includes(d.tag.profile)&&d.tag.version===24&&d.tag.engineId==='latex-dvi'&&d.operation==='latex')
 ||!Array.isArray(leases)||leases.length>128)throw new Error('DVI image sidecars');
 if(!leases.length)return sidecars;
 const files=new Map(d.files.map(f=>[f.name,f.bytes]));
@@ -284,16 +293,30 @@ for(const x of leases){
 }
 return sidecars;
 }
+function copyPdfOrigin(m,ordinal){
+ const max=131072;
+ let pointer=0;
+ try{
+  const legacy=m._oc_pdftex_legacy_zero_origin(ordinal),size=m._oc_synctex_geometry_length(ordinal);
+  if(legacy===1&&size===0)return {sourceMapLegacyZeroOrigin:true};
+  if(legacy!==0||!Number.isSafeInteger(size)||size<1||size>max)return null;
+  pointer=m._malloc(size);
+  if(!Number.isSafeInteger(pointer)||pointer<1||pointer>m.HEAPU8.length-size
+   ||m._oc_synctex_geometry_copy(ordinal,pointer,size)!==size||pointer>m.HEAPU8.length-size)return null;
+  return {sourceMapGeometryPayload:m.HEAPU8.slice(pointer,pointer+size)};
+ }catch{return null;}
+ finally{if(Number.isSafeInteger(pointer)&&pointer>0&&pointer<m.HEAPU8.length)m._free(pointer);}
+}
 async function executeDvi({data:d}){
 if(phase!=='boot')return;phase='running';
-const m=dviModule,F=m.FS;let entered=false,nativeReturn=null,elapsedMs=null,budget=null,sourceMapPayload=null;
+const m=dviModule,F=m.FS;let entered=false,nativeReturn=null,elapsedMs=null,budget=null,sourceMapPayload=null,pdfOrigin=null;
 let files=[],inputs=[],outcome='setup-failure';
 try{
 const t=d.tag,s=pB(t?.profile);
 if((semanticModule?!s||!(t.version===23&&t.engineId==='pdftex'||t.version===24&&t.engineId==='latex-dvi')
 :![8,9,10,12].includes(t?.profile)||t.version!==([10,12].includes(t.profile)?15:12)||t.engineId!=='latex-dvi')||t.tool!=='latex'||d.operation!=='latex'
 ||!Number.isSafeInteger(t.ordinal)||t.ordinal<1||t.ordinal>4294967295
-||!rid(t))throw 0;
+||!rid(t)||pdfOriginModule!==directPdfOrigin(t))throw 0;
 validateAuthoringV4Frame(d);
 if(!Array.isArray(d.runtimeResourceNames)||!Array.isArray(d.generatedInputNames)
 ||d.runtimeResourceNames.length>8192||d.generatedInputNames.length>128)throw 0;
@@ -357,26 +380,30 @@ if(Number.isSafeInteger(pointer)&&pointer>0&&pointer<=m.HEAPU8.length-n
 &&m._oc_synctex_copy(t.ordinal,pointer,n)===n&&pointer<=m.HEAPU8.length-n)sourceMapPayload=m.HEAPU8.slice(pointer,pointer+n);
 }
 }catch{sourceMapPayload=null;}finally{if(Number.isSafeInteger(pointer)&&pointer>0&&pointer<m.HEAPU8.length)m._free(pointer);}
+if(pdfOriginModule&&sourceMapPayload){
+ pdfOrigin=copyPdfOrigin(m,t.ordinal);
+ if(!pdfOrigin)sourceMapPayload=null;
+}
 }
 outcome='native-return';
 }
-}catch(error){files=[];sourceMapPayload=null;outcome=budget?.failed||dviLogLimited?'resource-limit':error instanceof WebAssembly.RuntimeError?'wasm-abort':entered?'protocol-failure':'setup-failure';}
+}catch(error){files=[];sourceMapPayload=null;pdfOrigin=null;outcome=budget?.failed||dviLogLimited?'resource-limit':error instanceof WebAssembly.RuntimeError?'wasm-abort':entered?'protocol-failure':'setup-failure';}
 phase='done';
 emit({kind:'done',reply:{tag:d.tag,outcome,nativeReturn,entered,log:dviLog,files,inputs,elapsedMs,
-heapBytes:m.HEAPU8.byteLength,wasmSha256,loaderSha256,sourceMapPayload}});
+heapBytes:m.HEAPU8.byteLength,wasmSha256,loaderSha256,sourceMapPayload,...pdfOrigin}});
 }
 function validateAuthoringV4Frame(d){
 const bad=()=>{throw new Error('v4 FFI');};
 const key=n=>d.tag.version>=5?n.normalize('NFC').toUpperCase():n.normalize('NFC').replace(/[a-z]/g,c=>c.toUpperCase());
 const p13=pB(d.tag.profile),backend=d.bibliographyTool;
 if(p13?!['none','bibtex','biber'].includes(backend)||d.operation==='bibtex'&&backend!=='bibtex':backend!=null)bad();
-const suite=[5,6,7,8,9,10,12,13,14,15,16,17,18,19].includes(d.tag.profile),lua=suite&&[9,14,17,22].includes(d.tag.version);
+const suite=[5,6,7,8,9,10,12,13,14,15,16,17,18,19,20,21].includes(d.tag.profile),lua=suite&&[9,14,17,22].includes(d.tag.version);
 const selected=d.tag.version>=5,root=selected?d.selectedRoot:'main.tex';
 if(typeof root!=='string')bad();
 const leaf=root.slice(root.lastIndexOf('/')+1),job=lua?'result':leaf.slice(0,-4);
 if(selected&&(!(pU(d.tag.profile)&&d.tag.engineId==='xelatex'?/^[\p{L}\p{Nd}\p{Mn}\p{Mc}\u{10000}-\u{10FFFF}._/ -]+$/u:/^[\p{L}\p{Nd}\p{Mn}\p{Mc}._/ -]+$/u).test(root)||!/^.+\.tex$/i.test(leaf)||/^[.-]/.test(leaf)||leaf.startsWith(' ')||job.endsWith(' ')))bad();
 const latexEntry=selected&&root.includes(' ')?'"'+root+'"':root;
-const bibliography=[7,8,9,10,12,13,14,15,16,17,18,19].includes(d.tag.profile),blx=job.replaceAll(' ','_')+'-blx.bib',blxEnabled=bibliography&&!(p13&&backend==='biber');
+const bibliography=[7,8,9,10,12,13,14,15,16,17,18,19,20,21].includes(d.tag.profile),blx=job.replaceAll(' ','_')+'-blx.bib',blxEnabled=bibliography&&!(p13&&backend==='biber');
 const state=n=>n.endsWith('.aux')||['.bbl','.toc','.lof','.lot','.out'].some(ext=>n===job+ext)||blxEnabled&&n===blx;
 const fixed=['.pdf','.aux','.bbl','.blg','.log','.toc','.lof','.lot','.out',...([7,12,15,24].includes(d.tag.version)?['.dvi']:[]),...([8,13,16,21].includes(d.tag.version)?['.xdv']:[]),...(p13&&backend==='biber'&&d.operation==='latex'?['.bcf','.run.xml']:[])].map(ext=>job+ext).concat(blxEnabled?[blx]:[]);
 const valid=n=>typeof n==='string'&&n.length>0&&n===n.trim()&&new TextEncoder().encode(n).length<=249
@@ -410,7 +437,7 @@ if(d.dviImageSidecars!=null)throw new Error('DVI image sidecar phase');
 const legacy=d.tag.version===1&&(d.tag.profile===undefined||d.tag.profile===0)&&d.tag.runtimeIdentity==null;
 const modern=d.tag.version===2&&d.tag.profile===1&&rid(d.tag);
 const authoring=d.tag.version===3&&d.tag.profile===2&&rid(d.tag);
-const identity=rid(d.tag),suite=[5,6,7,8,9,10,12,13,14,15,16,17,18,19].includes(d.tag.profile),p13=pB(d.tag.profile);
+const identity=rid(d.tag),suite=[5,6,7,8,9,10,12,13,14,15,16,17,18,19,20,21].includes(d.tag.profile),p13=pB(d.tag.profile);
 const p13Bibtex=p13&&d.operation==='bibtex'&&[[23,'pdftex'],[24,'latex-dvi'],[21,'xelatex'],[22,'lualatex']].some(([v,e])=>d.tag.version===v&&d.tag.engineId===e)&&identity;
 const mapped=d.tag.version===6&&([3,4].includes(d.tag.profile)&&d.tag.engineId==null
 ||suite&&!p13&&d.tag.engineId==='pdftex')&&identity;
@@ -419,7 +446,7 @@ const unicodeBibtex=suite&&d.operation==='bibtex'&&((d.tag.version===8&&[5,6,7,8
 const navigationBibtex=[8,9,10,12].includes(d.tag.profile)&&d.tag.version===([10,12].includes(d.tag.profile)?15:12)&&d.tag.engineId==='latex-dvi'&&d.operation==='bibtex'&&identity;
 const v4=p13Bibtex||mapped||dvi||unicodeBibtex||navigationBibtex||[4,5].includes(d.tag.version)&&d.tag.profile===2&&identity;
 if((!legacy&&!modern&&!authoring&&!v4)||!['latex','bibtex'].includes(d.operation)||d.files.length>(suite?(pT(d.tag.profile)?8448:8384):v4?768:512)||d.outputs.length>(pT(d.tag.profile)?256:v4?128:64))throw new Error('FFI frame');
-if([8,9,10,12,13,14,15,16,17,18,19].includes(d.tag.profile)&&(loaderSha256!=='b514d2b72aa44ec47923735f8f1be43a93351931beb183d57a7429b73e74a9a9'
+if([8,9,10,12,13,14,15,16,17,18,19,20,21].includes(d.tag.profile)&&(loaderSha256!=='b514d2b72aa44ec47923735f8f1be43a93351931beb183d57a7429b73e74a9a9'
 ||wasmSha256!=='70008f66d8acb88ee40e8c17b5a48dc81003852e569833444dd3cda7539ce235'
 ||cwrap('oc_synctex_abi','number',[])()!==65536))throw new Error('legacy identity');
 if(v4)validateAuthoringV4Frame(d);

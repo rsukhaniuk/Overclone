@@ -9,11 +9,14 @@ public static class NativeNavigationContract
     public const int DviPhase = 12, LuaPhase = 14;
     public const string LimitationCode = "native-navigation-unavailable";
     public const string LimitationMessage = "The PDF is available, but measured source navigation is unavailable for this output.";
-    public static bool IsNavigationProfile(NativeRuntimeProfile profile) => profile is NativeRuntimeProfile.LocalCompilerDviGraphics or NativeRuntimeProfile.LocalCompilerCoursework or NativeSelectedPdfContract.Profile or NativeInputBudgetContract.Profile or NativeOriginCompilerContract.Profile or NativeThesisCompilerContract.Profile or NativeBiberCompilerContract.Profile or Profile or NativeXeNavigationContract.Profile or NativeGraphicsNavigationContract.Profile or NativeUnicodeCompilerContract.Profile;
-    public static bool IsMapped(NativeRuntimeProfile profile, int phase, NativeCompilerEngine engine) => profile is NativeRuntimeProfile.LocalCompilerDviGraphics or NativeRuntimeProfile.LocalCompilerCoursework or NativeSelectedPdfContract.Profile or NativeInputBudgetContract.Profile or NativeOriginCompilerContract.Profile or NativeThesisCompilerContract.Profile or NativeBiberCompilerContract.Profile or NativeGraphicsNavigationContract.Profile or NativeUnicodeCompilerContract.Profile
+    public static bool IsNavigationProfile(NativeRuntimeProfile profile) => profile is NativeRuntimeProfile.LocalCompilerPageLabels or NativeRuntimeProfile.LocalCompilerPdfOrigins or NativeRuntimeProfile.LocalCompilerDviGraphics or NativeRuntimeProfile.LocalCompilerCoursework or NativeSelectedPdfContract.Profile or NativeInputBudgetContract.Profile or NativeOriginCompilerContract.Profile or NativeThesisCompilerContract.Profile or NativeBiberCompilerContract.Profile or Profile or NativeXeNavigationContract.Profile or NativeGraphicsNavigationContract.Profile or NativeUnicodeCompilerContract.Profile;
+    public static bool IsDirectPdfMapped(NativeRuntimeProfile profile, int phase, NativeCompilerEngine engine)
+        => profile is (NativeRuntimeProfile.LocalCompilerPdfOrigins or NativeRuntimeProfile.LocalCompilerPageLabels) && phase == 23 && engine == NativeCompilerEngine.PdfLaTeX;
+    public static bool IsMapped(NativeRuntimeProfile profile, int phase, NativeCompilerEngine engine) =>
+        IsDirectPdfMapped(profile, phase, engine) || (profile is NativeRuntimeProfile.LocalCompilerPageLabels or NativeRuntimeProfile.LocalCompilerPdfOrigins or NativeRuntimeProfile.LocalCompilerDviGraphics or NativeRuntimeProfile.LocalCompilerCoursework or NativeSelectedPdfContract.Profile or NativeInputBudgetContract.Profile or NativeOriginCompilerContract.Profile or NativeThesisCompilerContract.Profile or NativeBiberCompilerContract.Profile or NativeGraphicsNavigationContract.Profile or NativeUnicodeCompilerContract.Profile
         ? engine != NativeCompilerEngine.PdfLaTeX && NativeCompilerSuiteContract.Phase(profile, engine) != 0 && phase == NativeCompilerSuiteContract.Phase(profile, engine)
         : IsNavigationProfile(profile) && (phase == DviPhase && engine == NativeCompilerEngine.LaTeXDvi || phase == LuaPhase && engine == NativeCompilerEngine.LuaLaTeX
-            || profile == NativeXeNavigationContract.Profile && phase == NativeXeNavigationContract.Phase && engine == NativeCompilerEngine.XeLaTeX);
+            || profile == NativeXeNavigationContract.Profile && phase == NativeXeNavigationContract.Phase && engine == NativeCompilerEngine.XeLaTeX));
     public static NativeCompilerComponent Component(NativeCompilerEngine engine)
     {
         var prior = NativeCompilerComponents.For(NativeRuntimeProfile.LocalCompilerBibliography, engine);
@@ -39,6 +42,6 @@ public static class NativeNavigationContract
     internal static SourceMapGeometryReadResult Assemble(NativeCompilerEngine engine, NativePhaseTag finalTag,
         byte[]? sidecar, byte[]? map, byte[] pdf, byte[]? intermediate, CompileOutputBudget budget)
         => SourceMapGeometryCodec.AssembleData(engine switch
-            { NativeCompilerEngine.LaTeXDvi => "latex-dvi", NativeCompilerEngine.LuaLaTeX => "lualatex", NativeCompilerEngine.XeLaTeX => "xelatex", _ => "" }, 
+            { NativeCompilerEngine.PdfLaTeX => "pdflatex", NativeCompilerEngine.LaTeXDvi => "latex-dvi", NativeCompilerEngine.LuaLaTeX => "lualatex", NativeCompilerEngine.XeLaTeX => "xelatex", _ => "" },
             checked((uint)finalTag.Ordinal), sidecar, map, pdf, intermediate, budget);
 }

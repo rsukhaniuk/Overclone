@@ -18,6 +18,8 @@ public static class LocalRuntimeSelection
     {
         Profile or NativeRuntimeProfile.LocalLatex2023SyncTeX or NativeRuntimeProfile.LocalLatex2023Dvi => new(512, 33554432, 67108864, profile),
         NativeRuntimeProfile.LocalCompilerDviGraphics => new(NativeCompilerSuiteContract.Files, NativeCompilerSuiteContract.FileBytes, NativeCompilerDviGraphicsPins.TotalBytes, profile),
+        NativeRuntimeProfile.LocalCompilerPdfOrigins => new(NativeCompilerSuiteContract.Files, NativeCompilerSuiteContract.FileBytes, NativeCompilerPdfOriginPins.TotalBytes, profile),
+        NativeRuntimeProfile.LocalCompilerPageLabels => new(NativeCompilerSuiteContract.Files, NativeCompilerSuiteContract.FileBytes, NativeCompilerPageLabelPins.TotalBytes, profile),
         NativeRuntimeProfile.LocalCompilerCoursework => new(NativeCompilerSuiteContract.Files, NativeCompilerSuiteContract.FileBytes, NativeCompilerCourseworkPins.TotalBytes, profile),
         NativeRuntimeProfile.LocalCompilerSuite or NativeRuntimeProfile.LocalCompilerCompatibility or NativeRuntimeProfile.LocalCompilerBibliography or NativeRuntimeProfile.LocalCompilerNavigation or NativeRuntimeProfile.LocalCompilerXeNavigation or NativeRuntimeProfile.LocalCompilerGraphicsNavigation or NativeRuntimeProfile.LocalCompilerUnicode or NativeRuntimeProfile.LocalCompilerBiber or NativeRuntimeProfile.LocalCompilerThesis or NativeRuntimeProfile.LocalCompilerOrigins or NativeRuntimeProfile.LocalCompilerInputBudget or NativeRuntimeProfile.LocalCompilerSelectedPdf => new(NativeCompilerSuiteContract.Files, NativeCompilerSuiteContract.FileBytes, NativeCompilerSuiteContract.TotalBytes, profile),
         _ => throw Invalid()
@@ -35,7 +37,9 @@ public static class LocalRuntimeSelection
             || NativeRuntimeProfiles.SuitePinsReady(NativeRuntimeProfile.LocalCompilerOrigins) && count == NativeRuntimeProfiles.InstalledCount(NativeRuntimeProfile.LocalCompilerOrigins)
             || NativeRuntimeProfiles.SuitePinsReady(NativeRuntimeProfile.LocalCompilerInputBudget) && count == NativeRuntimeProfiles.InstalledCount(NativeRuntimeProfile.LocalCompilerInputBudget)
             || NativeCompilerSelectedPdfPins.Ready && count == NativeCompilerSelectedPdfPins.ResourceCount
-            || IsCourseworkCount(count) || IsDviGraphicsCount(count));
+            || IsCourseworkCount(count) || IsDviGraphicsCount(count) || IsPdfOriginCount(count) || IsPageLabelCount(count));
+    private static bool IsPageLabelCount(int count) => NativeCompilerPageLabelPins.Ready && count == NativeCompilerPageLabelPins.ResourceCount;
+    private static bool IsPdfOriginCount(int count) => NativeCompilerPdfOriginPins.Ready && count == NativeCompilerPdfOriginPins.ResourceCount;
     private static bool IsDviGraphicsCount(int count) => NativeCompilerDviGraphicsPins.Ready && count == NativeCompilerDviGraphicsPins.ResourceCount;
     private static bool IsCourseworkCount(int count) => NativeCompilerCourseworkPins.Ready && count == NativeCompilerCourseworkPins.ResourceCount;
     private static bool NoticeForCount(string name, int count) => count == NativeCompilerBiberPins.ResourceCount && NativeBiberCompilerContract.NoticeName(name)
@@ -43,9 +47,10 @@ public static class LocalRuntimeSelection
         || NativeCompilerOriginPins.Ready && count == NativeCompilerOriginPins.ResourceCount && NativeThesisCompilerContract.NoticeName(name)
         || NativeCompilerInputBudgetPins.Ready && (count == NativeCompilerInputBudgetPins.ResourceCount || count == NativeCompilerSelectedPdfPins.ResourceCount)
             && NativeInputBudgetContract.NoticeName(name)
-        || (IsCourseworkCount(count) || IsDviGraphicsCount(count))
+        || (IsCourseworkCount(count) || IsDviGraphicsCount(count) || IsPdfOriginCount(count) || IsPageLabelCount(count))
             && (NativeInputBudgetContract.NoticeName(name) || NativeCompilerCourseworkPins.NoticeName(name))
-        || IsDviGraphicsCount(count) && NativeCompilerDviGraphicsPins.NoticeName(name);
+        || (IsDviGraphicsCount(count) || IsPdfOriginCount(count) || IsPageLabelCount(count)) && NativeCompilerDviGraphicsPins.NoticeName(name)
+        || IsPageLabelCount(count) && NativeCompilerPageLabelPins.NoticeName(name);
     public static bool SupportedCount(int count) => count is NativeRuntimeProfiles.AuthoringResourceCount or NativeRuntimeProfiles.SyncTeXResourceCount or NativeRuntimeProfiles.DviResourceCount
         || SupportedSuiteCount(count);
     public static NativeRuntimeProfile ProfileFor(IEnumerable<NativeResourcePin> pins)
@@ -54,7 +59,7 @@ public static class LocalRuntimeSelection
         var owned = pins.Take(NativeCompilerSuiteContract.Files + 1).ToArray();
         if (!SupportedCount(owned.Length) || owned.Any(p => p is null)) throw Invalid();
         bool suiteCount = SupportedSuiteCount(owned.Length);
-        var limits = LimitsFor(IsDviGraphicsCount(owned.Length) ? NativeRuntimeProfile.LocalCompilerDviGraphics : IsCourseworkCount(owned.Length) ? NativeRuntimeProfile.LocalCompilerCoursework
+        var limits = LimitsFor(IsPageLabelCount(owned.Length) ? NativeRuntimeProfile.LocalCompilerPageLabels : IsPdfOriginCount(owned.Length) ? NativeRuntimeProfile.LocalCompilerPdfOrigins : IsDviGraphicsCount(owned.Length) ? NativeRuntimeProfile.LocalCompilerDviGraphics : IsCourseworkCount(owned.Length) ? NativeRuntimeProfile.LocalCompilerCoursework
             : suiteCount ? NativeRuntimeProfile.LocalCompilerSuite : Profile);
         var names = new HashSet<string>(StringComparer.Ordinal);
         long total = 0;
@@ -66,7 +71,7 @@ public static class LocalRuntimeSelection
             total += pin.Length;
         }
         var closure = NativeRuntimePackage.ResourceIdentity(owned).Hex;
-        foreach (var profile in new[] { Profile, NativeRuntimeProfile.LocalLatex2023SyncTeX, NativeRuntimeProfile.LocalLatex2023Dvi, NativeRuntimeProfile.LocalCompilerSuite, NativeRuntimeProfile.LocalCompilerCompatibility, NativeRuntimeProfile.LocalCompilerBibliography, NativeRuntimeProfile.LocalCompilerNavigation, NativeRuntimeProfile.LocalCompilerXeNavigation, NativeRuntimeProfile.LocalCompilerGraphicsNavigation, NativeRuntimeProfile.LocalCompilerUnicode, NativeRuntimeProfile.LocalCompilerBiber, NativeRuntimeProfile.LocalCompilerThesis, NativeRuntimeProfile.LocalCompilerOrigins, NativeRuntimeProfile.LocalCompilerInputBudget, NativeRuntimeProfile.LocalCompilerSelectedPdf, NativeRuntimeProfile.LocalCompilerCoursework, NativeRuntimeProfile.LocalCompilerDviGraphics })
+        foreach (var profile in new[] { Profile, NativeRuntimeProfile.LocalLatex2023SyncTeX, NativeRuntimeProfile.LocalLatex2023Dvi, NativeRuntimeProfile.LocalCompilerSuite, NativeRuntimeProfile.LocalCompilerCompatibility, NativeRuntimeProfile.LocalCompilerBibliography, NativeRuntimeProfile.LocalCompilerNavigation, NativeRuntimeProfile.LocalCompilerXeNavigation, NativeRuntimeProfile.LocalCompilerGraphicsNavigation, NativeRuntimeProfile.LocalCompilerUnicode, NativeRuntimeProfile.LocalCompilerBiber, NativeRuntimeProfile.LocalCompilerThesis, NativeRuntimeProfile.LocalCompilerOrigins, NativeRuntimeProfile.LocalCompilerInputBudget, NativeRuntimeProfile.LocalCompilerSelectedPdf, NativeRuntimeProfile.LocalCompilerCoursework, NativeRuntimeProfile.LocalCompilerDviGraphics, NativeRuntimeProfile.LocalCompilerPdfOrigins, NativeRuntimeProfile.LocalCompilerPageLabels })
             if ((!NativeRuntimeProfiles.IsSuite(profile) || NativeRuntimeProfiles.SuitePinsReady(profile))
                 && owned.Length == NativeRuntimeProfiles.InstalledCount(profile) && closure == NativeRuntimeProfiles.ClosureHash(profile)
                 && (!NativeRuntimeProfiles.IsSuite(profile) || total == NativeRuntimeProfiles.SuiteTotalBytes(profile)
@@ -80,10 +85,16 @@ public static class LocalRuntimeSelection
         SuiteBudget with { Inventory = SuiteBudget.Inventory with { MaxTotalBytes = NativeCompilerCourseworkPins.TotalBytes } };
     private static readonly RuntimeAssetBudget DviGraphicsBudget =
         SuiteBudget with { Inventory = SuiteBudget.Inventory with { MaxTotalBytes = NativeCompilerDviGraphicsPins.TotalBytes } };
+    private static readonly RuntimeAssetBudget PdfOriginBudget =
+        SuiteBudget with { Inventory = SuiteBudget.Inventory with { MaxTotalBytes = NativeCompilerPdfOriginPins.TotalBytes } };
+    private static readonly RuntimeAssetBudget PageLabelBudget =
+        SuiteBudget with { Inventory = SuiteBudget.Inventory with { MaxTotalBytes = NativeCompilerPageLabelPins.TotalBytes } };
     public static RuntimeAssetBudget BudgetFor(NativeRuntimeProfile profile) => profile switch
     {
         NativeRuntimeProfile.LocalCompilerCoursework => CourseworkBudget,
         NativeRuntimeProfile.LocalCompilerDviGraphics => DviGraphicsBudget,
+        NativeRuntimeProfile.LocalCompilerPdfOrigins => PdfOriginBudget,
+        NativeRuntimeProfile.LocalCompilerPageLabels => PageLabelBudget,
         _ => NativeRuntimeProfiles.IsSuite(profile) ? SuiteBudget : Budget
     };
     public static ImmutableArray<NativeResourcePin> ParsePins(byte[] json)
@@ -98,7 +109,7 @@ public static class LocalRuntimeSelection
     {
         if (array.ValueKind != JsonValueKind.Array || !SupportedCount(array.GetArrayLength())) throw Invalid();
         bool suite = SupportedSuiteCount(array.GetArrayLength());
-        var limits = LimitsFor(IsDviGraphicsCount(array.GetArrayLength()) ? NativeRuntimeProfile.LocalCompilerDviGraphics : IsCourseworkCount(array.GetArrayLength()) ? NativeRuntimeProfile.LocalCompilerCoursework
+        var limits = LimitsFor(IsPageLabelCount(array.GetArrayLength()) ? NativeRuntimeProfile.LocalCompilerPageLabels : IsPdfOriginCount(array.GetArrayLength()) ? NativeRuntimeProfile.LocalCompilerPdfOrigins : IsDviGraphicsCount(array.GetArrayLength()) ? NativeRuntimeProfile.LocalCompilerDviGraphics : IsCourseworkCount(array.GetArrayLength()) ? NativeRuntimeProfile.LocalCompilerCoursework
             : suite ? NativeRuntimeProfile.LocalCompilerSuite : Profile);
         var result = ImmutableArray.CreateBuilder<InstalledNativeResource>(array.GetArrayLength());
         var names = new HashSet<string>(StringComparer.Ordinal); var assetIds = new HashSet<Guid>(); long total = 0;

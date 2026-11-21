@@ -31,7 +31,7 @@ public sealed class UnicodeContractTests
                 NativeNavigationContract.IsMapped(P, plan.EffectivePhaseVersion, e));
             Assert.False(NativeNavigationContract.IsMapped(P, 23, e));
         }
-        foreach (var p in new[] { (NativeRuntimeProfile)11, (NativeRuntimeProfile)20, (NativeRuntimeProfile)int.MaxValue })
+        foreach (var p in new[] { (NativeRuntimeProfile)11, (NativeRuntimeProfile)22, (NativeRuntimeProfile)int.MaxValue })
         {
             Assert.False(NativeRuntimeProfiles.Known(p)); Assert.False(NativeRuntimeProfiles.IsSuite(p));
             Assert.Equal(0, NativeCompilerSuiteContract.Phase(p, NativeCompilerEngine.XeLaTeX));
@@ -95,8 +95,12 @@ public sealed class UnicodeContractTests
             .Concat(NativeCompilerInputBudgetPins.Ready ? Enum.GetValues<NativeCompilerEngine>().Select(NativeInputBudgetContract.Component).Select(c => c.OutputAdapter) : [])
             .Concat(NativeCompilerDviGraphicsPins.Ready
                 ? [NativeCompilerComponents.For(NativeRuntimeProfile.LocalCompilerDviGraphics, NativeCompilerEngine.LaTeXDvi).OutputAdapter] : [])
+            .Concat(NativeCompilerPdfOriginPins.Ready
+                ? [NativeCompilerComponents.For(NativeRuntimeProfile.LocalCompilerPdfOrigins, NativeCompilerEngine.PdfLaTeX).OutputAdapter] : [])
+            .Concat(NativeCompilerPageLabelPins.Ready
+                ? [NativeCompilerComponents.For(NativeRuntimeProfile.LocalCompilerPageLabels, NativeCompilerEngine.LaTeXDvi).OutputAdapter] : [])
             .Except(old).Distinct().ToArray();
-        Assert.Equal(NativeCompilerDviGraphicsPins.Ready ? 11 : NativeCompilerInputBudgetPins.Ready ? 10 : NativeCompilerOriginPins.Ready ? 8 : NativeCompilerThesisPins.Ready ? 5 : 4, added.Length); Assert.Equal(expected.Length, added.Length);
+        Assert.Equal(NativeCompilerPageLabelPins.Ready ? 13 : NativeCompilerPdfOriginPins.Ready ? 12 : NativeCompilerDviGraphicsPins.Ready ? 11 : NativeCompilerInputBudgetPins.Ready ? 10 : NativeCompilerOriginPins.Ready ? 8 : NativeCompilerThesisPins.Ready ? 5 : 4, added.Length); Assert.Equal(expected.Length, added.Length);
         Assert.All(expected, adapter => Assert.Contains(adapter, added));
         Assert.All(old, adapter => Assert.Contains(adapter, current));
         Assert.All(added, adapter => Assert.DoesNotContain(adapter with { Hash = new(new string('0', 64)) }, current));

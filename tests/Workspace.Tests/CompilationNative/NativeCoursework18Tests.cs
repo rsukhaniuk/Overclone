@@ -40,7 +40,7 @@ public sealed class NativeCoursework18Tests
         }));
         Assert.False(NativeSelectedPdfContract.IsSelectedPdfPhase(tag with { RuntimeIdentity = NativeSelectedPdfContract.RuntimeIdentity }));
         Assert.False(NativeSelectedPdfContract.IsSelectedPdfPhase(tag with { Profile = Previous }));
-        Assert.False(NativeSelectedPdfContract.IsSelectedPdfPhase(tag with { Profile = (NativeRuntimeProfile)20 }));
+        Assert.False(NativeSelectedPdfContract.IsSelectedPdfPhase(tag with { Profile = (NativeRuntimeProfile)22 }));
         Assert.False(NativeSelectedPdfContract.IsSelectedPdfPhase(tag with { EngineId = "lualatex", Version = 22 }));
     }
 

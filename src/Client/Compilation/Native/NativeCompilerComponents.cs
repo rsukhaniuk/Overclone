@@ -12,6 +12,34 @@ public static class NativeCompilerComponents
     public static NativeCompilerComponent For(NativeRuntimeProfile profile, NativeCompilerEngine engine)
     {
         if (!NativeRuntimeProfiles.IsSuite(profile)) throw new ArgumentOutOfRangeException(nameof(profile));
+        if (profile == NativeRuntimeProfile.LocalCompilerPageLabels)
+        {
+            var prior = For(NativeRuntimeProfile.LocalCompilerPdfOrigins, engine);
+            return engine == NativeCompilerEngine.LaTeXDvi ? prior with
+            {
+                OutputAdapter = prior.OutputAdapter with
+                {
+                    Version = prior.OutputAdapter.Version + "-page-labels1",
+                    Hash = new(NativeCompilerPageLabelPins.DviConverterWasmHash)
+                }
+            } : prior;
+        }
+        if (profile == NativeRuntimeProfile.LocalCompilerPdfOrigins)
+        {
+            var prior = For(NativeRuntimeProfile.LocalCompilerDviGraphics, engine);
+            return engine == NativeCompilerEngine.PdfLaTeX ? prior with
+            {
+                LoaderName = NativeCompilerPdfOriginPins.LoaderName, LoaderLength = NativeCompilerPdfOriginPins.LoaderLength,
+                LoaderHash = NativeCompilerPdfOriginPins.LoaderHash, WasmName = NativeCompilerPdfOriginPins.WasmName,
+                WasmLength = NativeCompilerPdfOriginPins.WasmLength, WasmHash = NativeCompilerPdfOriginPins.WasmHash,
+                EngineVersion = prior.EngineVersion + "-origin1",
+                OutputAdapter = prior.OutputAdapter with
+                {
+                    Version = prior.OutputAdapter.Version + "-origin1",
+                    Hash = new(NativeCompilerPdfOriginPins.WasmHash)
+                }
+            } : prior;
+        }
         if (profile == NativeRuntimeProfile.LocalCompilerDviGraphics)
         {
             var prior = NativeInputBudgetContract.Component(engine);
