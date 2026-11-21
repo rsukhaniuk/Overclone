@@ -2,10 +2,8 @@
 
 Current implementation includes a local multi-file workspace, OPFS/IndexedDB
 persistence, source analysis, explicit review/undo, a project manager, optional
-AI/Drive adapters, and compile/PDF contracts, storage and presentation boundaries.
-The production compiler/renderer remains unavailable pending runtime adoption.
-Diagrams describe the target architecture and do not certify complete native APIs,
-compiler compatibility or rendered thesis compliance. See [decisions](decisions.md),
+local Ollama, bundled compilation and PDF preview. Diagrams retain the earlier
+architecture checkpoint and show some superseded integration plans. See [decisions](decisions.md),
 [contracts](contracts.md), [roadmap](roadmap.md) and
 [compilation status](compilation.md).
 
@@ -14,15 +12,12 @@ compiler compatibility or rendered thesis compliance. See [decisions](decisions.
 Deliver a desktop Chrome/Edge PWA with complete local Overleaf-style authoring:
 multi-file projects, editing, bibliography and references, compilation, PDF preview,
 source/PDF navigation, diagnostics, local history and reviewed changes. Add
-versioned diploma checks over both source and PDF. Collaboration, application
-accounts, automatic Drive sync, a custom backend and a companion application are
-excluded. Drive import/export and Gemini/Claude BYOK are optional online functions.
-Ollama is an optional local service with a preinstalled model. No integration may
-prevent local saving or deterministic analysis.
+versioned diploma checks over both source and PDF. The PWA uses local file,
+folder and ZIP transfers. Ollama is the optional local service and uses a
+preinstalled model. Local saving and deterministic analysis work independently.
 
-Offline means installed and provisioned on that origin/browser profile. It cannot
-mean a never-loaded device, a cloud API without connectivity, or an undownloaded
-TeX package. Feature compatibility is a measured target, not a parity claim.
+Offline covers work after installing and provisioning the app on that origin and
+browser profile. Feature compatibility follows the tested [matrix](roadmap.md).
 
 ![Application use cases](uml/rendered/01-use-cases.svg)
 
@@ -41,12 +36,12 @@ TeX package. Feature compatibility is a measured target, not a parity claim.
 | TeXEngineAdapter | C++/WASM integration | Virtual project filesystem, trusted engine calls, logs, PDF and source-map artifacts; no provider credentials |
 | PdfEngineAdapter | C++/WASM integration | Page rendering, text/glyph geometry, font metadata and evidence extraction; no rule policy |
 | ChangeReviewService | C# | Shared deterministic/AI patch validation, preview, acceptance, commit and undo |
-| TransferService | C# | Explicit local/Drive import/export through adapters; independent of autosave |
-| AiService | C# | User-approved context, provider routing, streamed chat and proposed edits; no autonomous tools |
+| TransferService | C# | Explicit local file, folder and ZIP import/export independent of autosave |
+| Ollama session | C# | Disclosed active-file context, explicit chat and reviewed edit proposals through the local service |
 | OfflineAssetManager | C# + service-worker glue | Provisioned asset inventories, checksums, compatibility and update readiness |
 
 Application services depend on the ports in [contracts](contracts.md), never
-provider implementations. Rust has no dependency on Blazor, Drive or AI. C++ PDF
+integration implementations. Rust analysis runs independently of Blazor and Ollama. C++ PDF
 inspection returns facts to Rust; it must not embed KNU thresholds. Rust does not
 call C++ directly: the coordinator connects typed results. Native modules retain
 independent build/test boundaries and separate WASM memories.
@@ -93,8 +88,8 @@ otherwise show a page location without inventing a source span.
 
 ![Workspace model](uml/rendered/04-workspace-model.svg)
 
-Local autosave is authoritative for the app's saved indicator. A linked directory
-or Drive export is a separate user action with a separate status. Browser storage
+Local autosave is authoritative for the app's saved indicator. Local directory and
+ZIP exports have explicit user actions and separate status. Browser storage
 is not a backup; offer ZIP export and request persistent storage, while handling
 denial without losing the editing session. Do not claim a browser flush guarantees
 survival of device failure.
@@ -185,8 +180,6 @@ such correctness guarantee and cannot be promoted into rule evidence.
 
 ## Transfers and AI
 
-![Drive import/export](uml/rendered/09-drive-transfer.svg)
-
 ZIP is the portable project interchange format: sources, assets and optional project
 settings, never keys/tokens/chat history or generated caches. Apply archive entry,
 size and expansion limits; reject absolute paths, traversal, symlinks and duplicate
@@ -196,24 +189,11 @@ showing import complete. Direct filesystem directory access is an optional Chrom
 adapter, with file/ZIP upload-download as the portable fallback. Its write failures
 do not change the local saved indicator.
 
-Drive uses browser OAuth, Google Picker and `drive.file` scoped access. Export a
-ZIP snapshot as a new Drive file by default. POC exports do not update an existing
-Drive file, avoiding silent concurrent overwrites. Imports download a selected ZIP
-then enter the same validation/review path as local import. Token expiry prompts
-explicit reauthorization; network failure offers manual retry, no background queue.
-Google scripts load only when the user opens the integration. No client secret.
-
-![AI assistance](uml/rendered/08-ai-assistance.svg)
-
-AI chat operates on explicitly selected source/diagnostics with a context preview,
-provider, model and connectivity/cost disclosure. No automatic full-project upload.
-C# adapters call Ollama, Gemini or Claude directly through browser networking;
-direct-origin authentication/CORS/provider support is a feasibility gate. No proxy
-backend or silent cloud fallback. Partial streamed output is display-only until a
-complete validated change proposal is available. Chat and credentials are memory
-only by default; reconnect requires user-provided credentials again. Model output
-cannot invoke tools or alter file permissions. Cancellation stops the request and
-never applies partial edits; a provider may already have processed/billed it.
+The optional Ollama workflow previews the destination, model and active-file
+context. The browser sends an explicit single-turn request to the local service.
+Chat state stays in memory. The existing review service validates complete proposals
+against the exact captured file and revision, then preview, acceptance and Undo use
+the normal local workflow. [Ollama setup](mvp-ai.md)
 
 ## Security boundaries and operational limits
 
