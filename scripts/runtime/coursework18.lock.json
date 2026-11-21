@@ -1,0 +1,426 @@
+{
+  "profile": 18,
+  "identityName": "local-compiler-coursework-v1",
+  "identity": "f4ad5c7f702efc4f90d7a803ad6c697be0b3664b4ca90f837c8e6bd74ca88a40",
+  "baseline": {
+    "count": 5106,
+    "closure": "b646803e08bc431d358c3ffe66718218b544880d28497020af1570595d921705",
+    "pins": {
+      "length": 731990,
+      "sha256": "f0f68612b0dfa8bf637b21b6dc318d60814e1b2792a6496c82e9229609b3cf65"
+    }
+  },
+  "runtime": {
+    "count": 5149,
+    "totalBytes": 276859993,
+    "closure": "6866d137c2eb4fc4049cbc8f8c294db250c6316d0fdc4d8679f9b2a431ec0d36",
+    "pinsSha256": "933a107774eb48ecdb8aaafa7d72094eb3670460dc7892e16a972a5320eafd71"
+  },
+  "luaCompatibilityNames": [
+    "DejaVuSans-Bold.ttf",
+    "DejaVuSans-BoldOblique.ttf",
+    "DejaVuSans-ExtraLight.ttf",
+    "DejaVuSans-Oblique.ttf",
+    "DejaVuSans.ttf",
+    "DejaVuSansCondensed-Bold.ttf",
+    "DejaVuSansCondensed-BoldOblique.ttf",
+    "DejaVuSansCondensed-Oblique.ttf",
+    "DejaVuSansCondensed.ttf",
+    "DejaVuSansMono-Bold.ttf",
+    "DejaVuSansMono-BoldOblique.ttf",
+    "DejaVuSansMono-Oblique.ttf",
+    "DejaVuSansMono.ttf",
+    "LiberationSans-Bold.ttf",
+    "LiberationSans-BoldItalic.ttf",
+    "LiberationSans-Italic.ttf",
+    "LiberationSans-Regular.ttf",
+    "LiberationSerif-Bold.ttf",
+    "LiberationSerif-BoldItalic.ttf",
+    "LiberationSerif-Italic.ttf",
+    "LiberationSerif-Regular.ttf",
+    "babelsh.def",
+    "colortbl.sty",
+    "ctablestack.sty",
+    "gloss-english.ldf",
+    "gloss-ukrainian.ldf",
+    "keyval.tex",
+    "language.dat.lua",
+    "luatex-hyphen.lua",
+    "needspace.sty",
+    "parskip.sty",
+    "pdflscape-nometadata.sty",
+    "pdflscape.sty",
+    "polyglossia.lua",
+    "polyglossia.sty",
+    "ragged2e.sty",
+    "xkeyval.tex",
+    "xkvutils.tex",
+    "xpg-cyrillicnumbers.sty"
+  ],
+  "addedCompilerResources": [
+    {
+      "name": "DejaVuSans-Bold.ttf",
+      "length": 708920,
+      "sha256": "5c1247acef7f2b8522a31742c76d6adcb5569bacc0be7ceaa4dc39dd252ce895"
+    },
+    {
+      "name": "DejaVuSans-BoldOblique.ttf",
+      "length": 645600,
+      "sha256": "58d78a24ddff9ab30427550d68f0b9b7dd28d6690f9f4b3e4ebac7105252e9b2"
+    },
+    {
+      "name": "DejaVuSans-ExtraLight.ttf",
+      "length": 355824,
+      "sha256": "fab10cd1c5680872c4d8db8059af93e3ff2b5e2ebc6120574d3c0d414334e979"
+    },
+    {
+      "name": "DejaVuSans-Oblique.ttf",
+      "length": 637648,
+      "sha256": "2d7b524ce7d51db78591b4e19c8185b89f3af0aa6534c5e524cf0c6f4ea673de"
+    },
+    {
+      "name": "DejaVuSans.ttf",
+      "length": 759720,
+      "sha256": "ae7b7855e115a5966d8b1b3f80f254ccc117ec86f9965e202ee2940453837280"
+    },
+    {
+      "name": "DejaVuSansCondensed-Bold.ttf",
+      "length": 667844,
+      "sha256": "8d9984f4eaae48bb3677966491b55538738283c1de177d60df1681a1b7844ffc"
+    },
+    {
+      "name": "DejaVuSansCondensed-BoldOblique.ttf",
+      "length": 614068,
+      "sha256": "817ffe1976a879cad74e0299fc76c66884f5247c6c50a77dd71fffe4fa009712"
+    },
+    {
+      "name": "DejaVuSansCondensed-Oblique.ttf",
+      "length": 601448,
+      "sha256": "e31968dabb045c534579e667b181f1fa965ab3a59b8278f09bbe88e5895fd08b"
+    },
+    {
+      "name": "DejaVuSansCondensed.ttf",
+      "length": 682828,
+      "sha256": "8b4d7f13947aa922594024f078cc9e89e8aa1ae6172150cbfe83f234be4f8985"
+    },
+    {
+      "name": "DejaVuSansMono-Bold.ttf",
+      "length": 334268,
+      "sha256": "3a3c502eeff669a231549e80df9f7c49de109bafe303170409e905d0b31a38fe"
+    },
+    {
+      "name": "DejaVuSansMono-BoldOblique.ttf",
+      "length": 254960,
+      "sha256": "a5251173370e30760e6919711dcd33e149d216ca4814eb74332bda03fcc7e834"
+    },
+    {
+      "name": "DejaVuSansMono-Oblique.ttf",
+      "length": 253448,
+      "sha256": "3d7955616e69721f7edb8e1b7a580f8fbd7d737111c6b54266ddc1d9ef13202f"
+    },
+    {
+      "name": "DejaVuSansMono.ttf",
+      "length": 343140,
+      "sha256": "c805f9436dbc268644c1d9584f01a601a653e028e08fd74b9b949f6cf8304d88"
+    },
+    {
+      "name": "LiberationSans-Bold.ttf",
+      "length": 414568,
+      "sha256": "3973aa5054fb467dd5627245d3dc82e37bf16fe075756156a570455871351582"
+    },
+    {
+      "name": "LiberationSans-BoldItalic.ttf",
+      "length": 409108,
+      "sha256": "c80fa7f2ffa0e01d4d8dcd6a6d1e43eda665222d1b4db597dde1174c456006cf"
+    },
+    {
+      "name": "LiberationSans-Italic.ttf",
+      "length": 415920,
+      "sha256": "830c5fa600505fb4c1a271b4271c53c44bae43f492b2a240d0e98a3a7a380121"
+    },
+    {
+      "name": "LiberationSans-Regular.ttf",
+      "length": 410820,
+      "sha256": "4659bc0c58c5028dd488ec928d41d9265db43d9b669fc14ca8b0832daca7b144"
+    },
+    {
+      "name": "LiberationSerif-Bold.ttf",
+      "length": 370196,
+      "sha256": "9e66c25e20868756bf12eb24a520a4552727c9cd108f577f7ae33e3c0110e39c"
+    },
+    {
+      "name": "LiberationSerif-BoldItalic.ttf",
+      "length": 376892,
+      "sha256": "379010e87421a883f7bbfa7936d23dfe0257a54ce850819b74556e9f2c615a8a"
+    },
+    {
+      "name": "LiberationSerif-Italic.ttf",
+      "length": 375760,
+      "sha256": "eaeaf7f2b12544ecde64290c1fa7ec403ff70fd58b313637b265400b20249242"
+    },
+    {
+      "name": "LiberationSerif-Regular.ttf",
+      "length": 393692,
+      "sha256": "705903ae1382f0150f115d6f10a30f5b2f3d6ade649c474afe6366c39174fb65"
+    },
+    {
+      "name": "babelsh.def",
+      "length": 21082,
+      "sha256": "01e178acbb63661da5fa627bb34cf00fc0b18e24e8edd0bd1dab0fcb356e9211"
+    },
+    {
+      "name": "colortbl.sty",
+      "length": 12441,
+      "sha256": "bb01148562c6a7c6f5276228b121415f9dc8bc726880a198909e6aabd813029b"
+    },
+    {
+      "name": "ctablestack.sty",
+      "length": 1510,
+      "sha256": "2993431c0138c4c9b715e121ffea8bab0b8edd9eea7344c7d4a1665f0901643f"
+    },
+    {
+      "name": "gloss-english.ldf",
+      "length": 7073,
+      "sha256": "08f245623f113723b91d31956dc23be51c600911e3ba10ce8d99840ac4e29a53"
+    },
+    {
+      "name": "gloss-ukrainian.ldf",
+      "length": 8959,
+      "sha256": "c5934e0d174419329cffeb2066677a18b7b7278ae7c50025f8f3d63be96ccee7"
+    },
+    {
+      "name": "language.dat.lua",
+      "length": 3330,
+      "sha256": "60becae4e7e43a8295982b95fedc871a09ad241a644656f01b4a521a4011e46c"
+    },
+    {
+      "name": "luatex-hyphen.lua",
+      "length": 2985,
+      "sha256": "cd97087cc4b1ed7ed6d0095a754e7545b133b6ac96d26b5de4bb0054c75a1101"
+    },
+    {
+      "name": "needspace.sty",
+      "length": 852,
+      "sha256": "5ae673ce2a80fb868c954373252294d9e6469feeb78b445182772fd043eb0914"
+    },
+    {
+      "name": "parskip.sty",
+      "length": 4288,
+      "sha256": "606938ea06d5e3c2063fb58816ab83acdcb94ff6d463293779f6475f200701b7"
+    },
+    {
+      "name": "pdflscape-nometadata.sty",
+      "length": 6572,
+      "sha256": "f8dd07a321496d185933f35eb854d8f7027eb024cc0b74ae616410f80a04b5fc"
+    },
+    {
+      "name": "pdflscape.sty",
+      "length": 2224,
+      "sha256": "6aa9ade2088eaa9d3456d08be7d7f3085a358188439117c05441f8a6d389243b"
+    },
+    {
+      "name": "polyglossia.lua",
+      "length": 5931,
+      "sha256": "90cedaebea10004806df4515eb651bca2fa80ee9c0e0d91d15986e22ff55622f"
+    },
+    {
+      "name": "polyglossia.sty",
+      "length": 83598,
+      "sha256": "b13004cf840504376f634c109fead3cd3802551ec80120dfa6f239ab01651eea"
+    },
+    {
+      "name": "xpg-cyrillicnumbers.sty",
+      "length": 3630,
+      "sha256": "927092e7b370bd92ba1b59d6eb5657328941fcee19d61c2aaa9ed1bfcd6f0018"
+    }
+  ],
+  "notices": [
+    {
+      "resource": {
+        "name": "notices/coursework18/texlive-latex-extra-copyright.txt",
+        "length": 33443,
+        "sha256": "d7f9a14c6f223e71df0329ad164351d2188291cc20a385a30c83f21eaa42de61"
+      },
+      "package": "texlive-latex-extra",
+      "version": "2023.20240207-1",
+      "sourcePackage": "texlive-extra",
+      "sourceVersion": "2023.20240207-1"
+    },
+    {
+      "resource": {
+        "name": "notices/coursework18/texlive-latex-base-copyright.txt",
+        "length": 33443,
+        "sha256": "d7f9a14c6f223e71df0329ad164351d2188291cc20a385a30c83f21eaa42de61"
+      },
+      "package": "texlive-latex-base",
+      "version": "2023.20240207-1",
+      "sourcePackage": "texlive-base",
+      "sourceVersion": "2023.20240207-1"
+    },
+    {
+      "resource": {
+        "name": "notices/coursework18/texlive-latex-recommended-copyright.txt",
+        "length": 33443,
+        "sha256": "d7f9a14c6f223e71df0329ad164351d2188291cc20a385a30c83f21eaa42de61"
+      },
+      "package": "texlive-latex-recommended",
+      "version": "2023.20240207-1",
+      "sourcePackage": "texlive-base",
+      "sourceVersion": "2023.20240207-1"
+    },
+    {
+      "resource": {
+        "name": "notices/coursework18/texlive-luatex-copyright.txt",
+        "length": 33443,
+        "sha256": "d7f9a14c6f223e71df0329ad164351d2188291cc20a385a30c83f21eaa42de61"
+      },
+      "package": "texlive-luatex",
+      "version": "2023.20240207-1",
+      "sourcePackage": "texlive-base",
+      "sourceVersion": "2023.20240207-1"
+    },
+    {
+      "resource": {
+        "name": "notices/coursework18/texlive-lang-cyrillic-copyright.txt",
+        "length": 33443,
+        "sha256": "d7f9a14c6f223e71df0329ad164351d2188291cc20a385a30c83f21eaa42de61"
+      },
+      "package": "texlive-lang-cyrillic",
+      "version": "2023.20240207-1",
+      "sourcePackage": "texlive-lang",
+      "sourceVersion": "2023.20240207-1"
+    },
+    {
+      "resource": {
+        "name": "notices/coursework18/fonts-dejavu-core-copyright.txt",
+        "length": 3859,
+        "sha256": "63d3ba759d12804c5b31a9d5940d855c1820d1f5999e6b0872eb1c7ff045fbc9"
+      },
+      "package": "fonts-dejavu-core",
+      "version": "2.37-8",
+      "sourcePackage": "fonts-dejavu",
+      "sourceVersion": "2.37-8"
+    },
+    {
+      "resource": {
+        "name": "notices/coursework18/fonts-liberation-copyright.txt",
+        "length": 5756,
+        "sha256": "f32df582a2aab128c07b2f7e36e7b928dc5f6bd82657b905c04f91459f9e5cf9"
+      },
+      "package": "fonts-liberation",
+      "version": "1:2.1.5-3",
+      "sourcePackage": "fonts-liberation",
+      "sourceVersion": "1:2.1.5-3"
+    },
+    {
+      "resource": {
+        "name": "notices/coursework18/fonts-liberation2-copyright.txt",
+        "length": 5756,
+        "sha256": "f32df582a2aab128c07b2f7e36e7b928dc5f6bd82657b905c04f91459f9e5cf9"
+      },
+      "package": "fonts-liberation2",
+      "version": "1:2.1.5-3",
+      "sourcePackage": "fonts-liberation",
+      "sourceVersion": "1:2.1.5-3"
+    }
+  ],
+  "luatexProjection": {
+    "resources": 4373,
+    "bytes": 128053947
+  },
+  "schemaVersion": 1,
+  "archive": {
+    "resources": 5149,
+    "length": 278229460,
+    "sha256": "1b4d2a2e6e5d3b25fee60cdd921fae20bbd32dd122c0202570d44b677e882a5d"
+  },
+  "resourceOrigin": {
+    "babelsh.def": "texlive-latex-recommended",
+    "colortbl.sty": "texlive-latex-base",
+    "ctablestack.sty": "texlive-luatex",
+    "gloss-english.ldf": "texlive-latex-recommended",
+    "gloss-ukrainian.ldf": "texlive-latex-recommended",
+    "luatex-hyphen.lua": "texlive-base",
+    "needspace.sty": "texlive-latex-extra",
+    "parskip.sty": "texlive-latex-recommended",
+    "pdflscape-nometadata.sty": "texlive-latex-recommended",
+    "pdflscape.sty": "texlive-latex-recommended",
+    "polyglossia.lua": "texlive-latex-recommended",
+    "polyglossia.sty": "texlive-latex-recommended",
+    "xpg-cyrillicnumbers.sty": "texlive-latex-recommended",
+    "DejaVuSans-Bold.ttf": "fonts-dejavu-core",
+    "DejaVuSans-BoldOblique.ttf": "fonts-dejavu-extra",
+    "DejaVuSans-ExtraLight.ttf": "fonts-dejavu-extra",
+    "DejaVuSans-Oblique.ttf": "fonts-dejavu-extra",
+    "DejaVuSans.ttf": "fonts-dejavu-core",
+    "DejaVuSansCondensed-Bold.ttf": "fonts-dejavu-extra",
+    "DejaVuSansCondensed-BoldOblique.ttf": "fonts-dejavu-extra",
+    "DejaVuSansCondensed-Oblique.ttf": "fonts-dejavu-extra",
+    "DejaVuSansCondensed.ttf": "fonts-dejavu-extra",
+    "DejaVuSansMono-Bold.ttf": "fonts-dejavu-mono",
+    "DejaVuSansMono-BoldOblique.ttf": "fonts-dejavu-mono",
+    "DejaVuSansMono-Oblique.ttf": "fonts-dejavu-mono",
+    "DejaVuSansMono.ttf": "fonts-dejavu-mono",
+    "LiberationSans-Bold.ttf": "fonts-liberation",
+    "LiberationSans-BoldItalic.ttf": "fonts-liberation",
+    "LiberationSans-Italic.ttf": "fonts-liberation",
+    "LiberationSans-Regular.ttf": "fonts-liberation",
+    "LiberationSerif-Bold.ttf": "fonts-liberation",
+    "LiberationSerif-BoldItalic.ttf": "fonts-liberation",
+    "LiberationSerif-Italic.ttf": "fonts-liberation",
+    "LiberationSerif-Regular.ttf": "fonts-liberation",
+    "language.dat.lua": "generated TeX Live language table via update-language-lua"
+  },
+  "packages": {
+    "fonts-dejavu-core": {
+      "version": "2.37-8",
+      "sourcePackage": "fonts-dejavu",
+      "sourceVersion": "2.37-8"
+    },
+    "fonts-dejavu-extra": {
+      "version": "2.37-8",
+      "sourcePackage": "fonts-dejavu",
+      "sourceVersion": "2.37-8"
+    },
+    "fonts-dejavu-mono": {
+      "version": "2.37-8",
+      "sourcePackage": "fonts-dejavu",
+      "sourceVersion": "2.37-8"
+    },
+    "fonts-liberation": {
+      "version": "1:2.1.5-3",
+      "sourcePackage": "fonts-liberation",
+      "sourceVersion": "1:2.1.5-3"
+    },
+    "texlive-base": {
+      "version": "2023.20240207-1",
+      "sourcePackage": "texlive-base",
+      "sourceVersion": "2023.20240207-1"
+    },
+    "texlive-latex-base": {
+      "version": "2023.20240207-1",
+      "sourcePackage": "texlive-base",
+      "sourceVersion": "2023.20240207-1"
+    },
+    "texlive-latex-extra": {
+      "version": "2023.20240207-1",
+      "sourcePackage": "texlive-extra",
+      "sourceVersion": "2023.20240207-1"
+    },
+    "texlive-latex-recommended": {
+      "version": "2023.20240207-1",
+      "sourcePackage": "texlive-base",
+      "sourceVersion": "2023.20240207-1"
+    },
+    "texlive-luatex": {
+      "version": "2023.20240207-1",
+      "sourcePackage": "texlive-base",
+      "sourceVersion": "2023.20240207-1"
+    }
+  },
+  "metadataNotes": [
+    "DejaVu core, extra and mono share the same source package and copyright.",
+    "The texlive-base source and installed notice also cover the included luatex-hyphen.lua.",
+    "Original local project documents and private PDFs are outside this runtime inventory."
+  ]
+}
