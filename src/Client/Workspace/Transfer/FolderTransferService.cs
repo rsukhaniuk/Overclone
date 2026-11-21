@@ -1,5 +1,4 @@
 using System.Collections.Immutable;
-using System.Text.Json;
 using Client.Workspace.Domain;
 using Microsoft.JSInterop;
 
@@ -29,7 +28,7 @@ public sealed class FolderTransferService
 
     /// <summary>Pick a directory and enumerate it into a staged import preview.
     /// The picker must be invoked from a user gesture before unrelated awaits.
-    /// Cancellation/denial returns a recoverable outcome rather than throwing.</summary>
+    /// Picker dismissal and permission denial return recoverable outcomes.</summary>
     public async Task<FolderStageResult> StageImportFromFolderAsync(string defaultName, CancellationToken ct)
     {
         IJSObjectReference m;
@@ -37,85 +36,106 @@ public sealed class FolderTransferService
         try
         {
             m = await ModuleAsync(ct);
-            handle = await m.InvokeAsync<IJSObjectReference?>("pickDirectory");
+            ct.ThrowIfCancellationRequested();
+            handle = await m.InvokeAsync<IJSObjectReference?>("pickDirectory", CancellationToken.None)
+                ?? throw new JSException("Directory picker returned no handle.");
         }
         catch (Exception ex)
-        {
-            return FolderStageResult.Failed(MapPickerError(ex), defaultName);
-        }
-
-        var limits = new
-        {
-            maxEntries = ArchiveLimits.MaxEntries,
-            maxDepth = ArchiveLimits.MaxDepth,
-            maxSegmentBytes = ArchiveLimits.MaxSegmentBytes,
-            singleFile = ArchiveLimits.SingleFile,
-        };
-
-        EnumerateResult enumResult;
-        try
-        {
-            enumResult = await m.InvokeAsync<EnumerateResult>("enumerateTree", handle!, limits);
-        }
-        catch (Exception ex)
-        {
-            await TryReleaseAsync(m, handle);
-            return FolderStageResult.Failed(MapPickerError(ex), defaultName);
-        }
-
-        // Read each enumerated file's bytes, then run the shared C# validator
-        // (same policy as ZIP). Bytes are read one at a time through the JS
-        // transport; the validator enforces limits independently as well.
-        var stagedFiles = new List<StagedFile>();
-        long expanded = 0;
-        var errors = new List<ValidationError>();
-        var filePathKeys = new HashSet<string>();
-        var directories = new HashSet<string>();
-
-        foreach (var f in enumResult.Files)
         {
             ct.ThrowIfCancellationRequested();
-            byte[] bytes;
+            return FolderStageResult.Failed(MapPickerError(ex), defaultName);
+        }
+
+        EnumerateResult? enumeration = null;
+        try
+        {
+            // Once a browser operation starts, keep awaiting it until its handles
+            // can be accounted for and released.
+            ct.ThrowIfCancellationRequested();
+            var limits = new
+            {
+                maxEntries = ArchiveLimits.MaxEntries,
+                maxDepth = ArchiveLimits.MaxDepth,
+                maxSegmentBytes = ArchiveLimits.MaxSegmentBytes,
+                singleFile = ArchiveLimits.SingleFile,
+            };
+
             try
             {
-                bytes = await m.InvokeAsync<byte[]>("readFileHandleById", f.HandleId);
+                enumeration = await m.InvokeAsync<EnumerateResult>("enumerateTree", CancellationToken.None, handle!, limits);
             }
             catch (Exception ex)
             {
-                errors.Add(new ValidationError(f.Path, "ReadFailed", ClassifyJs(ex)));
-                continue;
+                ct.ThrowIfCancellationRequested();
+                return FolderStageResult.Failed(MapPickerError(ex), defaultName);
             }
 
-            if (bytes.LongLength > ArchiveLimits.SingleFile)
+            // Read each enumerated file's bytes, then run the shared C# validator
+            // (same policy as ZIP). Bytes are read one at a time through the JS
+            // transport; the validator enforces limits independently as well.
+            var stagedFiles = new List<StagedFile>();
+            long expanded = 0;
+            var errors = new List<ValidationError>();
+            var filePathKeys = new HashSet<string>();
+            var directories = new HashSet<string>();
+
+            foreach (var f in enumeration.Files)
             {
-                errors.Add(new ValidationError(f.Path, "FileTooLarge", "File exceeds the single-file limit."));
-                continue;
-            }
-            expanded += bytes.LongLength;
-            if (expanded > ArchiveLimits.ExpandedSize)
-            {
-                errors.Add(new ValidationError(f.Path, "ExpandedTooLarge", "Expanded project exceeds the size limit."));
-                continue;
+                ct.ThrowIfCancellationRequested();
+                byte[] bytes;
+                try
+                {
+                    bytes = await m.InvokeAsync<byte[]>("readFileHandleById", CancellationToken.None, f.HandleId);
+                }
+                catch (Exception ex)
+                {
+                    ct.ThrowIfCancellationRequested();
+                    errors.Add(new ValidationError(f.Path, "ReadFailed", ClassifyJs(ex)));
+                    continue;
+                }
+
+                ct.ThrowIfCancellationRequested();
+                if (bytes.LongLength > ArchiveLimits.SingleFile)
+                {
+                    errors.Add(new ValidationError(f.Path, "FileTooLarge", "File exceeds the single-file limit."));
+                    continue;
+                }
+                expanded += bytes.LongLength;
+                if (expanded > ArchiveLimits.ExpandedSize)
+                {
+                    errors.Add(new ValidationError(f.Path, "ExpandedTooLarge", "Expanded project exceeds the size limit."));
+                    continue;
+                }
+
+                var err = StagedImportBuilder.BuildFile(f.Path, bytes, filePathKeys, directories, out var staged);
+                if (err is { } ve)
+                    errors.Add(new ValidationError(f.Path, ve.Code, ve.Message));
+                else
+                    stagedFiles.Add(staged!);
             }
 
-            var err = StagedImportBuilder.BuildFile(f.Path, bytes, filePathKeys, directories, out var staged);
-            if (err is { } ve)
-                errors.Add(new ValidationError(f.Path, ve.Code, ve.Message));
-            else
-                stagedFiles.Add(staged!);
+            ct.ThrowIfCancellationRequested();
+
+            var name = string.IsNullOrWhiteSpace(defaultName) ? "Imported project" : defaultName.Trim();
+            var stagedProject = new StagedProject(name, stagedFiles.ToImmutableArray(), errors);
+            return new FolderStageResult(
+                errors.Count == 0,
+                stagedProject,
+                enumeration.ExcludedTrees ?? new List<string>());
         }
-
-        await TryReleaseAsync(m, handle);
-        // Release any JS-side file handles not consumed by reading (e.g. on
-        // validation error before read).
-        try { await m.InvokeVoidAsync("releaseHandles", enumResult.Files.Select(f => f.HandleId).ToArray()); } catch { /* best-effort */ }
-
-        var name = string.IsNullOrWhiteSpace(defaultName) ? "Imported project" : defaultName.Trim();
-        var stagedProject = new StagedProject(name, stagedFiles.ToImmutableArray(), errors);
-        return new FolderStageResult(
-            errors.Count == 0,
-            stagedProject,
-            enumResult.ExcludedTrees ?? new List<string>());
+        finally
+        {
+            if (enumeration is not null)
+            {
+                try
+                {
+                    await m.InvokeVoidAsync("releaseHandles", CancellationToken.None,
+                        enumeration.Files.Select(f => f.HandleId).ToArray());
+                }
+                catch { /* best-effort */ }
+            }
+            await TryReleaseAsync(m, handle);
+        }
     }
 
     /// <summary>Pick a parent directory and export an immutable revision's exact
@@ -128,61 +148,77 @@ public sealed class FolderTransferService
         try
         {
             m = await ModuleAsync(ct);
-            parent = await m.InvokeAsync<IJSObjectReference?>("pickDirectory");
+            ct.ThrowIfCancellationRequested();
+            parent = await m.InvokeAsync<IJSObjectReference?>("pickDirectory", CancellationToken.None)
+                ?? throw new JSException("Directory picker returned no handle.");
         }
         catch (Exception ex)
         {
+            ct.ThrowIfCancellationRequested();
             return FolderExportResult.FailedResult("PickerFailed", ClassifyJs(ex), source.Revision.Id);
         }
 
-        // Read each file's exact bytes (bound by export policy) and build the
-        // entry list the JS writer consumes. Bytes are sent to JS as Uint8Array.
-        var entries = new List<ExportEntry>(source.Revision.Files.Length);
-        long total = 0;
-        foreach (var file in source.Revision.Files)
-        {
-            ct.ThrowIfCancellationRequested();
-            total += file.ByteLength;
-            if (total > ArchiveLimits.ExpandedSize)
-                return FolderExportResult.FailedResult("ExpandedTooLarge",
-                    "Export exceeds the project-size limit.", source.Revision.Id);
-            var bytes = await source.ReadContent(file.ContentHash, ct);
-            if (bytes.Length != file.ByteLength)
-                return FolderExportResult.FailedResult("ContentLengthMismatch",
-                    $"Content length mismatch for {file.RelativePath}.", source.Revision.Id);
-            entries.Add(new ExportEntry(file.RelativePath, bytes));
-        }
-
-        ExportWriteResult? write;
         try
         {
-            write = await m.InvokeAsync<ExportWriteResult?>("exportToDirectory", parent!, entries);
-        }
-        catch (Exception ex)
-        {
-            return FolderExportResult.FailedResult("WriteFailed", ClassifyJs(ex), source.Revision.Id);
-        }
+            // Read each file's exact bytes (bound by export policy) and build the
+            // entry list the JS writer consumes. Bytes are sent to JS as Uint8Array.
+            var entries = new List<ExportEntry>(source.Revision.Files.Length);
+            long total = 0;
+            foreach (var file in source.Revision.Files)
+            {
+                ct.ThrowIfCancellationRequested();
+                total += file.ByteLength;
+                if (total > ArchiveLimits.ExpandedSize)
+                    return FolderExportResult.FailedResult("ExpandedTooLarge",
+                        "Export exceeds the project-size limit.", source.Revision.Id);
+                var bytes = await source.ReadContent(file.ContentHash, ct);
+                ct.ThrowIfCancellationRequested();
+                if (bytes.Length != file.ByteLength)
+                    return FolderExportResult.FailedResult("ContentLengthMismatch",
+                        $"Content length mismatch for {file.RelativePath}.", source.Revision.Id);
+                entries.Add(new ExportEntry(file.RelativePath, bytes));
+            }
 
-        string? note = write!.Complete ? null :
-            $"Partial export: {write!.Completed.Count} written, {write!.Failed.Count} failed in '{write!.DirectoryName}'.";
-        return new FolderExportResult(
-            write!.Complete,
-            write!.DirectoryName,
-            write!.Completed,
-            write!.Failed,
-            source.Revision.Id,
-            note);
+            // Cancellation stops admission only. An admitted write can create files,
+            // so wait for its actual receipt even if the caller cancels.
+            ct.ThrowIfCancellationRequested();
+            ExportWriteResult write;
+            try
+            {
+                write = await m.InvokeAsync<ExportWriteResult?>("exportToDirectory", CancellationToken.None, parent!, entries)
+                    ?? throw new JSException("Folder export returned no receipt.");
+            }
+            catch (Exception ex)
+            {
+                return FolderExportResult.FailedResult("WriteFailed", ClassifyJs(ex), source.Revision.Id);
+            }
+
+            string? note = write.Complete ? null :
+                $"Partial export: {write.Completed.Count} written, {write.Failed.Count} failed in '{write.DirectoryName}'.";
+            return new FolderExportResult(
+                write.Complete,
+                write.DirectoryName,
+                write.Completed,
+                write.Failed,
+                source.Revision.Id,
+                note);
+        }
+        finally
+        {
+            await TryReleaseAsync(m, parent);
+        }
     }
 
-    private async Task<IJSObjectReference> ModuleAsync(CancellationToken ct)
+    private ValueTask<IJSObjectReference> ModuleAsync(CancellationToken ct)
     {
-        return await _js.InvokeAsync<IJSObjectReference>("import", "./js/folder-transfer.js");
+        ct.ThrowIfCancellationRequested();
+        return _js.InvokeAsync<IJSObjectReference>("import", "./js/folder-transfer.js");
     }
 
     private static async Task TryReleaseAsync(IJSObjectReference module, IJSObjectReference? handle)
     {
         if (handle is null) return;
-        try { await module.InvokeVoidAsync("releaseHandle", handle); } catch { /* best-effort */ }
+        try { await module.InvokeVoidAsync("releaseHandle", CancellationToken.None, handle); } catch { /* best-effort */ }
         try { await handle.DisposeAsync(); } catch { /* best-effort */ }
     }
 

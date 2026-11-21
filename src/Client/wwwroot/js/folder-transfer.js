@@ -113,8 +113,13 @@ export async function enumerateTree(rootHandle, limits) {
         }
     }
 
-    await walk(rootHandle, "", 1);
-    return { files, excludedTrees };
+    try {
+        await walk(rootHandle, "", 1);
+        return { files, excludedTrees };
+    } catch (error) {
+        releaseHandles(files.map((file) => file.handleId));
+        throw error;
+    }
 }
 
 // Read a file's exact bytes by its opaque handle id (registered during
@@ -122,10 +127,12 @@ export async function enumerateTree(rootHandle, limits) {
 export async function readFileHandleById(handleId) {
     const handle = handleRegistry.get(handleId);
     if (!handle) throw new Error(`Unknown file handle id: ${handleId}`);
-    const file = await handle.getFile();
-    const bytes = new Uint8Array(await file.arrayBuffer());
-    handleRegistry.delete(handleId);
-    return bytes;
+    try {
+        const file = await handle.getFile();
+        return new Uint8Array(await file.arrayBuffer());
+    } finally {
+        handleRegistry.delete(handleId);
+    }
 }
 
 // Release any remaining registered handles (e.g. after a cancelled import).
