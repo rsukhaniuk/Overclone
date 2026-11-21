@@ -66,9 +66,20 @@ internal static class KnuWireValidation
         }
         Fields(root, "protocolVersion requestId status payload");
         var p = root.GetProperty("payload");
-        Fields(p, "snapshotId profile facts diagnostics ruleResults aggregateOutcome coverage unavailableCapabilities configuration knu");
         ProfileShape(p.GetProperty("profile"));
         var version = p.GetProperty("profile").GetProperty("version").GetString()!;
+        const string required = "snapshotId profile facts diagnostics ruleResults aggregateOutcome coverage unavailableCapabilities configuration knu";
+        if (version == AnalysisCatalog.ProjectMarginFixVersion)
+        {
+            Fields(p, required + " referenceConfiguration", "projectMarginContext");
+            ReferenceWireValidation.Configuration(p.GetProperty("referenceConfiguration"));
+            if (p.TryGetProperty("projectMarginContext", out var context))
+            {
+                Fields(context, "rootFileId includedFileId inputSpan");
+                SpanShape(context.GetProperty("inputSpan"));
+            }
+        }
+        else Fields(p, required);
         var sourceRules = AnalysisCatalog.SourceRulesFor(version);
         var metadata = AnalysisCatalog.MetadataFor(version);
         Configuration(p.GetProperty("configuration"));
@@ -126,7 +137,7 @@ internal static class KnuWireValidation
                         break;
                     case "headingTitle": Fields(v, "kind titleKind finalScalar"); break;
                     case "marginDeclaration":
-                        Require(version is AnalysisCatalog.LatestVersion or AnalysisCatalog.MarginFixVersion or AnalysisCatalog.GeometryPackageVersion or AnalysisCatalog.FormattingVersion, "Observation is not supported by this profile version.");
+                        Require(AnalysisCatalog.HasMarginRules(version), "Observation is not supported by this profile version.");
                         Fields(v, "kind side length");
                         if (v.GetProperty("length").ValueKind != JsonValueKind.Null) Fields(v.GetProperty("length"), "numeratorMm denominator unit");
                         break;
@@ -192,7 +203,7 @@ internal static class KnuWireValidation
             ? rule == AnalysisCatalog.Indent : true;
 
     // Evidence coverage consistency only: Rust still owns length agreement.
-    private static void MarginCoverage(AnalysisKnuDto knu)
+    private static void MarginCoverage(AnalysisKnuDto knu, AnalysisProjectMarginContextDto? context)
     {
         int commandCount = 0;
         foreach (var file in knu.Files.Where(f => f.Eligible))
@@ -201,6 +212,7 @@ internal static class KnuWireValidation
             static AnalysisMarginSide Side(AnalysisObservationDto observation) => ((AnalysisMarginValueDto)observation.Value).Side;
             var commands = observations.GroupBy(o => o.CommandSpan).ToArray();
             commandCount += commands.Length;
+            if (file.FileId == context?.IncludedFileId) continue;
             Require(observations.Select(Side).Distinct().Count() == 4 || file.Limitations.Contains(AnalysisLimitation.MissingMarginSides), "Missing margin side coverage limitation.");
             if (file.Complete)
                 Require(commands.All(c => c.Select(Side).Distinct().Count() == 4) || file.Limitations.Contains(AnalysisLimitation.MissingMarginSides), "Missing per-declaration margin side limitation.");
@@ -218,7 +230,7 @@ internal static class KnuWireValidation
             Validate(ThesisWireValidation.LegacyResult(r));
             return;
         }
-        Require(AnalysisCatalog.IsValid(r.Profile.Id, r.Profile.Version, r.Configuration), "Unknown profile/configuration.");
+        Require(AnalysisCatalog.IsValid(r.Profile.Id, r.Profile.Version, r.Configuration, r.ReferenceConfiguration), "Unknown profile/configuration.");
         var k = r.Knu ?? throw new JsonException("Missing KNU data.");
         var sourceRules = AnalysisCatalog.SourceRulesFor(r.Profile.Version);
         Require(k.Files.Length == r.Facts.Files.Count && r.RuleResults.Count == sourceRules.Length + 1, "Missing or extra KNU files/rules.");
@@ -244,7 +256,7 @@ internal static class KnuWireValidation
             Require(f.ObservationCount + (long)facts[f.FileId].TokenCount <= MaxFileTokens, "Shared file emissions exceeded.");
             emissions += f.ObservationCount;
             Unique(f.Limitations);
-            Require(r.Profile.Version is AnalysisCatalog.LatestVersion or AnalysisCatalog.MarginFixVersion or AnalysisCatalog.GeometryPackageVersion or AnalysisCatalog.FormattingVersion || !f.Limitations.Any(MarginOnly), "Limitation is not supported by this profile version.");
+            Require(AnalysisCatalog.HasMarginRules(r.Profile.Version) || !f.Limitations.Any(MarginOnly), "Limitation is not supported by this profile version.");
             Require(r.Profile.Version == AnalysisCatalog.FormattingVersion || !f.Limitations.Any(FormattingOnly), "Limitation is not supported by this profile version.");
             Require(f.Eligible || f.Observations.IsEmpty && f.Limitations.IsEmpty, "Noneligible file has source observations.");
             foreach (var o in f.Observations)
@@ -333,7 +345,20 @@ internal static class KnuWireValidation
                 if (k.Files.Sum(f => f.Observations.Count(o => o.RuleId == rule)) > 1)
                     Require(k.Files.Where(f => f.Eligible).All(f => f.Limitations.Contains(limitation)), "Missing repeated declaration uncertainty.");
         }
-        if (r.Profile.Version is AnalysisCatalog.LatestVersion or AnalysisCatalog.MarginFixVersion or AnalysisCatalog.GeometryPackageVersion or AnalysisCatalog.FormattingVersion) MarginCoverage(k);
+        if (r.ProjectMarginContext is { } context)
+        {
+            Require(r.Profile.Version == AnalysisCatalog.ProjectMarginFixVersion
+                && r.ReferenceConfiguration?.RootFileId == context.RootFileId
+                && facts.Count == 2 && context.RootFileId != context.IncludedFileId
+                && facts.ContainsKey(context.RootFileId) && facts.ContainsKey(context.IncludedFileId),
+                "Invalid project margin file identities.");
+            Span(context.InputSpan, facts[context.RootFileId].ByteLength);
+            Require(context.InputSpan.EndByte > context.InputSpan.StartByte, "Missing project margin input span.");
+            Require(k.Files.All(f => f.Eligible && f.Complete && f.Limitations.IsEmpty)
+                && k.Files.Single(f => f.FileId == context.IncludedFileId).Observations.IsEmpty,
+                "Project margin context contradicts coverage.");
+        }
+        if (AnalysisCatalog.HasMarginRules(r.Profile.Version)) MarginCoverage(k, r.ProjectMarginContext);
         Unique(r.RuleResults.Select(x => x.RuleId));
         var rules = r.RuleResults.ToDictionary(x => x.RuleId, StringComparer.Ordinal);
         Require(rules.Count == sourceRules.Length + 1 && rules.ContainsKey(AnalysisCatalog.Engine) && sourceRules.All(rules.ContainsKey), "Missing/foreign/duplicate rule results.");
@@ -393,11 +418,14 @@ internal static class KnuWireValidation
         Require(r.Profile.Version != AnalysisCatalog.FormattingVersion || k.FixDescriptors.IsEmpty, "Fix admission is unavailable for profile 1.4.");
         foreach (var f in k.FixDescriptors)
         {
+            if (r.Profile.Version == AnalysisCatalog.ProjectMarginFixVersion)
+                Require(r.ProjectMarginContext is { } project && f.FileId == project.RootFileId && f.RuleId == AnalysisCatalog.Margins,
+                    "Project margin fix lacks exact root and include context.");
             bool indentFix = f.Id == AnalysisCatalog.Fix;
             var marginFix = AnalysisCatalog.MarginFix(f.Id);
             Require(f.Version == AnalysisCatalog.Version && (indentFix
                 ? f.RuleId == AnalysisCatalog.Indent && f.RuleVersion == AnalysisCatalog.Version
-                : marginFix is not null && r.Profile.Version is AnalysisCatalog.MarginFixVersion or AnalysisCatalog.GeometryPackageVersion && f.RuleId == AnalysisCatalog.Margins && f.RuleVersion == AnalysisCatalog.MarginRuleVersionFor(r.Profile.Version)), "Unknown fix descriptor.");
+                : marginFix is not null && AnalysisCatalog.HasMarginFixes(r.Profile.Version) && f.RuleId == AnalysisCatalog.Margins && f.RuleVersion == AnalysisCatalog.MarginRuleVersionFor(r.Profile.Version)), "Unknown fix descriptor.");
             Id(f.ProjectId); Id(f.SessionId); Id(f.SnapshotId); Id(f.FileId); if (f.BaseHeadRevisionId is not null) Id(f.BaseHeadRevisionId);
             Require(f.WorkingGeneration >= 0 && f.SnapshotId == r.SnapshotId && f.Profile == r.Profile && f.Configuration == r.Configuration, "Descriptor identity mismatch.");
             Text(f.RelativePath, 1024);
@@ -419,6 +447,8 @@ internal static class KnuWireValidation
                 Require(margins.Length == 4 && margins.All(x => x.File == f.FileId && x.Observation.Reason is null && x.Observation.Agrees is not null && x.Observation.CommandSpan == e.Observation.CommandSpan
                     && x.Observation.Value is AnalysisMarginValueDto { Length: not null })
                     && margins.Select(x => ((AnalysisMarginValueDto)x.Observation.Value).Side).Distinct().Count() == 4, "Margin descriptor requires one complete unique geometry declaration.");
+                Require(r.Profile.Version != AnalysisCatalog.ProjectMarginFixVersion || margins.Count(x => x.Observation.Agrees == false) == 1,
+                    "Project margin fix requires one deficient side.");
                 Require(e.Observation.Value is AnalysisMarginValueDto selected && selected.Side == marginFix!.Value.Side, "Margin side/fix mismatch.");
                 var firstSide = new[] { AnalysisMarginSide.Left, AnalysisMarginSide.Right, AnalysisMarginSide.Top, AnalysisMarginSide.Bottom }
                     .First(side => margins.Any(x => x.Observation.Agrees == false && ((AnalysisMarginValueDto)x.Observation.Value).Side == side));
@@ -451,6 +481,17 @@ internal static class KnuWireValidation
         foreach (var d in result.Diagnostics) { Require(files.TryGetValue(d.FileId, out var f), "Diagnostic reference mismatch."); if (d.Span is { } s) ScalarSpan(f!, s); }
         ReferenceWireValidation.Snapshot(result, snapshot);
         if (AnalysisCatalog.IsThesis(snapshot.Profile)) ThesisWireValidation.Snapshot(result, snapshot);
+        if (result.ProjectMarginContext is { } context)
+        {
+            Require(snapshot.Excluded.IsEmpty && files.Count == 2 && files.ContainsKey(context.RootFileId)
+                && files.ContainsKey(context.IncludedFileId), "Project margin context has incomplete capture.");
+            var root = files[context.RootFileId];
+            var include = files[context.IncludedFileId];
+            ScalarSpan(root, context.InputSpan);
+            var exact = root.Bytes.AsSpan()[(int)context.InputSpan.StartByte..(int)context.InputSpan.EndByte];
+            Require(exact.SequenceEqual(Encoding.UTF8.GetBytes("\\input{" + include.RelativePath + "}")),
+                "Project margin context did not match exact include bytes.");
+        }
         if (result.Knu is not { } k) return;
         Require(result.Facts.Files.Select(f => f.FileId).ToHashSet().SetEquals(files.Keys), "Captured file coverage mismatch.");
         Require(result.Facts.Files.Sum(f => (long)f.TokenCount) + k.Files.Sum(f => (long)f.ObservationCount) <= snapshot.Limits.MaxTokensPerProject, "Response exceeds requested shared emissions.");

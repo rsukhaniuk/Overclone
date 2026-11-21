@@ -16,7 +16,7 @@ internal static class ReviewPreparation
         // Retain the historical entry name; admission now resolves any finite
         // canonical rule-fix ID, never a caller-provided descriptor or parser.
         if(!AnalysisCatalog.IsCanonicalFixId(id)||report.Snapshot.Selection.Profile is not
-            { Id: AnalysisCatalog.KnuId, Version: AnalysisCatalog.Version or AnalysisCatalog.LatestVersion or AnalysisCatalog.MarginFixVersion or AnalysisCatalog.GeometryPackageVersion }
+            { Id: AnalysisCatalog.KnuId, Version: AnalysisCatalog.Version or AnalysisCatalog.LatestVersion or AnalysisCatalog.MarginFixVersion or AnalysisCatalog.GeometryPackageVersion or AnalysisCatalog.ProjectMarginFixVersion }
             ||report.Snapshot.Configuration is null||report.Result.Knu is not{} knu)return null;
         if(report.Result.SnapshotId!=report.Snapshot.Id.ToString()
             ||report.Result.Profile.Id!=report.Snapshot.Profile.Id

@@ -15,6 +15,7 @@
     <EmbeddedResource Include="Analysis/knu-profile-v1_5-metadata.json" />
     <EmbeddedResource Include="Analysis/knu-profile-v1_6-metadata.json" />
     <EmbeddedResource Include="Analysis/knu-profile-v1_7-metadata.json" />
+    <EmbeddedResource Include="Analysis/knu-profile-v1_8-metadata.json" />
     <EmbeddedResource Include="Analysis/thesis-support-catalog.json" />
     <EmbeddedResource Include="Analysis/thesis-support-catalog-v1_6.json" />
     <EmbeddedResource Include="Analysis/thesis-support-catalog-v1_7.json" />

@@ -140,7 +140,10 @@ public sealed record AnalysisResultDto(
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] AnalysisConfigurationDto? Configuration = null,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] AnalysisKnuDto? Knu = null,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] AnalysisReferenceConfigurationDto? ReferenceConfiguration = null,
-    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] AnalysisThesisDto? Thesis = null);
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] AnalysisThesisDto? Thesis = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] AnalysisProjectMarginContextDto? ProjectMarginContext = null);
+
+public sealed record AnalysisProjectMarginContextDto(string RootFileId, string IncludedFileId, AnalysisSpanDto InputSpan);
 
 public sealed record AnalysisSourceFactsDto(IReadOnlyList<AnalysisSourceFileFactsDto> Files);
 

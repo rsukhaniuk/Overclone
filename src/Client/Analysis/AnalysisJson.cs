@@ -143,7 +143,10 @@ public static class AnalysisJson
         bool knu = profile.Id == AnalysisCatalog.KnuId;
         bool references = profile.Id == AnalysisCatalog.ReferenceId;
         bool thesis = AnalysisCatalog.IsThesis(new(profile.Id, profile.Version));
-        if (!references && !thesis && p.TryGetProperty("referenceConfiguration", out _)) throw new JsonException("Foreign reference configuration.");
+        if (!references && !AnalysisCatalog.RequiresKnuRoot(new(profile.Id, profile.Version)) && p.TryGetProperty("referenceConfiguration", out _))
+            throw new JsonException("Foreign reference configuration.");
+        if ((!knu || profile.Version != AnalysisCatalog.ProjectMarginFixVersion) && p.TryGetProperty("projectMarginContext", out _))
+            throw new JsonException("Foreign project margin context.");
         if (!thesis && p.TryGetProperty("thesis", out _)) throw new JsonException("Foreign thesis observations.");
         if (references) ReferenceWireValidation.Shape(root);
         if (knu) KnuWireValidation.Shape(root);

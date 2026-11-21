@@ -44,14 +44,19 @@ public static class AnalysisCatalog
     public const string ThesisVersion = "1.5.0";
     public const string CitationNotesVersion = "1.6.0";
     public const string CaptionRolesVersion = "1.7.0";
+    public const string ProjectMarginFixVersion = "1.8.0";
     private static bool IsThesisVersion(string? version) => version is ThesisVersion or CitationNotesVersion or CaptionRolesVersion;
     public static bool IsThesis(AnalysisProfile profile) => profile.Id == KnuId && IsThesisVersion(profile.Version);
-    public static bool RequiresRoot(AnalysisProfile profile) => profile.Id == ReferenceId || IsThesis(profile);
+    public static bool RequiresKnuRoot(AnalysisProfile profile) => profile.Id == KnuId
+        && (IsThesisVersion(profile.Version) || profile.Version == ProjectMarginFixVersion);
+    public static bool RequiresRoot(AnalysisProfile profile) => profile.Id == ReferenceId || RequiresKnuRoot(profile);
+    internal static bool HasMarginRules(string version) => version is LatestVersion or MarginFixVersion or GeometryPackageVersion or FormattingVersion or ProjectMarginFixVersion;
+    internal static bool HasMarginFixes(string version) => version is MarginFixVersion or GeometryPackageVersion or ProjectMarginFixVersion;
     public const string Paper = "KNU-SRC-PAPER-001";
     public const string LineSpacing = "KNU-SRC-LINE-SPACING-001";
     public const string Caption = "KNU-SRC-CAPTION-DOT-001";
     public const string GeometryPackageRuleVersion = "1.2.0";
-    internal static string MarginRuleVersionFor(string version) => version == GeometryPackageVersion ? GeometryPackageRuleVersion : MarginRuleVersion;
+    internal static string MarginRuleVersionFor(string version) => version is GeometryPackageVersion or ProjectMarginFixVersion ? GeometryPackageRuleVersion : MarginRuleVersion;
     public const string MarginLeftFix = "KNU-FIX-MARGIN-LEFT-LITERAL-001";
     public const string MarginRightFix = "KNU-FIX-MARGIN-RIGHT-LITERAL-001";
     public const string MarginTopFix = "KNU-FIX-MARGIN-TOP-LITERAL-001";
@@ -79,6 +84,7 @@ public static class AnalysisCatalog
     private static readonly Lazy<JsonElement> ThesisMetadata = new(() => LoadMetadata("knu-profile-v1_5-metadata.json"));
     private static readonly Lazy<JsonElement> CitationNotesMetadata = new(() => LoadMetadata("knu-profile-v1_6-metadata.json"));
     private static readonly Lazy<JsonElement> CaptionRolesMetadata = new(() => LoadMetadata("knu-profile-v1_7-metadata.json"));
+    private static readonly Lazy<JsonElement> ProjectMarginFixMetadata = new(() => LoadMetadata("knu-profile-v1_8-metadata.json"));
     private static JsonElement LoadMetadata(string name)
     {
         using var stream = typeof(AnalysisCatalog).Assembly.GetManifestResourceStream("Client.Analysis." + name)
@@ -97,6 +103,7 @@ public static class AnalysisCatalog
         ThesisVersion => ThesisMetadata.Value,
         CitationNotesVersion => CitationNotesMetadata.Value,
         CaptionRolesVersion => CaptionRolesMetadata.Value,
+        ProjectMarginFixVersion => ProjectMarginFixMetadata.Value,
         _ => throw new JsonException("Unknown KNU profile version."),
     };
     internal static ImmutableArray<string> SourceRulesFor(string version) => version switch
@@ -104,17 +111,17 @@ public static class AnalysisCatalog
         Version => LegacyRules,
         LatestVersion => LatestRules,
         MarginFixVersion => LatestRules,
-        GeometryPackageVersion => LatestRules,
+        GeometryPackageVersion or ProjectMarginFixVersion => LatestRules,
         FormattingVersion => FormattingRules,
         ThesisVersion or CitationNotesVersion or CaptionRolesVersion => FormattingRules,
         _ => throw new JsonException("Unknown KNU profile version."),
     };
     public static bool IsKnown(string? id, string? version)
         => (id == "engine-structural" && version == "0") || (id == ReferenceId && version == ReferenceVersion)
-            || (id == KnuId && (version is Version or LatestVersion or MarginFixVersion or GeometryPackageVersion or FormattingVersion || IsThesisVersion(version)));
+            || (id == KnuId && (version is Version or LatestVersion or MarginFixVersion or GeometryPackageVersion or FormattingVersion or ProjectMarginFixVersion || IsThesisVersion(version)));
     public static bool IsValid(string? id, string? version, AnalysisConfigurationDto? configuration,
         AnalysisReferenceConfigurationDto? referenceConfiguration = null)
-        => id == KnuId && IsThesisVersion(version)
+        => id == KnuId && (IsThesisVersion(version) || version == ProjectMarginFixVersion)
             ? configuration is not null && Enum.IsDefined(configuration.WorkType) && referenceConfiguration is not null
                 && AnalysisIdentity.IsValidOpaqueId(referenceConfiguration.RootFileId, AnalysisLimits.MaxIdBytes)
             : id == ReferenceId && version == ReferenceVersion

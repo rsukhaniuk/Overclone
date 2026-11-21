@@ -167,6 +167,8 @@ public sealed class AnalysisSnapshotFactory : IAsyncDisposable
             pending.Add((wf, declared));
         }
 
+        if (profileVal.Version == AnalysisCatalog.ProjectMarginFixVersion && excluded.Count > 0)
+            return new CaptureResult.InvalidInput("Project margin repair requires a complete text-only project capture.", excluded);
         if (activeCount > limits.MaxFiles)
             return new CaptureResult.QuotaExceeded(
                 "file count exceeded the project file limit", excluded);

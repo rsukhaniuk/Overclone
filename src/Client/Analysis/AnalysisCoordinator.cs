@@ -220,7 +220,7 @@ public sealed class AnalysisCoordinator : IAsyncDisposable
                 // Keep the explicitly chosen reference profile visible even with
                 // no valid root; never silently fall back to another profile/root.
                 if (profile.Profile == new AnalysisProfile(AnalysisCatalog.ReferenceId, AnalysisCatalog.ReferenceVersion)
-                    || AnalysisCatalog.IsThesis(profile.Profile)) _profile = profile;
+                    || AnalysisCatalog.RequiresKnuRoot(profile.Profile)) _profile = profile;
                 _selectionVersion++;
                 _intent++;
                 CancelDebounceLocked();
@@ -426,7 +426,7 @@ public sealed class AnalysisCoordinator : IAsyncDisposable
         {
             // ---- CAPTURE (reuses the factory; no live Files enumeration) ----
             CaptureResult cap;
-            try { cap = await _factory.CaptureSelectionAsync(profile, ct, awaitActualReads: AnalysisCatalog.IsThesis(profile.Profile)).ConfigureAwait(false); }
+            try { cap = await _factory.CaptureSelectionAsync(profile, ct, awaitActualReads: AnalysisCatalog.RequiresKnuRoot(profile.Profile)).ConfigureAwait(false); }
             catch (OperationCanceledException)
             {
                 SetStateIfLatest(myIntent, new AnalysisState.Cancelled());

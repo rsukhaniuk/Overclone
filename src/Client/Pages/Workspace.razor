@@ -604,10 +604,11 @@ else
                     <option value="knu-csc-2025-source@1.5.0">KNU CSC 2025 cited source/catalog v1.5 — explicit root/work type</option>
                     <option value="knu-csc-2025-source@1.6.0">KNU CSC 2025 cited source/catalog v1.6 — literal citation notes</option>
                     <option value="knu-csc-2025-source@1.7.0">KNU CSC 2025 source v1.7 — Ukrainian caption matching</option>
+                    <option value="knu-csc-2025-source@1.8.0">KNU CSC 2025 source v1.8 — project margin repair</option>
                     <option value="knu-csc-2025-source@1.2.0">KNU CSC 2025 source observations — reviewable margin fixes v1.2</option>
                     <option value="knu-csc-2025-source@1.0.0">KNU CSC 2025 source observations — legacy v1.0</option>
                 </select>
-                @if (AnalysisCoord.CurrentConfiguration is not null || AnalysisCatalog.IsThesis(AnalysisCoord.CurrentProfile))
+                @if (AnalysisCoord.CurrentConfiguration is not null || AnalysisCatalog.RequiresKnuRoot(AnalysisCoord.CurrentProfile))
                 {
                     <label for="analysis-work-type">Work type</label>
                     <select id="analysis-work-type" data-testid="analysis-work-type" value="@(AnalysisCoord.CurrentConfiguration is { } configuration ? AnalysisPresentation.WorkValue(configuration.WorkType) : "")" @onchange="ChangeWorkType">
@@ -1222,6 +1223,7 @@ else
         { Id: AnalysisCatalog.KnuId, Version: AnalysisCatalog.ThesisVersion } => AnalysisCatalog.KnuId + "@" + AnalysisCatalog.ThesisVersion,
         { Id: AnalysisCatalog.KnuId, Version: AnalysisCatalog.CitationNotesVersion } => AnalysisCatalog.KnuId + "@" + AnalysisCatalog.CitationNotesVersion,
         { Id: AnalysisCatalog.KnuId, Version: AnalysisCatalog.CaptionRolesVersion } => AnalysisCatalog.KnuId + "@" + AnalysisCatalog.CaptionRolesVersion,
+        { Id: AnalysisCatalog.KnuId, Version: AnalysisCatalog.ProjectMarginFixVersion } => AnalysisCatalog.KnuId + "@" + AnalysisCatalog.ProjectMarginFixVersion,
         _ => "",
     };
 
@@ -1245,6 +1247,8 @@ else
             AnalysisCoord.SetSelection(new(new(AnalysisCatalog.KnuId, AnalysisCatalog.CitationNotesVersion), null, null)); // both selections explicit; no default root or degree
         else if (e.Value?.ToString() == AnalysisCatalog.KnuId + "@" + AnalysisCatalog.CaptionRolesVersion)
             AnalysisCoord.SetSelection(new(new(AnalysisCatalog.KnuId, AnalysisCatalog.CaptionRolesVersion), null, null));
+        else if (e.Value?.ToString() == AnalysisCatalog.KnuId + "@" + AnalysisCatalog.ProjectMarginFixVersion)
+            AnalysisCoord.SetSelection(new(new(AnalysisCatalog.KnuId, AnalysisCatalog.ProjectMarginFixVersion), null, null));
         else AnalysisCoord.SetSelection(default);
     }
     private IEnumerable<WorkingFile> ReferenceRootFiles => Coordinator.Files.Where(ReferenceChecks.CanBeRoot);
@@ -1252,7 +1256,7 @@ else
     private void ChangeReferenceRoot(ChangeEventArgs e)
     {
         ClearSelectionIntent();
-        if (AnalysisCatalog.IsThesis(AnalysisCoord.CurrentProfile))
+        if (AnalysisCatalog.RequiresKnuRoot(AnalysisCoord.CurrentProfile))
             AnalysisCoord.SetSelection(new(AnalysisCoord.CurrentProfile, AnalysisCoord.CurrentConfiguration, string.IsNullOrEmpty(e.Value?.ToString()) ? null : new(e.Value!.ToString()!)));
         else AnalysisCoord.SetSelection(AnalysisSelection.SourceReferences(e.Value?.ToString()));
     }
@@ -1265,7 +1269,7 @@ else
             "masterQualification" => AnalysisWorkType.MasterQualification, _ => (AnalysisWorkType)(-1),
         };
         AnalysisCoord.SetSelection(new AnalysisSelection(AnalysisCoord.CurrentProfile, new(work),
-            AnalysisCatalog.IsThesis(AnalysisCoord.CurrentProfile) ? AnalysisCoord.CurrentReferenceConfiguration : null));
+            AnalysisCatalog.RequiresKnuRoot(AnalysisCoord.CurrentProfile) ? AnalysisCoord.CurrentReferenceConfiguration : null));
     }
     private void ClearSelectionIntent()
     {
