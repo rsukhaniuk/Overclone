@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "profile": 21,
+  "base": {
+    "count": 5154,
+    "totalBytes": 278964393,
+    "closure": "7eacad1bb6b823996a97c7bc8d5ee0cf7176d9ac9e240eb156dcfaaa9f3c5f7b",
+    "pins": {
+      "name": "pins.json",
+      "length": 739392,
+      "sha256": "bf16ed4d4dfd79f058f677fd0a9aee2b3ab4eab6a68fbb1a5535c8218462f64f"
+    }
+  },
+  "runtime": {
+    "count": 5155,
+    "totalBytes": 278965292,
+    "closure": "a46b4eb3f9564d469d7b8e8c6df5a392828180faf4382e9c06651dec0f91ad6b",
+    "pins": {
+      "name": "pins.json",
+      "length": 739556,
+      "sha256": "6e3d912496873ac8ef763efb85cdd044447cefca2953168222dc9528f5ab43a4"
+    },
+    "identityName": "local-compiler-dvi-page-labels-v1",
+    "identity": "eb47ed92ac9efcdc7277c6b3dd1c5861abde63213e440d40aa7c201af6f4d692"
+  },
+  "converter": {
+    "name": "dvi-map-converter.wasm",
+    "length": 698189,
+    "sha256": "73c8714f530b6b7821cc2c3b4ba73b82baebc4958ab2b741ae84796f7705efc8"
+  },
+  "notice": {
+    "name": "notices/dvi-page-label21/provenance.txt",
+    "length": 239,
+    "sha256": "39958c3f67ca6ff4200100f7c2ab8ec1f055bc2d0cdd65b88ce6af9b05148680"
+  },
+  "sourcePatchSha256": "bddfa141251b22d3cffa98d5d3c4088cd8026dccba8c9f4fe1f3601ff497850b",
+  "archive": {
+    "length": 280336534,
+    "sha256": "532fc02d7bba80371a02b3477c5e7d35397d366d62cc03eb040689ca30c69b78"
+  }
+}

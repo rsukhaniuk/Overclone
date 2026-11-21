@@ -1,0 +1,49 @@
+--- a/native/tex/page-origin-navigation/neutral-dictionaries.inc
++++ b/native/tex/page-origin-navigation/neutral-dictionaries.inc
+@@ -34,6 +34,38 @@
+   for(i=2;i<5;++i)if(!oc_n_number(pdf_get_array(o,i),1))return 0;
+   return 1;
+ }
++/* A direct decimal PageLabels number tree is catalog metadata only.
++ * Bound the real parsed objects and reuse the existing complete-consumption,
++ * CTM/depth and sticky-unsafe checks in the dispatch witness. */
++static int oc_n_decimal_style(pdf_obj *key,pdf_obj *value,void *opaque) {
++  unsigned *keys=(unsigned*)opaque;
++  return ++*keys!=1 || !oc_n_name(key,"S") || !oc_n_name(value,"D");
++}
++static int oc_n_decimal_label_ranges(pdf_obj *key,pdf_obj *value,void *opaque) {
++  unsigned *keys=(unsigned*)opaque;
++  unsigned length,i;
++  double previous=-1;
++  if(++*keys!=1 || !oc_n_name(key,"Nums") || pdf_obj_typeof(value)!=PDF_ARRAY)return 1;
++  length=pdf_array_length(value);
++  if(length<2 || length>1024 || length%2)return 1;
++  for(i=0;i<length;i+=2) {
++    pdf_obj *index=pdf_get_array(value,i);
++    pdf_obj *label=pdf_get_array(value,i+1);
++    double page;
++    unsigned fields=0;
++    if(!oc_n_number(index,0) || pdf_obj_typeof(label)!=PDF_DICT)return 1;
++    page=pdf_number_value(index);
++    if(page<=previous || page>511 || floor(page)!=page || (i==0 && page!=0))return 1;
++    if(pdf_foreach_dict(label,oc_n_decimal_style,&fields) || fields!=1)return 1;
++    previous=page;
++  }
++  return 0;
++}
++static int oc_n_decimal_page_labels(pdf_obj *labels) {
++  unsigned keys=0;
++  return labels && pdf_obj_typeof(labels)==PDF_DICT &&
++    !pdf_foreach_dict(labels,oc_n_decimal_label_ranges,&keys) && keys==1;
++}
+ static int oc_n_dictionary(pdf_obj *,unsigned);
+ static int oc_n_key(pdf_obj *key,pdf_obj *value,void *opaque) {
+   struct oc_n_context *c=(struct oc_n_context*)opaque;const char *k;
+@@ -46,6 +78,7 @@
+   }
+   if(c->kind==OC_N_VIEW) {
+     if(!strcmp(k,"OpenAction"))return !oc_n_destination(value);
++    if(!strcmp(k,"PageLabels"))return !oc_n_decimal_page_labels(value);
+     if(!strcmp(k,"PageMode"))return !(oc_n_name(value,"UseNone")||oc_n_name(value,"UseOutlines")||oc_n_name(value,"UseThumbs"));
+     return 1;
+   }

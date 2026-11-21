@@ -36,4 +36,41 @@ replace('assert.equal(instantiated,1);',`assert.equal(instantiated,1);
  if(kind==='lua'&&operation==='latex'){assert.equal(m._oc_lua_harfbuzz_abi(),1);assert.equal(m._oc_lua_text_semantics_abi(),1);assert.equal(m._oc_lua_output_declaration_limit(),256);}
  if(kind==='dvi'&&operation==='convert'&&process.env.REQUIRE_ORIGIN==='1')assert.equal(m._oc_dvi_font_semantics_abi(),1);
 `);
+// Optional direct pdfTeX observer under test. Legacy callers keep their exact
+// component and raw-only path, and the derivative is never loaded for DVI.
+if(process.env.PDF_CANDIDATE){
+ assert.equal(process.argv[2],'pdf');assert.equal(process.argv[3],'latex');
+ if(process.env.PDF_DIRECT_NO_MAP==='1') replace("  assert.equal(call('setMainEntry',['string'],[entry]),0);assert.equal(call('oc_mem_configure',['number','number','number'],[1,1048575,tag]),1);", "  assert.equal(call('setMainEntry',['string'],[entry]),0);assert.equal(call('oc_mem_configure',['number','number','number'],[0,0,tag]),1);");
+ replace("const moduleDir=operation==='convert'", "const moduleDir=kind==='pdf'?process.env.PDF_CANDIDATE:operation==='convert'");
+ replace("if(operation==='convert'&&moduleDir!==dir)", "if(kind==='pdf')names.splice(0,2,'engine.js','engine.wasm');if(operation==='convert'&&moduleDir!==dir)");
+ replace(" const call=(n,t=[],a=[])=>m.ccall(n,'number',t,a);", ` const call=(n,t=[],a=[])=>m.ccall(n,'number',t,a);
+ assert.equal(m._oc_pdftex_origin_abi(),1);
+ assert.equal(m._oc_synctex_geometry_length(tag),0);
+ assert.equal(m._oc_synctex_geometry_length(tag+1),0);
+ assert.equal(m._oc_pdftex_legacy_zero_origin(tag),0);
+ `);
+ replace("  raw=readToken('oc_synctex_length','oc_synctex_copy',tag,1048575);\n }",
+ `  raw=readToken('oc_synctex_length','oc_synctex_copy',tag,1048575);
+  geometry=readToken('oc_synctex_geometry_length','oc_synctex_geometry_copy',tag,131072);
+  assert.equal(m._oc_synctex_geometry_length(tag+1),0);
+  assert.equal(m._oc_pdftex_legacy_zero_origin(tag+1),0);
+  const legacyZeroOrigin=m._oc_pdftex_legacy_zero_origin(tag);
+  assert.ok(legacyZeroOrigin===0||legacyZeroOrigin===1);
+  if(legacyZeroOrigin)assert.ok(raw.length>0&&geometry.length===0);
+  if(!raw.length)assert.ok(!legacyZeroOrigin&&!geometry.length);
+  fs.writeFileSync(path.join(out,'origin-attestation.json'),JSON.stringify({
+   capability:m._oc_pdftex_origin_abi(),tag,legacyZeroOrigin,rawLength:raw.length,geometryLength:geometry.length
+  },null,2)+'\\n');
+  if(geometry.length){
+   const copy=m._malloc(geometry.length);
+   assert.equal(m._oc_synctex_geometry_copy(tag+1,copy,geometry.length),0);
+   assert.equal(m._oc_synctex_geometry_copy(tag,0,geometry.length),0);
+   assert.equal(m._oc_synctex_geometry_copy(tag,copy,geometry.length-1),0);
+   assert.equal(m._oc_synctex_geometry_copy(tag,copy,131073),0);
+   assert.equal(m._oc_synctex_geometry_copy(tag,copy,geometry.length),geometry.length);
+   assert.deepEqual(Buffer.from(m.HEAPU8.subarray(copy,copy+geometry.length)),geometry);
+   m._free(copy);
+  }
+ }`);
+}
 const child=new Module(parent,module);child.filename=parent;child.paths=Module._nodeModulePaths(path.dirname(parent));child._compile(text,parent);

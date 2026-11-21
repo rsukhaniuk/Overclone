@@ -1,0 +1,53 @@
+\documentclass{article}
+\pdfpagewidth=600bp
+\pdfpageheight=800bp
+\pdfcompresslevel=0
+\pdfobjcompresslevel=0
+\newbox\AlphaBox
+\newbox\BetaBox
+\newbox\GammaBox
+\newbox\DeltaBox
+\begin{document}
+% Original synthetic direct pdfTeX page-origin fixture.
+\input{глави/chapter one.tex}
+\pdfhorigin=57bp \pdfvorigin=77bp
+\pdfpageattr{/MediaBox [12 18 612 818] /CropBox [17 23 607 813] /Rotate 0}
+\shipout\vbox{%
+\kern38bp
+\hbox{\kern37bp Toplevel alpha roundtrip}
+\kern63bp
+\copy\AlphaBox
+\kern70bp
+\hbox{\kern440bp Far edge alpha}
+}
+\pdfhorigin=61bp \pdfvorigin=65bp
+\pdfpageattr{/MediaBox [-24 -30 576 770] /CropBox [-19 -25 571 765] /Rotate 90}
+\shipout\vbox{%
+\kern54bp
+\hbox{\kern36bp Toplevel beta roundtrip}
+\kern75bp
+\copy\BetaBox
+\kern70bp
+\hbox{\kern430bp Far edge beta}
+}
+\pdfhorigin=73bp \pdfvorigin=54bp
+\pdfpageattr{/MediaBox [-18 24 582 824] /CropBox [-13 29 577 819] /Rotate 180}
+\shipout\vbox{%
+\kern70bp
+\hbox{\kern33bp Toplevel gamma roundtrip}
+\kern88bp
+\copy\GammaBox
+\kern70bp
+\hbox{\kern410bp Far edge gamma}
+}
+\pdfhorigin=63bp \pdfvorigin=80bp
+\pdfpageattr{/MediaBox [30 -18 630 782] /CropBox [35 -13 625 777] /Rotate 270}
+\shipout\vbox{%
+\kern82bp
+\hbox{\kern43bp Toplevel delta roundtrip}
+\kern96bp
+\copy\DeltaBox
+\kern70bp
+\hbox{\kern420bp Far edge delta}
+}
+\end{document}

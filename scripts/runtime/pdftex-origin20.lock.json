@@ -1,0 +1,46 @@
+{
+  "schemaVersion": 1,
+  "profile": 20,
+  "base": {
+    "count": 5152,
+    "totalBytes": 276862615,
+    "closure": "4ad9a1902795ab40107e92a1d22ed5c1c56f640c0c53e193b9e7f5d7dac45cf0",
+    "pins": {
+      "name": "pins.json",
+      "length": 739087,
+      "sha256": "3bd04d2cb12adaf5fdedce84e703e8525649643aa72c39cf725a0d2b93795f10"
+    }
+  },
+  "runtime": {
+    "count": 5154,
+    "totalBytes": 278964393,
+    "closure": "7eacad1bb6b823996a97c7bc8d5ee0cf7176d9ac9e240eb156dcfaaa9f3c5f7b",
+    "pins": {
+      "name": "pins.json",
+      "length": 739392,
+      "sha256": "bf16ed4d4dfd79f058f677fd0a9aee2b3ab4eab6a68fbb1a5535c8218462f64f"
+    },
+    "identityName": "local-compiler-pdftex-origin-v1",
+    "identity": "84abead5a2feb357d52ff01364f5b72ed099610c40a8c0428ac10f9a64b0e652"
+  },
+  "added": [
+    {
+      "name": "pdftex-origin-engine.js",
+      "length": 142478,
+      "sha256": "57daa24fd7edf922c6ce74a76cf10f97ec8ace1a8db39b0d0b82296fb7168d85"
+    },
+    {
+      "name": "pdftex-origin-engine.wasm",
+      "length": 1959300,
+      "sha256": "cf1e37c774fcd112efe739e4768f3d88c508d064d5340af2535395bbbe0508ec"
+    }
+  ],
+  "producer": {
+    "pdftex-origin-engine.js": "engine.js",
+    "pdftex-origin-engine.wasm": "engine.wasm"
+  },
+  "archive": {
+    "length": 280335305,
+    "sha256": "a689da4e943bbb9f8feadd0580e92b758195f7359dbb797d201bace8184c2abf"
+  }
+}
