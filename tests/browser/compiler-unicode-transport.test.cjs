@@ -1,7 +1,7 @@
 // Actual bridge/admission with modeled Worker/controller; not native/browser proof.
 'use strict';
 const assert = require('node:assert/strict');
-const { harness, frame, origin } = require('./restricted-worker-test-helpers.cjs');
+const { harness, frame, origin, hash } = require('./restricted-worker-test-helpers.cjs');
 
 function request(version, engineId, tool = 'latex', profile = 12) {
   const value = frame(version, `${profile}-${version}-${engineId}-${tool}`);
@@ -54,6 +54,25 @@ function settle(h, value, extra = {}) {
   }
   for (const extra of [{ sourceMapGeometryPayload: geometry }, { sourceMapPayload: map, nativeReturn: 1 }])
     assert.equal((await settle(h, request(21, 'xelatex'), extra).operation).outcome, 'protocol-failure');
+  const lua = request(22, 'lualatex', 'latex', 18);
+  lua.tag.runtimeIdentity = 'f4ad5c7f702efc4f90d7a803ad6c697be0b3664b4ca90f837c8e6bd74ca88a40';
+  lua.bibliographyTool = 'none';
+  lua.outputs.push('result.out');
+  const outline = { name: 'result.out', bytes: new Uint8Array(0) };
+  const produced = await settle(h, lua, { files: [outline] }).operation;
+  assert.equal(produced.nativeReturn, 0);
+  assert.equal(produced.files[0].bytes.length, 0);
+  lua.tag.ordinal++;
+  // Blazor may encode an empty byte array as an empty base64 string.
+  lua.generatedInputNames.push(outline.name);
+  lua.files.push({ ...produced.files[0], bytes: '' });
+  const { operation, worker } = settle(h, lua);
+  const phase = worker.messages.at(-1);
+  assert.deepEqual(phase.generatedInputNames, [outline.name]);
+  const carried = phase.files.find(file => file.name === outline.name);
+  assert.equal(carried.bytes.length, 0);
+  assert.equal(hash(carried.bytes), hash(outline.bytes));
+  assert.equal((await operation).nativeReturn, 0);
   assert.equal(h.api.observations().started, h.api.observations().settled);
   assert.equal(h.stats.urls.length, h.stats.revoked.length);
   h.api.dispose();

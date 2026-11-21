@@ -40,8 +40,13 @@ async function attempt(kind,options={},mutate=()=>{}){
   _oc_mem_configure(...a){calls.push(['configure',...a]);return 1;},
   _oc_synctex_length(n){calls.push(['map-length',n]);return map.length;},_oc_synctex_copy(n,p){calls.push(['map-copy',n]);heap.set(map,p);return map.length;},
   _oc_synctex_geometry_length(n){calls.push(['geometry-length',n]);return geo.length;},_oc_synctex_geometry_copy(n,p){calls.push(['geometry-copy',n]);heap.set(geo,p);return geo.length;},
-  FS:{mkdir(){calls.push(['mkdir']);},mkdirTree(){calls.push(['mkdir']);},chdir(){},writeFile(n,b){calls.push(['write',n]);store.set(n,b.slice());},analyzePath:n=>({exists:store.has(n)}),
-   stat:n=>({mode:32768,size:store.get(n).length}),isFile:()=>true,readFile:n=>store.get(n).slice()},
+  FS:{mkdir(){calls.push(['mkdir']);},mkdirTree(){calls.push(['mkdir']);},chdir(){},writeFile(n,b){calls.push(['write',n]);store.set(n,b.slice());},analyzePath(n,noFollow){
+   if(n==='/work/output/result.out'){
+    calls.push(['outline-stat',noFollow]);return options.outline??{path:null,object:null};
+   }
+   return {exists:store.has(n)};
+  },
+   stat:n=>({mode:32768,size:store.get(n).length}),isFile:mode=>mode===32768,readFile:n=>store.get(n).slice()},
   _compileLaTeX(){calls.push(['native']);for(const n of frame.outputs)store.set('/work/'+n,n.endsWith('.xdv')?new Uint8Array([247,7,0]):n.endsWith('.pdf')?pdf:encode('output'));return options.nativeReturn??0;},
   ccall(n,_r,_t,a){switch(n){case'oc_luatex_abi':return options.nativeAbi??5;
    case'setMainEntry':case'oc_luatex_configure':case'oc_luatex_declare_output':case'oc_luatex_add_file':calls.push([n,...a]);return 0;
@@ -129,5 +134,19 @@ if(require.main===module)(async()=>{
  }
  for(const status of [2,0,3]){const r=await attempt('dvi',{status}),reply=r.messages.at(-1).reply;assert.equal(reply.nativeReturn,0);assert.equal(reply.entered,true);assert.equal(reply.files.length,0);
   assert.equal(reply.sourceMapGeometryPayload,null);assert.equal(reply.outcome,status===2?'font-semantics-unsupported':'protocol-failure');count++;}
- console.log(`P13 Unicode/converter MODELED FFI PASS: ${count} cases; not native/browser proof.`);
+ const target='/work/output/result.out';
+ for(const [outline,expected] of [
+  [{path:target,object:{mode:32768}},true],
+  [{path:null,object:null},false],
+  [{path:'/work/project/result.out',object:{mode:32768}},false],
+  [{path:target,object:{mode:41471}},false],
+ ]){
+  const r=await attempt('lua',{profile:15,outline},frame=>frame.outputs.push('result.out'));
+  const reply=r.messages.at(-1).reply;
+  assert.equal(reply.outcome,'native-return');
+  assert.deepEqual(r.calls.filter(call=>call[0]==='outline-stat'),[['outline-stat',true]]);
+  const carried=reply.files.find(file=>file.name==='result.out');
+  assert.equal(carried?.bytes.length,expected?0:undefined);count++;
+ }
+ console.log(`Unicode/converter modeled FFI PASS: ${count} cases.`);
 })().catch(e=>{console.error(e);process.exitCode=1;});
