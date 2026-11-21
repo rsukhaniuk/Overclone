@@ -1,0 +1,16 @@
+--- a/native/tex/dvi-engine/oc_dvi.cpp
++++ b/native/tex/dvi-engine/oc_dvi.cpp
+@@ -121,6 +121,13 @@
+         auto r = resources.find(name + 5);
+         return r == resources.end() ? nullptr : &r->second;
+     }
++    // DVI graphics specials can spell an owned project file with ./.
++    // This is a lookup-only alias. Keep admission and /tex/ bindings strict.
++    if (name && name[0] == '.' && name[1] == '/') {
++        if (strnlen(name, 250) > 249 || !path_ok(name + 2)) return nullptr;
++        auto relative = project.find(name + 2);
++        return relative == project.end() ? nullptr : &relative->second;
++    }
+     if (!path_ok(name)) return nullptr;
+     auto p = project.find(name);
+     if (p != project.end()) return &p->second;
