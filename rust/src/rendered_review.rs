@@ -7,6 +7,7 @@ mod classify;
 mod dto;
 mod heading;
 mod heading_page_end;
+mod heading_spacing;
 mod pagination;
 mod paragraph;
 mod reference_pair;
@@ -76,8 +77,11 @@ fn run(metadata: &str, bytes: &str) -> Result<Value, &'static str> {
         {
             return Err("InvalidInput");
         }
-    } else if request.payload.profile.version == paragraph::PROFILE_VERSION {
-        request.validate_profile(&facts, paragraph::PROFILE_VERSION)?;
+    } else if matches!(
+        request.payload.profile.version.as_str(),
+        paragraph::PROFILE_VERSION | heading_spacing::PROFILE_VERSION
+    ) {
+        request.validate_profile(&facts, &request.payload.profile.version)?;
         if request.payload.requested_pages.len() != 1 {
             return Err("InvalidInput");
         }

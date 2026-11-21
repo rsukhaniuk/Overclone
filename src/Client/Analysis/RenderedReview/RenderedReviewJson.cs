@@ -100,6 +100,12 @@ public static partial class RenderedReviewJson
                 results.Add(ParseHeadingPageEnd(item, expected, expected.RequestedPages[0], outcome, support, reason));
                 continue;
             }
+            if (id == HeadingRuleId && expected.ProfileVersion == RenderedReviewContract.HeadingSpacingProfileVersion)
+            {
+                Require(occurrence == 0);
+                results.Add(ParseHeadingSpacing(item, expected, expected.RequestedPages[0], outcome, support, reason));
+                continue;
+            }
             if (id == ParagraphIndentRuleId && expected.ProfileVersion == RenderedReviewContract.ParagraphIndentProfileVersion)
             {
                 Require(occurrence == 0);

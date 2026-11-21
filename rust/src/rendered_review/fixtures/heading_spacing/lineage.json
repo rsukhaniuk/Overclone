@@ -1,0 +1,28 @@
+{
+  "description": "Synthetic TeX source compiled with genuine pinned pdfTeX. Retained geometry is the unchanged first E1 schema2 page in a bounded single-page evaluator envelope.",
+  "compiler": {
+    "loader": "735c17494d6ec61c1b2f000f437f343ece9af3258f2f354f11745b7b5836dde2",
+    "wasm": "e3136893e75d5b6b3a7b4297349c28f51423dee2c014a607d9c1cd20f75357c3"
+  },
+  "source": {
+    "тези/my thesis.tex": {
+      "length": 541,
+      "sha256": "d53a54d37ff89a6360e988aba739a7277c1f7a2a556c1219f8fdea44fbd75cc0"
+    }
+  },
+  "pdf": {
+    "length": 16815,
+    "sha256": "90557f754fef1de2c0f77968d7c2608dc0a56f1e43758e3b71a4a3c54eeff12f"
+  },
+  "renderer": {
+    "loader": {
+      "bytes": 14243,
+      "sha256": "ea2cebb93f554788751e58554b6e16a094ee6d0883774cb697cbb4a5ce8ec38c"
+    },
+    "wasm": {
+      "bytes": 3725611,
+      "sha256": "b1630e6501e7715b4e0870a059f4e9b8b5acc4c96aa2af0e4ecacb04071622d7"
+    }
+  },
+  "retainedFactsSha256": "5d71c8289f7535ed37bd0cd974efe040b7681c9eac9fcc73b055516969b250aa"
+}

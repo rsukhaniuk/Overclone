@@ -1,0 +1,20 @@
+\documentclass[a4paper]{article}
+\pagestyle{empty}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{10pt}
+\newcommand{\headingandbody}[2]{%
+  {\baselineskip=#1\relax
+  Section first title line.\newline
+  Section second title line.\par}%
+  {\baselineskip=14pt
+  Paragraph starts the discussion.\newline
+  Paragraph continues the discussion.#2\newline
+  Paragraph ends the discussion.\par}}
+\begin{document}
+\ttfamily
+\headingandbody{24pt}{}
+\newpage
+\headingandbody{14pt}{}
+\newpage
+\headingandbody{24pt}{\vadjust{\vskip 6pt}}
+\end{document}

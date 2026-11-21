@@ -199,6 +199,9 @@ public sealed partial class CompiledReviewController : IDisposable
     public Task CheckMinorHeadingPageEndAsync(int confirmedPageIndex, CancellationToken cancellationToken = default)
         => CheckPagesAsync([confirmedPageIndex], RenderedReviewContract.HeadingPageEndProfileVersion, cancellationToken);
 
+    public Task CheckHeadingSpacingAsync(int pageIndex, CancellationToken cancellationToken = default)
+        => CheckPagesAsync([pageIndex], RenderedReviewContract.HeadingSpacingProfileVersion, cancellationToken);
+
     private async Task CheckPagesAsync(IReadOnlyList<int>? selectedPages, string? profile, CancellationToken cancellationToken)
     {
         if (_disposed || Busy) return;
@@ -217,6 +220,7 @@ public sealed partial class CompiledReviewController : IDisposable
         {
             RenderedReviewContract.ParagraphIndentProfileVersion => _annotations.Where(a => a.Role == "paragraph").ToArray(),
             RenderedReviewContract.HeadingPageEndProfileVersion => _annotations.Where(a => a.Role == "headingMinor").ToArray(),
+            RenderedReviewContract.HeadingSpacingProfileVersion => _annotations.Where(a => a.Role is "headingMinor" or "headingMajor" or "paragraph").ToArray(),
             _ => _annotations
         };
         _report = null; _reportAuthority = null;

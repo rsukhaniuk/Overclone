@@ -1,4 +1,6 @@
-use super::{catalog, classify, dto::*, heading, pagination, paragraph, roles, typography};
+use super::{
+    catalog, classify, dto::*, heading, heading_spacing, pagination, paragraph, roles, typography,
+};
 use serde_json::{json, Value};
 
 fn metrics(
@@ -153,6 +155,8 @@ pub fn evaluate(request: &Request, batch: &FactBatch) -> Vec<Value> {
                 && request.payload.profile.version == heading::PROFILE_VERSION;
             let with_heading_page_end = descriptor.rule_id == heading::RULE_ID
                 && request.payload.profile.version == super::heading_page_end::PROFILE_VERSION;
+            let with_heading_spacing = descriptor.rule_id == heading::RULE_ID
+                && request.payload.profile.version == heading_spacing::PROFILE_VERSION;
             let with_paragraph = descriptor.rule_id == paragraph::RULE_ID
                 && request.payload.profile.version == paragraph::PROFILE_VERSION;
             let (rule_version, citation, limitations) = if with_pagination {
@@ -164,6 +168,12 @@ pub fn evaluate(request: &Request, batch: &FactBatch) -> Vec<Value> {
                     "1.2.0",
                     heading::citation(),
                     super::heading_page_end::LIMITATIONS,
+                )
+            } else if with_heading_spacing {
+                (
+                    "1.3.0",
+                    heading_spacing::citation(),
+                    heading_spacing::LIMITATIONS,
                 )
             } else if with_paragraph {
                 ("1.1.0", paragraph::citation(), paragraph::LIMITATIONS)
@@ -278,6 +288,11 @@ pub fn evaluate(request: &Request, batch: &FactBatch) -> Vec<Value> {
                     let observation = super::heading_page_end::evaluate(request, page);
                     evidence = observation.2;
                     ("partial", observation.0, observation.1)
+                }
+                heading::RULE_ID if with_heading_spacing => {
+                    let observation = heading_spacing::evaluate(request, page);
+                    evidence = observation.1;
+                    ("partial", "indeterminate", observation.0)
                 }
                 "KNU-HEADINGS-RENDERED-001" => {
                     let observed = roles::evaluate(request, page, descriptor.rule_id);

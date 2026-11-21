@@ -40,7 +40,7 @@ pub(super) fn evaluate(request: &Request, page: &Page) -> (&'static str, &'stati
     }
 }
 
-fn line_break(pair: &[Character]) -> bool {
+pub(super) fn line_break(pair: &[Character]) -> bool {
     pair[0].unicode == 13
         && pair[1].unicode == 10
         && pair.iter().all(|c| {

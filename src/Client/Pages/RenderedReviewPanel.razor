@@ -296,6 +296,12 @@
                     disabled="@(HeadingPage is not { } current || _confirmedHeadingPage != current)"
                     @onclick="CheckHeadingPageEnd">Check heading on current page</button>
         </details>
+        <details data-testid="rendered-heading-spacing-controls">
+            <summary>Compare heading and body line spacing</summary>
+            <p>On the current PDF page, confirm one complete two-line heading and the first three complete lines of the paragraph directly below it. Use PDF search to select each range, then label it Major heading or Minor heading, or Paragraph.</p>
+            <button type="button" data-testid="rendered-heading-spacing-check" disabled="@(HeadingSpacingPage is null)"
+                    @onclick="CheckHeadingSpacing">Compare line spacing on current page</button>
+        </details>
         <button type="button" data-testid="rendered-review-cancel" @onclick="Cancel" disabled="@(!_controller.CanCancel)">Cancel rendered review</button>
         <p role="status" data-testid="rendered-review-status" data-busy="@_controller.Busy.ToString().ToLowerInvariant()">@_controller.Notice</p>
         @if (_inputError is not null) { <p role="alert" data-testid="rendered-review-input-error">@_inputError</p> }
@@ -326,6 +332,10 @@
                         @if (report.ProfileVersion == RenderedReviewContract.HeadingPageEndProfileVersion && result.RuleId == "KNU-HEADINGS-RENDERED-001")
                         {
                             <p data-testid="rendered-heading-page-end-result" data-reason="@result.Reason">@HeadingPageEndSummary(result.Reason)</p>
+                        }
+                        @if (report.ProfileVersion == RenderedReviewContract.HeadingSpacingProfileVersion && result.RuleId == "KNU-HEADINGS-RENDERED-001")
+                        {
+                            <p data-testid="rendered-heading-spacing-result" data-reason="@result.Reason">@HeadingSpacingSummary(result)</p>
                         }
                         <p><a href="@RenderedExtentContract.SourceUrl" target="_blank" rel="noopener noreferrer">KNU CSC 2025, @CitationLabel(result.Citation)</a></p>
                         @if (result.Evidence.Count > 0)
@@ -662,6 +672,44 @@
     private int? ParagraphIndentPage => CurrentReviewPage?.PageIndex;
     private Task CheckParagraphIndent() => ParagraphIndentPage is int page
         ? _controller.CheckParagraphIndentAsync(page) : Task.CompletedTask;
+    private int? HeadingSpacingPage
+    {
+        get
+        {
+            if (CurrentReviewPage is not { } preview) return null;
+            var confirmed = _controller.Annotations.Where(a => a.PageIndex == preview.PageIndex
+                && a.CharacterStart is not null && a.Provenance == "authorLabel" && a.Certainty == "confirmedObservation");
+            return confirmed.Any(a => a.Role is "headingMajor" or "headingMinor") && confirmed.Any(a => a.Role == "paragraph")
+                ? preview.PageIndex : null;
+        }
+    }
+    private Task CheckHeadingSpacing() => HeadingSpacingPage is int page
+        ? _controller.CheckHeadingSpacingAsync(page) : Task.CompletedTask;
+    private static string HeadingSpacingSummary(RenderedRuleResult result)
+    {
+        if (result.Evidence.Count == 1)
+        {
+            var evidence = result.Evidence[0];
+            var body = evidence.GetProperty("observation").GetProperty("bodyIntervals");
+            double heading = evidence.GetProperty("measured").GetDouble();
+            double error = evidence.GetProperty("uncertainty").GetProperty("absoluteError").GetDouble();
+            string comparison = result.Reason == "confirmed-heading-baselines-differ-from-local-body"
+                ? "The heading interval is outside both body measurement intervals."
+                : "The measurements do not establish a difference.";
+            return $"Heading: {heading:0.###} ± {error:0.###} mm. Body: {Format(body[0])} and {Format(body[1])}. {comparison}";
+        }
+        return result.Reason switch
+        {
+            "confirmed-heading-and-paragraph-ranges-required" or "ambiguous-heading-or-paragraph-ranges" => "Confirm one heading and one paragraph range on the current page.",
+            "heading-spacing-complete-adjacent-lines-required" => "Select two complete heading lines and the next three complete paragraph lines.",
+            "heading-spacing-body-reference-unestablished" => "The two paragraph intervals do not establish a common body reference.",
+            "heading-spacing-physical-scale-unavailable" => "The PDF does not supply a usable physical page scale.",
+            _ => "The selected lines do not establish isolated baseline geometry."
+        };
+
+        static string Format(JsonElement interval) =>
+            $"{interval.GetProperty("measuredMm").GetDouble():0.###} ± {interval.GetProperty("absoluteErrorMm").GetDouble():0.###} mm";
+    }
     private static string ParagraphIndentSummary(RenderedRuleResult result)
     {
         if (result.Evidence.Count == 1)
