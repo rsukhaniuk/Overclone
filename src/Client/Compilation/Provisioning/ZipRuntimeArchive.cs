@@ -42,17 +42,23 @@ public sealed class ZipRuntimeArchive : IAsyncDisposable
     // Application-owned HTTP bytes, transferred without a second archive-sized copy.
     internal Task PrepareOwnedAsync(byte[] bytes, CancellationToken token, NativeRuntimeProfile profile = NativeRuntimeProfile.Legacy)
     {
-        bool coursework = profile == NativeRuntimeProfile.LocalCompilerCoursework
-            && NativeCompilerCourseworkPins.Ready && bytes.Length == NativeCompilerCourseworkPins.ArchiveLength;
-        if (_preparation is not null || _closing || bytes.Length < 22 || bytes.Length > MaxZipBytes && !coursework) throw Invalid();
-        _preparation = PrepareEntries(bytes, token, coursework);
+        bool pinnedLargeArchive = profile switch
+        {
+            NativeRuntimeProfile.LocalCompilerCoursework => NativeCompilerCourseworkPins.Ready
+                && bytes.Length == NativeCompilerCourseworkPins.ArchiveLength,
+            NativeRuntimeProfile.LocalCompilerDviGraphics => NativeCompilerDviGraphicsPins.Ready
+                && bytes.Length == NativeCompilerDviGraphicsPins.ArchiveLength,
+            _ => false
+        };
+        if (_preparation is not null || _closing || bytes.Length < 22 || bytes.Length > MaxZipBytes && !pinnedLargeArchive) throw Invalid();
+        _preparation = PrepareEntries(bytes, token, pinnedLargeArchive ? profile : NativeRuntimeProfile.Legacy);
         return _preparation;
     }
-    private async Task PrepareEntries(byte[] bytes, CancellationToken token, bool coursework = false)
+    private async Task PrepareEntries(byte[] bytes, CancellationToken token, NativeRuntimeProfile largeArchiveProfile = NativeRuntimeProfile.Legacy)
     {
         token.ThrowIfCancellationRequested();
         if (_closing) throw Invalid();
-        var directory = ZipDirectory.Read(bytes, coursework); // sole envelope parser; bounded metadata first
+        var directory = ZipDirectory.Read(bytes, largeArchiveProfile); // sole envelope parser; bounded metadata first
         _bytes = bytes;
         var entries = directory.ToDictionary(item => item.Name, StringComparer.Ordinal);
         var manifest = entries["pins.json"];
@@ -152,7 +158,7 @@ internal static class ZipDirectory
     private static ushort U16(byte[] b, int p) { Check(b, p, 2); return BinaryPrimitives.ReadUInt16LittleEndian(b.AsSpan(p, 2)); }
     private static uint U32(byte[] b, int p) { Check(b, p, 4); return BinaryPrimitives.ReadUInt32LittleEndian(b.AsSpan(p, 4)); }
     private static void Check(byte[] b, int p, int n) { if (p < 0 || n < 0 || p > b.Length - n) throw Invalid(); }
-    public static List<Item> Read(byte[] b, bool coursework = false)
+    public static List<Item> Read(byte[] b, NativeRuntimeProfile largeArchiveProfile = NativeRuntimeProfile.Legacy)
     {
         int end = -1;
         for (int p = b.Length - 22; p >= Math.Max(0, b.Length - 65557); p--)
@@ -162,9 +168,14 @@ internal static class ZipDirectory
         bool legacyEnvelope = count is 498 or 499 or 500 or 501 or 508 or 509;
         bool suiteEnvelope = LocalRuntimeSelection.SupportedSuiteCount(count - 1) || LocalRuntimeSelection.SupportedSuiteCount(count - 2);
         if ((!legacyEnvelope && !suiteEnvelope) || U16(b, end + 8) != count) throw Invalid();
-        if (coursework && count != NativeCompilerCourseworkPins.ResourceCount + 1 && count != NativeCompilerCourseworkPins.ResourceCount + 2) throw Invalid();
+        bool largeArchive = largeArchiveProfile is NativeRuntimeProfile.LocalCompilerCoursework or NativeRuntimeProfile.LocalCompilerDviGraphics;
+        if (largeArchive)
+        {
+            int installed = NativeRuntimeProfiles.InstalledCount(largeArchiveProfile);
+            if (count != installed + 1 && count != installed + 2) throw Invalid();
+        }
         if (!suiteEnvelope && b.Length > 67108864) throw Invalid();
-        long resourceTotalCap = coursework ? NativeCompilerCourseworkPins.TotalBytes
+        long resourceTotalCap = largeArchive ? NativeRuntimeProfiles.SuiteTotalBytes(largeArchiveProfile)
             : suiteEnvelope ? NativeCompilerSuiteContract.TotalBytes : LocalRuntimeSelection.Limits.MaxTotalBytes;
         long central = U32(b, end + 16), centralSize = U32(b, end + 12);
         if (central + centralSize != end || central > int.MaxValue) throw Invalid();
@@ -185,7 +196,7 @@ internal static class ZipDirectory
             foreach (byte value in nameBytes) if (value < 32 || value > 126) throw Invalid();
             string name = Encoding.ASCII.GetString(nameBytes);
             bool folder = name == "files/";
-            if (!names.Add(name) || !(name == "pins.json" || folder || ResourceName(name, suiteEnvelope, coursework))) throw Invalid();
+            if (!names.Add(name) || !(name == "pins.json" || folder || ResourceName(name, suiteEnvelope, largeArchiveProfile))) throw Invalid();
             uint attributes = U32(b, cursor + 38), type = (attributes >> 16) & 0xf000;
             if (type != 0 && type != (folder ? 0x4000u : 0x8000u)
                 || (attributes & 0x48) != 0 || !folder && (attributes & 0x10) != 0) throw Invalid();
@@ -234,12 +245,14 @@ internal static class ZipDirectory
         if (next != central) throw Invalid();
         return items;
     }
-    private static bool ResourceName(string name, bool suite, bool coursework)
+    private static bool ResourceName(string name, bool suite, NativeRuntimeProfile largeArchiveProfile)
     {
         if (!name.StartsWith("files/", StringComparison.Ordinal)) return false;
         var flat = name[6..];
         return suite ? NativeCompilerSuiteContract.ResourceName(flat) || NativeThesisCompilerContract.NoticeName(flat) || NativeInputBudgetContract.NoticeName(flat)
-            || coursework && NativeCompilerCourseworkPins.NoticeName(flat)
+            || largeArchiveProfile is NativeRuntimeProfile.LocalCompilerCoursework or NativeRuntimeProfile.LocalCompilerDviGraphics
+                && NativeCompilerCourseworkPins.NoticeName(flat)
+            || largeArchiveProfile == NativeRuntimeProfile.LocalCompilerDviGraphics && NativeCompilerDviGraphicsPins.NoticeName(flat)
             : flat.Length is > 0 and <= 200 && flat.All(c => char.IsAsciiLetterOrDigit(c) || c is '.' or '-' or '_')
             && flat is not ("." or "..");
     }

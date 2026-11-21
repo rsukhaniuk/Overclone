@@ -12,6 +12,7 @@ public static class NativeInputBudgetContract
         Profile => NativeCompilerInputBudgetPins.Ready,
         NativeSelectedPdfContract.Profile => NativeCompilerSelectedPdfPins.Ready,
         NativeRuntimeProfile.LocalCompilerCoursework => NativeCompilerCourseworkPins.Ready,
+        NativeRuntimeProfile.LocalCompilerDviGraphics => NativeCompilerDviGraphicsPins.Ready,
         _ => false
     };
     public static NativeCompilerComponent Component(NativeCompilerEngine engine)

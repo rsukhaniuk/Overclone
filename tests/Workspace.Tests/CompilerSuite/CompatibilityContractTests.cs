@@ -20,18 +20,18 @@ public sealed class CompatibilityContractTests
         Assert.Equal(5, (int)NativeRuntimeProfile.LocalCompilerSuite);
         Assert.Equal(6, (int)Profile);
         foreach (var profile in Enum.GetValues<NativeRuntimeProfile>())
-            Assert.Equal((int)profile is 5 or 6 or 7 or 8 or 9 or 10 or 12 or 13 or 14 or 15 or 16 or 17 or 18, NativeRuntimeProfiles.IsSuite(profile));
+            Assert.Equal((int)profile is 5 or 6 or 7 or 8 or 9 or 10 or 12 or 13 or 14 or 15 or 16 or 17 or 18 or 19, NativeRuntimeProfiles.IsSuite(profile));
         Assert.False(NativeRuntimeProfiles.IsSuite((NativeRuntimeProfile)11));
         Assert.False(NativeRuntimeProfiles.Known((NativeRuntimeProfile)11));
-        Assert.False(NativeRuntimeProfiles.IsSuite((NativeRuntimeProfile)19));
-        Assert.False(NativeRuntimeProfiles.Known((NativeRuntimeProfile)19));
+        Assert.False(NativeRuntimeProfiles.IsSuite((NativeRuntimeProfile)20));
+        Assert.False(NativeRuntimeProfiles.Known((NativeRuntimeProfile)20));
         Assert.False(NativeRuntimeProfiles.IsSuite((NativeRuntimeProfile)int.MaxValue));
         Assert.False(NativeRuntimeProfiles.Known((NativeRuntimeProfile)int.MaxValue));
         Assert.True(NativeRuntimeProfiles.Known(Profile));
         Assert.True(NativeRuntimeProfiles.Modern(Profile));
         Assert.Equal("local-compiler-suite-v1", NativeRuntimeProfiles.IdentityName(NativeRuntimeProfile.LocalCompilerSuite));
         Assert.Equal("local-compiler-suite-v2", NativeRuntimeProfiles.IdentityName(Profile));
-        Assert.Equal(NativeRuntimeProfile.LocalCompilerCoursework, BundledRuntimeAssets.CompilerProfile);
+        Assert.Equal(NativeRuntimeProfile.LocalCompilerDviGraphics, BundledRuntimeAssets.CompilerProfile);
     }
 
     [Theory]

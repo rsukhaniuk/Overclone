@@ -200,9 +200,11 @@ public sealed class NativeCompilationWorkerFactory : ICompilationWorkerFactory
                     .Concat(snapshot.Files.Where(f => f.RelativePath.EndsWith(".tex", StringComparison.Ordinal) && f.RelativePath != "main.tex")
                         .Select(f => f.RelativePath[..^4] + ".aux")).Distinct(StringComparer.Ordinal).ToArray();
                 if (outputs.Length > (v4 ? NativeRuntimeProfiles.OutputDeclarationLimit(factory._plan.Profile) : 64)
-                    || factory._plan.Profile is NativeRuntimeProfile.LocalCompilerCoursework or NativeSelectedPdfContract.Profile or NativeInputBudgetContract.Profile or NativeThesisCompilerContract.Profile or NativeOriginCompilerContract.Profile && lua && !NativeThesisCompilerContract.LuaOutputDeclarationsFit(outputs)
+                    || factory._plan.Profile is NativeRuntimeProfile.LocalCompilerDviGraphics or NativeRuntimeProfile.LocalCompilerCoursework or NativeSelectedPdfContract.Profile or NativeInputBudgetContract.Profile or NativeThesisCompilerContract.Profile or NativeOriginCompilerContract.Profile && lua && !NativeThesisCompilerContract.LuaOutputDeclarationsFit(outputs)
                     || snapshot.Files.Any(f => outputs.Contains(f.RelativePath, StringComparer.Ordinal)))
                     return Finish(CompileOutputStatus.Failed, "generated-input-collision");
+                var dviImageSidecars = factory._plan.Profile == NativeRuntimeProfile.LocalCompilerDviGraphics && engine == NativeCompilerEngine.LaTeXDvi
+                    ? NativeDviImageSidecarContract.Create(snapshot.Files, outputs, token) : [];
                 var generated = new Dictionary<string, byte[]>(StringComparer.Ordinal);
                 string? previous = null, lastBibtexInput = null; int stable = 0, ordinal = 0;
                 Client.Workspace.Domain.SHA256? producedBibtexBbl = null;
@@ -359,6 +361,7 @@ public sealed class NativeCompilationWorkerFactory : ICompilationWorkerFactory
                     Check();
                     bool converting = tool == "dvipdfmx";
                     bool biberPhase = tool == "biber";
+                    var sidecars = tool == "latex" ? dviImageSidecars : [];
                     string[] phaseOutputs = converting ? [pdfName] : biberPhase ? [bblName, entry!.JobName + ".blg"] : outputs;
                     string[]? resourceNames = null;
                     string[]? generatedNames = suite ? (converting ? [] : generated.Keys.Order(StringComparer.Ordinal).ToArray()) : null;
@@ -383,7 +386,7 @@ public sealed class NativeCompilationWorkerFactory : ICompilationWorkerFactory
                     else if (converting)
                     {
                         if (!convertingOutput || entry is null || finalDvi is null) return null;
-                        var resources = runtime.ConverterResourceLengths.Select(f => (Name: suite ? NativeCompilerSuiteContract.ResourcePrefix + f.Name : f.Name, f.Length)).ToArray();
+                        var resources = runtime.ConverterResourceLengthsFor(engine).Select(f => (Name: suite ? NativeCompilerSuiteContract.ResourcePrefix + f.Name : f.Name, f.Length)).ToArray();
                         string intermediate = entry.JobName + (xe ? ".xdv" : ".dvi");
                         var project = snapshot.Files.Select(f => (Name: f.RelativePath, Length: f.ByteLength)).ToArray();
                         // All budgets and namespace checks precede ANY byte copies.
@@ -400,7 +403,7 @@ public sealed class NativeCompilationWorkerFactory : ICompilationWorkerFactory
                             : NativeAuthoringV4Contract.ValidateNamespace(conversionInputs, phaseOutputs, []);
                         if (invalid is not null) throw new NativeAuthoringV4Exception(invalid);
                         resourceNames = resources.Select(f => f.Name).Order(StringComparer.Ordinal).ToArray();
-                        all = runtime.CopyConverterResources().ToDictionary(f => suite ? NativeCompilerSuiteContract.ResourcePrefix + f.Name : f.Name, f => f.Bytes, StringComparer.Ordinal);
+                        all = runtime.CopyConverterResources(engine).ToDictionary(f => suite ? NativeCompilerSuiteContract.ResourcePrefix + f.Name : f.Name, f => f.Bytes, StringComparer.Ordinal);
                         foreach (var file in snapshot.Files) all.Add(file.RelativePath, file.ToArray());
                         all.Add(intermediate, finalDvi.ToArray());
                     }
@@ -408,7 +411,8 @@ public sealed class NativeCompilationWorkerFactory : ICompilationWorkerFactory
                     {
                         if (v4)
                         {
-                            var inputNames = phaseLengths.Select(f => f.Name).Concat(snapshot.Files.Select(f => f.RelativePath));
+                            var inputNames = phaseLengths.Select(f => f.Name).Concat(snapshot.Files.Select(f => f.RelativePath))
+                                .Concat(sidecars.Select(f => f.Lease.Name));
                             var invalid = runBiber ? NativeBiberCompilerContract.ValidateNamespace(entry!, inputNames, generated.Keys)
                                 : bibliographyCarry ? NativeBibliographyContract.ValidateNamespace(entry!, inputNames, generated.Keys)
                                 : entry is null ? NativeAuthoringV4Contract.ValidateNamespace(inputNames, outputs, generated.Keys)
@@ -416,9 +420,9 @@ public sealed class NativeCompilationWorkerFactory : ICompilationWorkerFactory
                             if (invalid is not null) throw new NativeAuthoringV4Exception(invalid);
                             ValidateState(generated.Select(f => (f.Key, f.Value.Length)));
                         }
-                        if (phaseLengths.Length + snapshot.Files.Length + generated.Count > factory._plan.MaxPhaseFiles) throw new NativeResourceLimitException();
                         var lengths = phaseLengths.Concat(snapshot.Files.Select(f => (f.RelativePath, checked((int)f.ByteLength))))
-                            .Concat(generated.Select(f => (f.Key, f.Value.Length))).ToArray();
+                            .Concat(generated.Select(f => (f.Key, f.Value.Length)))
+                            .Concat(sidecars.Select(f => (f.Lease.Name, f.Bytes.Length))).ToArray();
                         // Names are mapped in FileLengths already. Reject runtime,
                         // source or generated conflicts BEFORE any byte clones/hashes.
                         if (lengths.Select(f => f.Item1).Distinct(StringComparer.Ordinal).Count() != lengths.Length)
@@ -430,10 +434,11 @@ public sealed class NativeCompilationWorkerFactory : ICompilationWorkerFactory
                             || lengths.Sum(f => (long)f.Item2) > factory._plan.MaxInputBytes) throw new NativeResourceLimitException();
                         if (suite)
                         {
-                            int resourceCap = tool == "bibtex" ? NativeCompilerSuiteContract.TotalBytes : lua ? factory._plan.Profile is NativeUnicodeCompilerContract.Profile or NativeBiberCompilerContract.Profile or NativeThesisCompilerContract.Profile or NativeOriginCompilerContract.Profile or NativeInputBudgetContract.Profile or NativeSelectedPdfContract.Profile or NativeRuntimeProfile.LocalCompilerCoursework ? NativeUnicodeCompilerContract.LuaResourceBytes : 96 * 1024 * 1024 : xe ? 160 * 1024 * 1024 : NativeCompilerSuiteContract.TotalBytes;
+                            int resourceCap = tool == "bibtex" ? NativeCompilerSuiteContract.TotalBytes : lua ? factory._plan.Profile is NativeUnicodeCompilerContract.Profile or NativeBiberCompilerContract.Profile or NativeThesisCompilerContract.Profile or NativeOriginCompilerContract.Profile or NativeInputBudgetContract.Profile or NativeSelectedPdfContract.Profile or NativeRuntimeProfile.LocalCompilerDviGraphics or NativeRuntimeProfile.LocalCompilerCoursework ? NativeUnicodeCompilerContract.LuaResourceBytes : 96 * 1024 * 1024 : xe ? 160 * 1024 * 1024 : NativeCompilerSuiteContract.TotalBytes;
                             int resourceCount = tool == "latex" && lua ? 4608 : NativeCompilerSuiteContract.Files;
                             if (phaseLengths.Length > resourceCount || phaseLengths.Sum(f => (long)f.Length) > resourceCap
-                                || snapshot.Files.Sum(f => f.ByteLength) + generated.Sum(f => (long)f.Value.Length) > 32 * 1024 * 1024)
+                                || snapshot.Files.Sum(f => f.ByteLength) + generated.Sum(f => (long)f.Value.Length)
+                                    + sidecars.Sum(f => (long)f.Bytes.Length) > 32 * 1024 * 1024)
                                 throw new NativeResourceLimitException();
                             resourceNames = phaseLengths.Select(f => f.Name).Order(StringComparer.Ordinal).ToArray();
                         }
@@ -445,6 +450,7 @@ public sealed class NativeCompilationWorkerFactory : ICompilationWorkerFactory
                             all.Add(file.RelativePath, file.ToArray());
                         }
                         foreach (var file in generated) all.Add(file.Key, file.Value.ToArray());
+                        foreach (var file in sidecars) all.Add(file.Lease.Name, file.Bytes.ToArray());
                         if (all.Count > factory._plan.MaxPhaseFiles || all.Values.Any(b => b.Length > factory._plan.MaxFileBytes)
                             || all.Values.Sum(b => (long)b.Length) > factory._plan.MaxInputBytes) throw new NativeResourceLimitException();
                     }
@@ -470,7 +476,8 @@ public sealed class NativeCompilationWorkerFactory : ICompilationWorkerFactory
                             : converting || lua ? Math.Min(limits.MaxPayloadBytes, NativeLatexDviContract.PdfBytes)
                                 : NativeSelectedPdfContract.PhaseOutputBytes(tag, limits.MaxPayloadBytes),
                         entry?.SelectedPath, resourceNames, generatedNames, biberPhase ? runtime.Copy("biber.data") : null,
-                        NativeRuntimeProfiles.SupportsBiber(runtime.Profile) ? bibliographyTool : null);
+                        NativeRuntimeProfiles.SupportsBiber(runtime.Profile) ? bibliographyTool : null,
+                        sidecars.Length == 0 ? null : sidecars.Select(f => f.Lease).ToArray());
                     var reply = await factory.Operations.RunAsync(() => { lock (_dispatch) { Check(); return factory._transport.ExecuteAsync(request); } }, token).ConfigureAwait(false);
                     Check();
                     if (reply is { Outcome: "transport-timeout", NativeReturn: null, Files.Length: 0, SourceMapPayload: null, SourceMapGeometryPayload: null } && reply.Tag == tag)

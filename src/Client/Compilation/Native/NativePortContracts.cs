@@ -4,11 +4,13 @@ namespace Client.Compilation.Native;
 
 public sealed record NativeFileTransfer(string Name, byte[] Bytes);
 public sealed record NativeInputFact(string Name, int Length, string Sha256);
+public sealed record NativeDviImageSidecar(string Name, string SourceName, string SourceSha256);
 public sealed record NativePhaseTag(string Job, string Request, long Epoch, Guid Capture, string Digest, int Ordinal, string Tool, string Nonce,
     CompilationSnapshotIdentity? Snapshot = null, int Version = 1,
     NativeRuntimeProfile Profile = NativeRuntimeProfile.Legacy, string? RuntimeIdentity = null, string? EngineId = null);
 public sealed record NativePhaseRequest(NativePhaseTag Tag, string MainEntry, NativeFileTransfer[] Files,
-    string[] Outputs, byte[] Loader, byte[] Wasm, int MaxLogBytes, int MaxOutputBytes, string? SelectedRoot = null, string[]? RuntimeResourceNames = null, string[]? GeneratedInputNames = null, byte[]? BootstrapData = null, string? BibliographyTool = null);
+    string[] Outputs, byte[] Loader, byte[] Wasm, int MaxLogBytes, int MaxOutputBytes, string? SelectedRoot = null, string[]? RuntimeResourceNames = null, string[]? GeneratedInputNames = null, byte[]? BootstrapData = null, string? BibliographyTool = null,
+    NativeDviImageSidecar[]? DviImageSidecars = null);
 public sealed record NativePhaseReply(NativePhaseTag Tag, string Outcome, int? NativeReturn, bool Entered,
     string Log, NativeFileTransfer[] Files, NativeInputFact[] Inputs, double? ElapsedMs = null, int? HeapBytes = null,
     string? WasmSha256 = null, string? LoaderSha256 = null, byte[]? SourceMapPayload = null)

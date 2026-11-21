@@ -50,7 +50,7 @@ public sealed class JsSyncTeXQuery(IJSRuntime js, ISyncTeXRuntimeProvider runtim
             token.ThrowIfCancellationRequested();
             if (package is null) return SyncTeXWire.End(SyncTeXQueryStatus.Unavailable, "RuntimeAbsent");
             if (owned.RuntimeBinding is { } required && !required.Matches(package.CompilerBinding)
-                || (package.CompilerBinding?.Profile is Native.NativeOriginCompilerContract.Profile or Native.NativeInputBudgetContract.Profile or Native.NativeSelectedPdfContract.Profile or Native.NativeRuntimeProfile.LocalCompilerCoursework) && owned.RuntimeBinding is null)
+                || (package.CompilerBinding?.Profile is Native.NativeOriginCompilerContract.Profile or Native.NativeInputBudgetContract.Profile or Native.NativeSelectedPdfContract.Profile or Native.NativeRuntimeProfile.LocalCompilerCoursework or Native.NativeRuntimeProfile.LocalCompilerDviGraphics) && owned.RuntimeBinding is null)
                 return SyncTeXWire.End(SyncTeXQueryStatus.Unavailable, "RuntimeProfileMismatch");
             if (!package.IsValid) return SyncTeXWire.End(SyncTeXQueryStatus.Unavailable, "RuntimeMismatch");
             byte[] loader = package.CopyLoader(), wasm = package.CopyWasm();
@@ -69,7 +69,7 @@ public sealed class JsSyncTeXQuery(IJSRuntime js, ISyncTeXRuntimeProvider runtim
                 ["direction"] = owned.Direction == SyncTeXDirection.Forward ? "forward" : "inverse",
                 ["file"] = owned.File, ["line"] = owned.Line, ["page"] = owned.Page, ["h"] = owned.H, ["v"] = owned.V
             };
-            if (package.CompilerBinding?.Profile is Native.NativeOriginCompilerContract.Profile or Native.NativeInputBudgetContract.Profile or Native.NativeSelectedPdfContract.Profile or Native.NativeRuntimeProfile.LocalCompilerCoursework)
+            if (package.CompilerBinding?.Profile is Native.NativeOriginCompilerContract.Profile or Native.NativeInputBudgetContract.Profile or Native.NativeSelectedPdfContract.Profile or Native.NativeRuntimeProfile.LocalCompilerCoursework or Native.NativeRuntimeProfile.LocalCompilerDviGraphics)
                 metadataFields.Add("queryProfile", 15);
             string metadata = JsonSerializer.Serialize(metadataFields);
             // Cancellation can run between this check and invocation. The port

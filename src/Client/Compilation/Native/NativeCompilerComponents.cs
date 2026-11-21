@@ -12,6 +12,18 @@ public static class NativeCompilerComponents
     public static NativeCompilerComponent For(NativeRuntimeProfile profile, NativeCompilerEngine engine)
     {
         if (!NativeRuntimeProfiles.IsSuite(profile)) throw new ArgumentOutOfRangeException(nameof(profile));
+        if (profile == NativeRuntimeProfile.LocalCompilerDviGraphics)
+        {
+            var prior = NativeInputBudgetContract.Component(engine);
+            return engine == NativeCompilerEngine.LaTeXDvi ? prior with
+            {
+                OutputAdapter = prior.OutputAdapter with
+                {
+                    Version = prior.OutputAdapter.Version + "-owned-png1",
+                    Hash = new(NativeCompilerDviGraphicsPins.DviConverterWasmHash)
+                }
+            } : prior;
+        }
         if (profile is NativeRuntimeProfile.LocalCompilerCoursework or NativeSelectedPdfContract.Profile or NativeInputBudgetContract.Profile) return NativeInputBudgetContract.Component(engine);
         if (profile == NativeOriginCompilerContract.Profile) return NativeOriginCompilerContract.Component(engine);
         if (profile == NativeThesisCompilerContract.Profile) return NativeThesisCompilerContract.Component(engine);

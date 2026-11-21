@@ -1,4 +1,4 @@
-const pB=p=>p===13||p===14||p===15||p===16||p===17||p===18;
+const pB=p=>p===13||p===14||p===15||p===16||p===17||p===18||p===19;
 // Browser/WASM/owned-byte glue only. C# selects the backend and admits BCF.
 // Genuine Perl/Biber, filesystem confinement and output limits live in C++/WASM.
 const send=self.postMessage.bind(self),encode=new TextEncoder(),decode=new TextDecoder('utf-8',{fatal:true});
@@ -19,6 +19,7 @@ function validate(d){
   ||typeof t.runtimeIdentity!=='string'||!/^[0-9a-f]{64}$/.test(t.runtimeIdentity)
   ||t.profile===17&&t.runtimeIdentity!=='41d0bb841b4832771327e44c84ada913e75204e25c5f39d6e52204e7350bf109'
   ||t.profile===18&&t.runtimeIdentity!=='f4ad5c7f702efc4f90d7a803ad6c697be0b3664b4ca90f837c8e6bd74ca88a40'
+  ||t.profile===19&&t.runtimeIdentity!=='1974b526f3a47b33f60d5a5384f14b3c618ac996d950ab514e13ef119d06bc79'
   ||!path(d.selectedRoot)||!/\.tex$/i.test(d.selectedRoot)||!path(d.mainEntry)
   ||!Array.isArray(d.files)||d.files.length<1||d.files.length>64||!Array.isArray(d.outputs)||d.outputs.length!==2
   ||!Number.isSafeInteger(d.maxLogBytes)||d.maxLogBytes<1||d.maxLogBytes>262144

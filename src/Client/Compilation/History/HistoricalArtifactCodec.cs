@@ -61,7 +61,8 @@ internal static class HistoricalArtifactCodec
             var engine = new CompilationDescriptor(NativeRuntimePackage.EngineId, component.EngineVersion, new(component.WasmHash));
             Check(selection!.Engine == engine && selection.Bundles.Length == 1 && value.Adapter == component.OutputAdapter
                 && (MatchesLargePdfBundle(NativeSelectedPdfContract.Profile)
-                    || MatchesLargePdfBundle(NativeRuntimeProfile.LocalCompilerCoursework)));
+                    || MatchesLargePdfBundle(NativeRuntimeProfile.LocalCompilerCoursework)
+                    || MatchesLargePdfBundle(NativeRuntimeProfile.LocalCompilerDviGraphics)));
 
             bool MatchesLargePdfBundle(NativeRuntimeProfile profile) => NativeSelectedPdfContract.Supports(profile)
                 && SyncTeXRuntimeBinding.ForProfile(profile) is { } binding && selection.Bundles[0] == binding.Bundle

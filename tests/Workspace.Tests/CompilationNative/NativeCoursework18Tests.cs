@@ -1,9 +1,10 @@
-using System.Net;
 using System.Reflection;
 using System.Text.Json;
+using Client.Compilation;
+using Client.Compilation.Lifecycle;
 using Client.Compilation.Native;
 using Client.Compilation.Provisioning;
-using Client.RuntimeAssets;
+using Workspace.Tests.CompilationLifecycle;
 using Xunit;
 
 namespace Workspace.Tests.CompilationNative;
@@ -16,8 +17,6 @@ public sealed class NativeCoursework18Tests
     [Fact]
     public void Coursework_quota_adds_archive_capacity_without_widening_phases()
     {
-        Assert.Equal(Profile, BundledRuntimeAssets.CompilerProfile);
-        Assert.NotNull(BundledRuntimeAssets.SelectedPdfCapacity);
         Assert.Equal(NativeCompilerCourseworkPins.TotalBytes, LocalRuntimeSelection.LimitsFor(Profile).MaxTotalBytes);
         Assert.Equal(NativeCompilerSuiteContract.TotalBytes, LocalRuntimeSelection.LimitsFor(Previous).MaxTotalBytes);
         Assert.False((LocalRuntimeSelection.LimitsFor(Profile) with { MaxTotalBytes = NativeCompilerCourseworkPins.TotalBytes + 1 }).IsValid);
@@ -41,7 +40,7 @@ public sealed class NativeCoursework18Tests
         }));
         Assert.False(NativeSelectedPdfContract.IsSelectedPdfPhase(tag with { RuntimeIdentity = NativeSelectedPdfContract.RuntimeIdentity }));
         Assert.False(NativeSelectedPdfContract.IsSelectedPdfPhase(tag with { Profile = Previous }));
-        Assert.False(NativeSelectedPdfContract.IsSelectedPdfPhase(tag with { Profile = (NativeRuntimeProfile)19 }));
+        Assert.False(NativeSelectedPdfContract.IsSelectedPdfPhase(tag with { Profile = (NativeRuntimeProfile)20 }));
         Assert.False(NativeSelectedPdfContract.IsSelectedPdfPhase(tag with { EngineId = "lualatex", Version = 22 }));
     }
 
@@ -57,7 +56,7 @@ public sealed class NativeCoursework18Tests
     }
 
     [CourseworkFixtureFact]
-    public async Task Exact_bundled_archive_authenticates_Lua_projection_and_preserves_P17_roles()
+    public async Task Exact_P18_runtime_preserves_its_Lua_and_original_P17_role_projections()
     {
         var previousRoot = Environment.GetEnvironmentVariable("SELECTED_PDF17_RUNTIME_DIR")!;
         var courseworkRoot = Environment.GetEnvironmentVariable("COURSEWORK18_RUNTIME_DIR")!;
@@ -72,14 +71,9 @@ public sealed class NativeCoursework18Tests
             LocalRuntimeSelection.LimitsFor(Previous), Previous);
         Assert.Equal(NativeSelectedPdfContract.RuntimeIdentity, previous.Package?.Identity.Hex);
 
-        using var handler = new ArchiveHandler(Environment.GetEnvironmentVariable("COURSEWORK18_ARCHIVE")!);
-        await using var resources = new BundledRuntimeAssets(new HttpClient(handler) { BaseAddress = new("http://localhost/") });
-        var installed = await resources.ReadCompilerAsync();
-        Assert.Equal(RuntimeAssetStatus.Ready, installed.Store.Status);
-        var runtime = Assert.IsType<NativeRuntimePackage>(installed.Package);
+        var runtime = LoadCourseworkRuntime();
         Assert.Equal(Profile, runtime.Profile);
         Assert.Equal(NativeCompilerCourseworkPins.RuntimeIdentity, runtime.Identity.Hex);
-        Assert.Equal(new[] { "/bundled-runtime/compiler-suite.zip" }, handler.Requests);
 
         foreach (var engine in new[] { NativeCompilerEngine.PdfLaTeX, NativeCompilerEngine.LaTeXDvi, NativeCompilerEngine.XeLaTeX })
             Assert.Equal(Projection(previous.Package!, engine), Projection(runtime, engine));
@@ -96,6 +90,61 @@ public sealed class NativeCoursework18Tests
         Assert.Equal(ConverterProjection(previous.Package!), ConverterProjection(runtime));
     }
 
+    [CourseworkFixtureFact]
+    public void Lua_scheduler_preserves_empty_outline_and_waits_for_a_genuine_rerun() => LifecycleTestHost.Run(async () =>
+    {
+        var runtime = LoadCourseworkRuntime();
+        const NativeCompilerEngine engine = NativeCompilerEngine.LuaLaTeX;
+        await using var workspace = await CompilationTestWorkspace.Open();
+        Assert.True(workspace.Workspace.RenameFile(workspace.Main, "main.tex"));
+        workspace.Selection.SetSelection(CompilationSelection.Create(new(workspace.Main, runtime.EngineFor(engine),
+            [runtime.Bundle], [], NativeCompilerSuiteContract.SelectionOptions(Profile, engine)), 65536).Selection!);
+        var context = CompileRequestContext.Create(await workspace.Snapshot(), 1, 65536, NativeRuntimePackage.Pdf,
+            runtime.AdapterFor(engine)).Context!;
+        var phase = new OutlineTransport();
+        var factory = new NativeCompilationWorkerFactory(new FixedNativeRuntimeProvider(runtime), phase,
+            NativeCompilerSuiteContract.CreatePlan(engine, profile: Profile));
+        var id = new CompileJobId(Guid.NewGuid());
+        var result = await factory.Create(id, 1).ExecuteAsync(id, context,
+            new CompileOutputBudget(8388608, 65536, 32, 128, 4096, 8192), CancellationToken.None)!;
+        Assert.Equal(CompileOutputStatus.Succeeded, result!.Status);
+        Assert.Equal(3, phase.Passes);
+    });
+
+    // Modeled replies verify managed carry and stability independently of native rendering.
+    private sealed class OutlineTransport : INativePhaseTransport
+    {
+        public int Passes { get; private set; }
+
+        public Task<NativePhaseReply> ExecuteAsync(NativePhaseRequest request)
+        {
+            const string outline = "result.out";
+            Assert.Equal(++Passes, request.Tag.Ordinal);
+            Assert.Contains(outline, request.Outputs);
+            var carried = request.Files.SingleOrDefault(file => file.Name == outline);
+            if (Passes == 1)
+            {
+                Assert.Null(carried);
+                Assert.DoesNotContain(outline, request.GeneratedInputNames!);
+            }
+            else
+            {
+                Assert.NotNull(carried);
+                Assert.Empty(carried.Bytes);
+                Assert.Contains(outline, request.GeneratedInputNames!);
+            }
+            var inputs = request.Files.Select(file => new NativeInputFact(file.Name, file.Bytes.Length,
+                NativeRuntimePackage.Digest(file.Bytes).Hex)).ToArray();
+            return Task.FromResult(new NativePhaseReply(request.Tag, "native-return", 0, true,
+                Passes <= 2 ? "Rerun to get outlines right" : "",
+                [new("result.pdf", "%PDF-model"u8.ToArray()), new("result.aux", "aux"u8.ToArray()), new(outline, [])],
+                inputs, WasmSha256: NativeRuntimePackage.Digest(request.Wasm).Hex,
+                LoaderSha256: NativeRuntimePackage.Digest(request.Loader).Hex));
+        }
+
+        public void RequestTermination(string job, long epoch) { }
+    }
+
     private static (string Name, int Length)[] Projection(NativeRuntimePackage package, NativeCompilerEngine engine) =>
         ((IEnumerable<(string Name, int Length)>)typeof(NativeRuntimePackage)
             .GetMethod("SuiteFileLengths", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(package, [engine])!)
@@ -106,16 +155,15 @@ public sealed class NativeCoursework18Tests
             .GetProperty("ConverterResourceLengths", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(package)!)
             .OrderBy(item => item.Name, StringComparer.Ordinal).ToArray();
 
-    private sealed class ArchiveHandler(string file) : HttpMessageHandler
+    private static NativeRuntimePackage LoadCourseworkRuntime()
     {
-        public List<string> Requests { get; } = [];
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
-        {
-            Requests.Add(request.RequestUri!.AbsolutePath);
-            var source = File.OpenRead(file);
-            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StreamContent(source) });
-        }
+        string root = Environment.GetEnvironmentVariable("COURSEWORK18_RUNTIME_DIR")!;
+        var pins = LocalRuntimeSelection.ParsePins(File.ReadAllBytes(Path.Combine(root, "pins.json")));
+        return Assert.IsType<NativeRuntimePackage>(NativeRuntimePackage.Create(
+            pins.Select(pin => new NativeResourceInput(pin.Name, File.ReadAllBytes(Path.Combine(root, "files", pin.Name)))).ToArray(),
+            pins, LocalRuntimeSelection.LimitsFor(Profile), Profile).Package);
     }
+
 }
 
 public sealed class CourseworkFixtureFactAttribute : FactAttribute
@@ -123,8 +171,7 @@ public sealed class CourseworkFixtureFactAttribute : FactAttribute
     public CourseworkFixtureFactAttribute()
     {
         if (!File.Exists(Path.Combine(Environment.GetEnvironmentVariable("SELECTED_PDF17_RUNTIME_DIR") ?? "", "pins.json"))
-            || !File.Exists(Path.Combine(Environment.GetEnvironmentVariable("COURSEWORK18_RUNTIME_DIR") ?? "", "coursework18-assembly.json"))
-            || !File.Exists(Environment.GetEnvironmentVariable("COURSEWORK18_ARCHIVE")))
+            || !File.Exists(Path.Combine(Environment.GetEnvironmentVariable("COURSEWORK18_RUNTIME_DIR") ?? "", "coursework18-assembly.json")))
             Skip = "Explicit unchanged P17 and exact P18 compiler fixtures required.";
     }
 }

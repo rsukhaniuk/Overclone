@@ -1,6 +1,6 @@
 namespace Client.Compilation.Native;
 
-/// <summary>Limits for the selected pdfLaTeX result from the admitted P17 and P18 closures.</summary>
+/// <summary>Limits for the selected pdfLaTeX result from the admitted P17–P19 closures.</summary>
 public static class NativeSelectedPdfContract
 {
     public const NativeRuntimeProfile Profile = NativeRuntimeProfile.LocalCompilerSelectedPdf;
@@ -14,11 +14,18 @@ public static class NativeSelectedPdfContract
     {
         Profile => NativeCompilerSelectedPdfPins.Ready,
         NativeRuntimeProfile.LocalCompilerCoursework => NativeCompilerCourseworkPins.Ready,
+        NativeRuntimeProfile.LocalCompilerDviGraphics => NativeCompilerDviGraphicsPins.Ready,
         _ => false
     };
 
     public static bool MatchesRuntime(NativeRuntimeProfile profile, string? identity) => Supports(profile)
-        && identity == (profile == Profile ? RuntimeIdentity : NativeCompilerCourseworkPins.RuntimeIdentity);
+        && identity == (profile switch
+        {
+            Profile => RuntimeIdentity,
+            NativeRuntimeProfile.LocalCompilerCoursework => NativeCompilerCourseworkPins.RuntimeIdentity,
+            NativeRuntimeProfile.LocalCompilerDviGraphics => NativeCompilerDviGraphicsPins.RuntimeIdentity,
+            _ => null
+        });
 
     public static bool IsSelectedPdfPhase(NativePhaseTag tag) =>
         tag is { Version: NativeBiberCompilerContract.PdfPhase, EngineId: "pdftex", Tool: "latex" }
