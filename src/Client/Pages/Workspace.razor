@@ -58,7 +58,6 @@
         <nav aria-label="Projects navigation">
             <a class="dashboard-nav active" href="#all-projects" aria-current="page">Projects</a>
             <a class="dashboard-nav" href="#dashboard-import">Import projects</a>
-            <a class="dashboard-nav" href="#dashboard-drive">Google Drive</a>
         </nav>
         <div class="dashboard-sidebar-bottom">
             <details class="dashboard-tools">
@@ -731,17 +730,13 @@ else
 
         </details>
         <details class="tool-disclosure" data-testid="ai-disclosure">
-            <summary>AI assistance</summary>
+            <summary>Ollama</summary>
             <div class="tool-content"><AiPanel /></div>
         </details>
         </div>
     </section>
 }
 
-<details class="tool-disclosure drive-disclosure" id="@(Coordinator.IsOpen ? null : "dashboard-drive")" data-testid="drive-disclosure">
-    <summary>Google Drive <span>Import &amp; export</span></summary>
-    <div class="tool-content"><DriveTransferPanel Imported="@(_ => RefreshProjectsAsync())" /></div>
-</details>
 </main>
 
 @code {

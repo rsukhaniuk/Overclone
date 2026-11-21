@@ -2,11 +2,9 @@
 // No top-level Playwright import, network, stdin read or filesystem writes.
 const fs = require("node:fs");
 const path = require("node:path");
-const net = require("node:net");
 const { createHash, randomUUID } = require("node:crypto");
-const { TextDecoder, isDeepStrictEqual } = require("node:util");
+const { isDeepStrictEqual } = require("node:util");
 const WAIT_MS = 100000;
-const INPUT_BYTES = 2048;
 const SOURCE_ROOT = path.resolve(__dirname, "..");
 const FIXTURE_HASH =
     "719163f50c023f5aeccc60d68ed8f29b670960d2a61b07bc91c8df0ee6ed414f";
@@ -26,17 +24,16 @@ function safeCode(error) {
         return "timeout";
     return "runner-failed";
 }
-const HELP = `Opt-in deployed AI acceptance (two real requests; root budget required).
+const HELP = `Opt-in deployed Ollama acceptance (two real requests).
 Usage: node scripts/test-ai-deployed-ui.cjs --allow-live
-Required env: APP_URL (canonical HTTPS origin, no trailing slash), R3_PROVIDER
-(Ollama|Gemini|Claude), R3_MODEL, R3_BROWSER_CHANNEL (chromium|chrome|msedge),
+Required env: APP_URL (canonical HTTPS origin, no trailing slash), R3_MODEL,
+R3_BROWSER_CHANNEL (chromium|chrome|msedge),
 RESULT_DIR (private absolute evidence directory outside source).
-Optional: R3_OLLAMA_URL (local HTTP(S) origin, Ollama only).
-Stdin: one UTF-8 JSON line, <=2048 bytes: {"apiKey":"..."} for cloud, {} for local.
-No keys in CLI/env/files/URLs. No retries, downloads, fallback or secret captures.
---help has no side effects. Default invocation refuses before stdin/network/launch.
+Optional: R3_OLLAMA_URL (http://localhost:11434 or http://127.0.0.1:11434).
+The runner uses a synthetic local project and takes no input on stdin.
+--help has no side effects. Default invocation refuses before network or launch.
 `;
-function origin(value, httpsOnly) {
+function httpsOrigin(value) {
     requireThat(
         typeof value === "string" && value.length <= 256,
         "configuration",
@@ -48,9 +45,7 @@ function origin(value, httpsOnly) {
         throw new Refusal("configuration");
     }
     requireThat(
-        (httpsOnly
-            ? u.protocol === "https:"
-            : ["https:", "http:"].includes(u.protocol)) &&
+        u.protocol === "https:" &&
             value === u.origin &&
             !u.username &&
             !u.password &&
@@ -60,24 +55,8 @@ function origin(value, httpsOnly) {
     );
     return u;
 }
-function localOrigin(value) {
-    const u = origin(value, false);
-    const h = u.hostname;
-    const b = h.split(".").map(Number);
-    requireThat(
-        h === "localhost" ||
-            h === "[::1]" ||
-            (net.isIP(h) === 4 &&
-                (b[0] === 127 ||
-                    b[0] === 10 ||
-                    (b[0] === 192 && b[1] === 168) ||
-                    (b[0] === 172 && b[1] >= 16 && b[1] <= 31))),
-        "configuration",
-    );
-    return u.origin;
-}
 function configuration(env) {
-    // Playwright/Node debug logging can expose password fills or protocol data.
+    // Playwright/Node debug logging can expose browser protocol data.
     // Refuse inherited instrumentation rather than silently changing host policy.
     requireThat(
         [
@@ -90,7 +69,6 @@ function configuration(env) {
         "unsafe-instrumentation",
     );
     const allowed = new Set([
-        "R3_PROVIDER",
         "R3_MODEL",
         "R3_OLLAMA_URL",
         "R3_BROWSER_CHANNEL",
@@ -107,34 +85,25 @@ function configuration(env) {
             "credential-source",
         );
     }
-    const app = origin(env.APP_URL, true).origin;
-    const provider = env.R3_PROVIDER;
+    const app = httpsOrigin(env.APP_URL).origin;
     const model = env.R3_MODEL;
     const channel = env.R3_BROWSER_CHANNEL;
-    requireThat(
-        ["Ollama", "Gemini", "Claude"].includes(provider),
-        "configuration",
-    );
     requireThat(
         typeof model === "string" &&
             /^[A-Za-z0-9_.:/-]{1,128}$/.test(model) &&
             !model.includes("://") &&
-            !model.startsWith("/") &&
-            (provider !== "Gemini" || !/[/:]/.test(model)),
+            !model.startsWith("/"),
         "configuration",
     );
     requireThat(
         ["chromium", "chrome", "msedge"].includes(channel),
         "configuration",
     );
+    const local = env.R3_OLLAMA_URL ?? "http://localhost:11434";
     requireThat(
-        provider === "Ollama" || env.R3_OLLAMA_URL === undefined,
+        ["http://localhost:11434", "http://127.0.0.1:11434"].includes(local),
         "configuration",
     );
-    const local =
-        provider === "Ollama"
-            ? localOrigin(env.R3_OLLAMA_URL ?? "http://localhost:11434")
-            : null;
     const dir = env.RESULT_DIR;
     requireThat(
         typeof dir === "string" &&
@@ -162,68 +131,14 @@ function configuration(env) {
             !output.startsWith(SOURCE_ROOT + path.sep),
         "configuration",
     );
-    const endpoint =
-        provider === "Ollama"
-            ? local + "/api/chat"
-            : provider === "Gemini"
-              ? `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`
-              : "https://api.anthropic.com/v1/messages";
     return Object.freeze({
         app,
-        provider,
         model,
         channel,
         output,
         local,
-        endpoint,
+        endpoint: local + "/api/chat",
     });
-}
-function secretLine(bytes, provider) {
-    requireThat(
-        bytes.length > 0 && bytes.length <= INPUT_BYTES,
-        "secret-input",
-    );
-    let text;
-    try {
-        text = new TextDecoder("utf-8", {
-            fatal: true,
-            ignoreBOM: true,
-        }).decode(bytes);
-    } catch {
-        throw new Refusal("secret-input");
-    }
-    // Exactly one JSON object/line; matching a single property prevents duplicate
-    // (including escaped-name) and unknown fields without a permissive reviver.
-    text = text.replace(/\r?\n$/, "");
-    requireThat(!/[\r\n\uFEFF]/.test(text), "secret-input");
-    if (provider === "Ollama") {
-        requireThat(/^[ \t]*\{[ \t]*\}[ \t]*$/.test(text), "secret-input");
-        return null;
-    }
-    const token =
-        '"(?:[^"\\\\\x00-\x1f]|\\\\(?:["\\\\/bfnrt]|u[0-9a-fA-F]{4}))*"';
-    const match = new RegExp(
-        "^[ \\t]*\\{[ \\t]*(" +
-            token +
-            ")[ \\t]*:[ \\t]*(" +
-            token +
-            ")[ \\t]*\\}[ \\t]*$",
-    ).exec(text);
-    requireThat(match !== null, "secret-input");
-    let name, key;
-    try {
-        name = JSON.parse(match[1]);
-        key = JSON.parse(match[2]);
-    } catch {
-        throw new Refusal("secret-input");
-    }
-    requireThat(
-        name === "apiKey" &&
-            typeof key === "string" &&
-            /^[!-~]{1,512}$/.test(key),
-        "secret-input",
-    );
-    return key;
 }
 function wait(promise, signal, milliseconds = WAIT_MS, timers = globalThis) {
     return new Promise((resolve, reject) => {
@@ -250,79 +165,6 @@ function wait(promise, signal, milliseconds = WAIT_MS, timers = globalThis) {
             (error) => finish(error),
         );
     });
-}
-async function readSecret(input, provider, signal) {
-    requireThat(!signal?.aborted, "cancelled");
-    let chunks = [],
-        size = 0;
-    let detach = () => {};
-    try {
-        const bytes = await wait(
-            new Promise((resolve, reject) => {
-                const onData = (chunk) => {
-                    const value = Buffer.isBuffer(chunk)
-                        ? chunk
-                        : Buffer.from(chunk);
-                    size += value.length;
-                    if (size > INPUT_BYTES) {
-                        detach();
-                        reject(new Refusal("secret-input"));
-                        return;
-                    }
-                    chunks.push(Buffer.from(value));
-                };
-                const onEnd = () => {
-                    detach();
-                    resolve(Buffer.concat(chunks));
-                };
-                const onError = () => {
-                    detach();
-                    reject(new Refusal("secret-input"));
-                };
-                detach = () => {
-                    input.pause();
-                    input.off("data", onData);
-                    input.off("end", onEnd);
-                    input.off("error", onError);
-                };
-                input.on("data", onData);
-                input.once("end", onEnd);
-                input.once("error", onError);
-                input.resume();
-            }),
-            signal,
-        );
-        try {
-            return secretLine(bytes, provider);
-        } finally {
-            bytes.fill(0);
-        }
-    } finally {
-        detach();
-        for (const chunk of chunks) chunk.fill(0);
-        chunks = [];
-    }
-}
-async function prepare(env, input, signal) {
-    const config = configuration(env);
-    const key = await readSecret(input, config.provider, signal);
-    if (key) {
-        // Check the supplied key against invocation metadata and known synthetic
-        // fixture/instructions before any network/browser/source publication.
-        // Never print metadata or discover another credential.
-        const synthetic =
-            "\\documentclass{article}\\begin{document}Synthetic ALPHA. Україна🙂 е́\\end{document}" +
-            "NOT_CONTEXT_SENTINEL приватне/інше.tex asset.bin main.tex Acknowledge this synthetic file briefly as plain text. Do not propose edits." +
-            "Replace only ASCII ALPHA with BETA. Preserve every other character and line ending of the supplied file. Return the prescribed JSON object only.";
-        requireThat(
-            !synthetic.includes(key) &&
-                !Object.values(env).some(
-                    (value) => typeof value === "string" && value.includes(key),
-                ),
-            "credential-source",
-        );
-    }
-    return { config, key };
 }
 async function close(resource) {
     if (!resource) return true;
@@ -459,47 +301,22 @@ function samePublication(a, b) {
         "publication-mismatch",
     );
 }
-function requestPrompt(provider, data, model) {
-    const prompt =
-        provider === "Gemini"
-            ? data?.contents?.[0]?.parts?.[0]?.text
-            : data?.messages?.[0]?.content;
+function requestPrompt(data, model) {
+    const prompt = data?.messages?.[0]?.content;
     requireThat(typeof prompt === "string", "wire-mismatch");
-    const expected =
-        provider === "Gemini"
-            ? {
-                  contents: [{ role: "user", parts: [{ text: prompt }] }],
-                  generationConfig: {
-                      maxOutputTokens: 4096,
-                      candidateCount: 1,
-                  },
-              }
-            : provider === "Ollama"
-              ? {
-                    model,
-                    stream: false,
-                    options: { num_predict: 4096 },
-                    messages: [{ role: "user", content: prompt }],
-                }
-              : {
-                    model,
-                    max_tokens: 4096,
-                    stream: false,
-                    messages: [{ role: "user", content: prompt }],
-                };
+    const expected = {
+        model,
+        stream: false,
+        options: { num_predict: 4096 },
+        messages: [{ role: "user", content: prompt }],
+    };
     requireThat(isDeepStrictEqual(data, expected), "wire-mismatch");
     return prompt;
 }
-function observer(config, credential, fail) {
-    let key = credential,
-        ticket = null;
+function observer(config, fail) {
+    let ticket = null;
     const requests = new WeakMap();
     const records = [];
-    const endpointClass = {
-        Ollama: "local-chat",
-        Gemini: "gemini-generateContent",
-        Claude: "claude-messages",
-    }[config.provider];
     return {
         records,
         arm(operation, prompt) {
@@ -511,15 +328,13 @@ function observer(config, credential, fail) {
                     Buffer.byteLength(prompt) <= 77824 &&
                     !prompt.includes("NOT_CONTEXT_SENTINEL") &&
                     !prompt.includes("asset.bin") &&
-                    !prompt.includes("приватне/інше.tex") &&
-                    (!key || !prompt.includes(key)),
+                    !prompt.includes("приватне/інше.tex"),
                 "context-mismatch",
             );
             ticket = { operation, prompt };
         },
         async guard(request) {
             const url = request.url();
-            requireThat(!key || !url.includes(key), "credential-source");
             let parsed;
             try {
                 parsed = new URL(url);
@@ -550,8 +365,7 @@ function observer(config, credential, fail) {
             const body = request.postData();
             requireThat(
                 typeof body === "string" &&
-                    Buffer.byteLength(body) <= 524288 &&
-                    (!key || !body.includes(key)),
+                    Buffer.byteLength(body) <= 524288,
                 "wire-mismatch",
             );
             let data;
@@ -560,23 +374,13 @@ function observer(config, credential, fail) {
             } catch {
                 throw new Refusal("wire-mismatch");
             }
-            const prompt = requestPrompt(config.provider, data, config.model);
+            const prompt = requestPrompt(data, config.model);
             requireThat(prompt === ownedTicket.prompt, "context-mismatch");
             const headers = await request.allHeaders();
-            if (config.provider === "Gemini")
-                requireThat(headers["x-goog-api-key"] === key, "wire-mismatch");
-            if (config.provider === "Claude")
-                requireThat(
-                    headers["x-api-key"] === key &&
-                        headers["anthropic-version"] === "2023-06-01" &&
-                        headers["anthropic-dangerous-direct-browser-access"] ===
-                            "true",
-                    "wire-mismatch",
-                );
-            requireThat(!headers.cookie, "wire-mismatch");
+            requireThat(!headers.cookie && !headers.authorization, "wire-mismatch");
             const record = {
-                endpointClass,
-                provider: config.provider,
+                endpointClass: "local-chat",
+                provider: "Ollama",
                 model: config.model,
                 operation: ownedTicket.operation,
                 promptSha256: sha(prompt),
@@ -596,7 +400,6 @@ function observer(config, credential, fail) {
                 fail(new Refusal("provider-http-failure"));
         },
         clear() {
-            key = null;
             ticket = null;
         },
     };
@@ -646,7 +449,7 @@ function headMatches(head, original, mainBytes) {
         );
     }
 }
-async function live(config, key, signal, result, controller) {
+async function live(config, signal, result, controller) {
     // Root binds this first same-origin snapshot to its approved release receipt.
     // The runner verifies served navigation and refuses any subsequent drift.
     let engine;
@@ -694,7 +497,7 @@ async function live(config, key, signal, result, controller) {
                 const fatal = (error) => {
                     if (!controller.signal.aborted) controller.abort(error);
                 };
-                observe = observer(config, key, fatal);
+                observe = observer(config, fatal);
                 result.requests = observe.records; // retain safe dispatched counts even on failure
                 // Abort-only policy guard: no response fulfillment, injection or mocks.
                 await context.route("**/*", async (route) => {
@@ -753,18 +556,10 @@ async function live(config, key, signal, result, controller) {
                         "fixture-mismatch",
                     );
                     const ai = H.$(page, "ai-panel");
-                    await H.reveal(page, H.$(page, "ai-provider"));
-                    await H.$(page, "ai-provider").selectOption(
-                        config.provider,
-                    );
+                    await H.reveal(page, H.$(page, "ai-model"));
                     await H.$(page, "ai-model").fill(config.model);
-                    await H.$(page, "ai-model").blur();
-                    if (config.provider === "Ollama") {
-                        await H.$(page, "ai-local-url").fill(config.local);
-                        await H.$(page, "ai-local-url").blur();
-                    } else {
-                        await H.$(page, "ai-key").fill(key);
-                    }
+                    await H.$(page, "ai-local-url").fill(config.local);
+                    await H.$(page, "ai-local-url").blur();
                     await H.$(page, "ai-connect").click();
                     await H.$(page, "ai-destination").waitFor();
                     const destination = await H.$(
@@ -772,16 +567,11 @@ async function live(config, key, signal, result, controller) {
                         "ai-destination",
                     ).textContent();
                     requireThat(
-                        destination.includes(config.provider) &&
+                        destination.includes("Ollama") &&
                             destination.includes(config.model) &&
                             destination.includes(config.endpoint),
                         "destination-mismatch",
                     );
-                    if (key)
-                        requireThat(
-                            (await H.$(page, "ai-key").inputValue()) === "",
-                            "credential-dom",
-                        );
                     await ai
                         .getByRole("button", {
                             name: "Prepare active-file context",
@@ -843,7 +633,7 @@ async function live(config, key, signal, result, controller) {
                                     status?.startsWith(
                                         "Response is display-only:",
                                     ) ||
-                                    /^(Provider |Cannot reach|The provider |The request timed|The context,|Context changed|The requested model)/.test(
+                                    /^(Cannot reach|Ollama |The request timed|The context,|Context changed|The requested model)/.test(
                                         status || "",
                                     )
                                 );
@@ -932,11 +722,6 @@ async function live(config, key, signal, result, controller) {
                             (await H.$(page, "ai-destination").count()) === 0,
                         "disconnect-failed",
                     );
-                    if (key)
-                        requireThat(
-                            (await H.$(page, "ai-key").inputValue()) === "",
-                            "credential-dom",
-                        );
                     result.disconnected = true;
                     requireThat(
                         observe.records.length === 2 &&
@@ -963,7 +748,6 @@ async function live(config, key, signal, result, controller) {
         );
     } finally {
         observe?.clear();
-        key = null;
     }
 }
 async function aiDisconnect(page, H) {
@@ -983,10 +767,6 @@ async function main(options = {}) {
     }
     const controller = new AbortController();
     const cancel = () => controller.abort(new Refusal("cancelled"));
-    let key = null,
-        config = null,
-        result = null,
-        prepared = null;
     try {
         requireThat(
             argv.length === 1 && argv[0] === "--allow-live",
@@ -999,20 +779,14 @@ async function main(options = {}) {
         if (options.signal?.aborted) cancel();
         process.once("SIGINT", cancel);
         process.once("SIGTERM", cancel);
-        prepared = await prepare(
-            options.env ?? process.env,
-            options.stdin ?? process.stdin,
-            controller.signal,
-        );
-        ({ config, key } = prepared);
-        prepared.key = null;
         requireThat(!controller.signal.aborted, "cancelled");
-        result = {
+        const config = configuration(options.env ?? process.env);
+        const result = {
             schemaVersion: 1,
             milestone: "R3",
             evidenceClass: "live-browser",
             passed: false,
-            provider: config.provider,
+            provider: "Ollama",
             model: config.model,
             channel: config.channel,
             supplementalChromium: config.channel === "chromium",
@@ -1021,7 +795,7 @@ async function main(options = {}) {
         };
         const started = performance.now();
         try {
-            await live(config, key, controller.signal, result, controller);
+            await live(config, controller.signal, result, controller);
             result.passed = true;
             result.code = "passed";
         } catch (error) {
@@ -1036,7 +810,6 @@ async function main(options = {}) {
         // Only allowlisted fields above are serialized. No raw exception,
         // origin/path, headers, request/response bodies or browser storage state.
         const serialized = JSON.stringify(result, null, 2) + "\n";
-        requireThat(!key || !serialized.includes(key), "credential-output");
         try {
             fs.mkdirSync(config.output, { recursive: true, mode: 0o700 });
             fs.writeFileSync(
@@ -1057,8 +830,6 @@ async function main(options = {}) {
         );
         return 1;
     } finally {
-        key = null;
-        if (prepared) prepared.key = null;
         process.off("SIGINT", cancel);
         process.off("SIGTERM", cancel);
         options.signal?.removeEventListener("abort", cancel);
@@ -1067,7 +838,7 @@ async function main(options = {}) {
 // Builtin-only contract tests can exercise resource ownership and injected
 // launch/network boundaries, but this path accepts NO live flag and emits no
 // live receipt/files. The production entrypoint never invokes these hooks.
-async function testExercise({ argv = [], env, input, signal, hooks }) {
+async function testExercise({ argv = [], env, signal, hooks }) {
     requireThat(
         argv.length === 0 &&
             hooks &&
@@ -1076,26 +847,23 @@ async function testExercise({ argv = [], env, input, signal, hooks }) {
             ),
         "test-hook-forbidden",
     );
-    const prepared = await prepare(env, input, signal);
+    requireThat(!signal?.aborted, "cancelled");
+    const config = configuration(env);
     try {
         await wait(hooks.network(), signal);
         return await browserSession(
-            prepared.config,
+            config,
             signal,
             hooks,
             hooks.action,
         );
     } catch (error) {
         throw new Refusal(safeCode(error));
-    } finally {
-        prepared.key = null;
     }
 }
 module.exports = {
     main,
     configuration,
-    secretLine,
-    readSecret,
     Refusal,
     _test: {
         exercise: testExercise,

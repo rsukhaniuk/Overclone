@@ -3,7 +3,7 @@ using Client.Workspace.Domain;
 using Client.Workspace.Transfer;
 using Xunit;
 
-namespace Workspace.Tests.Drive;
+namespace Workspace.Tests;
 
 public sealed class ArchiveExportTests
 {

@@ -16,9 +16,9 @@ const output = process.env.RESULT_DIR;
 const channel = process.env.LOCAL_BROWSER_CHANNEL;
 const origin = 'http://127.0.0.1:8080';
 const sha = value => createHash('sha256').update(value).digest('hex');
-const credentialMarker = 'synthetic-credential-' + randomUUID();
+const modelMarker = 'synthetic-model-' + randomUUID();
 const promptMarker = 'synthetic-instruction-' + randomUUID();
-const markers = [credentialMarker, promptMarker];
+const markers = [modelMarker, promptMarker];
 assert.ok(publication && output, 'PUBLISHED_WWWROOT and RESULT_DIR are required');
 assert.ok(!channel || ['chrome', 'msedge'].includes(channel), 'Unsupported browser channel');
 
@@ -83,31 +83,18 @@ async function inspectStorage(page) {
     }, { markers, origin });
 }
 
-async function connectSynthetic(page, provider) {
-    await H.reveal(page, H.$(page, 'ai-provider'));
-    await H.$(page, 'ai-provider').selectOption(provider);
-    await H.$(page, 'ai-model').fill('synthetic-unused-model');
-    await H.$(page, 'ai-key').fill(credentialMarker);
+async function connectSynthetic(page) {
+    await H.reveal(page, H.$(page, 'ai-model'));
+    await H.$(page, 'ai-model').fill(modelMarker);
+    await H.$(page, 'ai-local-url').fill('http://127.0.0.1:11434');
     await H.$(page, 'ai-connect').click();
     await H.$(page, 'ai-destination').waitFor();
-    assert.equal(await H.$(page, 'ai-key').inputValue(), '');
+    assert.match(await H.$(page, 'ai-destination').textContent(), /http:\/\/127\.0\.0\.1:11434\/api\/chat/);
     const ai = H.$(page, 'ai-panel');
     await ai.getByRole('button', { name: 'Prepare active-file context', exact: true }).click();
     await H.$(page, 'ai-context').waitFor();
     await ai.locator('textarea').fill(promptMarker);
     return ai;
-}
-
-async function connectDriveOffline(page) {
-    const drive = page.locator('section[aria-label="Optional Google Drive ZIP transfers"]');
-    const client = drive.locator('input').first();
-    await H.reveal(page, client);
-    await client.fill('synthetic.apps.googleusercontent.com');
-    await drive.getByRole('textbox', { name: 'Restricted public Picker API key' }).fill(credentialMarker);
-    await drive.getByRole('textbox', { name: /Cloud project number/ }).fill('12345');
-    await drive.getByRole('button', { name: 'Connect / reconnect explicitly' }).click();
-    await drive.getByRole('status').filter({ hasText: 'Drive is offline' }).waitFor();
-    assert.ok(await drive.getByRole('button', { name: 'Choose ZIP with Google Picker' }).isDisabled());
 }
 
 async function reopenExport(page, bytes) {
@@ -160,15 +147,19 @@ async function reopenExport(page, bytes) {
         const manifest = await response.text();
         result.manifest = { version: manifest.match(/"version"\s*:\s*"([^"]+)"/)?.[1], sha256: sha(manifest) };
         assert.ok(result.manifest.version);
+        assert.doesNotMatch(manifest, /google-drive-auth\.js/);
         phase = 'initial-local-work';
         let page = await open(false);
         result.browser = browser.browser().version();
         const project = await H.create(page);
         const saved = await H.assertBytes(page, project, H.negative);
+        assert.equal(await page.locator('a[href="#dashboard-drive"]').count(), 0);
+        assert.equal(await H.$(page, 'ai-provider').count(), 0);
+        assert.equal(await H.$(page, 'ai-key').count(), 0);
         await page.waitForFunction(() => !!navigator.serviceWorker.controller, null, { timeout: 90000 });
         assert.deepEqual(result.traffic, []);
         phase = 'connect-without-send';
-        await connectSynthetic(page, 'Gemini');
+        await connectSynthetic(page);
         result.connectedStorage = await inspectStorage(page);
         assert.deepEqual(result.connectedStorage.violations, []);
         assert.deepEqual(result.traffic, []);
@@ -181,22 +172,21 @@ async function reopenExport(page, bytes) {
         page = await open(true);
         assert.equal(await page.evaluate(() => navigator.onLine), false);
         await H.open(page, project);
-        await H.reveal(page, H.$(page, 'ai-provider'));
-        assert.equal(await H.$(page, 'ai-provider').inputValue(), 'Ollama');
+        await H.reveal(page, H.$(page, 'ai-model'));
+        assert.equal(await H.$(page, 'ai-model').inputValue(), '');
         for (const id of ['ai-destination', 'ai-context', 'ai-answer']) assert.equal(await H.$(page, id).count(), 0);
         assert.deepEqual(await H.head(page, project), saved);
-        await connectDriveOffline(page);
-        assert.deepEqual(result.traffic, []);
         phase = 'disclosed-offline-send';
-        const ai = await connectSynthetic(page, 'Claude');
+        const ai = await connectSynthetic(page);
+        assert.deepEqual(result.traffic, []);
         await ai.getByRole('button', { name: 'Send disclosed request' }).click();
-        await H.$(page, 'ai-status').filter({ hasText: 'Cannot reach the provider' }).waitFor();
+        await H.$(page, 'ai-status').filter({ hasText: 'Cannot reach Ollama.' }).waitFor();
         assert.equal(await H.$(page, 'ai-answer').count(), 0);
         assert.equal(await H.$(page, 'review-preview').count(), 0);
         await ai.getByRole('button', { name: 'Disconnect and clear memory' }).click();
         await H.$(page, 'ai-context').waitFor({ state: 'detached' });
         assert.deepEqual(await H.head(page, project), saved);
-        assert.deepEqual(result.traffic, [['disclosed-offline-send', 'api.anthropic.com', 'POST']]);
+        assert.deepEqual(result.traffic, [['disclosed-offline-send', '127.0.0.1', 'POST']]);
         phase = 'post-failure-local-review';
         await H.selectKnu(page);
         await H.reveal(page, H.$(page, 'preview-fix'));
@@ -216,7 +206,7 @@ async function reopenExport(page, bytes) {
         result.offlineExport = { bytes: zip.length, sha256: sha(zip), exactReimport: true };
         result.offlineStorage = await inspectStorage(page);
         assert.deepEqual(result.offlineStorage.violations, []);
-        assert.deepEqual(result.traffic, [['disclosed-offline-send', 'api.anthropic.com', 'POST']]);
+        assert.deepEqual(result.traffic, [['disclosed-offline-send', '127.0.0.1', 'POST']]);
         assert.deepEqual(result.errors, []);
         result.passed = true;
     } catch (error) {

@@ -23,19 +23,17 @@ function validate(html, header) {
     }
     const scripts = [...html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)];
     const inline = scripts.filter(m => !/\bsrc\s*=/i.test(m[1]));
-    assert.equal(inline.length, 1, 'one unchanged inline startup, not duplicate startup');
+    assert.equal(inline.length, 1, 'one inline startup');
     const hash = `'sha256-${crypto.createHash('sha256').update(inline[0][2].replace(/\r\n?/g, '\n'), 'utf8').digest('base64')}'`;
     const expected = {
         'default-src': ["'none'"], 'base-uri': ["'self'"], 'object-src': ["'none'"], 'form-action': ["'none'"],
-        'script-src': ["'self'", "'wasm-unsafe-eval'", hash, 'https://accounts.google.com/gsi/client', 'https://apis.google.com'],
+        'script-src': ["'self'", "'wasm-unsafe-eval'", hash],
         'script-src-attr': ["'none'"], 'worker-src': ["'self'", 'blob:'],
-        'style-src': ["'self'"], 'style-src-elem': ["'self'", 'https://accounts.google.com/gsi/style'],
+        'style-src': ["'self'"], 'style-src-elem': ["'self'"],
         'style-src-attr': ["'unsafe-inline'"], 'img-src': ["'self'"], 'font-src': ["'self'"],
         'media-src': ["'none'"], 'manifest-src': ["'self'"],
-        'connect-src': ["'self'", 'http://localhost:11434', 'http://127.0.0.1:11434',
-            'https://generativelanguage.googleapis.com', 'https://api.anthropic.com', 'https://www.googleapis.com',
-            'https://accounts.google.com/gsi/', 'https://apis.google.com'],
-        'frame-src': ['https://accounts.google.com', 'https://apis.google.com', 'https://docs.google.com'],
+        'connect-src': ["'self'", 'http://localhost:11434', 'http://127.0.0.1:11434'],
+        'frame-src': ["'none'"],
     };
     assert.deepEqual([...directives.keys()].sort(), Object.keys(expected).sort(), 'no ignored/extra/overriding directives');
     for (const [name, values] of Object.entries(expected)) {
@@ -61,11 +59,13 @@ if (require.main === module) {
         html.replace("'wasm-unsafe-eval'", "'unsafe-eval'"),
         html.replace("script-src 'self'", "script-src 'self' https:"),
         html.replace("connect-src 'self'", "connect-src 'self' http: https:"),
+        html.replace("connect-src 'self'", "connect-src 'self' https://api.anthropic.com"),
+        html.replace("frame-src 'none'", "frame-src https://docs.google.com"),
         html.replace('let appStartupSucceeded = false;', 'let appStartupSucceeded = true;'),
         html.replace('Content-Security-Policy', 'Content-Security-Policy-Report-Only'),
         html.replace('worker-src', 'child-src'),
     ]) assert.throws(() => validate(bad, header));
     assert.throws(() => validate(html, header.replaceAll("frame-ancestors 'none'", "frame-ancestors *")));
-    console.log('CSP static contract passed: actual early enforced meta, exact bootstrap SHA256, bounded directives/provider origins, matching header; 8 negative mutations rejected.');
+    console.log('CSP static contract passed: early enforced meta, exact bootstrap SHA256, loopback Ollama origins, matching header and 10 rejected policy mutations.');
 }
 module.exports = { validate };

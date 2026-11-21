@@ -1,22 +1,25 @@
 #!/usr/bin/env python3
-"""Operator preflight only: no OAuth, provider generation, uploads or app writes.
+"""Check local Ollama readiness without generating output or changing app data.
 
-The deployment worksheet stays outside product assets. Values are never echoed.
-Network probes require explicit switches; HTTP checks are not browser acceptance.
+Keep the operator worksheet outside product assets. The report omits its values.
+Network probes require explicit switches. Browser verification is separate.
 """
 
 import argparse
 import base64
 import hashlib
 from html.parser import HTMLParser
-import ipaddress
 import json
 from pathlib import Path
 import re
 import sys
 from urllib.error import HTTPError
 from urllib.parse import urlsplit
-from urllib.request import HTTPRedirectHandler, Request, build_opener
+from urllib.request import HTTPRedirectHandler, ProxyHandler, Request, build_opener
+
+
+OLLAMA_ENDPOINTS = {"http://localhost:11434", "http://127.0.0.1:11434"}
+LOOPBACK_HOSTS = {"localhost", "127.0.0.1"}
 
 
 class Refusal(Exception):
@@ -49,7 +52,7 @@ def fields(value, expected):
     require(isinstance(value, dict) and set(value) == set(expected))
 
 
-def canonical_origin(value, *, local=False):
+def canonical_origin(value, *, allow_loopback_http=False):
     require(isinstance(value, str) and 0 < len(value) <= 256)
     require(not any(ord(char) <= 32 or ord(char) >= 127 for char in value))
     try:
@@ -57,50 +60,33 @@ def canonical_origin(value, *, local=False):
         host, port = parsed.hostname, parsed.port
         require(host and not parsed.username and not parsed.password)
         require(not parsed.path and not parsed.query and not parsed.fragment)
-        require(parsed.scheme in (("http", "https") if local else ("https",)))
+        require(parsed.scheme == "https" or
+                (allow_loopback_http and parsed.scheme == "http" and host in LOOPBACK_HOSTS))
         authority = f"[{host}]" if ":" in host else host
         default = 80 if parsed.scheme == "http" else 443
         if port is not None and port != default:
             authority += f":{port}"
         require(value == f"{parsed.scheme}://{authority}")
-        if local and host != "localhost":
-            address = ipaddress.ip_address(host)
-            require(address.is_loopback or (address.version == 4 and (
-                address in ipaddress.ip_network("10.0.0.0/8") or
-                address in ipaddress.ip_network("172.16.0.0/12") or
-                address in ipaddress.ip_network("192.168.0.0/16"))))
         return value
     except (ValueError, TypeError) as error:
         raise Refusal("invalid-input") from error
 
 
-def identifier(value, pattern, limit):
-    require(isinstance(value, str) and len(value) <= limit)
-    require(value == "" or re.fullmatch(pattern, value, flags=re.ASCII))
-    return bool(value)
-
-
 def validate(document):
-    fields(document, ("schemaVersion", "deploymentOrigin", "applicationBasePath", "drive", "ai"))
-    require(type(document["schemaVersion"]) is int and document["schemaVersion"] == 1)
+    fields(document, ("schemaVersion", "applicationOrigin", "applicationBasePath", "ollama"))
+    require(type(document["schemaVersion"]) is int and document["schemaVersion"] == 2)
     require(document["applicationBasePath"] == "/")
-    require(isinstance(document["deploymentOrigin"], str))
-    if document["deploymentOrigin"]:
-        canonical_origin(document["deploymentOrigin"])
-    drive, ai = document["drive"], document["ai"]
-    fields(drive, ("clientId", "pickerApiKey", "projectNumber"))
-    fields(ai, ("ollama", "gemini", "claude"))
-    identifier(drive["clientId"], r"[A-Za-z0-9._-]+\.apps\.googleusercontent\.com", 256)
-    identifier(drive["pickerApiKey"], r"[A-Za-z0-9_-]+", 256)
-    identifier(drive["projectNumber"], r"[0-9]+", 30)
-    for provider in ("ollama", "gemini", "claude"):
-        fields(ai[provider], ("modelId", "baseUrl") if provider == "ollama" else ("modelId",))
-        model = ai[provider]["modelId"]
-        identifier(model, r"[A-Za-z0-9_.:/-]+", 128)
-        require(not model or ("://" not in model and not model.startswith("/")))
-        require(provider != "gemini" or not re.search(r"[/:]", model))
-    if ai["ollama"]["baseUrl"]:
-        canonical_origin(ai["ollama"]["baseUrl"], local=True)
+    origin = document["applicationOrigin"]
+    require(isinstance(origin, str))
+    if origin:
+        canonical_origin(origin, allow_loopback_http=True)
+    selection = document["ollama"]
+    fields(selection, ("modelId", "baseUrl"))
+    model = selection["modelId"]
+    require(isinstance(model, str) and re.fullmatch(r"[A-Za-z0-9_.:/-]{0,128}", model))
+    require("://" not in model and not model.startswith("/"))
+    endpoint = selection["baseUrl"]
+    require(isinstance(endpoint, str) and (not endpoint or endpoint in OLLAMA_ENDPOINTS))
     return document
 
 
@@ -110,12 +96,8 @@ def row(identifier, passed, failure="missing-operator-input"):
 
 
 def configured(document):
-    ai = document["ai"]
-    return [row("deployment-origin", bool(document["deploymentOrigin"])),
-            row("drive-public-identifiers", all(document["drive"].values())),
-            row("ollama-selected-model-endpoint", all(ai["ollama"].values())),
-            row("gemini-selected-model", bool(ai["gemini"]["modelId"])),
-            row("claude-selected-model", bool(ai["claude"]["modelId"]))]
+    return [row("application-origin", bool(document["applicationOrigin"])),
+            row("ollama-selected-model-endpoint", all(document["ollama"].values()))]
 
 
 class NoRedirect(HTTPRedirectHandler):
@@ -128,7 +110,10 @@ def http_read(url, limit, *, method="GET", headers=None):
     request = Request(url, method=method, headers={
         "Cache-Control": "no-store", "Accept-Encoding": "identity", **(headers or {})})
     try:
-        with build_opener(NoRedirect).open(request, timeout=10) as response:
+        handlers = [NoRedirect()]
+        if urlsplit(url).hostname in LOOPBACK_HOSTS:
+            handlers.append(ProxyHandler({}))
+        with build_opener(*handlers).open(request, timeout=10) as response:
             require(response.geturl() == url)
             declared = response.headers.get("Content-Length")
             require(declared is None or (declared.isascii() and declared.isdecimal() and int(declared) <= limit))
@@ -182,8 +167,7 @@ def permits(policy, directive, target, own_origin):
 
 
 def deployment(document, expected, fetcher=http_read):
-    origin = document["deploymentOrigin"]
-    require(bool(origin))
+    origin = canonical_origin(document["applicationOrigin"])
     fields(expected, ("indexSha256", "assetsSha256"))
     require(all(isinstance(value, str) and re.fullmatch("[a-f0-9]{64}", value) for value in expected.values()))
     index, headers = fetcher(origin + "/", 1024 * 1024)
@@ -204,20 +188,16 @@ def deployment(document, expected, fetcher=http_read):
     require(bool(policies))
     rows = [row("approved-static-publication", True),
             row("header-denies-embedding", any(policy.get("frame-ancestors") == ["'none'"] for policy in header_policies), "static-header-required")]
-    targets = {"drive": "https://www.googleapis.com/drive/v3/files/selected?alt=media",
-               "gemini": "https://generativelanguage.googleapis.com/v1beta/models/selected:generateContent",
-               "claude": "https://api.anthropic.com/v1/messages"}
-    local = document["ai"]["ollama"]["baseUrl"]
+    local = document["ollama"]["baseUrl"]
     if local:
-        targets["ollama"] = local + "/api/chat"
-    for name, target in targets.items():
-        rows.append(row(name + "-effective-connect-policy", all(permits(policy, "connect-src", target, origin) for policy in policies), "effective-csp-refuses-endpoint"))
+        allowed = all(permits(policy, "connect-src", local + "/api/chat", origin) for policy in policies)
+        rows.append(row("ollama-effective-connect-policy", allowed, "effective-csp-refuses-endpoint"))
     return rows, actual
 
 
 def ollama(document, fetcher=http_read):
-    origin = document["deploymentOrigin"]
-    selection = document["ai"]["ollama"]
+    origin = document["applicationOrigin"]
+    selection = document["ollama"]
     require(origin and all(selection.values()))
     _, headers = fetcher(selection["baseUrl"] + "/api/chat", 4096, method="OPTIONS", headers={
         "Origin": origin, "Access-Control-Request-Method": "POST",
@@ -247,7 +227,7 @@ def main(argv=None):
     parser.add_argument("--expected-publication", help="root-approved indexSha256/assetsSha256 JSON; required for deployment probe")
     parser.add_argument("--probe-ollama", action="store_true", help="explicitly OPTIONS local chat and GET tags; no generation")
     args = parser.parse_args(argv)
-    result = {"schemaVersion": 1, "evidenceClass": "operator-preflight",
+    result = {"schemaVersion": 2, "evidenceClass": "operator-preflight",
               "milestoneComplete": False, "checks": []}
     try:
         require(args.probe_deployment == bool(args.expected_publication))
@@ -264,13 +244,14 @@ def main(argv=None):
                         result["publication"] = publication
                 except Exception:
                     result["checks"].append(row(name, False, "probe-refused-or-unreachable"))
-        result["checks"].extend({"id": name, "status": "not-run", "code": "actual-browser-and-operator-input-required"}
-                                for name in ("drive-live-Chrome", "drive-live-Edge", "ollama-live-Chrome", "ollama-live-Edge", "gemini-live-Chrome", "gemini-live-Edge", "claude-live-Chrome", "claude-live-Edge"))
-        result["inputsReady"] = all(item["status"] == "pass" for item in result["checks"] if not item["id"].endswith(("-Chrome", "-Edge")))
+        result["inputsReady"] = all(item["status"] == "pass" for item in result["checks"])
+        result["checks"].extend({"id": f"ollama-live-{browser}", "status": "not-run",
+                                 "code": "actual-browser-verification-required"}
+                                for browser in ("Chrome", "Edge"))
         print(json.dumps(result, separators=(",", ":")))
         return 0 if result["inputsReady"] else 1
     except Exception:
-        print(json.dumps({"schemaVersion": 1, "evidenceClass": "operator-preflight", "milestoneComplete": False, "inputsReady": False, "code": "invalid-input"}, separators=(",", ":")))
+        print(json.dumps({"schemaVersion": 2, "evidenceClass": "operator-preflight", "milestoneComplete": False, "inputsReady": False, "code": "invalid-input"}, separators=(",", ":")))
         return 2
 
 

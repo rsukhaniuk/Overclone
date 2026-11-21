@@ -15,7 +15,6 @@ namespace Workspace.Tests.AI;
 
 public class AiSessionTests
 {
-    private const string Key = "separate-product-test-key";
     private static readonly TimeSpan Bound = TimeSpan.FromSeconds(5);
     private static string Proposal(string text, string explanation = "Proposed Ukrainian correction")
         => JsonSerializer.Serialize(new { replacementText = text, explanation });
@@ -25,7 +24,7 @@ public class AiSessionTests
     {
         await using var h = await Host.Open();
         Assert.Null(h.Session.Connection); Assert.Empty(h.Ollama.Requests);
-        Assert.True(h.Session.Connect(AiProviderKind.Ollama, "test:local"));
+        Assert.True(h.Session.Connect("test:local"));
         Assert.Empty(h.Ollama.Requests);
         await h.Session.PrepareAsync();
         var context = Assert.IsType<AiFileContext>(h.Session.Context);
@@ -54,7 +53,7 @@ public class AiSessionTests
     {
         await using var h = await Host.Open(); var w = h.F.Workspace;
         w.EditText(h.F.Main, "Новий🙂\r\nрядок\rкінець");
-        h.Session.Connect(AiProviderKind.Ollama, "test"); await h.Session.PrepareAsync();
+        h.Session.Connect("test"); await h.Session.PrepareAsync();
         var context = h.Session.Context!;
         Assert.Equal("Новий🙂\nрядок\nкінець", context.Text); Assert.True(context.HasBom);
         Assert.Equal(CompilationTestWorkspace.Hash(await w.GetFileBytesAsync(w.ActiveFile!, default)), context.Hash);
@@ -65,7 +64,7 @@ public class AiSessionTests
     [Fact]
     public async Task Byte_preimage_is_owned_and_rechecked_even_if_repository_changes_without_a_generation_event()
     {
-        await using var h = await Host.Open(); h.Session.Connect(AiProviderKind.Ollama, "test");
+        await using var h = await Host.Open(); h.Session.Connect("test");
         await h.Session.PrepareAsync(); var context = h.Session.Context!;
         var bytes = h.F.Repo.Content[context.Hash]; bytes[^2] = (byte)'X';
         Assert.Equal("Україна🙂\r\nmain\rlast\n", context.Text);
@@ -78,7 +77,7 @@ public class AiSessionTests
     {
         await using var h = await Host.Open(); var w = h.F.Workspace;
         w.EditText(h.F.Main, "A🙂");
-        h.Session.Connect(AiProviderKind.Ollama, "test"); await h.Session.PrepareAsync();
+        h.Session.Connect("test"); await h.Session.PrepareAsync();
         var context = h.Session.Context!;
         h.Ollama.Reply = AiReply.Answer(Proposal("Edited🙂"));
         await h.Session.SendAsync("Fix", true, true); Assert.True(h.Session.HasProposal);
@@ -91,7 +90,7 @@ public class AiSessionTests
     [Fact]
     public async Task Active_selection_change_is_checked_before_send_even_without_workspace_event()
     {
-        await using var h = await Host.Open(); h.Session.Connect(AiProviderKind.Ollama, "test");
+        await using var h = await Host.Open(); h.Session.Connect("test");
         await h.Session.PrepareAsync();
         h.F.Workspace.SelectFile(h.F.Workspace.Files.Single(f => f.RelativePath == "chapter.tex").Id);
         await h.Session.SendAsync("Explain", false, true);
@@ -101,7 +100,7 @@ public class AiSessionTests
     [Fact]
     public async Task Generation_change_during_capture_wait_discards_context_without_abandoning_read_owner()
     {
-        await using var h = await Host.Open(); h.Session.Connect(AiProviderKind.Ollama, "test");
+        await using var h = await Host.Open(); h.Session.Connect("test");
         var gate = h.F.Hold(); var capture = h.Session.PrepareAsync();
         await gate.WaitReached(); h.F.Workspace.EditText(h.F.Main, "changed🙂");
         Assert.True(h.Session.Busy); Assert.Null(h.Session.Context);
@@ -113,7 +112,7 @@ public class AiSessionTests
     [Fact]
     public async Task Late_noncooperative_reply_after_cancel_never_repaints_or_allocates_another_send()
     {
-        await using var h = await Host.Open(); h.Session.Connect(AiProviderKind.Ollama, "test"); await h.Session.PrepareAsync();
+        await using var h = await Host.Open(); h.Session.Connect("test"); await h.Session.PrepareAsync();
         h.Ollama.Hold = true;
         var sending = h.Session.SendAsync("Fix", true, true); await h.Ollama.Reached.Task.WaitAsync(Bound);
         h.Session.Cancel(); Assert.True(h.Session.Busy); Assert.Null(h.Session.Context);
@@ -127,43 +126,55 @@ public class AiSessionTests
     }
 
     [Fact]
-    public async Task Provider_switch_disconnects_previous_key_and_late_reply_cannot_repaint_or_fallback()
+    public async Task Changing_the_model_cancels_an_in_flight_reply_and_keeps_the_slot_until_settlement()
     {
         await using var h = await Host.Open();
-        h.Session.Connect(AiProviderKind.Gemini, "test", Key); var old = h.Session.Connection!;
-        await h.Session.PrepareAsync(); h.Gemini.Hold = true;
-        var sending = h.Session.SendAsync("Explain", false, true); await h.Gemini.Reached.Task.WaitAsync(Bound);
-        Assert.True(h.Session.Connect(AiProviderKind.Ollama, "local-model"));
-        Assert.False(old.Connected); Assert.Equal(AiProviderKind.Ollama, h.Session.Connection!.Provider);
-        Assert.True(h.Session.Busy); await h.Session.PrepareAsync(); Assert.Empty(h.Ollama.Requests);
-        h.Gemini.Release.TrySetResult(AiReply.Answer("late answer")); await sending.WaitAsync(Bound);
-        Assert.Null(h.Session.Answer); Assert.Null(h.Session.Context);
-        await h.Session.PrepareAsync(); h.Ollama.Reply = AiReply.Failure(AiOutcome.Connectivity);
+        h.Session.Connect("old-model");
+        var old = h.Session.Connection!;
+        await h.Session.PrepareAsync();
+        h.Ollama.Hold = true;
+        var sending = h.Session.SendAsync("Explain", false, true);
+        await h.Ollama.Reached.Task.WaitAsync(Bound);
+
+        Assert.True(h.Session.Connect("new-model"));
+        Assert.False(old.Connected);
+        Assert.Equal("new-model", h.Session.Connection!.Model);
+        Assert.True(h.Session.Busy);
+        Assert.True(h.Ollama.Token.IsCancellationRequested);
+        await h.Session.PrepareAsync();
+        Assert.Single(h.Ollama.Requests);
+        h.Ollama.Release.TrySetResult(AiReply.Answer("late answer"));
+        await sending.WaitAsync(Bound);
+        Assert.Null(h.Session.Answer);
+        Assert.Null(h.Session.Context);
+
+        await h.Session.PrepareAsync();
+        h.Ollama.Hold = false;
+        h.Ollama.Reply = AiReply.Failure(AiOutcome.Connectivity);
         await h.Session.SendAsync("Explain", false, true);
-        Assert.Single(h.Ollama.Requests); Assert.Single(h.Gemini.Requests); Assert.Empty(h.Claude.Requests);
-        Assert.Null(h.Session.Answer); Assert.Contains("No proxy or fallback", h.Session.Status);
-        Assert.DoesNotContain(Key, old.ToString());
+        Assert.Equal(2, h.Ollama.Requests.Count);
+        Assert.Null(h.Session.Answer);
+        Assert.Contains("Cannot reach Ollama.", h.Session.Status);
     }
 
     [Fact]
-    public async Task Disconnect_clears_credentials_context_answer_and_proposal_and_never_persists()
+    public async Task Disconnect_clears_context_answer_and_proposal_and_never_persists()
     {
-        await using var h = await Host.Open(); h.Session.Connect(AiProviderKind.Claude, "test", Key);
+        await using var h = await Host.Open(); h.Session.Connect("test");
         var old = h.Session.Connection!; await h.Session.PrepareAsync();
-        h.Claude.Reply = AiReply.Answer(Proposal("Пропозиція🙂")); await h.Session.SendAsync("Fix", true, true);
+        h.Ollama.Reply = AiReply.Answer(Proposal("Пропозиція🙂")); await h.Session.SendAsync("Fix", true, true);
         Assert.True(h.Session.HasProposal); Assert.NotNull(h.Session.Answer);
         h.Session.Disconnect();
         Assert.False(old.Connected); Assert.Null(h.Session.Connection); Assert.Null(h.Session.Context);
         Assert.Null(h.Session.Answer); Assert.False(h.Session.HasProposal);
         await h.Session.PreviewProposalAsync(); Assert.Null(h.Review.State.Preview);
         Assert.Equal(0, h.F.Repo.Commits); Assert.Equal(0, h.F.Repo.Publishes); Assert.Equal(0, h.F.Repo.Restores);
-        Assert.DoesNotContain(Key, h.Session.ToString()); Assert.DoesNotContain(Key, h.Session.Status);
     }
 
     [Fact]
     public async Task Project_close_invalidates_a_pending_reply_and_never_creates_a_review()
     {
-        await using var h = await Host.Open(); h.Session.Connect(AiProviderKind.Ollama, "test"); await h.Session.PrepareAsync();
+        await using var h = await Host.Open(); h.Session.Connect("test"); await h.Session.PrepareAsync();
         h.Ollama.Hold = true; var request = h.Session.SendAsync("Fix", true, true); await h.Ollama.Reached.Task.WaitAsync(Bound);
         await h.F.Workspace.CloseAsync(default);
         h.Ollama.Release.TrySetResult(AiReply.Answer(Proposal("late"))); await request.WaitAsync(Bound);
@@ -176,7 +187,7 @@ public class AiSessionTests
     {
         await using var h = await Host.Open(); var w = h.F.Workspace;
         w.EditText(h.F.Main, "A🙂");
-        h.Session.Connect(AiProviderKind.Ollama, "test"); await h.Session.PrepareAsync();
+        h.Session.Connect("test"); await h.Session.PrepareAsync();
         h.Ollama.Hold = true; var request = h.Session.SendAsync("Fix", true, true); await h.Ollama.Reached.Task.WaitAsync(Bound);
         if (switchFile) w.SelectFile(w.Files.Single(f => f.RelativePath == "chapter.tex").Id);
         else { w.EditText(h.F.Main, "B"); w.EditText(h.F.Main, "A🙂"); }
@@ -188,7 +199,7 @@ public class AiSessionTests
     [Fact]
     public async Task Exact_hash_is_rechecked_before_proposal_preview_not_just_before_send()
     {
-        await using var h = await Host.Open(); h.Session.Connect(AiProviderKind.Ollama, "test"); await h.Session.PrepareAsync();
+        await using var h = await Host.Open(); h.Session.Connect("test"); await h.Session.PrepareAsync();
         h.Ollama.Reply = AiReply.Answer(Proposal("replacement")); await h.Session.SendAsync("Fix", true, true);
         var hash = h.Session.Context!.Hash; h.F.Repo.Content[hash][^2] = (byte)'X';
         await h.Session.PreviewProposalAsync();
@@ -198,7 +209,7 @@ public class AiSessionTests
     [Fact]
     public async Task Disconnect_during_review_read_does_not_cancel_a_later_unrelated_preview()
     {
-        await using var h = await Host.Open(); h.Session.Connect(AiProviderKind.Ollama, "test"); await h.Session.PrepareAsync();
+        await using var h = await Host.Open(); h.Session.Connect("test"); await h.Session.PrepareAsync();
         h.Ollama.Reply = AiReply.Answer(Proposal("replacement")); await h.Session.SendAsync("Fix", true, true);
         var chapter = h.F.Workspace.Files.Single(f => f.RelativePath == "chapter.tex");
         var gate = h.F.Hold(chapter.Id);
@@ -231,7 +242,7 @@ public class AiSessionTests
     [InlineData("Helpful answer, not an edit proposal")]
     public async Task Invalid_schema_duplicate_surrogate_BOM_or_prose_is_display_only(string response)
     {
-        await using var h = await Host.Open(); h.Session.Connect(AiProviderKind.Ollama, "test"); await h.Session.PrepareAsync();
+        await using var h = await Host.Open(); h.Session.Connect("test"); await h.Session.PrepareAsync();
         h.Ollama.Reply = AiReply.Answer(response); await h.Session.SendAsync("Fix", true, true);
         Assert.Equal(response, h.Session.Answer); Assert.False(h.Session.HasProposal);
         await h.Session.PreviewProposalAsync(); Assert.Null(h.Review.State.Preview);
@@ -241,7 +252,7 @@ public class AiSessionTests
     [Fact]
     public async Task Chat_response_cannot_be_promoted_to_proposal_and_no_op_proposal_cannot_edit()
     {
-        await using var h = await Host.Open(); h.Session.Connect(AiProviderKind.Ollama, "test"); await h.Session.PrepareAsync();
+        await using var h = await Host.Open(); h.Session.Connect("test"); await h.Session.PrepareAsync();
         h.Ollama.Reply = AiReply.Answer(Proposal("chat JSON")); await h.Session.SendAsync("Explain", false, true);
         Assert.False(h.Session.HasProposal); await h.Session.PreviewProposalAsync(); Assert.Null(h.Review.State.Preview);
         h.Ollama.Reply = AiReply.Answer(Proposal(h.Session.Context!.Text)); await h.Session.SendAsync("Fix", true, true);
@@ -255,7 +266,7 @@ public class AiSessionTests
         await using var h = await Host.Open(); var w = h.F.Workspace;
         if (!bom) { w.SelectFile(w.Files.Single(f => f.RelativePath == "chapter.tex").Id); }
         var file = w.ActiveFile!; var before = (await w.GetFileBytesAsync(file, default)).ToArray();
-        h.Session.Connect(AiProviderKind.Ollama, "test"); await h.Session.PrepareAsync();
+        h.Session.Connect("test"); await h.Session.PrepareAsync();
         const string afterText = "Виправлено🙂\r\nДругий рядок\rКінець\n";
         h.Ollama.Reply = AiReply.Answer(Proposal(afterText)); await h.Session.SendAsync("Fix", true, true);
         Assert.Null(h.Review.State.Preview); Assert.Equal(before, await w.GetFileBytesAsync(file, default));
@@ -277,7 +288,7 @@ public class AiSessionTests
     [Fact]
     public async Task Disconnect_declines_only_its_own_preview_and_does_not_cancel_an_unrelated_review()
     {
-        await using var h = await Host.Open(); h.Session.Connect(AiProviderKind.Ollama, "test"); await h.Session.PrepareAsync();
+        await using var h = await Host.Open(); h.Session.Connect("test"); await h.Session.PrepareAsync();
         h.Ollama.Reply = AiReply.Answer(Proposal("AI replacement")); await h.Session.SendAsync("Fix", true, true);
         await h.Session.PreviewProposalAsync(); var own = h.Review.State.Preview!.Id;
         h.Session.Disconnect(); Assert.Null(h.Review.State.Preview);
@@ -286,7 +297,7 @@ public class AiSessionTests
         var unrelated = TextChangeSet.Create(TextPatchOrigin.User, "Unrelated explicit review", [new(w.ActiveFile!.Id,
             w.ActiveFile.RelativePath, CompilationTestWorkspace.Hash(bytes), bytes.Length, [new(3, bytes.Length, bytes.AsMemory(3), Encoding.UTF8.GetBytes("User replacement"))])]).ChangeSet!;
         var other = (await h.Review.PreviewAsync(unrelated, default)).Preview!;
-        h.Session.Connect(AiProviderKind.Ollama, "test"); await h.Session.PrepareAsync();
+        h.Session.Connect("test"); await h.Session.PrepareAsync();
         h.Ollama.Reply = AiReply.Answer(Proposal("Another AI edit")); await h.Session.SendAsync("Fix", true, true);
         await h.Session.PreviewProposalAsync(); Assert.Equal(other.Id, h.Review.State.Preview?.Id);
         h.Session.Disconnect(); Assert.Equal(other.Id, h.Review.State.Preview?.Id);
@@ -296,7 +307,7 @@ public class AiSessionTests
     [Fact]
     public async Task Oversized_context_instruction_explanation_and_output_fail_without_truncation_or_send()
     {
-        await using var h = await Host.Open(); h.Session.Connect(AiProviderKind.Ollama, "test");
+        await using var h = await Host.Open(); h.Session.Connect("test");
         h.F.Workspace.EditText(h.F.Main, new string('a', AiLimits.ContextBytes + 1));
         await h.Session.PrepareAsync(); Assert.Null(h.Session.Context); Assert.Contains("size limit", h.Session.Status);
         h.F.Workspace.EditText(h.F.Main, "small🙂"); await h.Session.PrepareAsync();
@@ -309,20 +320,9 @@ public class AiSessionTests
     }
 
     [Fact]
-    public async Task Credential_in_source_or_mock_answer_cannot_reach_payload_or_renderable_state()
-    {
-        await using var h = await Host.Open(); h.Session.Connect(AiProviderKind.Gemini, "test", Key);
-        h.F.Workspace.EditText(h.F.Main, Key); await h.Session.PrepareAsync();
-        await h.Session.SendAsync("Explain", false, true); Assert.Empty(h.Gemini.Requests);
-        h.F.Workspace.EditText(h.F.Main, "safe"); await h.Session.PrepareAsync();
-        h.Gemini.Reply = AiReply.Answer(Key); await h.Session.SendAsync("Explain", false, true);
-        Assert.Null(h.Session.Answer); Assert.DoesNotContain(Key, h.Session.Status);
-    }
-
-    [Fact]
     public async Task Standalone_Razor_escapes_source_answer_and_model_output_instead_of_executable_HTML()
     {
-        await using var h = await Host.Open(); h.Session.Connect(AiProviderKind.Ollama, "test");
+        await using var h = await Host.Open(); h.Session.Connect("test");
         h.F.Workspace.EditText(h.F.Main, "<img src=x onerror=alert(1)>🙂"); await h.Session.PrepareAsync();
         h.Ollama.Reply = AiReply.Answer("<script>alert('untrusted')</script>"); await h.Session.SendAsync("Explain", false, true);
         using var services = new ServiceCollection().AddLogging().AddSingleton(h.F.Workspace)
@@ -335,13 +335,13 @@ public class AiSessionTests
         });
         Assert.Contains("&lt;script&gt;", html); Assert.Contains("&lt;img src=x", html);
         Assert.DoesNotContain("<script>", html); Assert.DoesNotContain("<img ", html);
-        Assert.DoesNotContain(Key, html); Assert.Equal(0, h.F.Repo.Commits);
+        Assert.DoesNotContain("ai-key", html);
+        Assert.DoesNotContain("ai-provider", html);
+        Assert.Equal(0, h.F.Repo.Commits);
     }
 
-    [Theory]
-    [InlineData(AiProviderKind.Gemini, AiProviderKind.Claude)]
-    [InlineData(AiProviderKind.Claude, AiProviderKind.Gemini)]
-    public async Task Disconnected_provider_change_remounts_password_and_requires_a_new_provider_key(AiProviderKind from, AiProviderKind to)
+    [Fact]
+    public async Task Panel_refuses_an_unsupported_address_and_local_connection_sends_nothing()
     {
         await using var h = await Host.Open();
         using var services = new ServiceCollection().AddLogging().AddSingleton(h.F.Workspace)
@@ -350,33 +350,19 @@ public class AiSessionTests
         await renderer.Dispatcher.InvokeAsync(async () =>
         {
             var id = await renderer.MountAsync(h.Session);
-            await renderer.ChangeAsync(id, "ai-local-url", "http://192.168.1.2:11434");
-            await renderer.ChangeAsync(id, "ai-provider", from.ToString());
-            await renderer.ChangeAsync(id, "ai-model", "previous-provider-model");
-            await renderer.ChangeAsync(id, "ai-key", "previous-provider-only-key", "oninput");
-            var passwordBefore = renderer.Element(id, "ai-key").Key;
-            await renderer.ChangeAsync(id, "ai-provider", to.ToString());
-            // The rendered node identity must change, not merely the .NET field:
-            // otherwise the uncontrolled password input retains its old DOM value.
-            Assert.NotEqual(passwordBefore, renderer.Element(id, "ai-key").Key);
-            Assert.Equal("", renderer.Element(id, "ai-model").Attributes["value"]);
-            Assert.False(renderer.Element(id, "ai-key").Attributes.ContainsKey("value"));
-            await renderer.ChangeAsync(id, "ai-model", "new-provider-model");
+            await renderer.ChangeAsync(id, "ai-model", "test-model");
+            await renderer.ChangeAsync(id, "ai-local-url", "https://example.invalid");
             await renderer.ClickAsync(id, "ai-connect");
-            Assert.Null(h.Session.Connection); // No implicit reuse of the prior provider's key.
-            await renderer.ChangeAsync(id, "ai-key", "new-provider-only-key", "oninput");
+            Assert.Null(h.Session.Connection);
+            Assert.Contains("supported Ollama address", h.Session.Status);
+
+            await renderer.ChangeAsync(id, "ai-local-url", "http://127.0.0.1:11434");
             await renderer.ClickAsync(id, "ai-connect");
-            var connected = Assert.IsType<AiConnection>(h.Session.Connection);
-            Assert.Equal(to, connected.Provider); Assert.Equal("new-provider-model", connected.Model); Assert.True(connected.HasCredential);
-            // Even a synthetic event cannot bypass the connected fieldset restriction.
-            await renderer.ChangeAsync(id, "ai-provider", from.ToString());
-            Assert.Same(connected, h.Session.Connection);
-            Assert.Equal(to.ToString(), renderer.Element(id, "ai-provider").Attributes["value"]);
-            h.Session.Disconnect();
-            await renderer.ChangeAsync(id, "ai-provider", AiProviderKind.Ollama.ToString());
-            Assert.Equal("http://localhost:11434", renderer.Element(id, "ai-local-url").Attributes["value"]);
+            var connection = Assert.IsType<AiConnection>(h.Session.Connection);
+            Assert.Equal("test-model", connection.Model);
+            Assert.Equal("http://127.0.0.1:11434/api/chat", connection.Destination.AbsoluteUri);
         });
-        Assert.Empty(h.Gemini.Requests); Assert.Empty(h.Claude.Requests); Assert.Empty(h.Ollama.Requests);
+        Assert.Empty(h.Ollama.Requests);
         Assert.Equal(0, h.F.Repo.Commits);
     }
 
@@ -391,8 +377,7 @@ public class AiSessionTests
             await RenderRootComponentAsync(id, ParameterView.FromDictionary(new Dictionary<string, object?> { ["Session"] = session }));
             return id;
         }
-        internal sealed record UiElement(object? Key, Dictionary<string, object?> Attributes, Dictionary<string, ulong> Events);
-        internal UiElement Element(int id, string testId)
+        internal Dictionary<string, ulong> Events(int id, string testId)
         {
             var frames = GetCurrentRenderTreeFrames(id);
             for (var i = 0; i < frames.Count; i++)
@@ -405,14 +390,14 @@ public class AiSessionTests
                     var attribute = frames.Array[j]; attributes[attribute.AttributeName] = attribute.AttributeValue;
                     if (attribute.AttributeEventHandlerId != 0) events[attribute.AttributeName] = attribute.AttributeEventHandlerId;
                 }
-                if (attributes.TryGetValue("data-testid", out var value) && Equals(value, testId)) return new(frame.ElementKey, attributes, events);
+                if (attributes.TryGetValue("data-testid", out var value) && Equals(value, testId)) return events;
             }
             throw new InvalidOperationException("Requested UI control was not rendered.");
         }
         internal Task ChangeAsync(int id, string testId, string value, string eventName = "onchange")
-            => DispatchEventAsync(Element(id, testId).Events[eventName], null, new ChangeEventArgs { Value = value });
+            => DispatchEventAsync(Events(id, testId)[eventName], null, new ChangeEventArgs { Value = value });
         internal Task ClickAsync(int id, string testId)
-            => DispatchEventAsync(Element(id, testId).Events["onclick"], null, new MouseEventArgs());
+            => DispatchEventAsync(Events(id, testId)["onclick"], null, new MouseEventArgs());
         protected override Task UpdateDisplayAsync(in Microsoft.AspNetCore.Components.RenderTree.RenderBatch batch) => Task.CompletedTask;
         protected override void HandleException(Exception exception) => System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(exception).Throw();
     }
@@ -424,21 +409,19 @@ public class AiSessionTests
         internal AnalysisCoordinator Analysis = null!;
         internal ChangeReviewService Review = null!;
         internal AiSession Session = null!;
-        internal Provider Ollama = new(AiProviderKind.Ollama), Gemini = new(AiProviderKind.Gemini), Claude = new(AiProviderKind.Claude);
+        internal Provider Ollama = new();
         internal static async Task<Host> Open()
         {
             var h = new Host { F = await CompilationTestWorkspace.Open() };
             var analyzer = new Analyzer();
             h.Analysis = new(h.F.Workspace, analyzer, delayAsync: (_, ct) => Task.Delay(Timeout.Infinite, ct));
             h.Review = new(h.F.Workspace, h.Analysis, new SourceNavigator(h.Analysis, h.F.Workspace, analyzer));
-            h.Session = new(h.F.Workspace, h.Review, [h.Ollama, h.Gemini, h.Claude]);
+            h.Session = new(h.F.Workspace, h.Review, h.Ollama);
             return h;
         }
         public async ValueTask DisposeAsync()
         {
             Ollama.Release.TrySetResult(AiReply.Failure(AiOutcome.Cancelled));
-            Gemini.Release.TrySetResult(AiReply.Failure(AiOutcome.Cancelled));
-            Claude.Release.TrySetResult(AiReply.Failure(AiOutcome.Cancelled));
             Session.Dispose(); await Review.DisposeAsync(); await Analysis.DisposeAsync(); await F.DisposeAsync();
         }
     }
@@ -449,9 +432,8 @@ public class AiSessionTests
         public Task<bool> IsCurrentWorkerEpochAsync(long epoch, CancellationToken ct) => Task.FromResult(true);
         public ValueTask DisposeAsync() => ValueTask.CompletedTask;
     }
-    private sealed class Provider(AiProviderKind kind) : IAiProvider
+    private sealed class Provider : IAiProvider
     {
-        public AiProviderKind Kind => kind;
         internal List<string> Requests = [];
         internal bool Hold;
         internal AiReply Reply = AiReply.Answer("answer");

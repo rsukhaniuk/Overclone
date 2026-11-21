@@ -25,7 +25,6 @@ public sealed class AiSessionFactory : IDisposable
     private readonly HttpClient _http = new();
     public AiSessionFactory(WorkspaceCoordinator workspace, IChangeReviewService review)
     { _workspace = workspace; _review = review; }
-    public AiSession Create() => new(_workspace, _review,
-        [new OllamaProvider(_http), new GeminiProvider(_http), new ClaudeProvider(_http)]);
+    public AiSession Create() => new(_workspace, _review, new OllamaProvider(_http));
     public void Dispose() => _http.Dispose();
 }

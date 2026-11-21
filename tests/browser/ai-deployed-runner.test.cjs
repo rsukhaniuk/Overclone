@@ -1,8 +1,8 @@
-// Dependency-free synthetic guard/lifetime contracts. NEVER live OAuth/provider,
-// Playwright, deployed origin, real browser, model output or CORS acceptance.
+// Dependency-free synthetic guard and resource lifetime contracts for the
+// deployed Ollama acceptance runner.
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
-const { Readable, PassThrough } = require("node:stream");
+const { PassThrough } = require("node:stream");
 const fs = require("node:fs");
 const path = require("node:path");
 const os = require("node:os");
@@ -14,14 +14,11 @@ const fixture = path.resolve(__dirname, "../fixtures/r3-live/main.tex");
 const key = "synthetic-guard-credential";
 const env = (overrides = {}) => ({
     APP_URL: "https://app.example.invalid",
-    R3_PROVIDER: "Gemini",
     R3_MODEL: "explicit-model",
     R3_BROWSER_CHANNEL: "chrome",
     RESULT_DIR: path.join(os.tmpdir(), "r3-never-written-guard"),
     ...overrides,
 });
-const input = (value = '{"apiKey":"' + key + '"}\n') =>
-    Readable.from([Buffer.from(value)]);
 const code = (expected) => (error) => {
     assert.ok(error instanceof R.Refusal);
     assert.equal(error.code, expected);
@@ -143,7 +140,6 @@ test("test-only launch/network hooks are forbidden with the live flag", async ()
         await R.main({
             argv: ["--allow-live"],
             env: env(),
-            stdin: input(),
             stdout: {
                 write(s) {
                     output += s;
@@ -161,7 +157,6 @@ test("test-only launch/network hooks are forbidden with the live flag", async ()
         R._test.exercise({
             argv: ["--allow-live"],
             env: env(),
-            input: input(),
             hooks: h,
         }),
         code("test-hook-forbidden"),
@@ -178,11 +173,10 @@ for (const [label, overrides, expected = "configuration"] of [
     ["fragment", { APP_URL: "https://app.example.invalid#" + key }],
     ["URL userinfo", { APP_URL: "https://" + key + "@app.example.invalid" }],
     ["noncanonical origin", { APP_URL: "https://APP.example.invalid" }],
-    ["provider spelling", { R3_PROVIDER: "gemini" }],
-    ["missing provider", { R3_PROVIDER: undefined }],
+    ["retired provider selector", { R3_PROVIDER: "Ollama" }],
     ["missing model", { R3_MODEL: "" }],
     ["model URL", { R3_MODEL: "https://bad.invalid/model" }],
-    ["Gemini resource name", { R3_MODEL: "models/model" }],
+    ["absolute model path", { R3_MODEL: "/models/model" }],
     ["model overflow", { R3_MODEL: "m".repeat(129) }],
     ["model whitespace", { R3_MODEL: "m m" }],
     ["unknown R3 config", { R3_EXTRA: "ignored?" }],
@@ -218,13 +212,13 @@ for (const [label, overrides, expected = "configuration"] of [
     ["unknown channel", { R3_BROWSER_CHANNEL: "chromium-default" }],
     ["relative output", { RESULT_DIR: "result" }],
     ["source-tree output", { RESULT_DIR: path.dirname(script) }],
-    ["cloud local override", { R3_OLLAMA_URL: "http://localhost:11434" }],
+    ["public service override", { R3_OLLAMA_URL: "https://service.example.invalid" }],
 ]) {
     test(`guard rejects ${label} before injected network/launch/write`, async () => {
         const h = hooks();
         const settings = env(overrides);
         await assert.rejects(
-            R._test.exercise({ env: settings, input: input(), hooks: h }),
+            R._test.exercise({ env: settings, hooks: h }),
             code(expected),
         );
         assert.equal(h.calls.network, 0);
@@ -232,118 +226,14 @@ for (const [label, overrides, expected = "configuration"] of [
         assert.equal(h.calls.action, 0);
     });
 }
-for (const text of [
-    "",
-    "{}",
-    "null",
-    "[]",
-    '{"apiKey":1}',
-    '{"apiKey":null}',
-    '{"apiKey":""}',
-    '{"apiKey":"a b"}',
-    '{"apiKey":"a\\nb"}',
-    '{"apiKey":"' + "a".repeat(513) + '"}',
-    '{"apiKey":"' + key + '","apiKey":"second"}',
-    '{"apiKey":"' + key + '","\\u0061piKey":"second"}',
-    '{"apiKey":"' + key + '","other":true}',
-    '{"unknown":"' + key + '"}',
-    '{"apiKey":"' + key + '"}\n{}\n',
-    '{"apiKey":"' + key + '"}\n\n',
-    '\uFEFF{"apiKey":"' + key + '"}',
-    " ".repeat(2049),
-    '{"apiKey":"український"}',
-    '{"apiKey":"\\ud800"}',
-    '{"apiKey":"' + key + '"',
-    '{"apiKey":"x",}',
-]) {
-    test(`invalid bounded stdin record #${Buffer.from(text).length}/${createHash("sha256").update(text).digest("hex").slice(0, 6)} refuses without boundary activity`, async () => {
-        const h = hooks();
-        await assert.rejects(
-            R._test.exercise({ env: env(), input: input(text), hooks: h }),
-            code("secret-input"),
-        );
-        assert.equal(h.calls.network, 0);
-        assert.equal(h.calls.launch, 0);
-    });
-}
-test("strict UTF-8, chunked stdin, escaped property and exact key bounds", async () => {
-    assert.throws(
-        () => R.secretLine(Buffer.from([0xc3, 0x28]), "Gemini"),
-        code("secret-input"),
-    );
-    assert.equal(
-        R.secretLine(
-            Buffer.from('{"\\u0061piKey":"' + key + '"}\r\n'),
-            "Gemini",
-        ),
-        key,
-    );
-    assert.equal(R.secretLine(Buffer.from('{"apiKey":"!"}'), "Claude"), "!");
-    assert.equal(
-        R.secretLine(
-            Buffer.from('{"apiKey":"' + "~".repeat(512) + '"}'),
-            "Claude",
-        ).length,
-        512,
-    );
-    const record = Buffer.from('{"apiKey":"' + key + '"}\n');
-    const chunks = Readable.from(Array.from(record, (b) => Buffer.from([b])));
-    assert.equal(await R.readSecret(chunks, "Gemini"), key);
-    assert.equal(R.secretLine(Buffer.from("{}\n"), "Ollama"), null);
-    assert.throws(() => R.secretLine(record, "Ollama"), code("secret-input"));
-});
-test("stdin cancellation releases listeners without raw input/exception text", async () => {
-    const controller = new AbortController();
-    const held = new PassThrough();
-    const pending = R.readSecret(held, "Gemini", controller.signal);
-    held.write('{"apiKey":"' + key);
-    controller.abort();
-    await assert.rejects(pending, code("cancelled"));
-    assert.equal(held.listenerCount("data"), 0);
-    assert.equal(held.listenerCount("end"), 0);
-    assert.equal(held.listenerCount("error"), 0);
-});
-for (const metadata of [
-    { UNUSED_VALUE: key },
-    { R3_MODEL: key },
-    { RESULT_DIR: path.join(os.tmpdir(), key) },
-]) {
-    test("exact supplied key cannot enter invocation metadata/result path", async () => {
-        const h = hooks();
-        await assert.rejects(
-            R._test.exercise({ env: env(metadata), input: input(), hooks: h }),
-            code("credential-source"),
-        );
-        assert.equal(h.calls.network, 0);
-        assert.equal(h.calls.launch, 0);
-    });
-}
-test("known synthetic source cannot accidentally contain the supplied app credential", async () => {
-    const h = hooks();
-    await assert.rejects(
-        R._test.exercise({
-            env: env(),
-            input: input('{"apiKey":"ALPHA"}'),
-            hooks: h,
-        }),
-        code("credential-source"),
-    );
-    assert.equal(h.calls.network, 0);
-    assert.equal(h.calls.launch, 0);
-});
 for (const local of [
     "http://localhost:11434",
-    "https://127.0.0.1:11434",
-    "http://10.1.2.3:11434",
-    "http://172.31.1.2",
-    "http://192.168.1.8",
-    "http://[::1]:11434",
+    "http://127.0.0.1:11434",
 ]) {
     test(`local endpoint syntax accepts explicit local class ${new URL(local).hostname}`, () => {
         assert.equal(
             R.configuration(
                 env({
-                    R3_PROVIDER: "Ollama",
                     R3_MODEL: "org/model:tag",
                     R3_OLLAMA_URL: local,
                 }),
@@ -354,6 +244,10 @@ for (const local of [
 }
 for (const local of [
     "https://service.example.invalid",
+    "https://127.0.0.1:11434",
+    "http://127.0.0.1:11435",
+    "http://[::1]:11434",
+    "http://10.1.2.3:11434",
     "http://8.8.8.8",
     "http://172.32.0.1",
     "http://localhost:11434/",
@@ -366,7 +260,7 @@ for (const local of [
         assert.throws(
             () =>
                 R.configuration(
-                    env({ R3_PROVIDER: "Ollama", R3_OLLAMA_URL: local }),
+                    env({ R3_OLLAMA_URL: local }),
                 ),
             code("configuration"),
         );
@@ -375,7 +269,7 @@ for (const local of [
 test("synthetic boundary success uses exact channel/SW allowed and closes once, never writes a live receipt", async () => {
     const h = hooks();
     assert.deepEqual(
-        await R._test.exercise({ env: env(), input: input(), hooks: h }),
+        await R._test.exercise({ env: env(), hooks: h }),
         { synthetic: true },
     );
     assert.deepEqual(h.calls, {
@@ -398,7 +292,6 @@ test("all three selected browser channels are passed unchanged to the injected l
         };
         await R._test.exercise({
             env: env({ R3_BROWSER_CHANNEL: channel }),
-            input: input(),
             hooks: h,
         });
         assert.equal(h.calls.launch, 1);
@@ -412,7 +305,7 @@ test("action failure is sanitized; both owners close, no retry/fallback", async 
         throw new Error(key);
     };
     await assert.rejects(
-        R._test.exercise({ env: env(), input: input(), hooks: h }),
+        R._test.exercise({ env: env(), hooks: h }),
         code("runner-failed"),
     );
     assert.equal(h.calls.launch, 1);
@@ -429,7 +322,7 @@ test("browser-library TimeoutError is a fixed sanitized timeout code with both o
         throw error;
     };
     await assert.rejects(
-        R._test.exercise({ env: env(), input: input(), hooks: h }),
+        R._test.exercise({ env: env(), hooks: h }),
         code("timeout"),
     );
     assert.equal(h.calls.launch, 1);
@@ -445,7 +338,7 @@ test("network and missing-browser failures never retry or launch replacement cha
         throw new R.Refusal("browser-unavailable");
     };
     await assert.rejects(
-        R._test.exercise({ env: env(), input: input(), hooks: h }),
+        R._test.exercise({ env: env(), hooks: h }),
         code("browser-unavailable"),
     );
     assert.equal(h.calls.launch, 1);
@@ -456,7 +349,7 @@ test("network and missing-browser failures never retry or launch replacement cha
         throw new R.Refusal("publication-mismatch");
     };
     await assert.rejects(
-        R._test.exercise({ env: env(), input: input(), hooks: n }),
+        R._test.exercise({ env: env(), hooks: n }),
         code("publication-mismatch"),
     );
     assert.equal(n.calls.network, 1);
@@ -474,7 +367,6 @@ test("cancelled held context acquisition closes browser and later context exactl
     };
     const pending = R._test.exercise({
         env: env(),
-        input: input(),
         hooks: h,
         signal: controller.signal,
     });
@@ -504,7 +396,7 @@ test("100s per-wait deadline is finite and action timeout still cleans up withou
         h.calls.action++;
         return R._test.wait(new Promise(() => {}), null, 100000, clock);
     };
-    const pending = R._test.exercise({ env: env(), input: input(), hooks: h });
+    const pending = R._test.exercise({ env: env(), hooks: h });
     await until(() => expire);
     assert.equal(delay, 100000);
     expire();
@@ -515,90 +407,52 @@ test("100s per-wait deadline is finite and action timeout still cleans up withou
     assert.equal(h.calls.browserClose, 1);
 });
 function request(config, prompt, overrides = {}) {
-    const body =
-        config.provider === "Gemini"
-            ? {
-                  contents: [{ role: "user", parts: [{ text: prompt }] }],
-                  generationConfig: {
-                      maxOutputTokens: 4096,
-                      candidateCount: 1,
-                  },
-              }
-            : config.provider === "Claude"
-              ? {
-                    model: config.model,
-                    max_tokens: 4096,
-                    stream: false,
-                    messages: [{ role: "user", content: prompt }],
-                }
-              : {
-                    model: config.model,
-                    stream: false,
-                    options: { num_predict: 4096 },
-                    messages: [{ role: "user", content: prompt }],
-                };
+    const body = {
+        model: config.model,
+        stream: false,
+        options: { num_predict: 4096 },
+        messages: [{ role: "user", content: prompt }],
+    };
     return {
         url: () => config.endpoint,
         method: () => "POST",
         redirectedFrom: () => null,
         postData: () => JSON.stringify(body),
-        allHeaders: async () =>
-            config.provider === "Gemini"
-                ? { "x-goog-api-key": key }
-                : config.provider === "Claude"
-                  ? {
-                        "x-api-key": key,
-                        "anthropic-version": "2023-06-01",
-                        "anthropic-dangerous-direct-browser-access": "true",
-                    }
-                  : {},
+        allHeaders: async () => ({}),
         ...overrides,
     };
 }
-for (const provider of ["Ollama", "Gemini", "Claude"]) {
-    test(`${provider} observer admits exactly disclosed requests; safe metadata excludes raw secrets/context/answer`, async () => {
-        const config = R.configuration(env({ R3_PROVIDER: provider }));
-        const obs = R._test.observer(
-            config,
-            provider === "Ollama" ? null : key,
-            (error) => {
-                throw error;
-            },
-        );
-        const prompt =
-            'SYNTHETIC_PAYLOAD {"filename":"main.tex","text":"Україна🙂 е́"}';
-        const r = request(config, prompt);
-        await assert.rejects(obs.guard(r), code("unexpected-request"));
-        obs.arm("chat", prompt);
-        await obs.guard(r);
-        obs.response({ request: () => r, status: () => 200 });
-        await assert.rejects(obs.guard(r), code("unexpected-request"));
-        obs.arm("proposal", prompt);
-        const p = request(config, prompt);
-        await obs.guard(p);
-        obs.response({ request: () => p, status: () => 200 });
-        assert.throws(() => obs.arm("chat", prompt), code("context-mismatch"));
-        const safe = JSON.stringify(obs.records);
-        assert.equal(obs.records.length, 2);
-        assert.ok(!safe.includes(key));
-        assert.ok(!safe.includes("SYNTHETIC_PAYLOAD"));
-        assert.ok(!safe.includes("Україна"));
-        assert.ok(!safe.includes("api-key"));
-        assert.equal(obs.records[0].payloadMatchesDisclosure, true);
-        assert.equal(obs.records[0].status, 200);
-        obs.clear();
+test("Ollama observer admits exactly two disclosed requests and records only hashed prompt metadata", async () => {
+    const config = R.configuration(env());
+    const obs = R._test.observer(config, (error) => {
+        throw error;
     });
-}
-test("observer refuses extra files, key echoes, wrong payload/model, redirects and unapproved destinations before dispatch", async () => {
+    const prompt =
+        'SYNTHETIC_PAYLOAD {"filename":"main.tex","text":"Україна🙂 е́"}';
+    const r = request(config, prompt);
+    await assert.rejects(obs.guard(r), code("unexpected-request"));
+    obs.arm("chat", prompt);
+    await obs.guard(r);
+    obs.response({ request: () => r, status: () => 200 });
+    await assert.rejects(obs.guard(r), code("unexpected-request"));
+    obs.arm("proposal", prompt);
+    const p = request(config, prompt);
+    await obs.guard(p);
+    obs.response({ request: () => p, status: () => 200 });
+    assert.throws(() => obs.arm("chat", prompt), code("context-mismatch"));
+    const safe = JSON.stringify(obs.records);
+    assert.equal(obs.records.length, 2);
+    assert.ok(!safe.includes("SYNTHETIC_PAYLOAD"));
+    assert.ok(!safe.includes("Україна"));
+    assert.equal(obs.records[0].payloadMatchesDisclosure, true);
+    assert.equal(obs.records[0].status, 200);
+    obs.clear();
+});
+test("observer refuses extra files, wrong payload/model, redirects, credentials and unapproved destinations", async () => {
     const config = R.configuration(env());
     const prompt = "Synthetic disclosed prompt";
-    for (const bad of [
-        "NOT_CONTEXT_SENTINEL",
-        "asset.bin",
-        "приватне/інше.tex",
-        key,
-    ]) {
-        const obs = R._test.observer(config, key, () => {});
+    for (const bad of ["NOT_CONTEXT_SENTINEL", "asset.bin", "приватне/інше.tex"]) {
+        const obs = R._test.observer(config, () => {});
         assert.throws(
             () => obs.arm("chat", prompt + bad),
             code("context-mismatch"),
@@ -606,32 +460,27 @@ test("observer refuses extra files, key echoes, wrong payload/model, redirects a
     }
     for (const change of [
         { url: () => "https://other.invalid/" },
-        { url: () => "https://app.example.invalid/?key=" + key },
+        { url: () => config.endpoint + "?key=" + key },
         { url: () => "%%%" },
         { redirectedFrom: () => ({}) },
         { postData: () => '{"other":"' + key + '"}' },
-        { allHeaders: async () => ({ "x-goog-api-key": "wrong" }) },
-        {
-            postData: () =>
-                '{"contents":[{"role":"user","parts":[{"text":"different"}]}],"generationConfig":{"maxOutputTokens":4096,"candidateCount":1}}',
-        },
+        { allHeaders: async () => ({ authorization: "Bearer " + key }) },
+        { allHeaders: async () => ({ cookie: "test=" + key }) },
+        { postData: request({ ...config, model: "different" }, prompt).postData },
     ]) {
-        const obs = R._test.observer(config, key, () => {});
+        const obs = R._test.observer(config, () => {});
         obs.arm("chat", prompt);
-        await assert.rejects(
-            obs.guard(request(config, prompt, change)),
-            (error) => {
-                assert.ok(error instanceof R.Refusal);
-                assert.ok(!String(error).includes(key));
-                return true;
-            },
-        );
+        await assert.rejects(obs.guard(request(config, prompt, change)), (error) => {
+            assert.ok(error instanceof R.Refusal);
+            assert.ok(!String(error).includes(key));
+            return true;
+        });
         assert.equal(obs.records.length, 0);
     }
 });
 test("a held header lookup consumes Send before await so a duplicate POST cannot dispatch", async () => {
     const config = R.configuration(env()),
-        obs = R._test.observer(config, key, () => {});
+        obs = R._test.observer(config, () => {});
     const prompt = "Synthetic disclosed prompt";
     let release;
     obs.arm("chat", prompt);
@@ -649,34 +498,22 @@ test("a held header lookup consumes Send before await so a duplicate POST cannot
         code("unexpected-request"),
     );
     assert.equal(obs.records.length, 0);
-    release({ "x-goog-api-key": key });
+    release({});
     await first;
     assert.equal(obs.records.length, 1);
 });
 test("nested request extras cannot transmit another file or conversation", async () => {
-    for (const provider of ["Ollama", "Gemini", "Claude"]) {
-        const config = R.configuration(env({ R3_PROVIDER: provider }));
-        const prompt = "Synthetic disclosed prompt";
-        const original = JSON.parse(request(config, prompt).postData());
-        if (provider === "Gemini")
-            original.contents[0].parts[0].extra = "NOT_CONTEXT_SENTINEL";
-        else original.messages[0].extra = "NOT_CONTEXT_SENTINEL";
-        const obs = R._test.observer(
-            config,
-            provider === "Ollama" ? null : key,
-            () => {},
-        );
-        obs.arm("chat", prompt);
-        await assert.rejects(
-            obs.guard(
-                request(config, prompt, {
-                    postData: () => JSON.stringify(original),
-                }),
-            ),
-            code("wire-mismatch"),
-        );
-        assert.equal(obs.records.length, 0);
-    }
+    const config = R.configuration(env());
+    const prompt = "Synthetic disclosed prompt";
+    const original = JSON.parse(request(config, prompt).postData());
+    original.messages[0].extra = "NOT_CONTEXT_SENTINEL";
+    const obs = R._test.observer(config, () => {});
+    obs.arm("chat", prompt);
+    await assert.rejects(
+        obs.guard(request(config, prompt, { postData: () => JSON.stringify(original) })),
+        code("wire-mismatch"),
+    );
+    assert.equal(obs.records.length, 0);
 });
 test("output symlink cannot redirect a receipt into source", () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "r3-output-symlink-"));
@@ -696,22 +533,6 @@ test("output symlink cannot redirect a receipt into source", () => {
     } finally {
         fs.rmSync(dir, { recursive: true, force: true });
     }
-});
-test("stdin overflow across chunks and stream errors are bounded, sanitized and detached", async () => {
-    const overflow = Readable.from([
-        Buffer.alloc(1024, 32),
-        Buffer.alloc(1025, 32),
-    ]);
-    await assert.rejects(
-        R.readSecret(overflow, "Gemini"),
-        code("secret-input"),
-    );
-    assert.equal(overflow.listenerCount("data"), 0);
-    const broken = new PassThrough();
-    const pending = R.readSecret(broken, "Gemini");
-    broken.emit("error", new Error(key));
-    await assert.rejects(pending, code("secret-input"));
-    assert.equal(broken.listenerCount("error"), 0);
 });
 test("publication drift refuses and revision comparisons preserve unrelated file bytes", () => {
     const a = { indexSha256: "a", assetsSha256: "b" };
@@ -820,13 +641,13 @@ test("publication preflight pins real bytes without evaluating manifest JS; redi
         };
         if (fault) {
             await assert.rejects(
-                R._test.exercise({ env: settings, input: input(), hooks: h }),
+                R._test.exercise({ env: settings, hooks: h }),
                 code("publication-mismatch"),
             );
             assert.equal(h.calls.launch, 0);
             assert.ok(fetched <= 2);
         } else {
-            await R._test.exercise({ env: settings, input: input(), hooks: h });
+            await R._test.exercise({ env: settings, hooks: h });
             assert.equal(h.calls.launch, 1);
             assert.equal(fetched, 2);
         }
@@ -842,7 +663,7 @@ test("publication preflight pins real bytes without evaluating manifest JS; redi
         code("test-hook-forbidden"),
     );
 });
-test("real CLI default/help and malformed live input cannot print secrets or create a result artifact", () => {
+test("real CLI default/help and invalid live configuration cannot print secrets or create a result artifact", () => {
     const output = fs.mkdtempSync(path.join(os.tmpdir(), "r3-guard-"));
     try {
         for (const [args, stdin] of [
@@ -851,7 +672,7 @@ test("real CLI default/help and malformed live input cannot print secrets or cre
             [["--allow-live"], '{"apiKey":"' + key + '","extra":1}\n'],
         ]) {
             const child = spawnSync(process.execPath, [script, ...args], {
-                env: env({ RESULT_DIR: output }),
+                env: env({ APP_URL: "https://app.example.invalid/path", RESULT_DIR: output }),
                 input: stdin,
                 encoding: "utf8",
                 timeout: 10000,

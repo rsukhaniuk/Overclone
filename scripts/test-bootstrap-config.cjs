@@ -235,7 +235,7 @@ async function run() {
     assert.ok(!warm.urls.some((u) => u.includes("private=")));
     assert.ok(warm.urls.includes("/js/compile-history-index.js"));
     assert.ok(warm.urls.includes("/js/compile-artifacts-storage.js"));
-    assert.ok(warm.urls.includes("/js/google-drive-auth.js"));
+    assert.ok(!warm.urls.includes("/js/google-drive-auth.js"));
     assert.ok(
       !warm.urls.some(
         (u) => u.includes("private-inputs") || u.endsWith(".pdf"),

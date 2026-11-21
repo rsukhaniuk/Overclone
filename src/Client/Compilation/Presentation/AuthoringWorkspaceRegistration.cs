@@ -12,7 +12,6 @@ using Client.Pdf;
 using Client.Workspace;
 using Client.Workspace.History;
 using Client.Workspace.Transfer;
-using Client.Workspace.Drive;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
@@ -32,7 +31,9 @@ public static class AuthoringWorkspaceRegistration
     {
         services.AddSingleton<IProjectRepository, WorkspaceStorage>();
         services.AddSingleton<IWorkspaceLocks, JsWorkspaceLocks>();
-        services.AddSingleton<IProjectTransfer, ZipTransferService>();
+        services.AddSingleton<ZipTransferService>();
+        services.AddSingleton<IProjectTransfer>(provider => provider.GetRequiredService<ZipTransferService>());
+        services.TryAddScoped<IArchiveExport>(provider => provider.GetRequiredService<ZipTransferService>());
         services.AddSingleton<HistoryService>();
         services.AddScoped<FolderTransferService>();
         services.AddScoped<WorkspaceCoordinator>();
@@ -41,7 +42,6 @@ public static class AuthoringWorkspaceRegistration
         services.AddScoped<SourceNavigator>();
         services.AddScoped<IChangeReviewService, ChangeReviewService>();
         services.AddAiAssistance();
-        services.AddDriveTransfers();
         services.AddScoped<LocalInstalledRuntimeProviders>();
         services.AddScoped<ISyncTeXQuery>(provider => new JsSyncTeXQuery(provider.GetRequiredService<IJSRuntime>(),
             provider.GetRequiredService<LocalInstalledRuntimeProviders>()));

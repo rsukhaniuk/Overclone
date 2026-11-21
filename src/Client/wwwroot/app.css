@@ -168,8 +168,6 @@ dd { margin: 0; overflow-wrap: anywhere; }
 .tool-disclosure > summary > span { font-size: 11px; font-weight: 400; color: var(--muted); margin-left: 8px; }
 .secondary-tools > .tool-disclosure[open] { grid-column: 1 / -1; }
 .tool-content { padding: 14px 18px; max-height: 34vh; overflow: auto; border-bottom: 1px solid var(--line); background: #fff; }
-.drive-disclosure { flex-shrink: 0; }
-.drive-disclosure > summary { padding-block: 7px; }
 .review-panel { grid-column: 1 / -1; padding: 14px 18px; border-left: 4px solid var(--green); max-height: 36vh; overflow: auto; background: #f4faf5; }
 .review-panel h2 { font-size: 14px; }
 .review-preview, .review-file, .knu-rule { margin: 10px 0; padding: 10px; border: 1px solid var(--line); background: #fff; border-radius: 3px; }
@@ -284,10 +282,9 @@ body:has(.project-dashboard) .update-banner { position: fixed; inset: auto 20px 
 .project-table-empty h2 { margin-bottom: 6px; color: var(--ink); font-size: 16px; font-weight: 500; }
 .project-table-empty p { margin: 0; font-size: 14px; }
 .projects-footer { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px 20px; padding: 14px 0 20px; color: var(--muted); font-size: 13px; }
-.project-dashboard .dashboard-import, .project-dashboard > .drive-disclosure { margin: 0; padding: 0; border: 1px solid #3b4859; border-radius: 5px; background: #263243; scroll-margin-top: 16px; }
-.project-dashboard > .drive-disclosure { margin-top: 14px; }
-.dashboard-import > summary, .project-dashboard > .drive-disclosure > summary { padding: 12px 16px; color: var(--ink); border: 0; font-size: 14px; font-weight: 500; }
-.dashboard-import > summary span, .project-dashboard > .drive-disclosure > summary span { margin-left: 12px; color: var(--muted); font-size: 13px; font-weight: 400; }
+.project-dashboard .dashboard-import { margin: 0; padding: 0; border: 1px solid #3b4859; border-radius: 5px; background: #263243; scroll-margin-top: 16px; }
+.dashboard-import > summary { padding: 12px 16px; color: var(--ink); border: 0; font-size: 14px; font-weight: 500; }
+.dashboard-import > summary span { margin-left: 12px; color: var(--muted); font-size: 13px; font-weight: 400; }
 .dashboard-import-body { display: flex; align-items: end; flex-wrap: wrap; gap: 16px; padding: 4px 16px 16px; }
 .project-dashboard .zip-import { display: flex; flex-direction: column; gap: 8px; max-width: 360px; color: var(--muted); font-size: 14px; }
 .project-dashboard .zip-import input { font-size: 14px; }
@@ -295,12 +292,6 @@ body:has(.project-dashboard) .update-banner { position: fixed; inset: auto 20px 
 .project-dashboard .staged-files { font-size: 13px; }
 .project-dashboard .validation-errors { color: #f3c0b7; background: #442f36; border: 1px solid #80545d; border-radius: 5px; }
 .project-dashboard .tool-content { max-height: 60vh; background: #1c242f; color: var(--ink); border-color: #3b4859; border-radius: 0 0 5px 5px; }
-.project-dashboard .integration-panel { max-width: none; }
-.project-dashboard .integration-panel label { font-size: 14px; }
-.project-dashboard .integration-panel fieldset { border-color: #506075; }
-.project-dashboard .integration-panel fieldset > p { font-size: 13px; color: var(--muted); }
-.project-dashboard .integration-panel h2 { font-size: 18px; }
-.project-dashboard .integration-panel h3 { font-size: 15px; }
 .project-dashboard .banner-error { color: #f3c0b7; background: #442f36; border-color: #80545d; }
 .project-dashboard .banner-warn { color: #ebd6a7; background: #443c2c; border-color: #7a6a42; }
 .project-dashboard > .banner { margin-bottom: 16px; border-radius: 5px; font-size: 14px; }
