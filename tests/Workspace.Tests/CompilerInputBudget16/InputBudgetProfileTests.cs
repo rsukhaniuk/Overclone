@@ -57,7 +57,7 @@ public sealed class InputBudgetProfileTests
         Assert.Equal(NativeRuntimeProfiles.ProjectTotalBytes(Profile), next.ProjectTotalBytes);
         Assert.Equal(NativeCompilerInputBudgetPins.Ready ? 16777216 : 8388608, next.ConverterProjectBytes);
         Assert.Equal(8388608, next.ProjectFileBytes); Assert.Equal(128, NativeAuthoringV4Contract.CarriedFiles);
-        foreach (var unknown in new[] { (NativeRuntimeProfile)11, (NativeRuntimeProfile)18, (NativeRuntimeProfile)int.MaxValue })
+        foreach (var unknown in new[] { (NativeRuntimeProfile)11, (NativeRuntimeProfile)19, (NativeRuntimeProfile)int.MaxValue })
         { Assert.False(NativeRuntimeProfiles.Known(unknown)); Assert.False(NativeInputBudgetContract.Enabled(unknown)); Assert.Equal(8388608, NativeRuntimeProfiles.ProjectTotalBytes(unknown)); }
     }
     [Fact]

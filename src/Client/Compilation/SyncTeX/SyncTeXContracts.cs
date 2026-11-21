@@ -79,7 +79,7 @@ public sealed class SyncTeXRuntimeBinding
                 || profile is NativeRuntimeProfile.LocalLatex2023SyncTeX or NativeRuntimeProfile.LocalLatex2023Dvi)) return null;
         var identity = Client.Workspace.Domain.SHA256.FromBytes(System.Security.Cryptography.SHA256.HashData(
             Encoding.UTF8.GetBytes($"native-runtime-profile-v1\n{NativeRuntimeProfiles.IdentityName(profile)}\n{closure}")));
-        bool area64 = profile is NativeOriginCompilerContract.Profile or NativeInputBudgetContract.Profile or NativeSelectedPdfContract.Profile;
+        bool area64 = profile is NativeOriginCompilerContract.Profile or NativeInputBudgetContract.Profile or NativeSelectedPdfContract.Profile or NativeRuntimeProfile.LocalCompilerCoursework;
         return new(profile, NativeRuntimePackage.BundleFor(profile, identity),
             area64 ? NativeCompilerOriginPins.QueryLoaderHash : NativeRuntimeProfiles.SyncTeXQueryLoaderHash,
             area64 ? NativeCompilerOriginPins.QueryWasmHash : NativeRuntimeProfiles.SyncTeXQueryWasmHash);

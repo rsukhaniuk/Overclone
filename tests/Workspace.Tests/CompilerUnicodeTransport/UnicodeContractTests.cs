@@ -31,7 +31,7 @@ public sealed class UnicodeContractTests
                 NativeNavigationContract.IsMapped(P, plan.EffectivePhaseVersion, e));
             Assert.False(NativeNavigationContract.IsMapped(P, 23, e));
         }
-        foreach (var p in new[] { (NativeRuntimeProfile)11, (NativeRuntimeProfile)18, (NativeRuntimeProfile)int.MaxValue })
+        foreach (var p in new[] { (NativeRuntimeProfile)11, (NativeRuntimeProfile)19, (NativeRuntimeProfile)int.MaxValue })
         {
             Assert.False(NativeRuntimeProfiles.Known(p)); Assert.False(NativeRuntimeProfiles.IsSuite(p));
             Assert.Equal(0, NativeCompilerSuiteContract.Phase(p, NativeCompilerEngine.XeLaTeX));

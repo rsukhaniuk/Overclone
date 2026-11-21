@@ -40,17 +40,19 @@ public sealed class ZipRuntimeArchive : IAsyncDisposable
         await PrepareEntries(bytes, token);
     }
     // Application-owned HTTP bytes, transferred without a second archive-sized copy.
-    internal Task PrepareOwnedAsync(byte[] bytes, CancellationToken token)
+    internal Task PrepareOwnedAsync(byte[] bytes, CancellationToken token, NativeRuntimeProfile profile = NativeRuntimeProfile.Legacy)
     {
-        if (_preparation is not null || _closing || bytes.Length < 22 || bytes.Length > MaxZipBytes) throw Invalid();
-        _preparation = PrepareEntries(bytes, token);
+        bool coursework = profile == NativeRuntimeProfile.LocalCompilerCoursework
+            && NativeCompilerCourseworkPins.Ready && bytes.Length == NativeCompilerCourseworkPins.ArchiveLength;
+        if (_preparation is not null || _closing || bytes.Length < 22 || bytes.Length > MaxZipBytes && !coursework) throw Invalid();
+        _preparation = PrepareEntries(bytes, token, coursework);
         return _preparation;
     }
-    private async Task PrepareEntries(byte[] bytes, CancellationToken token)
+    private async Task PrepareEntries(byte[] bytes, CancellationToken token, bool coursework = false)
     {
         token.ThrowIfCancellationRequested();
         if (_closing) throw Invalid();
-        var directory = ZipDirectory.Read(bytes); // sole envelope parser; bounded metadata first
+        var directory = ZipDirectory.Read(bytes, coursework); // sole envelope parser; bounded metadata first
         _bytes = bytes;
         var entries = directory.ToDictionary(item => item.Name, StringComparer.Ordinal);
         var manifest = entries["pins.json"];
@@ -150,7 +152,7 @@ internal static class ZipDirectory
     private static ushort U16(byte[] b, int p) { Check(b, p, 2); return BinaryPrimitives.ReadUInt16LittleEndian(b.AsSpan(p, 2)); }
     private static uint U32(byte[] b, int p) { Check(b, p, 4); return BinaryPrimitives.ReadUInt32LittleEndian(b.AsSpan(p, 4)); }
     private static void Check(byte[] b, int p, int n) { if (p < 0 || n < 0 || p > b.Length - n) throw Invalid(); }
-    public static List<Item> Read(byte[] b)
+    public static List<Item> Read(byte[] b, bool coursework = false)
     {
         int end = -1;
         for (int p = b.Length - 22; p >= Math.Max(0, b.Length - 65557); p--)
@@ -160,7 +162,10 @@ internal static class ZipDirectory
         bool legacyEnvelope = count is 498 or 499 or 500 or 501 or 508 or 509;
         bool suiteEnvelope = LocalRuntimeSelection.SupportedSuiteCount(count - 1) || LocalRuntimeSelection.SupportedSuiteCount(count - 2);
         if ((!legacyEnvelope && !suiteEnvelope) || U16(b, end + 8) != count) throw Invalid();
+        if (coursework && count != NativeCompilerCourseworkPins.ResourceCount + 1 && count != NativeCompilerCourseworkPins.ResourceCount + 2) throw Invalid();
         if (!suiteEnvelope && b.Length > 67108864) throw Invalid();
+        long resourceTotalCap = coursework ? NativeCompilerCourseworkPins.TotalBytes
+            : suiteEnvelope ? NativeCompilerSuiteContract.TotalBytes : LocalRuntimeSelection.Limits.MaxTotalBytes;
         long central = U32(b, end + 16), centralSize = U32(b, end + 12);
         if (central + centralSize != end || central > int.MaxValue) throw Invalid();
         int cursor = (int)central; long total = 0;
@@ -180,7 +185,7 @@ internal static class ZipDirectory
             foreach (byte value in nameBytes) if (value < 32 || value > 126) throw Invalid();
             string name = Encoding.ASCII.GetString(nameBytes);
             bool folder = name == "files/";
-            if (!names.Add(name) || !(name == "pins.json" || folder || ResourceName(name, suiteEnvelope))) throw Invalid();
+            if (!names.Add(name) || !(name == "pins.json" || folder || ResourceName(name, suiteEnvelope, coursework))) throw Invalid();
             uint attributes = U32(b, cursor + 38), type = (attributes >> 16) & 0xf000;
             if (type != 0 && type != (folder ? 0x4000u : 0x8000u)
                 || (attributes & 0x48) != 0 || !folder && (attributes & 0x10) != 0) throw Invalid();
@@ -189,7 +194,7 @@ internal static class ZipDirectory
             if (length > cap || compressed > ZipRuntimeArchive.MaxZipBytes || method == 0 && compressed != length
                 || folder && (length != 0 || compressed != 0)) throw Invalid();
             if (name != "pins.json" && !folder)
-            { total += length; if (total > (suiteEnvelope ? NativeCompilerSuiteContract.TotalBytes : LocalRuntimeSelection.Limits.MaxTotalBytes)) throw Invalid(); }
+            { total += length; if (total > resourceTotalCap) throw Invalid(); }
             // Reject ZIP64 and ambiguous extra fields rather than interpret a second length/name.
             if (extra != 0) ValidateExtra(b, cursor + 46 + nameLength, extra);
             long local = U32(b, cursor + 42);
@@ -229,11 +234,12 @@ internal static class ZipDirectory
         if (next != central) throw Invalid();
         return items;
     }
-    private static bool ResourceName(string name, bool suite)
+    private static bool ResourceName(string name, bool suite, bool coursework)
     {
         if (!name.StartsWith("files/", StringComparison.Ordinal)) return false;
         var flat = name[6..];
         return suite ? NativeCompilerSuiteContract.ResourceName(flat) || NativeThesisCompilerContract.NoticeName(flat) || NativeInputBudgetContract.NoticeName(flat)
+            || coursework && NativeCompilerCourseworkPins.NoticeName(flat)
             : flat.Length is > 0 and <= 200 && flat.All(c => char.IsAsciiLetterOrDigit(c) || c is '.' or '-' or '_')
             && flat is not ("." or "..");
     }

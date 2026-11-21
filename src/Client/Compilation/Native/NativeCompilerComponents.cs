@@ -12,7 +12,7 @@ public static class NativeCompilerComponents
     public static NativeCompilerComponent For(NativeRuntimeProfile profile, NativeCompilerEngine engine)
     {
         if (!NativeRuntimeProfiles.IsSuite(profile)) throw new ArgumentOutOfRangeException(nameof(profile));
-        if (profile is NativeSelectedPdfContract.Profile or NativeInputBudgetContract.Profile) return NativeInputBudgetContract.Component(engine);
+        if (profile is NativeRuntimeProfile.LocalCompilerCoursework or NativeSelectedPdfContract.Profile or NativeInputBudgetContract.Profile) return NativeInputBudgetContract.Component(engine);
         if (profile == NativeOriginCompilerContract.Profile) return NativeOriginCompilerContract.Component(engine);
         if (profile == NativeThesisCompilerContract.Profile) return NativeThesisCompilerContract.Component(engine);
         if (profile == NativeBiberCompilerContract.Profile) return NativeBiberCompilerContract.Component(engine);

@@ -17,6 +17,7 @@ public static class LocalRuntimeSelection
     public static NativeRuntimeLimits LimitsFor(NativeRuntimeProfile profile) => profile switch
     {
         Profile or NativeRuntimeProfile.LocalLatex2023SyncTeX or NativeRuntimeProfile.LocalLatex2023Dvi => new(512, 33554432, 67108864, profile),
+        NativeRuntimeProfile.LocalCompilerCoursework => new(NativeCompilerSuiteContract.Files, NativeCompilerSuiteContract.FileBytes, NativeCompilerCourseworkPins.TotalBytes, profile),
         NativeRuntimeProfile.LocalCompilerSuite or NativeRuntimeProfile.LocalCompilerCompatibility or NativeRuntimeProfile.LocalCompilerBibliography or NativeRuntimeProfile.LocalCompilerNavigation or NativeRuntimeProfile.LocalCompilerXeNavigation or NativeRuntimeProfile.LocalCompilerGraphicsNavigation or NativeRuntimeProfile.LocalCompilerUnicode or NativeRuntimeProfile.LocalCompilerBiber or NativeRuntimeProfile.LocalCompilerThesis or NativeRuntimeProfile.LocalCompilerOrigins or NativeRuntimeProfile.LocalCompilerInputBudget or NativeRuntimeProfile.LocalCompilerSelectedPdf => new(NativeCompilerSuiteContract.Files, NativeCompilerSuiteContract.FileBytes, NativeCompilerSuiteContract.TotalBytes, profile),
         _ => throw Invalid()
     };
@@ -32,12 +33,15 @@ public static class LocalRuntimeSelection
             || NativeRuntimeProfiles.SuitePinsReady(NativeRuntimeProfile.LocalCompilerThesis) && count == NativeRuntimeProfiles.InstalledCount(NativeRuntimeProfile.LocalCompilerThesis)
             || NativeRuntimeProfiles.SuitePinsReady(NativeRuntimeProfile.LocalCompilerOrigins) && count == NativeRuntimeProfiles.InstalledCount(NativeRuntimeProfile.LocalCompilerOrigins)
             || NativeRuntimeProfiles.SuitePinsReady(NativeRuntimeProfile.LocalCompilerInputBudget) && count == NativeRuntimeProfiles.InstalledCount(NativeRuntimeProfile.LocalCompilerInputBudget)
-            || NativeCompilerSelectedPdfPins.Ready && count == NativeCompilerSelectedPdfPins.ResourceCount);
+            || NativeCompilerSelectedPdfPins.Ready && count == NativeCompilerSelectedPdfPins.ResourceCount
+            || IsCourseworkCount(count));
+    private static bool IsCourseworkCount(int count) => NativeCompilerCourseworkPins.Ready && count == NativeCompilerCourseworkPins.ResourceCount;
     private static bool NoticeForCount(string name, int count) => count == NativeCompilerBiberPins.ResourceCount && NativeBiberCompilerContract.NoticeName(name)
         || NativeCompilerThesisPins.Ready && count == NativeCompilerThesisPins.ResourceCount && NativeThesisCompilerContract.NoticeName(name)
         || NativeCompilerOriginPins.Ready && count == NativeCompilerOriginPins.ResourceCount && NativeThesisCompilerContract.NoticeName(name)
         || NativeCompilerInputBudgetPins.Ready && (count == NativeCompilerInputBudgetPins.ResourceCount || count == NativeCompilerSelectedPdfPins.ResourceCount)
-            && NativeInputBudgetContract.NoticeName(name);
+            && NativeInputBudgetContract.NoticeName(name)
+        || IsCourseworkCount(count) && (NativeInputBudgetContract.NoticeName(name) || NativeCompilerCourseworkPins.NoticeName(name));
     public static bool SupportedCount(int count) => count is NativeRuntimeProfiles.AuthoringResourceCount or NativeRuntimeProfiles.SyncTeXResourceCount or NativeRuntimeProfiles.DviResourceCount
         || SupportedSuiteCount(count);
     public static NativeRuntimeProfile ProfileFor(IEnumerable<NativeResourcePin> pins)
@@ -46,7 +50,8 @@ public static class LocalRuntimeSelection
         var owned = pins.Take(NativeCompilerSuiteContract.Files + 1).ToArray();
         if (!SupportedCount(owned.Length) || owned.Any(p => p is null)) throw Invalid();
         bool suiteCount = SupportedSuiteCount(owned.Length);
-        var limits = LimitsFor(suiteCount ? NativeRuntimeProfile.LocalCompilerSuite : Profile);
+        var limits = LimitsFor(IsCourseworkCount(owned.Length) ? NativeRuntimeProfile.LocalCompilerCoursework
+            : suiteCount ? NativeRuntimeProfile.LocalCompilerSuite : Profile);
         var names = new HashSet<string>(StringComparer.Ordinal);
         long total = 0;
         foreach (var pin in owned)
@@ -57,7 +62,7 @@ public static class LocalRuntimeSelection
             total += pin.Length;
         }
         var closure = NativeRuntimePackage.ResourceIdentity(owned).Hex;
-        foreach (var profile in new[] { Profile, NativeRuntimeProfile.LocalLatex2023SyncTeX, NativeRuntimeProfile.LocalLatex2023Dvi, NativeRuntimeProfile.LocalCompilerSuite, NativeRuntimeProfile.LocalCompilerCompatibility, NativeRuntimeProfile.LocalCompilerBibliography, NativeRuntimeProfile.LocalCompilerNavigation, NativeRuntimeProfile.LocalCompilerXeNavigation, NativeRuntimeProfile.LocalCompilerGraphicsNavigation, NativeRuntimeProfile.LocalCompilerUnicode, NativeRuntimeProfile.LocalCompilerBiber, NativeRuntimeProfile.LocalCompilerThesis, NativeRuntimeProfile.LocalCompilerOrigins, NativeRuntimeProfile.LocalCompilerInputBudget, NativeRuntimeProfile.LocalCompilerSelectedPdf })
+        foreach (var profile in new[] { Profile, NativeRuntimeProfile.LocalLatex2023SyncTeX, NativeRuntimeProfile.LocalLatex2023Dvi, NativeRuntimeProfile.LocalCompilerSuite, NativeRuntimeProfile.LocalCompilerCompatibility, NativeRuntimeProfile.LocalCompilerBibliography, NativeRuntimeProfile.LocalCompilerNavigation, NativeRuntimeProfile.LocalCompilerXeNavigation, NativeRuntimeProfile.LocalCompilerGraphicsNavigation, NativeRuntimeProfile.LocalCompilerUnicode, NativeRuntimeProfile.LocalCompilerBiber, NativeRuntimeProfile.LocalCompilerThesis, NativeRuntimeProfile.LocalCompilerOrigins, NativeRuntimeProfile.LocalCompilerInputBudget, NativeRuntimeProfile.LocalCompilerSelectedPdf, NativeRuntimeProfile.LocalCompilerCoursework })
             if ((!NativeRuntimeProfiles.IsSuite(profile) || NativeRuntimeProfiles.SuitePinsReady(profile))
                 && owned.Length == NativeRuntimeProfiles.InstalledCount(profile) && closure == NativeRuntimeProfiles.ClosureHash(profile)
                 && (!NativeRuntimeProfiles.IsSuite(profile) || total == NativeRuntimeProfiles.SuiteTotalBytes(profile)
@@ -67,7 +72,10 @@ public static class LocalRuntimeSelection
     public static readonly RuntimeAssetBudget Budget = new(new(512, 256, 33554432, 67108864, 1048576, 256, 256), 1048576, 64, 128, 30000);
     public static readonly RuntimeAssetBudget SuiteBudget = new(new(NativeCompilerSuiteContract.Files, 256, NativeCompilerSuiteContract.FileBytes,
         NativeCompilerSuiteContract.TotalBytes, SuiteMaxMetadataBytes, 256, 256), SuiteMaxMetadataBytes, 64, 128, 30000);
-    public static RuntimeAssetBudget BudgetFor(NativeRuntimeProfile profile) => NativeRuntimeProfiles.IsSuite(profile) ? SuiteBudget : Budget;
+    private static readonly RuntimeAssetBudget CourseworkBudget =
+        SuiteBudget with { Inventory = SuiteBudget.Inventory with { MaxTotalBytes = NativeCompilerCourseworkPins.TotalBytes } };
+    public static RuntimeAssetBudget BudgetFor(NativeRuntimeProfile profile) => profile == NativeRuntimeProfile.LocalCompilerCoursework
+        ? CourseworkBudget : NativeRuntimeProfiles.IsSuite(profile) ? SuiteBudget : Budget;
     public static ImmutableArray<NativeResourcePin> ParsePins(byte[] json)
     {
         if (json.Length > SuiteMaxPinsBytes) throw Invalid();
@@ -80,7 +88,8 @@ public static class LocalRuntimeSelection
     {
         if (array.ValueKind != JsonValueKind.Array || !SupportedCount(array.GetArrayLength())) throw Invalid();
         bool suite = SupportedSuiteCount(array.GetArrayLength());
-        var limits = LimitsFor(suite ? NativeRuntimeProfile.LocalCompilerSuite : Profile);
+        var limits = LimitsFor(IsCourseworkCount(array.GetArrayLength()) ? NativeRuntimeProfile.LocalCompilerCoursework
+            : suite ? NativeRuntimeProfile.LocalCompilerSuite : Profile);
         var result = ImmutableArray.CreateBuilder<InstalledNativeResource>(array.GetArrayLength());
         var names = new HashSet<string>(StringComparer.Ordinal); var assetIds = new HashSet<Guid>(); long total = 0;
         foreach (var item in array.EnumerateArray())

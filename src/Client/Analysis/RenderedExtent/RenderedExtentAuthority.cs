@@ -19,7 +19,7 @@ internal sealed class RenderedExtentAuthority
     internal CompileAttemptPresentation Presentation { get; }
     internal CompileWorkspacePorts Ports { get; }
     internal IPdfInspector? Inspector => Ports.Inspector;
-    internal PdfRuntimeIdentity? ExpandedRenderer => Ports.NativeProfile == NativeSelectedPdfContract.Profile
+    internal PdfRuntimeIdentity? ExpandedRenderer => NativeSelectedPdfContract.Supports(Ports.NativeProfile)
         ? Compilation.Provisioning.BundledRuntimeAssets.SelectedPdfCapacity?.Renderer : null;
     internal PdfDocument CreateDocument(byte[] bytes) =>
         new(bytes, Output.OutputLength > PdfDocument.DefaultInputBytes ? Ports.CompiledPdfCapacity : null);
@@ -57,9 +57,9 @@ internal sealed class RenderedExtentAuthority
                     .Any(engine => Output.OutputAdapter == NativeOriginCompilerContract.Component(engine).OutputAdapter))
                 && !(NativeCompilerInputBudgetPins.Ready && Enum.GetValues<NativeCompilerEngine>()
                     .Any(engine => Output.OutputAdapter == NativeInputBudgetContract.Component(engine).OutputAdapter))
-                && !(ports.NativeProfile == NativeSelectedPdfContract.Profile && NativeCompilerSelectedPdfPins.Ready
+                && !(ports.NativeProfile is { } nativeProfile && NativeSelectedPdfContract.Supports(nativeProfile)
                     && Enum.GetValues<NativeCompilerEngine>()
-                        .Any(engine => Output.OutputAdapter == NativeCompilerComponents.For(NativeSelectedPdfContract.Profile, engine).OutputAdapter))
+                        .Any(engine => Output.OutputAdapter == NativeCompilerComponents.For(nativeProfile, engine).OutputAdapter))
             || Output.OutputLength < 1 || Output.OutputLength > (Ports.CompiledPdfCapacity?.MaxInputBytes ?? PdfDocument.DefaultInputBytes) || !PdfHashes.IsSha(Output.OutputHash?.Hex)
             || Output.WorkerEpoch <= 0 || Output.RequestId.Value == Guid.Empty) return false;
         var snapshot = Output.Snapshot; var identity = snapshot.Identity;

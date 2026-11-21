@@ -113,7 +113,7 @@ public sealed class LocalCompileWorkspaceConfiguration : ICompileWorkspaceConfig
                         SelectionOptions: suite ? NativeCompilerSuiteContract.SelectionOptions(package.Profile, NativeCompilerEngine.PdfLaTeX)
                             : mapped ? NativeSyncTeXContract.SelectionOptions : NativeSelectedEntryContract.SelectionOptions,
                         OutputAdapter: package.OutputAdapter, NativeProfile: package.Profile,
-                        CompiledPdfCapacity: _resources.HasSelectedPdfCapacity && package.Identity.Hex == NativeSelectedPdfContract.RuntimeIdentity
+                        CompiledPdfCapacity: _resources.HasSelectedPdfCapacity && NativeSelectedPdfContract.MatchesRuntime(package.Profile, package.Identity.Hex)
                             ? PdfCompiledInputCapacity.TwelveMiB : null);
                     if (suite || package.Profile == NativeRuntimeProfile.LocalLatex2023Dvi)
                     {

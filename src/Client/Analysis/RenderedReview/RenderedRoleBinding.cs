@@ -230,8 +230,8 @@ public sealed class RenderedRoleBinding(WorkspaceCoordinator workspace, CompileW
     {
         var snapshot = authority.Output.Snapshot;
         var selection = snapshot.Selection;
-        if (authority.Ports.NativeProfile is not (NativeInputBudgetContract.Profile or NativeSelectedPdfContract.Profile)) return false;
-        var profile = authority.Ports.NativeProfile.Value;
+        if (authority.Ports.NativeProfile is not { } profile
+            || profile != NativeInputBudgetContract.Profile && !NativeSelectedPdfContract.Supports(profile)) return false;
         // The additive runtime contains identical bytes for the 11 pinned article/T2A
         // caption context files. Membership and project shadowing are checked separately.
         var component = NativeCompilerComponents.For(profile, NativeCompilerEngine.PdfLaTeX);

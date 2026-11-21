@@ -59,10 +59,13 @@ internal static class HistoricalArtifactCodec
         {
             var component = NativeCompilerComponents.For(NativeSelectedPdfContract.Profile, NativeCompilerEngine.PdfLaTeX);
             var engine = new CompilationDescriptor(NativeRuntimePackage.EngineId, component.EngineVersion, new(component.WasmHash));
-            var binding = SyncTeXRuntimeBinding.ForProfile(NativeSelectedPdfContract.Profile);
-            Check(selection!.Engine == engine && selection.Bundles.Length == 1 && binding is not null
-                && selection.Bundles[0] == binding.Bundle && value.Adapter == component.OutputAdapter
-                && NativeCompilerSuiteContract.MatchesOptions(selection.Options, NativeSelectedPdfContract.Profile, NativeCompilerEngine.PdfLaTeX));
+            Check(selection!.Engine == engine && selection.Bundles.Length == 1 && value.Adapter == component.OutputAdapter
+                && (MatchesLargePdfBundle(NativeSelectedPdfContract.Profile)
+                    || MatchesLargePdfBundle(NativeRuntimeProfile.LocalCompilerCoursework)));
+
+            bool MatchesLargePdfBundle(NativeRuntimeProfile profile) => NativeSelectedPdfContract.Supports(profile)
+                && SyncTeXRuntimeBinding.ForProfile(profile) is { } binding && selection.Bundles[0] == binding.Bundle
+                && NativeCompilerSuiteContract.MatchesOptions(selection.Options, profile, NativeCompilerEngine.PdfLaTeX);
         }
         Check(value.Files is not null && value.Files.Length > 0 && value.Files.Length <= budget.Input.MaxFiles);
         long total = 0; var ids = new HashSet<FileId>();

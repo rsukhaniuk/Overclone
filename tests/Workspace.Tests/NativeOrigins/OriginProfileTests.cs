@@ -44,7 +44,7 @@ public sealed class OriginProfileTests
                 Assert.EndsWith("-origin1-neutral1", next.OutputAdapter.Version);
             }
         }
-        foreach (var unknown in new[] { (NativeRuntimeProfile)11, (NativeRuntimeProfile)18, (NativeRuntimeProfile)int.MaxValue })
+        foreach (var unknown in new[] { (NativeRuntimeProfile)11, (NativeRuntimeProfile)19, (NativeRuntimeProfile)int.MaxValue })
         {
             Assert.False(NativeRuntimeProfiles.Known(unknown));
             Assert.Equal(64, NativeRuntimeProfiles.ProjectFileLimit(unknown));

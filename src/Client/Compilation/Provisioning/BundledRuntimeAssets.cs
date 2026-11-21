@@ -18,11 +18,16 @@ public sealed class BundledRuntimeAssets(HttpClient http, IJSRuntime? browser = 
         .GetManifestResourceStream("Client.Compilation.Provisioning.bundled-runtime.json")!);
     public static Asset CompilerAsset => Pin("compiler");
     // Promotion is explicit: a ready closure may never fall back to older bytes.
-    public static NativeRuntimeProfile CompilerProfile => CompilerAsset is
+    public static NativeRuntimeProfile CompilerProfile => CompilerAsset switch
+    {
+        { Length: NativeCompilerCourseworkPins.ArchiveLength, Sha256: NativeCompilerCourseworkPins.ArchiveSha256 }
+            => NativeRuntimeProfile.LocalCompilerCoursework,
         { Length: 267842942, Sha256: "7494e9fd1f6fa3195ad4d6d15a5cb2c7845e00cd6e3a81d928c60d10345cb8fe" }
-        ? NativeSelectedPdfContract.Profile : NativeInputBudgetContract.Profile;
+            => NativeSelectedPdfContract.Profile,
+        _ => NativeInputBudgetContract.Profile
+    };
     public static PdfCompiledInputCapacity? SelectedPdfCapacity =>
-        CompilerProfile == NativeSelectedPdfContract.Profile
+        NativeSelectedPdfContract.Supports(CompilerProfile)
         && PdfLoaderAsset is { Length: 14243 } loader
         && loader.Sha256 == PdfCompiledInputCapacity.TwelveMiB.Renderer.LoaderSha256
         && PdfWasmAsset is { Length: 3725611 } wasm
@@ -99,12 +104,12 @@ public sealed class BundledRuntimeAssets(HttpClient http, IJSRuntime? browser = 
         var token = deadline.Token;
         await ReleaseReady(); token.ThrowIfCancellationRequested();
         var bytes = await Read(CompilerAsset, token);
-        await using var archive = new ZipRuntimeArchive();
-        await archive.PrepareOwnedAsync(bytes, token); bytes = [];
-        var pins = LocalRuntimeSelection.ParsePins(archive.Pins);
         var profile = CompilerProfile;
+        await using var archive = new ZipRuntimeArchive();
+        await archive.PrepareOwnedAsync(bytes, token, profile); bytes = [];
+        var pins = LocalRuntimeSelection.ParsePins(archive.Pins);
         if (LocalRuntimeSelection.ProfileFor(pins) != profile
-            || profile == NativeSelectedPdfContract.Profile && SelectedPdfCapacity is null) throw new InvalidDataException();
+            || NativeSelectedPdfContract.Supports(profile) && SelectedPdfCapacity is null) throw new InvalidDataException();
         var inputs = new List<NativeResourceInput>(pins.Length);
         foreach (var file in archive.Files)
         {
