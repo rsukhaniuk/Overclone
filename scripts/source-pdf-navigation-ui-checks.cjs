@@ -128,7 +128,9 @@ async function verifyPackage(page, project, mainPath, fixture, label) {
       // are on the same captured fixture lines and provide measured ink points.
       const searchNeedle = file === mainPath ? 'resolved' : 'file';
       candidate.searchNeedle = searchNeedle; retain();
-      await pane.locator('input[aria-label="Search PDF"]').fill(searchNeedle);
+      const search = pane.locator('input[aria-label="Search PDF"]');
+      await H.reveal(page, search);
+      await search.fill(searchNeedle);
       const searchGeneration = await pane.getAttribute('data-generation');
       await pane.getByRole('button', { name: 'Search document', exact: true }).click();
       await page.waitForFunction(old => {
@@ -195,7 +197,8 @@ async function verifyPackage(page, project, mainPath, fixture, label) {
       assert.equal(candidate.inverseView.canvasPage, candidate.glyphView.canvasPage);
       assert.equal(candidate.inverseView.preview, 'Available'); assert.equal(candidate.inverseView.drawn, 'Drawn');
       assert.deepEqual(candidate.inverseView.canvas, candidate.glyphView.canvas);
-      await H.$(page, 'pdf-canvas').dblclick({ position: candidate.click });
+      await H.$(page, 'pdf-canvas').click({ position: candidate.click, force: true });
+      await pane.getByRole('button', { name: 'Go to source', exact: true }).click();
       await page.waitForFunction(file => {
         const text = document.querySelector('[data-testid=source-map-status]')?.textContent || '';
         return text.startsWith('Selected ' + file + ':') && text.includes('native line-level precision');
@@ -271,7 +274,8 @@ async function verify(page, project, mainPath, fixture, label) {
       await page.waitForFunction(id => document.querySelector('[data-testid=editor]')?.dataset.fileId === id,
         before.files.find(f => f.path === other).id);
     }
-    await canvas.dblclick({ position: click });
+    await canvas.click({ position: click, force: true });
+    await H.$(page, 'pdf-pane').getByRole('button', { name: 'Go to source', exact: true }).click();
     await page.waitForFunction(file => {
       const text = document.querySelector('[data-testid=source-map-status]')?.textContent || '';
       return text.startsWith('Selected ' + file + ':') && text.includes('native line-level precision');

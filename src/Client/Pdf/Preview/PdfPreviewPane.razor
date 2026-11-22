@@ -11,39 +11,62 @@
         <h2>PDF preview</h2>
         <span>@View.DisplayName</span>
     </header>
-    <div role="toolbar" aria-label="PDF page controls" hidden="@(View.DocumentSha256 is null)">
-        <button aria-label="Previous page" disabled="@(View.PageCount == 0 || View.PageIndex == 0)" @onclick="Previous">Previous</button>
-        <label>Page <input aria-label="Go to page" type="number" min="1" max="@View.PageCount" value="@(View.PageIndex + 1)" @onchange="Go" disabled="@(View.PageCount == 0)" /></label>
-        <span data-testid="page-label">@(View.PageCount == 0 ? "No pages" : $"Page {View.PageIndex + 1} of {View.PageCount}")</span>
-        <button aria-label="Next page" disabled="@(View.PageCount == 0 || View.PageIndex + 1 >= View.PageCount)" @onclick="Next">Next</button>
-        <label>Zoom <select aria-label="Zoom" value="@View.ZoomPercent" @onchange="Zoom" disabled="@(View.DocumentSha256 is null)">
-            @foreach (int value in new[] { 25, 50, 75, 100, 125, 150, 200, 300 }) { <option value="@value">@value%</option> }
-        </select></label>
-        <button aria-label="Fit width" @onclick="Fit" disabled="@(View.DocumentSha256 is null)">Fit width</button>
-        <button aria-label="Cancel preview" @onclick="Cancel" disabled="@(View.Status != PdfPreviewStatus.Loading)">Cancel</button>
-        <button aria-label="Retry preview" @onclick="Retry" disabled="@(_current.ActualWorkPending || View.DocumentSha256 is null)">Retry</button>
+    <div class="pdf-page-toolbar" role="toolbar" aria-label="PDF page controls" hidden="@(!FillPane && View.DocumentSha256 is null)">
+        <div class="pdf-active-controls" hidden="@(View.DocumentSha256 is null)">
+            <button aria-label="Previous page" disabled="@(View.PageCount == 0 || View.PageIndex == 0)" @onclick="Previous" title="Previous page">‹</button>
+            <label><span class="sr-only">Page</span> <input aria-label="Go to page" type="number" min="1" max="@View.PageCount" value="@(View.PageIndex + 1)" @onchange="Go" disabled="@(View.PageCount == 0)" /></label>
+            <span data-testid="page-label">@(View.PageCount == 0 ? "No pages" : $"Page {View.PageIndex + 1} of {View.PageCount}")</span>
+            <button aria-label="Next page" disabled="@(View.PageCount == 0 || View.PageIndex + 1 >= View.PageCount)" @onclick="Next" title="Next page">›</button>
+            <label><span class="sr-only">Zoom</span> <select aria-label="Zoom" value="@View.ZoomPercent" @onchange="Zoom" disabled="@(View.DocumentSha256 is null)">
+                @foreach (int value in new[] { 25, 50, 75, 100, 125, 150, 200, 300 }) { <option value="@value">@(FillPane && value == 100 ? "Fit width" : $"{value}%")</option> }
+            </select></label>
+            <button aria-label="Cancel preview" @onclick="Cancel" disabled="@(View.Status != PdfPreviewStatus.Loading)">Cancel</button>
+            <button hidden="@(FillPane && View.Status is PdfPreviewStatus.Available or PdfPreviewStatus.Loading)" aria-label="Retry preview" @onclick="Retry" disabled="@(_current.ActualWorkPending || View.DocumentSha256 is null)">Retry</button>
+            @ToolbarActions
+            <details class="pdf-option pdf-search-option">
+                <summary>Find</summary>
+                <div role="search" aria-label="PDF full document search" hidden="@(View.DocumentSha256 is null)">
+                    <label>Search <input aria-label="Search PDF" maxlength="255" value="@_query" @oninput="QueryChanged" @onkeydown="SearchKey" /></label>
+                    <button aria-label="Search document" @onclick="Search" disabled="@(View.DocumentSha256 is null)">Search document</button>
+                    <button aria-label="Continue search" data-testid="continue-pdf-search" @onclick="ContinueSearch" disabled="@(!_current.CanContinueSearch || _query != View.Search.Query)">Continue search</button>
+                    <button aria-label="Previous result" disabled="@(View.Search.Hits.Count == 0)" @onclick="PreviousHit">Previous result</button>
+                    <button aria-label="Next result" disabled="@(View.Search.Hits.Count == 0)" @onclick="NextHit">Next result</button>
+                    <output hidden="@(View.Search.Status == PdfPreviewSearchStatus.Empty)" aria-live="polite" data-testid="search-status" data-search-status="@View.Search.Status" data-scanned-pages="@View.Search.ScannedPages" data-total-pages="@View.Search.TotalPages" data-match-count="@View.Search.Hits.Count">@SearchMessage</output>
+                    <output hidden="@(View.Search.Hits.Count == 0)" data-testid="selected-result">@(View.SelectedHit < 0 ? "No result selected" : $"Result {View.SelectedHit + 1} / {View.Search.Hits.Count}")</output>
+                </div>
+            </details>
+            <button class="pdf-to-source" aria-label="Go to source" disabled="@(!CanGoToSource)" hidden="@(!CanGoToSource)" @onclick="GoToSource">Go to source</button>
+        </div>
+        <details class="pdf-option pdf-more-option"><summary>PDF tools</summary>
+            <div class="pdf-more-content">
+                <button aria-label="Fit width" hidden="@(View.DocumentSha256 is null)" @onclick="Fit">Fit width</button>
+                @if (_current.InteractiveReader && !string.IsNullOrWhiteSpace(View.Text))
+                {
+                    <button type="button" @onclick="() => _canvas?.SelectReaderText()">Select page text</button>
+                }
+                @MoreTools
+                @PdfDetails
+            </div>
+        </details>
     </div>
-    <div role="search" aria-label="PDF full document search" hidden="@(View.DocumentSha256 is null)">
-        <label>Search <input aria-label="Search PDF" maxlength="255" value="@_query" @oninput="QueryChanged" @onkeydown="SearchKey" /></label>
-        <button aria-label="Search document" @onclick="Search" disabled="@(View.DocumentSha256 is null)">Search document</button>
-        <button aria-label="Continue search" data-testid="continue-pdf-search" @onclick="ContinueSearch" disabled="@(!_current.CanContinueSearch || _query != View.Search.Query)">Continue search</button>
-        <button aria-label="Previous result" disabled="@(View.Search.Hits.Count == 0)" @onclick="PreviousHit">Previous result</button>
-        <button aria-label="Next result" disabled="@(View.Search.Hits.Count == 0)" @onclick="NextHit">Next result</button>
-        <output aria-live="polite" data-testid="search-status" data-search-status="@View.Search.Status" data-scanned-pages="@View.Search.ScannedPages" data-total-pages="@View.Search.TotalPages" data-match-count="@View.Search.Hits.Count">@SearchMessage</output>
-        <output data-testid="selected-result">@(View.SelectedHit < 0 ? "No result selected" : $"Result {View.SelectedHit + 1} / {View.Search.Hits.Count}")</output>
-    </div>
-    <p role="status" data-testid="preview-status" data-preview-status="@View.Status">@PreviewMessage</p>
+    <p role="status" hidden="@(View.Status is PdfPreviewStatus.Empty or PdfPreviewStatus.Available)" data-testid="preview-status" data-preview-status="@View.Status">@PreviewMessage</p>
     @if (View.DocumentSha256 is null)
     {
         <div class="pdf-empty-state">
             <span class="empty-file-icon" aria-hidden="true"></span>
             <h3>Your PDF will appear here</h3>
-            <p>Compile your project to preview the result.</p>
-            <small>Compilation requires an available compiler.<br />Your source files can still be edited and saved locally.</small>
+
         </div>
     }
+    @if (_current.InteractiveReader)
+    {
+        <div class="pdf-scroll pdf-reader" @ref="_element" hidden="@(View.DocumentSha256 is null)"
+             tabindex="0" aria-label="PDF viewport keyboard navigation" @onkeydown="PageKey"></div>
+    }
+    else
+    {
     <div class="pdf-scroll" hidden="@(View.DocumentSha256 is null)" tabindex="0" aria-label="PDF viewport keyboard navigation" @onkeydown="PageKey">
-        <div class="pdf-surface" style="@SurfaceStyle">
+        <div class="pdf-surface @(FillPane ? "pdf-fit" : "")" style="@SurfaceStyle">
             <canvas @ref="_element" aria-label="PDF page" data-testid="pdf-canvas"></canvas>
             @if (View.Frame is not null)
             {
@@ -59,11 +82,13 @@
             }
         </div>
     </div>
-    <div class="pdf-limit-note" hidden="@(View.DocumentSha256 is null)">
-        <button aria-label="Go to source" disabled="@(!SourceMappingAvailable || _point is null || !PointCurrent(_point))" @onclick="GoToSource">Go to source</button>
-        <small>@(SourceMappingAvailable ? "Click a PDF location, then Go to source, or double-click it." : "Source navigation requires a current compiled PDF and its source map.") Up to 512 preview pages; search checks up to 32 more pages per action.</small>
-    </div>
-    <details data-testid="pdf-details">
+    }
+</section>
+@code {
+    [Parameter] public bool FillPane { get; set; }
+    [Parameter] public RenderFragment? ToolbarActions { get; set; }
+    [Parameter] public RenderFragment? MoreTools { get; set; }
+    private RenderFragment PdfDetails => @<details data-testid="pdf-details">
         <summary>PDF details</summary>
         <p data-testid="pdf-provenance">Caller label: @View.Provenance. This is unverified display information, not compilation freshness.</p>
         <code data-testid="pdf-hash">@(View.DocumentSha256 ?? "No PDF")</code>
@@ -76,9 +101,7 @@
         <p data-testid="physical-size">@View.PhysicalSizeStatus</p>
         <small>@View.Compatibility</small>
         <details><summary>Extracted page text</summary><pre data-testid="page-text">@View.Text</pre></details>
-    </details>
-</section>
-@code {
+    </details>;
     [Parameter] public PdfPreviewController? Controller { get; set; }
     [Parameter] public bool OwnsController { get; set; }
     [Parameter] public bool SourceMappingAvailable { get; set; }
@@ -93,6 +116,7 @@
     private ElementReference _element;
     private PdfPreviewCanvas? _canvas;
     private PdfPreviewPointer? _point;
+    private bool CanGoToSource => SourceMappingAvailable && _point is { } point && PointCurrent(point);
     private PdfPreviewRect? SourceBox => SourceMatch is { } match && match.Page == View.PageIndex + 1
         && SourceMatchPdfHash == View.DocumentSha256 && View.Status == PdfPreviewStatus.Available && View.PageGeometry is { } geometry
         ? SourceMatchUsesNativeTransform
@@ -103,8 +127,12 @@
     private string? _lastDocument;
     private long _submittedGeneration = -1;
     private PdfPreviewFrame? _submittedFrame;
+    private PdfReaderHighlight[]? _readerHighlights;
+    private long _readerHighlightsGeneration = -1;
     private PdfPreviewState View => _current.State;
-    private string SurfaceStyle => View.Frame is { } f ? $"width:{f.Width}px;height:{f.Height}px" : "width:360px;min-height:100px";
+    private string SurfaceStyle => View.Frame is { } frame
+        ? FormattableString.Invariant($"width:{frame.Width}px;aspect-ratio:{frame.Width}/{frame.Height};--pdf-zoom:{View.ZoomPercent / 100.0}")
+        : "width:360px;min-height:100px;--pdf-zoom:1";
     private string PreviewMessage => View.Status switch
     {
         PdfPreviewStatus.Empty => "No PDF is available.",
@@ -129,22 +157,36 @@
     };
     private string SearchCoverage => $"{View.Search.ScannedPages} of {View.Search.TotalPages} pages fully checked; {View.Search.Hits.Count} matches.";
     private string SelectedGeometry => View.SelectedHit >= 0 && View.SelectedHit < View.Search.Hits.Count ? View.Search.Hits[View.SelectedHit].GeometryStatus : "No native result selected; no guessed source/geometry mapping.";
-    protected override void OnInitialized() => _current.Changed += Changed;
+    protected override void OnInitialized()
+    {
+        _current.Changed += Changed;
+        _current.ReaderPageReady += ReaderPageReady;
+    }
+    private void ReaderPageReady(PdfPreviewFrame frame) => _canvas?.CacheReaderPage(frame);
     protected override async Task OnParametersSetAsync()
     {
         if (Controller is null || ReferenceEquals(Controller, _current)) return;
-        _current.Changed -= Changed;
+        _current.Changed -= Changed; _current.ReaderPageReady -= ReaderPageReady;
         if (_ownsCurrent) await _current.DisposeAsync();
-        if (_canvas is not null) { _canvas.Changed -= CanvasChanged; _canvas.PointRequested -= CanvasPoint; await _canvas.DisposeAsync(); _canvas = null; }
-        _current = Controller; _ownsCurrent = OwnsController; _current.Changed += Changed;
+        if (_canvas is not null) { await _canvas.DisposeAsync(); _canvas = null; }
+        _current = Controller; _ownsCurrent = OwnsController; _current.Changed += Changed; _current.ReaderPageReady += ReaderPageReady;
         _submittedGeneration = -1; _submittedFrame = null; _query = View.Search.Query; _lastSearchQuery = _query; _lastDocument = View.DocumentSha256;
+        _readerHighlightsGeneration = -1; _readerHighlights = null;
     }
     protected override Task OnAfterRenderAsync(bool firstRender)
     {
         if (!_disposed)
         {
-            if (_canvas is null) { _canvas = new(JS, _element); _canvas.Changed += CanvasChanged; _canvas.PointRequested += CanvasPoint; }
+            if (_canvas is null)
+            {
+                _canvas = new(JS, _element, _current.InteractiveReader);
+                _canvas.Changed += CanvasChanged;
+                _canvas.PointRequested += CanvasPoint;
+                _canvas.ReaderPageRequested += ReaderPageRequested;
+                _canvas.ReaderRasterRequested += ReaderRasterRequested;
+            }
             DrawLatest();
+            UpdateReaderHighlights();
         }
         return Task.CompletedTask;
     }
@@ -152,6 +194,7 @@
     {
         if (_disposed || _canvas is null) return;
         var state = View;
+        _canvas.ConfigureReader(state);
         if (_submittedGeneration == state.Generation && ReferenceEquals(_submittedFrame, state.Frame)) return;
         _submittedGeneration = state.Generation; _submittedFrame = state.Frame;
         _canvas.Select(state.Generation, state.Frame);
@@ -165,6 +208,32 @@
         _ = Refresh();
     }
     private void CanvasChanged() { if (!_disposed) _ = Refresh(); }
+    private void ReaderPageRequested(string hash, int page) => _ = InvokeAsync(() =>
+    {
+        if (!_disposed && View.DocumentSha256 == hash && View.PageIndex != page) _current.GoToPage(page + 1);
+    });
+    private void ReaderRasterRequested(long generation, string hash, int page, int pixelWidth) => _ = InvokeAsync(() =>
+    {
+        if (!_disposed) _current.RefineReaderRaster(generation, hash, page, pixelWidth);
+    });
+    private void UpdateReaderHighlights()
+    {
+        if (!_current.InteractiveReader || _canvas?.Status != "Drawn" || View.Frame is not { } frame) return;
+        var highlights = new List<PdfReaderHighlight>();
+        if (SourceBox is { } source) highlights.Add(new(DisplayBox(source), true));
+        foreach (var hit in VisibleHits())
+            highlights.AddRange(hit.NormalizedBoxes.Select(box => new PdfReaderHighlight(DisplayBox(box), false, hit.GeometryStatus)));
+        if (_readerHighlightsGeneration == frame.Generation && _readerHighlights?.SequenceEqual(highlights) == true) return;
+        _readerHighlightsGeneration = frame.Generation;
+        _readerHighlights = highlights.ToArray();
+        _canvas.SetReaderHighlights(frame.Generation, _readerHighlights);
+
+        PdfPreviewRect DisplayBox(PdfPreviewRect box)
+        {
+            var pixels = PdfPreviewPixels.RasterBox(box, frame.Width, frame.Height);
+            return new(pixels.Left / frame.Width, pixels.Top / frame.Height, pixels.Width / frame.Width, pixels.Height / frame.Height);
+        }
+    }
     private bool PointCurrent(PdfPreviewPointer point) => !_disposed && View.Status == PdfPreviewStatus.Available
         && point.Generation == View.Generation && point.DocumentSha256 == View.DocumentSha256 && point.PageIndex == View.PageIndex
         && View.Frame is { } frame && frame.Generation == point.Generation && frame.DocumentSha256 == point.DocumentSha256;
@@ -202,8 +271,8 @@
     private void NextHit() { int n = View.Search.Hits.Count; if (n > 0) _current.SelectHit((View.SelectedHit + 1) % n); }
     private void PageKey(KeyboardEventArgs e)
     {
-        if (e.Key == "ArrowRight" || e.Key == "PageDown") Next();
-        if (e.Key == "ArrowLeft" || e.Key == "PageUp") Previous();
+        if (e.Key == "ArrowRight" || !_current.InteractiveReader && e.Key == "PageDown") Next();
+        if (e.Key == "ArrowLeft" || !_current.InteractiveReader && e.Key == "PageUp") Previous();
         if (e.Key == "Home") _current.GoToPage(1);
         if (e.Key == "End") _current.GoToPage(View.PageCount);
     }
@@ -214,12 +283,14 @@
     {
         if (View.Frame is not { } frame) return "display:none";
         var b = PdfPreviewPixels.RasterBox(normalized, frame.Width, frame.Height);
-        return FormattableString.Invariant($"left:{b.Left}px;top:{b.Top}px;width:{b.Width}px;height:{b.Height}px");
+        // Anchor raster-rounded boxes to the same responsive surface as the canvas.
+        return FormattableString.Invariant(
+            $"left:{100 * b.Left / frame.Width:G}%;top:{100 * b.Top / frame.Height:G}%;width:{100 * b.Width / frame.Width:G}%;height:{100 * b.Height / frame.Height:G}%");
     }
     public async ValueTask DisposeAsync()
     {
-        if (_disposed) return; _disposed = true; _current.Changed -= Changed;
-        if (_canvas is not null) { _canvas.Changed -= CanvasChanged; _canvas.PointRequested -= CanvasPoint; await _canvas.DisposeAsync(); }
+        if (_disposed) return; _disposed = true; _current.Changed -= Changed; _current.ReaderPageReady -= ReaderPageReady;
+        if (_canvas is not null) await _canvas.DisposeAsync();
         if (_ownsCurrent) await _current.DisposeAsync();
     }
 }

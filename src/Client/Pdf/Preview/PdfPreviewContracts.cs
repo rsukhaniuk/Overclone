@@ -42,6 +42,9 @@ public sealed class PdfPreviewFrame
     public int PageIndex { get; }
     public int Width { get; }
     public int Height { get; }
+    internal PdfReaderPage? ReaderPage { get; init; }
+    internal PdfPreviewFrame ForGeneration(long generation) =>
+        new(generation, DocumentSha256, PageIndex, Width, Height, _rgba) { ReaderPage = ReaderPage };
     public byte[] CopyRgba() => (byte[])_rgba.Clone();
 }
 public sealed record PdfPreviewState(long Generation, PdfPreviewStatus Status, string Detail, string? DocumentSha256,
@@ -60,6 +63,17 @@ public sealed record PdfPreviewState(long Generation, PdfPreviewStatus Status, s
 
 public static class PdfPreviewPixels
 {
+    internal static (int Width, int Height)? ReaderDimensions(PdfPoint display, int requestedWidth, PdfPreviewPolicy policy)
+    {
+        if (!policy.IsValid || requestedWidth < 1 || !double.IsFinite(display.X + display.Y) || display.X <= 0 || display.Y <= 0) return null;
+        double aspect = display.Y / display.X;
+        double maxPixels = Math.Min(policy.MaxPixels, policy.MaxRgbaBytes / 4);
+        int width = (int)Math.Floor(Math.Min(requestedWidth, Math.Min(16384, Math.Min(16384 / aspect, Math.Sqrt(maxPixels / aspect)))));
+        if (width < 1) return null;
+        int height = Math.Max(1, (int)Math.Floor(Math.Min(width * aspect, maxPixels / width)));
+        return height <= 16384 && (long)width * height <= maxPixels ? (width, height) : null;
+    }
+
     public static byte[] ToRgba(byte[] bgra, int width, int height, PdfPreviewPolicy policy)
     {
         ArgumentNullException.ThrowIfNull(bgra);

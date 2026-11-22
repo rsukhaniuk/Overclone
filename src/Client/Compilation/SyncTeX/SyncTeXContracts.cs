@@ -42,9 +42,8 @@ public sealed class SyncTeXRuntimePackage
     public static SyncTeXRuntimePackage FromCompiler(NativeRuntimePackage compiler)
     {
         ArgumentNullException.ThrowIfNull(compiler);
-        var binding = SyncTeXRuntimeBinding.ForProfile(compiler.Profile)
+        var binding = SyncTeXRuntimeBinding.ForProfile(compiler.Profile, compiler.Bundle)
             ?? throw new ArgumentException("No closed source query profile.", nameof(compiler));
-        if (compiler.Bundle != binding.Bundle) throw new ArgumentException("Compiler closure mismatch.", nameof(compiler));
         return new(compiler.Copy("synctex-query.js"), compiler.Copy("synctex-query.wasm"), binding.LoaderSha256, binding.WasmSha256)
         { CompilerBinding = binding };
     }
@@ -72,15 +71,35 @@ public sealed class SyncTeXRuntimeBinding
     public CompilationDescriptor Bundle { get; }
     public string LoaderSha256 { get; }
     public string WasmSha256 { get; }
-    internal static SyncTeXRuntimeBinding? ForProfile(NativeRuntimeProfile profile)
+    internal static SyncTeXRuntimeBinding? ForProfile(NativeRuntimeProfile profile, CompilationDescriptor expectedBundle)
     {
         if (!NativeRuntimeProfiles.Known(profile) || NativeRuntimeProfiles.ClosureHash(profile) is not { Length: 64 } closure
             || !(NativeRuntimeProfiles.IsSuite(profile) && NativeRuntimeProfiles.SuitePinsReady(profile)
                 || profile is NativeRuntimeProfile.LocalLatex2023SyncTeX or NativeRuntimeProfile.LocalLatex2023Dvi)) return null;
+        var identityName = NativeRuntimeProfiles.IdentityName(profile);
+        if (profile == NativeRuntimeProfile.LocalCompilerPageLabels && expectedBundle.Hash.Hex == NativeCompilerLuaFontPins.RuntimeIdentity)
+        {
+            closure = NativeCompilerLuaFontPins.ClosureHash;
+            identityName = NativeCompilerLuaFontPins.IdentityName;
+        }
+        else if (profile == NativeRuntimeProfile.LocalCompilerPageLabels && expectedBundle.Hash.Hex == NativeCompilerCompatibleFontPins.RuntimeIdentity)
+        {
+            closure = NativeCompilerCompatibleFontPins.ClosureHash;
+            identityName = NativeCompilerCompatibleFontPins.IdentityName;
+        }
+        else if (profile == NativeRuntimeProfile.LocalCompilerPageLabels && expectedBundle.Hash.Hex is
+            NativeCompilerTermesPins.RuntimeIdentity or NativeCompilerTermesPins.PreviousRuntimeIdentity)
+        {
+            closure = NativeCompilerTermesPins.ClosureHash;
+            if (expectedBundle.Hash.Hex == NativeCompilerTermesPins.RuntimeIdentity)
+                identityName = NativeCompilerTermesPins.IdentityName;
+        }
         var identity = Client.Workspace.Domain.SHA256.FromBytes(System.Security.Cryptography.SHA256.HashData(
-            Encoding.UTF8.GetBytes($"native-runtime-profile-v1\n{NativeRuntimeProfiles.IdentityName(profile)}\n{closure}")));
+            Encoding.UTF8.GetBytes($"native-runtime-profile-v1\n{identityName}\n{closure}")));
+        var bundle = NativeRuntimePackage.BundleFor(profile, identity);
+        if (bundle != expectedBundle) return null;
         bool area64 = profile is NativeOriginCompilerContract.Profile or NativeInputBudgetContract.Profile or NativeSelectedPdfContract.Profile or NativeRuntimeProfile.LocalCompilerCoursework or NativeRuntimeProfile.LocalCompilerDviGraphics or NativeRuntimeProfile.LocalCompilerPdfOrigins or NativeRuntimeProfile.LocalCompilerPageLabels;
-        return new(profile, NativeRuntimePackage.BundleFor(profile, identity),
+        return new(profile, bundle,
             area64 ? NativeCompilerOriginPins.QueryLoaderHash : NativeRuntimeProfiles.SyncTeXQueryLoaderHash,
             area64 ? NativeCompilerOriginPins.QueryWasmHash : NativeRuntimeProfiles.SyncTeXQueryWasmHash);
     }

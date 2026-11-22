@@ -63,8 +63,7 @@ internal static class HistoricalArtifactCodec
             bool MatchesLargePdfProfile(NativeRuntimeProfile profile)
             {
                 if (!NativeSelectedPdfContract.Supports(profile)
-                    || SyncTeXRuntimeBinding.ForProfile(profile) is not { } binding
-                    || selection.Bundles[0] != binding.Bundle) return false;
+                    || SyncTeXRuntimeBinding.ForProfile(profile, selection.Bundles[0]) is null) return false;
                 const NativeCompilerEngine pdf = NativeCompilerEngine.PdfLaTeX;
                 var component = NativeCompilerComponents.For(profile, pdf);
                 return selection.Engine == new CompilationDescriptor(NativeRuntimePackage.EngineId, component.EngineVersion, new(component.WasmHash))

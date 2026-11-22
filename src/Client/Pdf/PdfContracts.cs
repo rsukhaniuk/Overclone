@@ -79,6 +79,7 @@ public sealed class PdfInspectRequest
 public sealed class PdfRuntimePackage
 {
     private readonly byte[] _loader, _wasm;
+    private readonly Lazy<bool> _valid;
     public PdfRuntimePackage(byte[] loader, byte[] wasm, string loaderSha256, string wasmSha256)
     {
         ArgumentNullException.ThrowIfNull(loader); ArgumentNullException.ThrowIfNull(wasm);
@@ -88,10 +89,12 @@ public sealed class PdfRuntimePackage
         if (loader.Length is < 1 or > 1048576) throw new ArgumentException("Runtime loader byte limit.", nameof(loader));
         if (wasm.Length is < 8 or > 16777216) throw new ArgumentException("Runtime WASM byte limit.", nameof(wasm));
         _loader = (byte[])loader.Clone(); _wasm = (byte[])wasm.Clone(); LoaderSha256 = loaderSha256; WasmSha256 = wasmSha256;
+        _valid = new(Validate);
     }
     public string LoaderSha256 { get; }
     public string WasmSha256 { get; }
-    public bool IsValid => _loader.Length is > 0 and <= 1048576 && _wasm.Length is >= 8 and <= 16777216
+    public bool IsValid => _valid.Value;
+    private bool Validate() => _loader.Length is > 0 and <= 1048576 && _wasm.Length is >= 8 and <= 16777216
         && _wasm.AsSpan(0, 8).SequenceEqual(new byte[] { 0, 97, 115, 109, 1, 0, 0, 0 })
         && PdfHashes.IsSha(LoaderSha256) && PdfHashes.IsSha(WasmSha256)
         && PdfHashes.Of(_loader) == LoaderSha256 && PdfHashes.Of(_wasm) == WasmSha256;

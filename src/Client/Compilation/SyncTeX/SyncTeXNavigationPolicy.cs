@@ -89,9 +89,9 @@ public sealed class SyncTeXNavigationPolicy(WorkspaceCoordinator workspace, Comp
         SyncTeXRuntimeBinding? binding = null;
         if (session.ConfiguredPorts?.NativeProfile is { } profile)
         {
-            binding = SyncTeXRuntimeBinding.ForProfile(profile);
-            if (binding is null || output.Snapshot.Selection.Bundles.Length != 1
-                || output.Snapshot.Selection.Bundles[0] != binding.Bundle) return null;
+            if (output.Snapshot.Selection.Bundles.Length != 1) return null;
+            binding = SyncTeXRuntimeBinding.ForProfile(profile, output.Snapshot.Selection.Bundles[0]);
+            if (binding is null) return null;
         }
         var result = new SyncTeXNavigationResult(this, output, ticket, direction, token, geometry: geometry, runtimeBinding: binding);
         return IsCurrent(result, token) ? result : null;

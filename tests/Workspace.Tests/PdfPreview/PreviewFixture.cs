@@ -48,7 +48,7 @@ internal sealed class PreviewInspector : IPdfInspector
         {
             Version = 2, RequestId = id, DocumentSha256 = request.Document.Sha256, Epoch = epoch,
             LoaderSha256 = runtime.LoaderSha256, WasmSha256 = runtime.WasmSha256, Status = "completed", NativeStatus = 0, EnteredNative = true,
-            PageCount = pageCount, ActionState = "not-requested",
+            PageCount = pageCount, ActionState = request.InspectActions ? "unsupported" : "not-requested",
             FactsJson = JsonSerializer.Serialize(new { media = new[] { 0, 0, 100, 200 }, crop = (int[]?)null, cropDefaulted = true, effective = new[] { 0, 0, 100, 200 }, rotation, displayPoints = display, nativeWidthHeight = display, sourceMapping = "unsupported" }),
             TextJson = JsonSerializer.Serialize(new { text = "І😀x", utf16 = new[] { 1030, 55357, 56832, 120 }, characterCount = 3, characters = chars, sourceMapping = "unsupported" }),
             SearchJson = JsonSerializer.Serialize(hits), Raster = raster,
