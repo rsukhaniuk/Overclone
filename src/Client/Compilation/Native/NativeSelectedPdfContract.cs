@@ -21,14 +21,15 @@ public static class NativeSelectedPdfContract
     };
 
     public static bool MatchesRuntime(NativeRuntimeProfile profile, string? identity) => Supports(profile)
-        && identity == (profile switch
+        && (profile switch
         {
-            Profile => RuntimeIdentity,
-            NativeRuntimeProfile.LocalCompilerCoursework => NativeCompilerCourseworkPins.RuntimeIdentity,
-            NativeRuntimeProfile.LocalCompilerDviGraphics => NativeCompilerDviGraphicsPins.RuntimeIdentity,
-            NativeRuntimeProfile.LocalCompilerPdfOrigins => NativeCompilerPdfOriginPins.RuntimeIdentity,
-            NativeRuntimeProfile.LocalCompilerPageLabels => NativeCompilerPageLabelPins.RuntimeIdentity,
-            _ => null
+            Profile => identity == RuntimeIdentity,
+            NativeRuntimeProfile.LocalCompilerCoursework => identity == NativeCompilerCourseworkPins.RuntimeIdentity,
+            NativeRuntimeProfile.LocalCompilerDviGraphics => identity == NativeCompilerDviGraphicsPins.RuntimeIdentity,
+            NativeRuntimeProfile.LocalCompilerPdfOrigins => identity == NativeCompilerPdfOriginPins.RuntimeIdentity,
+            NativeRuntimeProfile.LocalCompilerPageLabels => identity is NativeCompilerPageLabelPins.RuntimeIdentity
+                or NativeCompilerTermesPins.RuntimeIdentity or NativeCompilerCompatibleFontPins.RuntimeIdentity or NativeCompilerLuaFontPins.RuntimeIdentity,
+            _ => false
         });
 
     public static bool IsSelectedPdfPhase(NativePhaseTag tag) =>

@@ -21,7 +21,7 @@ function validate(d){
   ||t.profile===18&&t.runtimeIdentity!=='f4ad5c7f702efc4f90d7a803ad6c697be0b3664b4ca90f837c8e6bd74ca88a40'
   ||t.profile===19&&t.runtimeIdentity!=='1974b526f3a47b33f60d5a5384f14b3c618ac996d950ab514e13ef119d06bc79'
   ||t.profile===20&&t.runtimeIdentity!=='84abead5a2feb357d52ff01364f5b72ed099610c40a8c0428ac10f9a64b0e652'
-  ||t.profile===21&&t.runtimeIdentity!=='eb47ed92ac9efcdc7277c6b3dd1c5861abde63213e440d40aa7c201af6f4d692'
+  ||t.profile===21&&t.runtimeIdentity!=='eb47ed92ac9efcdc7277c6b3dd1c5861abde63213e440d40aa7c201af6f4d692' && t.runtimeIdentity !== '902f858d535c6a4fa273a24bec9c8a0fee7093e67ea6dd8da062bff1e43bbbe5' && t.runtimeIdentity !== 'f6a4fd79dfe6453b58b64d3a2322fcb4f359f5d3fa0cedadc90abdb3ac9297dc' && t.runtimeIdentity !== '382c1f851ba3d3de852d1a7fbea499820a7a68de08bbdcb333eaf4d841afd0ec'
   ||!path(d.selectedRoot)||!/\.tex$/i.test(d.selectedRoot)||!path(d.mainEntry)
   ||!Array.isArray(d.files)||d.files.length<1||d.files.length>64||!Array.isArray(d.outputs)||d.outputs.length!==2
   ||!Number.isSafeInteger(d.maxLogBytes)||d.maxLogBytes<1||d.maxLogBytes>262144

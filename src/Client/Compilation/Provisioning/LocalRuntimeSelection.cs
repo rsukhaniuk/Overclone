@@ -19,7 +19,7 @@ public static class LocalRuntimeSelection
         Profile or NativeRuntimeProfile.LocalLatex2023SyncTeX or NativeRuntimeProfile.LocalLatex2023Dvi => new(512, 33554432, 67108864, profile),
         NativeRuntimeProfile.LocalCompilerDviGraphics => new(NativeCompilerSuiteContract.Files, NativeCompilerSuiteContract.FileBytes, NativeCompilerDviGraphicsPins.TotalBytes, profile),
         NativeRuntimeProfile.LocalCompilerPdfOrigins => new(NativeCompilerSuiteContract.Files, NativeCompilerSuiteContract.FileBytes, NativeCompilerPdfOriginPins.TotalBytes, profile),
-        NativeRuntimeProfile.LocalCompilerPageLabels => new(NativeCompilerSuiteContract.Files, NativeCompilerSuiteContract.FileBytes, NativeCompilerPageLabelPins.TotalBytes, profile),
+        NativeRuntimeProfile.LocalCompilerPageLabels => new(NativeCompilerSuiteContract.Files, NativeCompilerSuiteContract.FileBytes, NativeCompilerLuaFontPins.TotalBytes, profile),
         NativeRuntimeProfile.LocalCompilerCoursework => new(NativeCompilerSuiteContract.Files, NativeCompilerSuiteContract.FileBytes, NativeCompilerCourseworkPins.TotalBytes, profile),
         NativeRuntimeProfile.LocalCompilerSuite or NativeRuntimeProfile.LocalCompilerCompatibility or NativeRuntimeProfile.LocalCompilerBibliography or NativeRuntimeProfile.LocalCompilerNavigation or NativeRuntimeProfile.LocalCompilerXeNavigation or NativeRuntimeProfile.LocalCompilerGraphicsNavigation or NativeRuntimeProfile.LocalCompilerUnicode or NativeRuntimeProfile.LocalCompilerBiber or NativeRuntimeProfile.LocalCompilerThesis or NativeRuntimeProfile.LocalCompilerOrigins or NativeRuntimeProfile.LocalCompilerInputBudget or NativeRuntimeProfile.LocalCompilerSelectedPdf => new(NativeCompilerSuiteContract.Files, NativeCompilerSuiteContract.FileBytes, NativeCompilerSuiteContract.TotalBytes, profile),
         _ => throw Invalid()
@@ -38,7 +38,8 @@ public static class LocalRuntimeSelection
             || NativeRuntimeProfiles.SuitePinsReady(NativeRuntimeProfile.LocalCompilerInputBudget) && count == NativeRuntimeProfiles.InstalledCount(NativeRuntimeProfile.LocalCompilerInputBudget)
             || NativeCompilerSelectedPdfPins.Ready && count == NativeCompilerSelectedPdfPins.ResourceCount
             || IsCourseworkCount(count) || IsDviGraphicsCount(count) || IsPdfOriginCount(count) || IsPageLabelCount(count));
-    private static bool IsPageLabelCount(int count) => NativeCompilerPageLabelPins.Ready && count == NativeCompilerPageLabelPins.ResourceCount;
+    private static bool IsPageLabelCount(int count) => NativeCompilerPageLabelPins.Ready
+        && count is NativeCompilerPageLabelPins.ResourceCount or NativeCompilerTermesPins.ResourceCount or NativeCompilerCompatibleFontPins.ResourceCount or NativeCompilerLuaFontPins.ResourceCount;
     private static bool IsPdfOriginCount(int count) => NativeCompilerPdfOriginPins.Ready && count == NativeCompilerPdfOriginPins.ResourceCount;
     private static bool IsDviGraphicsCount(int count) => NativeCompilerDviGraphicsPins.Ready && count == NativeCompilerDviGraphicsPins.ResourceCount;
     private static bool IsCourseworkCount(int count) => NativeCompilerCourseworkPins.Ready && count == NativeCompilerCourseworkPins.ResourceCount;
@@ -50,7 +51,9 @@ public static class LocalRuntimeSelection
         || (IsCourseworkCount(count) || IsDviGraphicsCount(count) || IsPdfOriginCount(count) || IsPageLabelCount(count))
             && (NativeInputBudgetContract.NoticeName(name) || NativeCompilerCourseworkPins.NoticeName(name))
         || (IsDviGraphicsCount(count) || IsPdfOriginCount(count) || IsPageLabelCount(count)) && NativeCompilerDviGraphicsPins.NoticeName(name)
-        || IsPageLabelCount(count) && NativeCompilerPageLabelPins.NoticeName(name);
+        || IsPageLabelCount(count) && NativeCompilerPageLabelPins.NoticeName(name)
+        || IsPageLabelCount(count) && NativeCompilerTermesPins.NoticeName(name)
+        || (count is NativeCompilerCompatibleFontPins.ResourceCount or NativeCompilerLuaFontPins.ResourceCount) && NativeCompilerCompatibleFontPins.NoticeName(name);
     public static bool SupportedCount(int count) => count is NativeRuntimeProfiles.AuthoringResourceCount or NativeRuntimeProfiles.SyncTeXResourceCount or NativeRuntimeProfiles.DviResourceCount
         || SupportedSuiteCount(count);
     public static NativeRuntimeProfile ProfileFor(IEnumerable<NativeResourcePin> pins)
@@ -73,8 +76,8 @@ public static class LocalRuntimeSelection
         var closure = NativeRuntimePackage.ResourceIdentity(owned).Hex;
         foreach (var profile in new[] { Profile, NativeRuntimeProfile.LocalLatex2023SyncTeX, NativeRuntimeProfile.LocalLatex2023Dvi, NativeRuntimeProfile.LocalCompilerSuite, NativeRuntimeProfile.LocalCompilerCompatibility, NativeRuntimeProfile.LocalCompilerBibliography, NativeRuntimeProfile.LocalCompilerNavigation, NativeRuntimeProfile.LocalCompilerXeNavigation, NativeRuntimeProfile.LocalCompilerGraphicsNavigation, NativeRuntimeProfile.LocalCompilerUnicode, NativeRuntimeProfile.LocalCompilerBiber, NativeRuntimeProfile.LocalCompilerThesis, NativeRuntimeProfile.LocalCompilerOrigins, NativeRuntimeProfile.LocalCompilerInputBudget, NativeRuntimeProfile.LocalCompilerSelectedPdf, NativeRuntimeProfile.LocalCompilerCoursework, NativeRuntimeProfile.LocalCompilerDviGraphics, NativeRuntimeProfile.LocalCompilerPdfOrigins, NativeRuntimeProfile.LocalCompilerPageLabels })
             if ((!NativeRuntimeProfiles.IsSuite(profile) || NativeRuntimeProfiles.SuitePinsReady(profile))
-                && owned.Length == NativeRuntimeProfiles.InstalledCount(profile) && closure == NativeRuntimeProfiles.ClosureHash(profile)
-                && (!NativeRuntimeProfiles.IsSuite(profile) || total == NativeRuntimeProfiles.SuiteTotalBytes(profile)
+                && NativeRuntimeProfiles.MatchesInstalledCount(profile, owned.Length) && NativeRuntimeProfiles.MatchesClosure(profile, owned.Length, closure)
+                && (!NativeRuntimeProfiles.IsSuite(profile) || total == NativeRuntimeProfiles.SuiteTotalBytes(profile, owned.Length)
                     && NativeRuntimeProfiles.MatchesSuiteComponents(profile, owned.ToDictionary(p => p.Name, StringComparer.Ordinal)))) return profile;
         throw Invalid();
     }
@@ -88,7 +91,7 @@ public static class LocalRuntimeSelection
     private static readonly RuntimeAssetBudget PdfOriginBudget =
         SuiteBudget with { Inventory = SuiteBudget.Inventory with { MaxTotalBytes = NativeCompilerPdfOriginPins.TotalBytes } };
     private static readonly RuntimeAssetBudget PageLabelBudget =
-        SuiteBudget with { Inventory = SuiteBudget.Inventory with { MaxTotalBytes = NativeCompilerPageLabelPins.TotalBytes } };
+        SuiteBudget with { Inventory = SuiteBudget.Inventory with { MaxTotalBytes = NativeCompilerLuaFontPins.TotalBytes } };
     public static RuntimeAssetBudget BudgetFor(NativeRuntimeProfile profile) => profile switch
     {
         NativeRuntimeProfile.LocalCompilerCoursework => CourseworkBudget,
@@ -129,7 +132,7 @@ public static class LocalRuntimeSelection
         }
         var resources = result.ToImmutable();
         var profile = ProfileFor(resources.Select(r => r.Pin));
-        if (NativeRuntimeProfiles.IsSuite(profile) && (total != NativeRuntimeProfiles.SuiteTotalBytes(profile)
+        if (NativeRuntimeProfiles.IsSuite(profile) && (total != NativeRuntimeProfiles.SuiteTotalBytes(profile, resources.Length)
             || !NativeRuntimeProfiles.MatchesSuiteComponents(profile, resources.AsEnumerable().ToDictionary(r => r.Pin.Name, r => r.Pin, StringComparer.Ordinal)))) throw Invalid();
         return resources;
     }

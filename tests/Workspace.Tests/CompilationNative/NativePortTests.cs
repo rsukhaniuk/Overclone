@@ -131,6 +131,26 @@ public sealed class NativePortTests
         await factory.Operations.WhenIdle;
     });
     [Fact]
+    public void Worker_digest_must_match_the_verified_runtime_resource() => LifecycleTestHost.Run(async () =>
+    {
+        await using var f = await Fixture();
+        var transport = new Transport { Handler = request =>
+        {
+            var format = Assert.Single(request.Files, file => file.Name == NativeRuntimePackage.NativeFormatName);
+            format.Bytes[0] ^= 255;
+            return Task.FromResult(Transport.Reply(request));
+        } };
+        var factory = Factory(transport);
+        var id = new CompileJobId(Guid.NewGuid());
+        var result = await Execute(factory.Create(id, 1), id, await Context(f));
+        Assert.Equal(CompileOutputStatus.Failed, result!.Status);
+        Assert.Equal("invalid-native-reply", Assert.Single(result.Diagnostics!).Code);
+        Assert.Null(result.Payload);
+        Assert.Single(transport.Calls);
+        Assert.Equal(NativeRuntimePackage.FormatHash, NativeRuntimePackage.Digest(Runtime.Value.Copy(NativeRuntimePackage.FormatResourceName)).Hex);
+        await factory.Operations.WhenIdle;
+    });
+    [Fact]
     public void Different_runtime_resource_cannot_occupy_mapped_format_destination()
     {
         var original = new[] { "engine.js", "engine.wasm", "pdflatex.fmt" }.Select(n => new NativeResourceInput(n, Runtime.Value.Copy(n))).ToArray();

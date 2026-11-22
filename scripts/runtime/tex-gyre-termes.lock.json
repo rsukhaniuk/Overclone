@@ -1,0 +1,118 @@
+{
+  "base": {
+    "length": 280336534,
+    "sha256": "532fc02d7bba80371a02b3477c5e7d35397d366d62cc03eb040689ca30c69b78"
+  },
+  "fontVersion": "2.004",
+  "source": "https://ctan.org/pkg/tex-gyre-termes",
+  "fonts": [
+    {
+      "name": "texgyretermes-bold.otf",
+      "length": 139480,
+      "sha256": "2fb3e952065fa153c7e4e64e04b98b9d79225739b6025aa3f0f0782d299ff61e",
+      "style": "Bold",
+      "postscript": "TeXGyreTermes-Bold",
+      "weightWidthSlant": [
+        700,
+        5,
+        0
+      ],
+      "styleFlags": [
+        0,
+        1,
+        0
+      ],
+      "optical": [
+        100,
+        50,
+        200,
+        3
+      ]
+    },
+    {
+      "name": "texgyretermes-bolditalic.otf",
+      "length": 144180,
+      "sha256": "1bf6af99cb0e26c12951317032d79b96ae009551e59ccf02a5b24f325ecfec87",
+      "style": "Bold Italic",
+      "postscript": "TeXGyreTermes-BoldItalic",
+      "weightWidthSlant": [
+        700,
+        5,
+        267
+      ],
+      "styleFlags": [
+        0,
+        1,
+        1
+      ],
+      "optical": [
+        100,
+        50,
+        200,
+        4
+      ]
+    },
+    {
+      "name": "texgyretermes-italic.otf",
+      "length": 141324,
+      "sha256": "6dd103a1672e50568cd2f8a706ccd48443d44d7d073a59d2286f4e6f746575d6",
+      "style": "Italic",
+      "postscript": "TeXGyreTermes-Italic",
+      "weightWidthSlant": [
+        400,
+        5,
+        267
+      ],
+      "styleFlags": [
+        0,
+        0,
+        1
+      ],
+      "optical": [
+        100,
+        50,
+        200,
+        2
+      ]
+    },
+    {
+      "name": "texgyretermes-regular.otf",
+      "length": 140932,
+      "sha256": "cc3fe7c707b81428d23d54df3eadd9228a2bf6a4d43125d94df56f5f63134659",
+      "style": "Regular",
+      "postscript": "TeXGyreTermes-Regular",
+      "weightWidthSlant": [
+        400,
+        5,
+        0
+      ],
+      "styleFlags": [
+        1,
+        0,
+        0
+      ],
+      "optical": [
+        100,
+        50,
+        200,
+        1
+      ]
+    }
+  ],
+  "notice": {
+    "name": "notices/tex-gyre-termes/copyright.txt",
+    "length": 13072,
+    "sha256": "a6a61da6b66c7dbd04c372615f5db18acf5d31cadb151d4b83f734e8b6fe425c"
+  },
+  "runtime": {
+    "count": 5160,
+    "totalBytes": 279544926,
+    "closure": "52313f3ae8c7d4768cc0c2a6d05077d379072569f5f229bc0f94e1a776317459",
+    "identity": "902f858d535c6a4fa273a24bec9c8a0fee7093e67ea6dd8da062bff1e43bbbe5"
+  },
+  "archive": {
+    "length": 280917655,
+    "sha256": "f49b42d1f37759fb00dbdc85ba7418d13a26556adedcf6a8e1c2373a96810260"
+  },
+  "runtimeIdentityName": "local-compiler-termes-xstring-v1"
+}

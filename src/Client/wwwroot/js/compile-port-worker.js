@@ -7,8 +7,11 @@ const courseworkIdentity="f4ad5c7f702efc4f90d7a803ad6c697be0b3664b4ca90f837c8e6b
 const dviGraphicsIdentity="1974b526f3a47b33f60d5a5384f14b3c618ac996d950ab514e13ef119d06bc79";
 const pdfOriginIdentity="84abead5a2feb357d52ff01364f5b72ed099610c40a8c0428ac10f9a64b0e652";
 const pageLabelIdentity="eb47ed92ac9efcdc7277c6b3dd1c5861abde63213e440d40aa7c201af6f4d692";
+const termesIdentity="902f858d535c6a4fa273a24bec9c8a0fee7093e67ea6dd8da062bff1e43bbbe5";
+const compatibleFontIdentities=["f6a4fd79dfe6453b58b64d3a2322fcb4f359f5d3fa0cedadc90abdb3ac9297dc","382c1f851ba3d3de852d1a7fbea499820a7a68de08bbdcb333eaf4d841afd0ec"];
 const selectedPdfProfile=p=>p===17||p===18||p===19||p===20||p===21;
 const selectedPdfRuntime=p=>p===17?selectedPdfIdentity:p===18?courseworkIdentity:p===19?dviGraphicsIdentity:p===20?pdfOriginIdentity:pageLabelIdentity;
+const matchesSelectedPdfRuntime=t=>t.runtimeIdentity===selectedPdfRuntime(t.profile)||t.profile===21&&[termesIdentity,...compatibleFontIdentities].includes(t.runtimeIdentity);
 const pdf12=d=>selectedPdfProfile(d.tag?.profile)&&rid(d.tag)&&d.tag.version===23&&d.tag?.engineId==='pdftex'&&d.operation==='latex';
 const pdfLeaf=d=>d.selectedRoot.split('/').at(-1).slice(0,-4)+'.pdf';
 const emit=self.postMessage.bind(self);let phase='boot',lookups=[],wasmSha256=null,loaderSha256=null;
@@ -17,7 +20,7 @@ const directPdfOrigin=t=>[20,21].includes(t?.profile)&&t.version===23&&t.engineI
 const pdfOriginLoader='57daa24fd7edf922c6ce74a76cf10f97ec8ace1a8db39b0d0b82296fb7168d85';
 const pdfOriginWasm='cf1e37c774fcd112efe739e4768f3d88c508d064d5340af2535395bbbe0508ec';
 const sLoader='735c17494d6ec61c1b2f000f437f343ece9af3258f2f354f11745b7b5836dde2';
-const rid=t=>selectedPdfProfile(t.profile)?t.runtimeIdentity===selectedPdfRuntime(t.profile):/^[0-9a-f]{64}$/.test(t.runtimeIdentity??'');
+const rid=t=>selectedPdfProfile(t.profile)?matchesSelectedPdfRuntime(t):/^[0-9a-f]{64}$/.test(t.runtimeIdentity??'');
 const sha=async bytes=>[...new Uint8Array(await crypto.subtle.digest('SHA-256',bytes))].map(v=>v.toString(16).padStart(2,'0')).join('');
 self.postMessage=m=>{if(!m.cmd&&m.result==='ok')emit({kind:'ready'});};
 self.onmessage=async({data:d})=>{

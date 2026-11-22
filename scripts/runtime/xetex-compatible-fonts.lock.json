@@ -1,0 +1,168 @@
+{
+  "base": {
+    "length": 280917655,
+    "sha256": "f49b42d1f37759fb00dbdc85ba7418d13a26556adedcf6a8e1c2373a96810260"
+  },
+  "fontSource": "https://github.com/liberationfonts/liberation-fonts",
+  "runtimeIdentityName": "local-compiler-xetex-compatible-fonts-v1",
+  "fonts": [
+    {
+      "name": "LiberationSans-Bold.ttf",
+      "family": "Liberation Sans",
+      "alias": "Arial",
+      "style": "Bold",
+      "fullName": "Liberation Sans Bold",
+      "postscript": "LiberationSans-Bold",
+      "weightWidthSlant": [
+        700,
+        5,
+        0
+      ],
+      "styleFlags": [
+        0,
+        1,
+        0
+      ]
+    },
+    {
+      "name": "LiberationSans-BoldItalic.ttf",
+      "family": "Liberation Sans",
+      "alias": "Arial",
+      "style": "Bold Italic",
+      "fullName": "Liberation Sans Bold Italic",
+      "postscript": "LiberationSans-BoldItalic",
+      "weightWidthSlant": [
+        700,
+        5,
+        212
+      ],
+      "styleFlags": [
+        0,
+        1,
+        1
+      ]
+    },
+    {
+      "name": "LiberationSans-Italic.ttf",
+      "family": "Liberation Sans",
+      "alias": "Arial",
+      "style": "Italic",
+      "fullName": "Liberation Sans Italic",
+      "postscript": "LiberationSans-Italic",
+      "weightWidthSlant": [
+        400,
+        5,
+        212
+      ],
+      "styleFlags": [
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "name": "LiberationSans-Regular.ttf",
+      "family": "Liberation Sans",
+      "alias": "Arial",
+      "style": "Regular",
+      "fullName": "Liberation Sans",
+      "postscript": "LiberationSans",
+      "weightWidthSlant": [
+        400,
+        5,
+        0
+      ],
+      "styleFlags": [
+        1,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "LiberationSerif-Bold.ttf",
+      "family": "Liberation Serif",
+      "alias": "Times New Roman",
+      "style": "Bold",
+      "fullName": "Liberation Serif Bold",
+      "postscript": "LiberationSerif-Bold",
+      "weightWidthSlant": [
+        700,
+        5,
+        0
+      ],
+      "styleFlags": [
+        0,
+        1,
+        0
+      ]
+    },
+    {
+      "name": "LiberationSerif-BoldItalic.ttf",
+      "family": "Liberation Serif",
+      "alias": "Times New Roman",
+      "style": "Bold Italic",
+      "fullName": "Liberation Serif Bold Italic",
+      "postscript": "LiberationSerif-BoldItalic",
+      "weightWidthSlant": [
+        700,
+        5,
+        293
+      ],
+      "styleFlags": [
+        0,
+        1,
+        1
+      ]
+    },
+    {
+      "name": "LiberationSerif-Italic.ttf",
+      "family": "Liberation Serif",
+      "alias": "Times New Roman",
+      "style": "Italic",
+      "fullName": "Liberation Serif Italic",
+      "postscript": "LiberationSerif-Italic",
+      "weightWidthSlant": [
+        400,
+        5,
+        293
+      ],
+      "styleFlags": [
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "name": "LiberationSerif-Regular.ttf",
+      "family": "Liberation Serif",
+      "alias": "Times New Roman",
+      "style": "Regular",
+      "fullName": "Liberation Serif",
+      "postscript": "LiberationSerif",
+      "weightWidthSlant": [
+        400,
+        5,
+        0
+      ],
+      "styleFlags": [
+        1,
+        0,
+        0
+      ]
+    }
+  ],
+  "notice": {
+    "name": "notices/xetex-compatible-fonts/aliases.txt",
+    "text": "XeLaTeX compatible font aliases\nTimes New Roman -> Liberation Serif\nArial -> Liberation Sans\nThese aliases select the original pinned Liberation font files; they do not supply Microsoft fonts.\nSee notices/coursework18/fonts-liberation-copyright.txt and https://github.com/liberationfonts/liberation-fonts.\n"
+  },
+  "runtime": {
+    "count": 5161,
+    "totalBytes": 279546484,
+    "closure": "b221a3d40d6e73d45d4bbb5f2f0de7d1ef6050e3a6a40e70fc884d873828c236",
+    "identity": "f6a4fd79dfe6453b58b64d3a2322fcb4f359f5d3fa0cedadc90abdb3ac9297dc"
+  },
+  "archive": {
+    "length": 280919552,
+    "sha256": "783e236a6490bbea153016c81fbe76c2885c8b72d48f672fcbd1726def9eb987"
+  }
+}

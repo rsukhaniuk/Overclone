@@ -1,0 +1,49 @@
+{
+  "base": {
+    "length": 280919552,
+    "sha256": "783e236a6490bbea153016c81fbe76c2885c8b72d48f672fcbd1726def9eb987"
+  },
+  "aliases": [
+    {
+      "name": "TimesNewRoman.fontspec",
+      "family": "Times New Roman",
+      "fonts": [
+        "LiberationSerif-Regular.ttf",
+        "LiberationSerif-Bold.ttf",
+        "LiberationSerif-Italic.ttf",
+        "LiberationSerif-BoldItalic.ttf"
+      ]
+    },
+    {
+      "name": "Arial.fontspec",
+      "family": "Arial",
+      "fonts": [
+        "LiberationSans-Regular.ttf",
+        "LiberationSans-Bold.ttf",
+        "LiberationSans-Italic.ttf",
+        "LiberationSans-BoldItalic.ttf"
+      ]
+    },
+    {
+      "name": "TeXGyreTermes.fontspec",
+      "family": "TeX Gyre Termes",
+      "fonts": [
+        "texgyretermes-regular.otf",
+        "texgyretermes-bold.otf",
+        "texgyretermes-italic.otf",
+        "texgyretermes-bolditalic.otf"
+      ]
+    }
+  ],
+  "archive": {
+    "length": 280920967,
+    "sha256": "e57560fadc39d8e5cdd3bd89267ad2d6dd7fc3a50105b7bc21b59ab5cdbf5c74"
+  },
+  "runtime": {
+    "count": 5164,
+    "totalBytes": 279547086,
+    "closure": "fa1cda24675d3907b57c22cb2bb7143a928639fa964b7a75afd9b2c4b12492a0",
+    "identity": "382c1f851ba3d3de852d1a7fbea499820a7a68de08bbdcb333eaf4d841afd0ec",
+    "name": "local-compiler-luatex-compatible-fonts-v1"
+  }
+}

@@ -1,5 +1,6 @@
 using System.Buffers.Binary;
 using System.IO.Compression;
+using System.Text.Json;
 using System.Text;
 using Client.Compilation.Native;
 
@@ -17,11 +18,38 @@ public sealed class ZipRuntimeArchive : IAsyncDisposable
     private Task? _preparation;
     private readonly List<Task<byte[]>> _reads = [];
     private bool _closing;
+    private RuntimePreparation? _browserPreparation;
     private int _reading;
     public int PinsStreamsOpened { get; private set; }
     public int ResourceStreamsOpened { get; private set; }
     public byte[] Pins { get; private set; } = [];
     public IReadOnlyList<LocalRuntimeFile> Files { get; private set; } = [];
+
+    private static readonly JsonSerializerOptions BundledPinsJson = new()
+    { PropertyNamingPolicy = JsonNamingPolicy.CamelCase, MaxDepth = 8 };
+
+    // The application passes exclusive ownership of its exact SHA-verified ZIP.
+    // A user-installed archive must always use PrepareAsync and its CRC/SHA path.
+    internal static NativeRuntimePackage? OpenVerifiedStoredCompiler(byte[] verified, NativeRuntimeProfile profile, CancellationToken token)
+    {
+        token.ThrowIfCancellationRequested();
+        var items = ZipDirectory.Read(verified, profile);
+        if (items.Any(item => item.Method != 0)) return null;
+        var entries = items.ToDictionary(item => item.Name, StringComparer.Ordinal);
+        if (!entries.TryGetValue("pins.json", out var manifest)
+            || manifest.Length > LocalRuntimeSelection.SuiteMaxPinsBytes) throw Invalid();
+        var pins = JsonSerializer.Deserialize<NativeResourcePin[]>(verified.AsSpan(manifest.DataOffset, checked((int)manifest.Length)), BundledPinsJson);
+        if (pins is null || !NativeRuntimeProfiles.MatchesInstalledCount(profile, pins.Length)
+            || items.Count != pins.Length + 1 + (entries.ContainsKey("files/") ? 1 : 0)) throw Invalid();
+        var resources = new Dictionary<string, ReadOnlyMemory<byte>>(pins.Length, StringComparer.Ordinal);
+        foreach (var pin in pins)
+        {
+            token.ThrowIfCancellationRequested();
+            if (pin is null || !entries.TryGetValue("files/" + pin.Name, out var item) || item.Length != pin.Length
+                || !resources.TryAdd(pin.Name, verified.AsMemory(item.DataOffset, pin.Length))) throw Invalid();
+        }
+        return NativeRuntimePackage.FromVerifiedStoredArchive(resources, pins, profile);
+    }
 
     public Task PrepareAsync(long length, Func<CancellationToken, Task<Stream>> open, CancellationToken token)
     {
@@ -40,7 +68,8 @@ public sealed class ZipRuntimeArchive : IAsyncDisposable
         await PrepareEntries(bytes, token);
     }
     // Application-owned HTTP bytes, transferred without a second archive-sized copy.
-    internal Task PrepareOwnedAsync(byte[] bytes, CancellationToken token, NativeRuntimeProfile profile = NativeRuntimeProfile.Legacy)
+    internal Task PrepareOwnedAsync(byte[] bytes, CancellationToken token, NativeRuntimeProfile profile = NativeRuntimeProfile.Legacy,
+        RuntimePreparation? browserPreparation = null)
     {
         bool pinnedLargeArchive = profile switch
         {
@@ -51,10 +80,11 @@ public sealed class ZipRuntimeArchive : IAsyncDisposable
             NativeRuntimeProfile.LocalCompilerPdfOrigins => NativeCompilerPdfOriginPins.Ready
                 && bytes.Length == NativeCompilerPdfOriginPins.ArchiveLength,
             NativeRuntimeProfile.LocalCompilerPageLabels => NativeCompilerPageLabelPins.Ready
-                && bytes.Length == NativeCompilerPageLabelPins.ArchiveLength,
+                && bytes.Length is NativeCompilerPageLabelPins.ArchiveLength or NativeCompilerTermesPins.ArchiveLength or NativeCompilerCompatibleFontPins.ArchiveLength or NativeCompilerLuaFontPins.ArchiveLength,
             _ => false
         };
         if (_preparation is not null || _closing || bytes.Length < 22 || bytes.Length > MaxZipBytes && !pinnedLargeArchive) throw Invalid();
+        _browserPreparation = browserPreparation;
         _preparation = PrepareEntries(bytes, token, pinnedLargeArchive ? profile : NativeRuntimeProfile.Legacy);
         return _preparation;
     }
@@ -105,13 +135,20 @@ public sealed class ZipRuntimeArchive : IAsyncDisposable
         }
         return await ReadOutput(segment, item, token);
     }
-    private static async Task<byte[]> ReadOutput(Stream stream, ZipDirectory.Item item, CancellationToken token)
+    private async Task<byte[]> ReadOutput(Stream stream, ZipDirectory.Item item, CancellationToken token)
     {
         // Only the preflighted trusted output length controls allocation. Deflate
         // itself is NOT length-clamped: the extra-byte probe observes real output.
         var data = new byte[checked((int)item.Length)];
-        await stream.ReadExactlyAsync(data, token);
-        if (await stream.ReadAsync(new byte[1], token) != 0 || Crc(data) != item.Crc) throw Invalid();
+        uint crc = uint.MaxValue;
+        for (int offset = 0; offset < data.Length; offset += RuntimePreparation.ChunkBytes)
+        {
+            if (_browserPreparation is { } preparation) await preparation.YieldIfNeededAsync();
+            int length = Math.Min(RuntimePreparation.ChunkBytes, data.Length - offset);
+            await stream.ReadExactlyAsync(data.AsMemory(offset, length), token);
+            crc = AppendCrc(crc, data.AsSpan(offset, length));
+        }
+        if (await stream.ReadAsync(new byte[1], token) != 0 || ~crc != item.Crc) throw Invalid();
         return data; // NativeRuntimeSetup performs canonical SHA/Package.Create verification.
     }
     private static readonly uint[] CrcTable = MakeCrcTable();
@@ -126,11 +163,10 @@ public sealed class ZipRuntimeArchive : IAsyncDisposable
         }
         return table;
     }
-    private static uint Crc(byte[] bytes)
+    private static uint AppendCrc(uint crc, ReadOnlySpan<byte> bytes)
     {
-        uint crc = uint.MaxValue;
         foreach (byte value in bytes) crc = (crc >> 8) ^ CrcTable[(int)((crc ^ value) & 255)];
-        return ~crc;
+        return crc;
     }
     public async ValueTask DisposeAsync()
     {
@@ -173,13 +209,19 @@ internal static class ZipDirectory
         bool suiteEnvelope = LocalRuntimeSelection.SupportedSuiteCount(count - 1) || LocalRuntimeSelection.SupportedSuiteCount(count - 2);
         if ((!legacyEnvelope && !suiteEnvelope) || U16(b, end + 8) != count) throw Invalid();
         bool largeArchive = largeArchiveProfile is NativeRuntimeProfile.LocalCompilerCoursework or NativeRuntimeProfile.LocalCompilerDviGraphics or NativeRuntimeProfile.LocalCompilerPdfOrigins or NativeRuntimeProfile.LocalCompilerPageLabels;
+        int installed = (largeArchiveProfile, b.Length) switch
+        {
+            (NativeRuntimeProfile.LocalCompilerPageLabels, NativeCompilerLuaFontPins.ArchiveLength) => NativeCompilerLuaFontPins.ResourceCount,
+            (NativeRuntimeProfile.LocalCompilerPageLabels, NativeCompilerCompatibleFontPins.ArchiveLength) => NativeCompilerCompatibleFontPins.ResourceCount,
+            (NativeRuntimeProfile.LocalCompilerPageLabels, NativeCompilerTermesPins.ArchiveLength) => NativeCompilerTermesPins.ResourceCount,
+            _ => NativeRuntimeProfiles.InstalledCount(largeArchiveProfile)
+        };
         if (largeArchive)
         {
-            int installed = NativeRuntimeProfiles.InstalledCount(largeArchiveProfile);
             if (count != installed + 1 && count != installed + 2) throw Invalid();
         }
         if (!suiteEnvelope && b.Length > 67108864) throw Invalid();
-        long resourceTotalCap = largeArchive ? NativeRuntimeProfiles.SuiteTotalBytes(largeArchiveProfile)
+        long resourceTotalCap = largeArchive ? NativeRuntimeProfiles.SuiteTotalBytes(largeArchiveProfile, installed)
             : suiteEnvelope ? NativeCompilerSuiteContract.TotalBytes : LocalRuntimeSelection.Limits.MaxTotalBytes;
         long central = U32(b, end + 16), centralSize = U32(b, end + 12);
         if (central + centralSize != end || central > int.MaxValue) throw Invalid();
@@ -257,7 +299,8 @@ internal static class ZipDirectory
             || largeArchiveProfile is NativeRuntimeProfile.LocalCompilerCoursework or NativeRuntimeProfile.LocalCompilerDviGraphics or NativeRuntimeProfile.LocalCompilerPdfOrigins or NativeRuntimeProfile.LocalCompilerPageLabels
                 && NativeCompilerCourseworkPins.NoticeName(flat)
             || largeArchiveProfile is (NativeRuntimeProfile.LocalCompilerDviGraphics or NativeRuntimeProfile.LocalCompilerPdfOrigins or NativeRuntimeProfile.LocalCompilerPageLabels) && NativeCompilerDviGraphicsPins.NoticeName(flat)
-            || largeArchiveProfile == NativeRuntimeProfile.LocalCompilerPageLabels && NativeCompilerPageLabelPins.NoticeName(flat)
+            || largeArchiveProfile == NativeRuntimeProfile.LocalCompilerPageLabels && (NativeCompilerPageLabelPins.NoticeName(flat)
+                || NativeCompilerTermesPins.NoticeName(flat) || NativeCompilerCompatibleFontPins.NoticeName(flat))
             : flat.Length is > 0 and <= 200 && flat.All(c => char.IsAsciiLetterOrDigit(c) || c is '.' or '-' or '_')
             && flat is not ("." or "..");
     }

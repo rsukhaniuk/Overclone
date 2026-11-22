@@ -3,6 +3,7 @@ using System.Text.Json;
 using Client.Compilation.Native;
 using Client.Pdf;
 using Client.RuntimeAssets;
+using Microsoft.AspNetCore.Components.WebAssembly.Http;
 using Microsoft.JSInterop;
 
 namespace Client.Compilation.Provisioning;
@@ -20,6 +21,12 @@ public sealed class BundledRuntimeAssets(HttpClient http, IJSRuntime? browser = 
     // Promotion is explicit: a ready closure may never fall back to older bytes.
     public static NativeRuntimeProfile CompilerProfile => CompilerAsset switch
     {
+        { Length: NativeCompilerLuaFontPins.ArchiveLength, Sha256: NativeCompilerLuaFontPins.ArchiveSha256 }
+            => NativeRuntimeProfile.LocalCompilerPageLabels,
+        { Length: NativeCompilerCompatibleFontPins.ArchiveLength, Sha256: NativeCompilerCompatibleFontPins.ArchiveSha256 }
+            => NativeRuntimeProfile.LocalCompilerPageLabels,
+        { Length: NativeCompilerTermesPins.ArchiveLength, Sha256: NativeCompilerTermesPins.ArchiveSha256 }
+            => NativeRuntimeProfile.LocalCompilerPageLabels,
         { Length: NativeCompilerPageLabelPins.ArchiveLength, Sha256: NativeCompilerPageLabelPins.ArchiveSha256 }
             => NativeRuntimeProfile.LocalCompilerPageLabels,
         { Length: NativeCompilerPdfOriginPins.ArchiveLength, Sha256: NativeCompilerPdfOriginPins.ArchiveSha256 }
@@ -109,23 +116,32 @@ public sealed class BundledRuntimeAssets(HttpClient http, IJSRuntime? browser = 
         deadline.CancelAfter(TimeSpan.FromMinutes(10));
         var token = deadline.Token;
         await ReleaseReady(); token.ThrowIfCancellationRequested();
-        var bytes = await Read(CompilerAsset, token);
+        var asset = CompilerAsset;
         var profile = CompilerProfile;
+        if (NativeSelectedPdfContract.Supports(profile) && SelectedPdfCapacity is null) throw new InvalidDataException();
+        // Fetch SRI (or the managed SHA check) authenticates the exact bundled
+        // archive. Stored entries in a verified suite can be shared as slices.
+        var bytes = await Read(asset, new RuntimePreparation(token), token, bufferBrowserResponse: true);
+        if (NativeRuntimeProfiles.IsSuite(profile) && ZipRuntimeArchive.OpenVerifiedStoredCompiler(bytes, profile, token) is { } stored)
+            return stored;
+
+        await using var hashModule = OperatingSystem.IsBrowser() && browser is not null
+            ? await browser.InvokeAsync<IJSObjectReference>("import", token, "./js/bundled-runtime-cache.js") : null;
+        var preparation = new RuntimePreparation(token, hashModule);
         await using var archive = new ZipRuntimeArchive();
-        await archive.PrepareOwnedAsync(bytes, token, profile); bytes = [];
+        await archive.PrepareOwnedAsync(bytes, token, profile, preparation); bytes = [];
         var pins = LocalRuntimeSelection.ParsePins(archive.Pins);
-        if (LocalRuntimeSelection.ProfileFor(pins) != profile
-            || NativeSelectedPdfContract.Supports(profile) && SelectedPdfCapacity is null) throw new InvalidDataException();
+        if (LocalRuntimeSelection.ProfileFor(pins) != profile) throw new InvalidDataException();
         var inputs = new List<NativeResourceInput>(pins.Length);
         foreach (var file in archive.Files)
         {
             token.ThrowIfCancellationRequested();
             inputs.Add(new(file.Name, await file.Read(token)));
         }
-        await archive.DisposeAsync(); // Release archive and read buffers before the owned package clone.
+        await archive.DisposeAsync(); // Release the archive before transferring its decoded resource arrays.
         token.ThrowIfCancellationRequested();
-        var result = NativeRuntimePackage.Create(inputs, pins,
-            LocalRuntimeSelection.LimitsFor(profile), profile);
+        var result = await NativeRuntimePackage.CreateFromOwnedArchiveAsync(inputs, pins,
+            LocalRuntimeSelection.LimitsFor(profile), profile, preparation);
         inputs.Clear();
         return result.Package ?? throw new InvalidDataException("Bundled compiler integrity failed.");
     }
@@ -135,21 +151,43 @@ public sealed class BundledRuntimeAssets(HttpClient http, IJSRuntime? browser = 
         using var deadline = CancellationTokenSource.CreateLinkedTokenSource(_shutdown.Token);
         deadline.CancelAfter(TimeSpan.FromMinutes(10));
         await ReleaseReady(); deadline.Token.ThrowIfCancellationRequested();
-        var loader = await Read(PdfLoaderAsset, deadline.Token);
-        var wasm = await Read(PdfWasmAsset, deadline.Token);
+        var preparation = new RuntimePreparation(deadline.Token);
+        var loader = await Read(PdfLoaderAsset, preparation, deadline.Token);
+        var wasm = await Read(PdfWasmAsset, preparation, deadline.Token);
         var package = new PdfRuntimePackage(loader, wasm, PdfLoaderAsset.Sha256, PdfWasmAsset.Sha256);
         return package.IsValid ? package : throw new InvalidDataException("Bundled renderer integrity failed.");
     }
-    private async Task<byte[]> Read(Asset asset, CancellationToken token)
+    private async Task<byte[]> Read(Asset asset, RuntimePreparation preparation, CancellationToken token, bool bufferBrowserResponse = false)
     {
         using var request = new HttpRequestMessage(HttpMethod.Get, "bundled-runtime/" + asset.Name);
+        bool browserFetch = OperatingSystem.IsBrowser();
+        if (browserFetch)
+        {
+            // Fetch verifies the embedded pin before exposing the body, including
+            // responses supplied from the service worker's release cache.
+            request.SetBrowserRequestOption("integrity", "sha256-" + Convert.ToBase64String(Convert.FromHexString(asset.Sha256)));
+            request.SetBrowserRequestOption("mode", "same-origin");
+            request.SetBrowserResponseStreamingEnabled(!bufferBrowserResponse);
+        }
         using var response = await http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, token);
         response.EnsureSuccessStatusCode();
-        if (response.Content.Headers.ContentLength is { } length && length != asset.Length) throw new InvalidDataException();
+        if (response.Content.Headers.ContentLength is { } contentLength && contentLength != asset.Length) throw new InvalidDataException();
+        if (browserFetch && bufferBrowserResponse)
+        {
+            var verified = await response.Content.ReadAsByteArrayAsync(token);
+            if (verified.Length != asset.Length) throw new InvalidDataException("Bundled resource length differs from its pin.");
+            return verified;
+        }
         await using var stream = await response.Content.ReadAsStreamAsync(token);
         var bytes = new byte[asset.Length];
-        await stream.ReadExactlyAsync(bytes, token);
-        if (await stream.ReadAsync(new byte[1], token) != 0 || NativeRuntimePackage.Digest(bytes).Hex != asset.Sha256)
+        for (int offset = 0; offset < bytes.Length; offset += RuntimePreparation.ChunkBytes)
+        {
+            await preparation.YieldIfNeededAsync();
+            int length = Math.Min(RuntimePreparation.ChunkBytes, bytes.Length - offset);
+            await stream.ReadExactlyAsync(bytes.AsMemory(offset, length), token);
+        }
+        if (await stream.ReadAsync(new byte[1], token) != 0
+            || !browserFetch && NativeRuntimePackage.Digest(bytes).Hex != asset.Sha256)
             throw new InvalidDataException("Bundled resource integrity failed.");
         return bytes;
     }

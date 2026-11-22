@@ -23,7 +23,7 @@ public sealed class InstalledNativeRuntimeProvider(RuntimeAssetStore store, Inst
         var read = await store.ReadAsync(mapping.InstallationId, mapping.InventoryDigest, budget, token).ConfigureAwait(false);
         if (read.Status != RuntimeAssetStatus.Ready || read.Snapshot is not { } snapshot)
             return new(read, null, NativeRuntimeIssue.Unavailable);
-        if (snapshot.AssetCount != NativeRuntimeProfiles.InstalledCount(mapping.Profile)) return Corrupt();
+        if (!NativeRuntimeProfiles.MatchesInstalledCount(mapping.Profile, snapshot.AssetCount)) return Corrupt();
         var indices = new Dictionary<AssetId, int>();
         for (int i = 0; i < snapshot.AssetCount; i++) indices.Add(snapshot.DeclaredAssets[i].AssetId, i);
         // ALL actual lengths/bindings before ANY package clone/hash.
@@ -44,7 +44,7 @@ public sealed class InstalledNativeRuntimeProvider(RuntimeAssetStore store, Inst
             || !NativeRuntimeProfiles.Known(mapping.Profile) || mapping.Profile != limits.Profile
             || NativeRuntimeProfiles.IsSuite(mapping.Profile) && !NativeRuntimeProfiles.SuitePinsReady(mapping.Profile)
             || mapping.InstallationId == Guid.Empty || !Hex(mapping.InventoryDigest)
-            || mapping.Resources.IsDefault || mapping.Resources.Length != NativeRuntimeProfiles.InstalledCount(mapping.Profile)
+            || mapping.Resources.IsDefault || !NativeRuntimeProfiles.MatchesInstalledCount(mapping.Profile, mapping.Resources.Length)
             || limits.MaxFiles < mapping.Resources.Length || budget.Inventory.MaxAssets < mapping.Resources.Length) return false;
         var ids = new HashSet<AssetId>(); var names = new HashSet<string>(StringComparer.Ordinal); var paths = new HashSet<string>(StringComparer.Ordinal);
         long total = 0;
@@ -58,12 +58,13 @@ public sealed class InstalledNativeRuntimeProvider(RuntimeAssetStore store, Inst
             total += p.Length;
         }
         if (names.Contains(NativeRuntimePackage.NativeFormatName)) return false;
-        if (NativeRuntimeProfiles.IsSuite(mapping.Profile) && (total != NativeRuntimeProfiles.SuiteTotalBytes(mapping.Profile)
+        if (NativeRuntimeProfiles.IsSuite(mapping.Profile) && (total != NativeRuntimeProfiles.SuiteTotalBytes(mapping.Profile, mapping.Resources.Length)
             || !NativeRuntimeProfiles.MatchesSuiteComponents(mapping.Profile, mapping.Resources.AsEnumerable().ToDictionary(r => r.Pin.Name, r => r.Pin, StringComparer.Ordinal)))) return false;
         return Fixed("engine.js", NativeRuntimeProfiles.CompilerLoaderLength(mapping.Profile), NativeRuntimeProfiles.CompilerLoaderHash(mapping.Profile))
             && Fixed("engine.wasm", NativeRuntimeProfiles.CompilerWasmLength(mapping.Profile), NativeRuntimeProfiles.CompilerWasmHash(mapping.Profile))
             && Fixed(NativeRuntimePackage.FormatResourceName, NativeRuntimeProfiles.FormatLength(mapping.Profile), NativeRuntimeProfiles.FormatHash(mapping.Profile))
-            && (mapping.Profile == NativeRuntimeProfile.Legacy || NativeRuntimePackage.ResourceIdentity(mapping.Resources.Select(r => r.Pin)).Hex == NativeRuntimeProfiles.ClosureHash(mapping.Profile));
+            && (mapping.Profile == NativeRuntimeProfile.Legacy || NativeRuntimeProfiles.MatchesClosure(mapping.Profile,
+                mapping.Resources.Length, NativeRuntimePackage.ResourceIdentity(mapping.Resources.Select(r => r.Pin)).Hex));
         bool Fixed(string name, int length, string hash) => mapping.Resources.Any(r => r.Pin.Name == name && r.Pin.Length == length && r.Pin.Sha256 == hash);
     }
     private static bool Hex(string? value) => value is { Length: 64 } && value.All(c => c is >= '0' and <= '9' or >= 'a' and <= 'f');

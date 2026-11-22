@@ -369,6 +369,21 @@ public sealed class NativeCompilationWorkerFactory : ICompilationWorkerFactory
                     string[]? resourceNames = null;
                     string[]? generatedNames = suite ? (converting ? [] : generated.Keys.Order(StringComparer.Ordinal).ToArray()) : null;
                     var phaseLengths = (suite ? runtime.SuiteFileLengths(tool == "bibtex" ? NativeCompilerEngine.PdfLaTeX : engine) : runtime.FileLengthsFor(dviOutput)).ToArray();
+                    var verifiedRuntimeDigests = new Dictionary<string, string>(StringComparer.Ordinal);
+                    var preparation = new RuntimePreparation(token);
+                    async ValueTask<Dictionary<string, byte[]>> CopyRuntimeInputsAsync(IEnumerable<NativeRuntimeFileCopy> files, string prefix = "")
+                    {
+                        var inputs = new Dictionary<string, byte[]>(StringComparer.Ordinal);
+                        foreach (var file in files)
+                        {
+                            var name = prefix + file.Name;
+                            inputs.Add(name, file.Bytes);
+                            verifiedRuntimeDigests.Add(name, file.Sha256);
+                            await preparation.YieldIfNeededAsync();
+                        }
+                        return inputs;
+                    }
+
                     Dictionary<string, byte[]> all;
                     if (biberPhase)
                     {
@@ -406,7 +421,7 @@ public sealed class NativeCompilationWorkerFactory : ICompilationWorkerFactory
                             : NativeAuthoringV4Contract.ValidateNamespace(conversionInputs, phaseOutputs, []);
                         if (invalid is not null) throw new NativeAuthoringV4Exception(invalid);
                         resourceNames = resources.Select(f => f.Name).Order(StringComparer.Ordinal).ToArray();
-                        all = runtime.CopyConverterResources(engine).ToDictionary(f => suite ? NativeCompilerSuiteContract.ResourcePrefix + f.Name : f.Name, f => f.Bytes, StringComparer.Ordinal);
+                        all = await CopyRuntimeInputsAsync(runtime.CopyConverterResources(engine), suite ? NativeCompilerSuiteContract.ResourcePrefix : "");
                         foreach (var file in snapshot.Files) all.Add(file.RelativePath, file.ToArray());
                         all.Add(intermediate, finalDvi.ToArray());
                     }
@@ -445,8 +460,8 @@ public sealed class NativeCompilationWorkerFactory : ICompilationWorkerFactory
                                 throw new NativeResourceLimitException();
                             resourceNames = phaseLengths.Select(f => f.Name).Order(StringComparer.Ordinal).ToArray();
                         }
-                        all = (suite ? runtime.CopySuiteFiles(tool == "bibtex" ? NativeCompilerEngine.PdfLaTeX : engine) : runtime.CopyFiles(dviOutput))
-                            .ToDictionary(f => f.Name, f => f.Bytes, StringComparer.Ordinal);
+                        all = await CopyRuntimeInputsAsync(suite
+                            ? runtime.CopySuiteFiles(tool == "bibtex" ? NativeCompilerEngine.PdfLaTeX : engine) : runtime.CopyFiles(dviOutput));
                         foreach (var file in snapshot.Files)
                         {
                             if (all.ContainsKey(file.RelativePath)) throw new InvalidDataException("Runtime/project collision.");
@@ -462,7 +477,10 @@ public sealed class NativeCompilationWorkerFactory : ICompilationWorkerFactory
                         biberPhase ? NativeBiberCompilerContract.BiberPhase : factory._plan.EffectivePhaseVersion, runtime.Profile,
                         runtime.Profile == NativeRuntimeProfile.Legacy ? null : runtime.Identity.Hex,
                         suite ? NativeCompilerSuiteContract.EngineId(engine) : dviOutput ? "latex-dvi" : null);
-                    var sent = all.OrderBy(x => x.Key, StringComparer.Ordinal).Select(x => new NativeInputFact(x.Key, x.Value.Length, NativeRuntimePackage.Digest(x.Value).Hex)).ToArray();
+                    // Runtime files are copies of private verified bytes. The worker still
+                    // hashes the input it receives and the caller checks the reply against these facts.
+                    var sent = all.OrderBy(x => x.Key, StringComparer.Ordinal).Select(x => new NativeInputFact(x.Key, x.Value.Length,
+                        verifiedRuntimeDigests.TryGetValue(x.Key, out var hash) ? hash : NativeRuntimePackage.Digest(x.Value).Hex)).ToArray();
                     string component = biberPhase ? "biber" : converting ? runtime.ConverterStemFor(engine) : suite && tool == "latex" && xe ? "xetex" : suite && tool == "latex" && lua ? "luatex" : "engine";
                     var selectedComponent = suite && !converting && !biberPhase
                         ? tool == "bibtex" && NativeRuntimeProfiles.SupportsBiber(runtime.Profile) ? NativeBiberCompilerContract.BibtexComponent

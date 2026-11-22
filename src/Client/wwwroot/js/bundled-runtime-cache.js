@@ -27,3 +27,10 @@ export function waitForRelease() {
     });
 }
 export function cancelPending() { for (const cancel of [...pending]) cancel(); }
+
+// C# compares the digest against the exact trusted resource pin before use.
+export function sha256Batch(resources) {
+    return Promise.all(resources.map(async bytes =>
+        Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', bytes)),
+            value => value.toString(16).padStart(2, '0')).join('')));
+}

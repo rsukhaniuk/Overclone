@@ -2,8 +2,8 @@
   "version": 1,
   "compiler": {
     "name": "compiler-suite.zip",
-    "length": 280336534,
-    "sha256": "532fc02d7bba80371a02b3477c5e7d35397d366d62cc03eb040689ca30c69b78"
+    "length": 280920967,
+    "sha256": "e57560fadc39d8e5cdd3bd89267ad2d6dd7fc3a50105b7bc21b59ab5cdbf5c74"
   },
   "pdfLoader": {
     "name": "e1.js",

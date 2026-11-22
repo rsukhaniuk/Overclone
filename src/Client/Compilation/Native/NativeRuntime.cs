@@ -7,6 +7,7 @@ namespace Client.Compilation.Native;
 
 public sealed record NativeResourcePin(string Name, int Length, string Sha256);
 public sealed record NativeResourceInput(string Name, byte[] Bytes);
+internal sealed record NativeRuntimeFileCopy(string Name, byte[] Bytes, string Sha256);
 public sealed record NativeRuntimeLimits(int MaxFiles, int MaxFileBytes, int MaxTotalBytes,
     NativeRuntimeProfile Profile = NativeRuntimeProfile.Legacy)
 {
@@ -17,7 +18,7 @@ public sealed record NativeRuntimeLimits(int MaxFiles, int MaxFileBytes, int Max
             NativeRuntimeProfile.LocalCompilerCoursework => NativeCompilerCourseworkPins.TotalBytes,
             NativeRuntimeProfile.LocalCompilerDviGraphics => NativeCompilerDviGraphicsPins.TotalBytes,
             NativeRuntimeProfile.LocalCompilerPdfOrigins => NativeCompilerPdfOriginPins.TotalBytes,
-            NativeRuntimeProfile.LocalCompilerPageLabels => NativeCompilerPageLabelPins.TotalBytes,
+            NativeRuntimeProfile.LocalCompilerPageLabels => NativeCompilerLuaFontPins.TotalBytes,
             _ => NativeRuntimeProfiles.MaxTotalBytes(Profile)
         });
 }
@@ -36,9 +37,11 @@ public sealed class NativeRuntimePackage
     public const string FormatResourceName = "pdflatex.fmt";
     public const string NativeFormatName = "swiftlatexpdftex.fmt";
     private static string Destination(string logicalName) => logicalName == FormatResourceName ? NativeFormatName : logicalName;
-    private readonly ImmutableDictionary<string, byte[]> _bytes;
-    private NativeRuntimePackage(ImmutableDictionary<string, byte[]> bytes, Hash identity, NativeRuntimeProfile profile)
-    { _bytes = bytes; Identity = identity; Profile = profile; }
+    private readonly ImmutableDictionary<string, ReadOnlyMemory<byte>> _bytes;
+    private readonly ImmutableDictionary<string, NativeResourcePin> _verifiedPins;
+    private NativeRuntimePackage(ImmutableDictionary<string, ReadOnlyMemory<byte>> bytes, ImmutableDictionary<string, NativeResourcePin> verifiedPins,
+        Hash identity, NativeRuntimeProfile profile)
+    { _bytes = bytes; _verifiedPins = verifiedPins; Identity = identity; Profile = profile; }
     public Hash Identity { get; }
     public NativeRuntimeProfile Profile { get; }
     public CompilationDescriptor Engine => NativeRuntimeProfiles.SupportsBiber(Profile)
@@ -98,23 +101,23 @@ public sealed class NativeRuntimePackage
         && name is not "engine.js" and not "engine.wasm"
         and not "synctex-query.js" and not "synctex-query.wasm" and not "dvi-converter.js" and not "dvi-converter.wasm"
         and not FormatResourceName and not "latex-dvi.fmt" and not "biber.data";
-    private IEnumerable<KeyValuePair<string, byte[]>> PhaseFiles(bool dvi) => _bytes.Where(x => RuntimeData(x.Key)
+    private IEnumerable<KeyValuePair<string, ReadOnlyMemory<byte>>> PhaseFiles(bool dvi) => _bytes.Where(x => RuntimeData(x.Key)
         || x.Key == (dvi ? "latex-dvi.fmt" : FormatResourceName));
     private static string PhaseDestination(string name) => name == "latex-dvi.fmt" ? NativeFormatName : Destination(name);
     internal IEnumerable<(string Name, int Length)> FileLengthsFor(bool dvi) => PhaseFiles(dvi).Select(x => (PhaseDestination(x.Key), x.Value.Length));
     internal IEnumerable<(string Name, int Length)> FileLengths => FileLengthsFor(false);
-    internal NativeFileTransfer[] CopyFiles(bool dvi = false) => PhaseFiles(dvi)
-        .OrderBy(x => PhaseDestination(x.Key), StringComparer.Ordinal).Select(x => new NativeFileTransfer(PhaseDestination(x.Key), x.Value.ToArray())).ToArray();
+    internal IEnumerable<NativeRuntimeFileCopy> CopyFiles(bool dvi = false) => PhaseFiles(dvi)
+        .OrderBy(x => PhaseDestination(x.Key), StringComparer.Ordinal).Select(x => CopyVerifiedFile(x, PhaseDestination(x.Key)));
     private bool ConverterResource(string name, NativeCompilerEngine engine) =>
         (!IsSelectedPdfResource(name) || IsDviGraphics && engine == NativeCompilerEngine.LaTeXDvi && NativeCompilerDviGraphicsPins.IsDviSharedFont(name))
-        && !IsLuaOnlyResource(name)
+        && (!IsLuaOnlyResource(name) || UsesXeCompatibilityFont(engine, name))
         && (name is "glyphlist.txt" or "pdfglyphlist.txt" || Path.GetExtension(name) is ".tfm" or ".pfb" or ".ttf" or ".map" or ".enc"
             || NativeRuntimeProfiles.IsSuite(Profile) && Path.GetExtension(name) is ".otf" or ".vf");
     internal IEnumerable<(string Name, int Length)> ConverterResourceLengths => ConverterResourceLengthsFor(NativeCompilerEngine.XeLaTeX);
     internal IEnumerable<(string Name, int Length)> ConverterResourceLengthsFor(NativeCompilerEngine engine) =>
         _bytes.Where(x => ConverterResource(x.Key, engine)).Select(x => (x.Key, x.Value.Length));
-    internal NativeFileTransfer[] CopyConverterResources(NativeCompilerEngine engine) => _bytes.Where(x => ConverterResource(x.Key, engine))
-        .OrderBy(x => x.Key, StringComparer.Ordinal).Select(x => new NativeFileTransfer(x.Key, x.Value.ToArray())).ToArray();
+    internal IEnumerable<NativeRuntimeFileCopy> CopyConverterResources(NativeCompilerEngine engine) => _bytes.Where(x => ConverterResource(x.Key, engine))
+        .OrderBy(x => x.Key, StringComparer.Ordinal).Select(x => CopyVerifiedFile(x, x.Key));
 
     internal NativeCompilerComponent ComponentFor(NativeCompilerEngine engine) => NativeCompilerComponents.For(Profile, engine);
     internal string ConverterStemFor(NativeCompilerEngine engine) => Profile is NativeRuntimeProfile.LocalCompilerPageLabels or NativeRuntimeProfile.LocalCompilerPdfOrigins or NativeRuntimeProfile.LocalCompilerDviGraphics or NativeRuntimeProfile.LocalCompilerCoursework or NativeSelectedPdfContract.Profile or NativeInputBudgetContract.Profile or NativeOriginCompilerContract.Profile or NativeThesisCompilerContract.Profile or NativeBiberCompilerContract.Profile or NativeXeNavigationContract.Profile or NativeGraphicsNavigationContract.Profile or NativeUnicodeCompilerContract.Profile && engine == NativeCompilerEngine.XeLaTeX
@@ -159,15 +162,22 @@ public sealed class NativeRuntimePackage
     private bool IsDviGraphics => NativeDviImageSidecarContract.Supports(Profile);
     private bool HasCoursework => Profile is NativeRuntimeProfile.LocalCompilerCoursework or NativeRuntimeProfile.LocalCompilerDviGraphics or NativeRuntimeProfile.LocalCompilerPdfOrigins or NativeRuntimeProfile.LocalCompilerPageLabels;
     private bool IsLuaOnlyResource(string name) => HasCoursework && NativeCompilerCourseworkPins.IsLuaOnlyResource(name);
-    private IEnumerable<KeyValuePair<string, byte[]>> SuiteFiles(NativeCompilerEngine engine)
+    private bool UsesXeCompatibilityFont(NativeCompilerEngine engine, string name) => engine == NativeCompilerEngine.XeLaTeX
+        && NativeCompilerCompatibleFontPins.HasXeAliases(Identity.Hex) && NativeCompilerCompatibleFontPins.IsCompatibilityFont(name);
+    private IEnumerable<KeyValuePair<string, ReadOnlyMemory<byte>>> SuiteFiles(NativeCompilerEngine engine)
     {
         string format = engine switch { NativeCompilerEngine.LaTeXDvi => "latex-dvi.fmt", NativeCompilerEngine.XeLaTeX => "xelatex.fmt",
             NativeCompilerEngine.LuaLaTeX => "lualatex.fmt", _ => FormatResourceName };
         bool dviGraphics = IsDviGraphics && engine == NativeCompilerEngine.LaTeXDvi;
+        bool luaCompatibility = engine == NativeCompilerEngine.LuaLaTeX && Identity.Hex == NativeCompilerLuaFontPins.RuntimeIdentity;
+        bool unicodeXstring = luaCompatibility || engine == NativeCompilerEngine.XeLaTeX
+            && (Identity.Hex == NativeCompilerTermesPins.RuntimeIdentity || NativeCompilerCompatibleFontPins.HasXeAliases(Identity.Hex));
         return _bytes.Where(x => x.Key == format || RuntimeData(x.Key)
             && (!IsDviGraphics || (dviGraphics ? x.Key != "color.cfg" : !NativeCompilerDviGraphicsPins.IsDviOnlyResource(x.Key)))
-            && (!IsLuaOnlyResource(x.Key) || engine == NativeCompilerEngine.LuaLaTeX)
+            && (luaCompatibility || !NativeCompilerLuaFontPins.IsAlias(x.Key))
+            && (!IsLuaOnlyResource(x.Key) || engine == NativeCompilerEngine.LuaLaTeX || UsesXeCompatibilityFont(engine, x.Key))
             && (engine == NativeCompilerEngine.PdfLaTeX || !IsSelectedPdfResource(x.Key)
+                || unicodeXstring && x.Key is ("xstring.sty" or "xstring.tex")
                 || HasCoursework && engine == NativeCompilerEngine.LuaLaTeX && NativeCompilerCourseworkPins.IsLuaCompatibilityResource(x.Key)
                 || dviGraphics && NativeCompilerDviGraphicsPins.IsDviSharedFont(x.Key))
             && Path.GetExtension(x.Key) is not (".fmt" or ".wasm" or ".js")
@@ -177,12 +187,36 @@ public sealed class NativeRuntimePackage
     private static string SuiteDestination(string name) => NativeCompilerSuiteContract.ResourcePrefix
         + (name == NativeCompilerDviGraphicsPins.ColorConfiguration ? "color.cfg" : PhaseDestination(name));
     internal IEnumerable<(string Name, int Length)> SuiteFileLengths(NativeCompilerEngine engine) => SuiteFiles(engine).Select(x => (SuiteDestination(x.Key), x.Value.Length));
-    internal NativeFileTransfer[] CopySuiteFiles(NativeCompilerEngine engine) => SuiteFiles(engine)
-        .OrderBy(x => x.Key, StringComparer.Ordinal).Select(x => new NativeFileTransfer(SuiteDestination(x.Key), x.Value.ToArray())).ToArray();
+    internal IEnumerable<NativeRuntimeFileCopy> CopySuiteFiles(NativeCompilerEngine engine) => SuiteFiles(engine)
+        .OrderBy(x => x.Key, StringComparer.Ordinal).Select(x => CopyVerifiedFile(x, SuiteDestination(x.Key)));
+
+    private NativeRuntimeFileCopy CopyVerifiedFile(KeyValuePair<string, ReadOnlyMemory<byte>> resource, string destination) =>
+        new(destination, resource.Value.ToArray(), _verifiedPins[resource.Key].Sha256);
+
+    internal static NativeRuntimePackage FromVerifiedStoredArchive(Dictionary<string, ReadOnlyMemory<byte>> resources,
+        NativeResourcePin[] pins, NativeRuntimeProfile profile)
+    {
+        var closure = ResourceIdentity(pins);
+        if (!NativeRuntimeProfiles.MatchesClosure(profile, pins.Length, closure.Hex)
+            || pins.Sum(pin => (long)pin.Length) != NativeRuntimeProfiles.SuiteTotalBytes(profile, pins.Length))
+            throw new InvalidDataException("Bundled compiler resource closure differs from its pin.");
+        return new(resources.ToImmutableDictionary(StringComparer.Ordinal), pins.ToImmutableDictionary(pin => pin.Name, StringComparer.Ordinal),
+            RuntimeIdentity(profile, pins.Length, closure), profile);
+    }
 
     public static NativeRuntimeCreation Create(IReadOnlyList<NativeResourceInput>? input,
         IReadOnlyList<NativeResourcePin>? expected, NativeRuntimeLimits? limits,
         NativeRuntimeProfile profile = NativeRuntimeProfile.Legacy)
+        => CreateCoreAsync(input, expected, limits, profile, null).GetAwaiter().GetResult();
+
+    // Bundled archive reads hand over fresh arrays with no external aliases.
+    internal static ValueTask<NativeRuntimeCreation> CreateFromOwnedArchiveAsync(IReadOnlyList<NativeResourceInput> input,
+        IReadOnlyList<NativeResourcePin> expected, NativeRuntimeLimits limits, NativeRuntimeProfile profile, RuntimePreparation preparation)
+        => CreateCoreAsync(input, expected, limits, profile, preparation);
+
+    private static async ValueTask<NativeRuntimeCreation> CreateCoreAsync(IReadOnlyList<NativeResourceInput>? input,
+        IReadOnlyList<NativeResourcePin>? expected, NativeRuntimeLimits? limits, NativeRuntimeProfile profile,
+        RuntimePreparation? preparation)
     {
         if (!NativeRuntimeProfiles.Known(profile) || limits is null || !limits.IsValid || limits.Profile != profile)
             return new(null, NativeRuntimeIssue.InvalidLimits);
@@ -192,7 +226,7 @@ public sealed class NativeRuntimePackage
         // Counts first: don't access an entry or allocate a count-sized collection yet.
         int count = input.Count;
         if (count < 3 || count > limits.MaxFiles || expected.Count != count
-            || NativeRuntimeProfiles.Modern(profile) && count != NativeRuntimeProfiles.InstalledCount(profile))
+            || NativeRuntimeProfiles.Modern(profile) && !NativeRuntimeProfiles.MatchesInstalledCount(profile, count))
             return new(null, NativeRuntimeIssue.ResourceLimit);
         var supplied = new NativeResourceInput[count];
         var names = new HashSet<string>(StringComparer.Ordinal);
@@ -221,14 +255,14 @@ public sealed class NativeRuntimePackage
                 || !Fixed("dvi-converter.wasm", 685953, NativeRuntimeProfiles.DviConverterWasmHash)))
             return new(null, NativeRuntimeIssue.TechnicalHashMismatch);
         if (NativeRuntimeProfiles.IsSuite(profile) && (!NativeRuntimeProfiles.MatchesSuiteComponents(profile, pins)
-            || declaredTotal != NativeRuntimeProfiles.SuiteTotalBytes(profile)))
+            || declaredTotal != NativeRuntimeProfiles.SuiteTotalBytes(profile, count)))
             return new(null, NativeRuntimeIssue.TechnicalHashMismatch);
         // Bind the complete declared closure before even inspecting resource bytes.
         // Supplied expected pins alone cannot expand the trusted set.
         var closure = ResourceIdentity(pins.Values);
-        if (NativeRuntimeProfiles.Modern(profile) && closure.Hex != NativeRuntimeProfiles.ClosureHash(profile))
+        if (NativeRuntimeProfiles.Modern(profile) && !NativeRuntimeProfiles.MatchesClosure(profile, count, closure.Hex))
             return new(null, NativeRuntimeIssue.TechnicalHashMismatch);
-        // Preflight ALL supplied lengths before any clone/hash. Copy-before-hash below.
+        // Preflight all supplied lengths before cloning or hashing the resources.
         for (int i = 0; i < count; i++)
         {
             var r = input[i];
@@ -238,19 +272,45 @@ public sealed class NativeRuntimePackage
                 return new(null, NativeRuntimeIssue.ResourceLimit);
             total += r.Bytes.Length; supplied[i] = r;
         }
-        var owned = ImmutableDictionary.CreateBuilder<string, byte[]>(StringComparer.Ordinal);
-        foreach (var r in supplied)
+        var owned = ImmutableDictionary.CreateBuilder<string, ReadOnlyMemory<byte>>(StringComparer.Ordinal);
+        if (preparation is null)
         {
-            var bytes = r.Bytes.ToArray();
-            if (Digest(bytes).Hex != pins[r.Name].Sha256) return new(null, NativeRuntimeIssue.TechnicalHashMismatch);
-            owned.Add(r.Name, bytes);
+            foreach (var resource in supplied)
+            {
+                var bytes = resource.Bytes.ToArray();
+                if (Digest(bytes).Hex != pins[resource.Name].Sha256) return new(null, NativeRuntimeIssue.TechnicalHashMismatch);
+                owned.Add(resource.Name, bytes);
+            }
+        }
+        else
+        {
+            for (int start = 0; start < supplied.Length;)
+            {
+                int end = start + 1, bytes = supplied[start].Bytes.Length;
+                // An individual pinned resource can exceed the small batch budget.
+                while (end < supplied.Length && end - start < RuntimePreparation.HashBatchCount
+                    && supplied[end].Bytes.Length <= RuntimePreparation.HashBatchBytes - bytes)
+                    bytes += supplied[end++].Bytes.Length;
+
+                var batch = new byte[end - start][];
+                for (int i = 0; i < batch.Length; i++) batch[i] = supplied[start + i].Bytes;
+                var digests = await preparation.DigestBatchAsync(batch);
+                if (digests.Length != batch.Length) return new(null, NativeRuntimeIssue.TechnicalHashMismatch);
+                for (int i = 0; i < batch.Length; i++)
+                {
+                    var resource = supplied[start + i];
+                    if (digests[i] != pins[resource.Name].Sha256) return new(null, NativeRuntimeIssue.TechnicalHashMismatch);
+                    owned.Add(resource.Name, resource.Bytes);
+                }
+                start = end;
+            }
         }
         // Legacy identity remains byte-for-byte compatible. Modern semantics,
         // contract version and complete resource closure form a distinct identity.
-        var identity = profile == NativeRuntimeProfile.Legacy ? closure : Digest(Encoding.UTF8.GetBytes(
-            $"native-runtime-profile-v1\n{NativeRuntimeProfiles.IdentityName(profile)}\n{closure.Hex}"));
-        return new(new(owned.ToImmutable(), identity, profile), null);
+        return new(new(owned.ToImmutable(), pins.ToImmutableDictionary(StringComparer.Ordinal), RuntimeIdentity(profile, count, closure), profile), null);
     }
+    private static Hash RuntimeIdentity(NativeRuntimeProfile profile, int count, Hash closure) => profile == NativeRuntimeProfile.Legacy
+        ? closure : Digest(Encoding.UTF8.GetBytes($"native-runtime-profile-v1\n{NativeRuntimeProfiles.IdentityName(profile, count)}\n{closure.Hex}"));
     internal static Hash ResourceIdentity(IEnumerable<NativeResourcePin> pins)
         => Digest(Encoding.UTF8.GetBytes(string.Join("\n", pins.OrderBy(x => x.Name, StringComparer.Ordinal)
             .Select(x => FormattableString.Invariant($"{x.Name}\t{x.Length}\t{x.Sha256}")))));
@@ -259,7 +319,8 @@ public sealed class NativeRuntimePackage
             || profile is NativeRuntimeProfile.LocalCompilerCoursework or NativeRuntimeProfile.LocalCompilerDviGraphics or NativeRuntimeProfile.LocalCompilerPdfOrigins or NativeRuntimeProfile.LocalCompilerPageLabels
                 && NativeCompilerCourseworkPins.NoticeName(name)
             || profile is (NativeRuntimeProfile.LocalCompilerDviGraphics or NativeRuntimeProfile.LocalCompilerPdfOrigins or NativeRuntimeProfile.LocalCompilerPageLabels) && NativeCompilerDviGraphicsPins.NoticeName(name)
-            || profile == NativeRuntimeProfile.LocalCompilerPageLabels && NativeCompilerPageLabelPins.NoticeName(name)
+            || profile == NativeRuntimeProfile.LocalCompilerPageLabels && (NativeCompilerPageLabelPins.NoticeName(name)
+                || NativeCompilerTermesPins.NoticeName(name) || NativeCompilerCompatibleFontPins.NoticeName(name))
             || profile == NativeBiberCompilerContract.Profile && NativeBiberCompilerContract.NoticeName(name)
             || profile is NativeThesisCompilerContract.Profile or NativeOriginCompilerContract.Profile && NativeThesisCompilerContract.NoticeName(name))
         : name is { Length: > 0 and <= 200 } && name.All(c => char.IsAsciiLetterOrDigit(c) || c is '.' or '-' or '_');

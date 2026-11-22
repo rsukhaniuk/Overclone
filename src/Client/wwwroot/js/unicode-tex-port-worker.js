@@ -84,7 +84,7 @@ const pT=p=>p===14||p===15||p===16||p===17||p===18||p===19||p===20||p===21;
                 || tag.profile === 18 && tag.runtimeIdentity !== 'f4ad5c7f702efc4f90d7a803ad6c697be0b3664b4ca90f837c8e6bd74ca88a40'
                 || tag.profile === 19 && tag.runtimeIdentity !== '1974b526f3a47b33f60d5a5384f14b3c618ac996d950ab514e13ef119d06bc79'
                 || tag.profile === 20 && tag.runtimeIdentity !== '84abead5a2feb357d52ff01364f5b72ed099610c40a8c0428ac10f9a64b0e652'
-                || tag.profile === 21 && tag.runtimeIdentity !== 'eb47ed92ac9efcdc7277c6b3dd1c5861abde63213e440d40aa7c201af6f4d692'
+                || tag.profile === 21 && tag.runtimeIdentity !== 'eb47ed92ac9efcdc7277c6b3dd1c5861abde63213e440d40aa7c201af6f4d692' && tag.runtimeIdentity !== '902f858d535c6a4fa273a24bec9c8a0fee7093e67ea6dd8da062bff1e43bbbe5' && tag.runtimeIdentity !== 'f6a4fd79dfe6453b58b64d3a2322fcb4f359f5d3fa0cedadc90abdb3ac9297dc' && tag.runtimeIdentity !== '382c1f851ba3d3de852d1a7fbea499820a7a68de08bbdcb333eaf4d841afd0ec'
                 || !path(frame.selectedRoot) || !/\.tex$/i.test(frame.selectedRoot) || frame.mainEntry !== frame.selectedRoot
                 || !Array.isArray(frame.files) || frame.files.length < 1 || frame.files.length > (pT(tag.profile) ? 8448 : 8384)
                 || !Array.isArray(frame.runtimeResourceNames) || !Array.isArray(frame.generatedInputNames)

@@ -16,6 +16,9 @@ public static class NativeCompilerPageLabelPins
 
     public static bool MatchesComponents(IReadOnlyDictionary<string, NativeResourcePin> pins)
     {
+        if (pins.Count == NativeCompilerLuaFontPins.ResourceCount) return NativeCompilerLuaFontPins.MatchesComponents(pins);
+        if (pins.Count == NativeCompilerCompatibleFontPins.ResourceCount) return NativeCompilerCompatibleFontPins.MatchesComponents(pins);
+        if (pins.Count == NativeCompilerTermesPins.ResourceCount) return NativeCompilerTermesPins.MatchesComponents(pins);
         if (pins.Count != ResourceCount || pins.Values.Sum(pin => (long)pin.Length) != TotalBytes
             || NativeRuntimePackage.ResourceIdentity(pins.Values).Hex != ClosureHash) return false;
         var parent = pins.Where(pair => !NoticeName(pair.Key))

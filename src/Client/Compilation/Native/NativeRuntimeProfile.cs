@@ -72,6 +72,30 @@ public static class NativeRuntimeProfiles
     public static int CompilerWasmLength(NativeRuntimeProfile profile) => profile switch
     { NativeRuntimeProfile.LocalCompilerPageLabels or NativeRuntimeProfile.LocalCompilerPdfOrigins or NativeRuntimeProfile.LocalCompilerDviGraphics or NativeRuntimeProfile.LocalCompilerCoursework or NativeRuntimeProfile.LocalCompilerSelectedPdf or NativeRuntimeProfile.LocalCompilerInputBudget or NativeRuntimeProfile.LocalCompilerOrigins or NativeRuntimeProfile.LocalCompilerThesis or NativeRuntimeProfile.LocalCompilerBiber or NativeRuntimeProfile.LocalCompilerUnicode or NativeRuntimeProfile.LocalCompilerGraphicsNavigation or NativeRuntimeProfile.LocalCompilerNavigation or NativeRuntimeProfile.LocalCompilerXeNavigation => SyncTeXCompilerWasmLength, NativeRuntimeProfile.LocalLatex2023SyncTeX or NativeRuntimeProfile.LocalLatex2023Dvi or NativeRuntimeProfile.LocalCompilerSuite or NativeRuntimeProfile.LocalCompilerCompatibility or NativeRuntimeProfile.LocalCompilerBibliography => SyncTeXCompilerWasmLength, _ => Known(profile) ? 1779444 : 0 };
     public static bool Modern(NativeRuntimeProfile profile) => IsSuite(profile) || profile is NativeRuntimeProfile.LocalLatex2023 or NativeRuntimeProfile.LocalLatex2023Authoring or NativeRuntimeProfile.LocalLatex2023SyncTeX or NativeRuntimeProfile.LocalLatex2023Dvi;
+    internal static bool MatchesInstalledCount(NativeRuntimeProfile profile, int count) => count == InstalledCount(profile)
+        || profile == NativeRuntimeProfile.LocalCompilerPageLabels && NativeCompilerPageLabelPins.Ready
+            && count is NativeCompilerTermesPins.ResourceCount or NativeCompilerCompatibleFontPins.ResourceCount or NativeCompilerLuaFontPins.ResourceCount;
+    internal static int SuiteTotalBytes(NativeRuntimeProfile profile, int count) => (profile, count) switch
+    {
+        (NativeRuntimeProfile.LocalCompilerPageLabels, NativeCompilerLuaFontPins.ResourceCount) => NativeCompilerLuaFontPins.TotalBytes,
+        (NativeRuntimeProfile.LocalCompilerPageLabels, NativeCompilerCompatibleFontPins.ResourceCount) => NativeCompilerCompatibleFontPins.TotalBytes,
+        (NativeRuntimeProfile.LocalCompilerPageLabels, NativeCompilerTermesPins.ResourceCount) => NativeCompilerTermesPins.TotalBytes,
+        _ => SuiteTotalBytes(profile)
+    };
+    internal static bool MatchesClosure(NativeRuntimeProfile profile, int count, string closure) => (profile, count) switch
+    {
+        (NativeRuntimeProfile.LocalCompilerPageLabels, NativeCompilerLuaFontPins.ResourceCount) => closure == NativeCompilerLuaFontPins.ClosureHash,
+        (NativeRuntimeProfile.LocalCompilerPageLabels, NativeCompilerCompatibleFontPins.ResourceCount) => closure == NativeCompilerCompatibleFontPins.ClosureHash,
+        (NativeRuntimeProfile.LocalCompilerPageLabels, NativeCompilerTermesPins.ResourceCount) => closure == NativeCompilerTermesPins.ClosureHash,
+        _ => closure == ClosureHash(profile)
+    };
+    internal static string IdentityName(NativeRuntimeProfile profile, int count) => (profile, count) switch
+    {
+        (NativeRuntimeProfile.LocalCompilerPageLabels, NativeCompilerLuaFontPins.ResourceCount) => NativeCompilerLuaFontPins.IdentityName,
+        (NativeRuntimeProfile.LocalCompilerPageLabels, NativeCompilerCompatibleFontPins.ResourceCount) => NativeCompilerCompatibleFontPins.IdentityName,
+        (NativeRuntimeProfile.LocalCompilerPageLabels, NativeCompilerTermesPins.ResourceCount) => NativeCompilerTermesPins.IdentityName,
+        _ => IdentityName(profile)
+    };
     public static int MaxFiles(NativeRuntimeProfile profile) => IsSuite(profile) ? NativeCompilerSuiteContract.Files : 512;
     public static bool Known(NativeRuntimeProfile profile) => profile == NativeRuntimeProfile.Legacy || Modern(profile);
     public static int MaxFileBytes(NativeRuntimeProfile profile) => profile switch
