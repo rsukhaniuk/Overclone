@@ -350,13 +350,13 @@ public class AiSessionTests
         await renderer.Dispatcher.InvokeAsync(async () =>
         {
             var id = await renderer.MountAsync(h.Session);
-            await renderer.ChangeAsync(id, "ai-model", "test-model");
-            await renderer.ChangeAsync(id, "ai-local-url", "https://example.invalid");
+            await renderer.ChangeAsync(id, "ai-model", "test-model", "oninput");
+            await renderer.ChangeAsync(id, "ai-local-url", "https://example.invalid", "oninput");
             await renderer.ClickAsync(id, "ai-connect");
             Assert.Null(h.Session.Connection);
             Assert.Contains("supported Ollama address", h.Session.Status);
 
-            await renderer.ChangeAsync(id, "ai-local-url", "http://127.0.0.1:11434");
+            await renderer.ChangeAsync(id, "ai-local-url", "http://127.0.0.1:11434", "oninput");
             await renderer.ClickAsync(id, "ai-connect");
             var connection = Assert.IsType<AiConnection>(h.Session.Connection);
             Assert.Equal("test-model", connection.Model);

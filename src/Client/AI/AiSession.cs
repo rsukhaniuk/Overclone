@@ -27,6 +27,7 @@ public sealed class AiSession : IDisposable
     public AiConnection? Connection { get; private set; }
     public AiFileContext? Context { get; private set; }
     public string? Answer { get; private set; }
+    public string? ProposalExplanation => HasProposal ? _explanation : null;
     public string Status { get; private set; } = "AI is optional and disconnected. Local editing and analysis are unaffected.";
     public bool Busy => _operation is not null;
     public bool HasProposal => _replacement is not null && Context is { } context && ReferenceEquals(context, _proposalContext) && context.IsCurrent(_workspace);

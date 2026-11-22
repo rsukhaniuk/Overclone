@@ -14,6 +14,31 @@ public class AiProviderTests
         JsonSerializer.Serialize(new { done = true, message = new { content = text } });
 
     [Fact]
+    public async Task Discovery_requests_only_local_tags_and_lists_distinct_chat_models()
+    {
+        using var handler = new Handler((_, _) => Task.FromResult(Json("""
+            {"models":[{"model":"z:latest","name":"old-name"},{"name":"a:7b"},
+                        {"model":"a:7b","capabilities":["completion"]},{"name":"invalid model"},
+                        {"name":"remote","remote_host":"https://ollama.com"},
+                        {"name":"service:cloud"},{"name":"embed","capabilities":["embedding"]}]}
+            """)));
+        using var http = new HttpClient(handler);
+        var provider = new OllamaProvider(http);
+        Assert.Equal(AiOutcome.Unconfigured, (await provider.DiscoverModelsAsync("https://ollama.com", default)).Outcome);
+        var catalog = await provider.DiscoverModelsAsync("http://127.0.0.1:11434", default);
+        Assert.Equal(AiOutcome.Success, catalog.Outcome);
+        Assert.Equal(new[] { "a:7b", "z:latest" }, catalog.Models);
+        var wire = Assert.Single(handler.Requests);
+        Assert.Equal(HttpMethod.Get, wire.Method);
+        Assert.Equal("http://127.0.0.1:11434/api/tags", wire.Uri);
+        Assert.Empty(wire.Body);
+        Assert.Empty(wire.Headers);
+        Assert.Equal("omit", wire.Options["credentials"]);
+        Assert.Equal("no-store", wire.Options["cache"]);
+        Assert.Equal("error", wire.Options["redirect"]);
+    }
+
+    [Fact]
     public async Task Exact_local_wire_contract_omits_credentials_and_requires_a_complete_response()
     {
         using var handler = new Handler((_, _) => Task.FromResult(Json(Success())));
@@ -156,8 +181,8 @@ public class AiProviderTests
         {
             request.Options.TryGetValue(new HttpRequestOptionsKey<IDictionary<string, object>>("WebAssemblyFetchOptions"), out var options);
             request.Options.TryGetValue(new HttpRequestOptionsKey<bool>("WebAssemblyEnableStreamingResponse"), out var streaming);
-            Requests.Add(new(request.Method, request.RequestUri!.AbsoluteUri, await request.Content!.ReadAsStringAsync(ct),
-                request.Content.Headers.ContentType?.MediaType, request.Headers.ToDictionary(h => h.Key, h => string.Join(",", h.Value), StringComparer.OrdinalIgnoreCase),
+            Requests.Add(new(request.Method, request.RequestUri!.AbsoluteUri, request.Content is { } content ? await content.ReadAsStringAsync(ct) : "",
+                request.Content?.Headers.ContentType?.MediaType, request.Headers.ToDictionary(h => h.Key, h => string.Join(",", h.Value), StringComparer.OrdinalIgnoreCase),
                 options ?? new Dictionary<string, object>(), streaming));
             Reached.TrySetResult(); return await Reply(request, ct);
         }

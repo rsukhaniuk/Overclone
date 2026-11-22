@@ -31,14 +31,19 @@ public sealed class AiConnection
     public void Disconnect() => Connected = false;
 
     public static AiConnection? Create(string model, string localUrl = DefaultLocalUrl)
+        => ValidModel(model) && LocalService(localUrl) is { } local
+            ? new(model, new Uri(local, "/api/chat")) : null;
+
+    internal static bool ValidModel(string model) => !string.IsNullOrWhiteSpace(model) && model.Length <= 128
+        && model.All(c => char.IsAsciiLetterOrDigit(c) || c is '-' or '_' or '.' or ':' or '/');
+
+    internal static Uri? LocalService(string localUrl)
     {
-        if (string.IsNullOrWhiteSpace(model) || model.Length > 128
-            || !model.All(c => char.IsAsciiLetterOrDigit(c) || c is '-' or '_' or '.' or ':' or '/')) return null;
         // Match the app's browser connection policy for the local service.
         if (localUrl is null || localUrl.Length > 256 || !Uri.TryCreate(localUrl, UriKind.Absolute, out var local)
             || local.Scheme != Uri.UriSchemeHttp || local.Port != 11434 || local.IdnHost is not ("localhost" or "127.0.0.1")
             || local.UserInfo.Length != 0 || local.Query.Length != 0 || local.Fragment.Length != 0 || local.AbsolutePath != "/") return null;
-        return new(model, new Uri(local, "/api/chat"));
+        return local;
     }
 }
 

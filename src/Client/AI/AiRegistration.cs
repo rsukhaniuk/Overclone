@@ -26,5 +26,7 @@ public sealed class AiSessionFactory : IDisposable
     public AiSessionFactory(WorkspaceCoordinator workspace, IChangeReviewService review)
     { _workspace = workspace; _review = review; }
     public AiSession Create() => new(_workspace, _review, new OllamaProvider(_http));
+    public Task<OllamaModelCatalog> DiscoverModelsAsync(string localUrl, CancellationToken ct)
+        => new OllamaProvider(_http).DiscoverModelsAsync(localUrl, ct);
     public void Dispose() => _http.Dispose();
 }

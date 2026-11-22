@@ -1,71 +1,148 @@
 @using Client.AI
+@using Client.Checks
 @implements IDisposable
 @inject AiSessionFactory Factory
 
 <section class="integration-panel" aria-label="Optional Ollama assistance" data-testid="ai-panel">
-    <h2>Ollama assistance</h2>
-    <p class="hint">Send the active text file and your request to your local Ollama model. Prepared context and answers stay in app memory.</p>
-    <fieldset disabled="@(_session.Connection is not null)">
-        <legend>Local Ollama configuration</legend>
-        <label>Model ID <input @bind="_model" maxlength="128" autocomplete="off" data-testid="ai-model" /></label>
-        <label>Local service base URL <input @bind="_localUrl" maxlength="256" autocomplete="off" data-testid="ai-local-url" /></label>
-        <p>Use an installed model at <code>http://localhost:11434</code> or <code>http://127.0.0.1:11434</code>.</p>
-        <button @onclick="Connect" data-testid="ai-connect">Connect in memory (no request)</button>
-    </fieldset>
-    @if (_session.Connection is { } connection)
+    <h3>AI review</h3>
+    @if (_session.Connection is null)
     {
-        <p data-testid="ai-destination">Ollama · Model: @connection.Model · Destination: @connection.Destination.AbsoluteUri</p>
+        <fieldset>
+            <legend>Connect to local Ollama</legend>
+            <label>Local service URL <input @bind="_localUrl" @bind:event="oninput" @bind:after="ResetModelChoice"
+                maxlength="256" autocomplete="off" data-testid="ai-local-url" /></label>
+            <button class="@(_models.Count == 0 ? "primary" : null)" @onclick="DiscoverModelsAsync"
+                disabled="@(_discovery is not null)" data-testid="ai-discover-models">@(_models.Count == 0 ? "Find installed models" : "Refresh model list")</button>
+            <p class="hint ai-discovery-status" role="status" data-testid="ai-discovery-status">@_discoveryStatus</p>
+            @if (_models.Count > 0)
+            {
+                <label>Installed model
+                    <select @bind="_model" data-testid="ai-installed-models">
+                        <option value="">Choose a model</option>
+                        @foreach (var model in _models)
+                        {
+                            <option value="@model">@model</option>
+                        }
+                    </select>
+                </label>
+            }
+            <details>
+                <summary>Enter model ID manually</summary>
+                <label>Model ID <input @bind="_model" @bind:event="oninput" maxlength="128" autocomplete="off" data-testid="ai-model" /></label>
+            </details>
+            <button class="primary" @onclick="Connect" disabled="@(_discovery is not null || string.IsNullOrWhiteSpace(_model))"
+                data-testid="ai-connect">Use this model</button>
+        </fieldset>
+        <p class="hint">You’ll see the file context before sending anything.</p>
     }
-    <button @onclick="Prepare" disabled="@(_session.Busy || _session.Connection is null)">Prepare active-file context</button>
-    @if (_session.Context is { } context)
+    else
     {
-        <p>File: @context.Filename · @context.ByteLength UTF-8 bytes</p>
-        <details><summary>Context verification</summary><p>BOM: @context.HasBom · Exact hash: @context.Hash</p></details>
-        <pre data-testid="ai-context" style="white-space:pre-wrap">@context.Text</pre>
+        var connection = _session.Connection;
+        <p class="ai-destination" data-testid="ai-destination"><strong>Ollama · @connection.Model</strong><br />@connection.Destination.AbsoluteUri</p>
+        <button @onclick="Prepare" disabled="@_session.Busy">Prepare active-file context</button>
+        @if (_session.Context is { } context)
+        {
+            <p class="context-file">@context.Filename · @context.ByteLength UTF-8 bytes</p>
+            <pre data-testid="ai-context">@context.Text</pre>
+            <details><summary>Context verification</summary><p>BOM: @context.HasBom · Exact hash: @context.Hash</p></details>
+        }
+        @if (_session.Answer is { } answer)
+        {
+            <h3>Response</h3>
+            <pre class="ai-answer" data-testid="ai-answer">@answer</pre>
+        }
+        <label>Your request
+            <textarea @bind="_instruction" @bind:event="oninput" maxlength="8192" disabled="@_session.Busy" placeholder="Ask about this document…"></textarea>
+        </label>
+        <label><input type="checkbox" @bind="_propose" disabled="@_session.Busy" /> Request an edit proposal</label>
+        <details>
+            <summary>Exact request payload</summary>
+            <pre data-testid="ai-payload">@_session.PayloadPreview(_instruction, _propose)</pre>
+        </details>
+        <p class="hint">Send shares the displayed context and your request with Ollama.
+            @if (Completed.HasDelegate) { <span>The reply is saved locally in this project. Edit proposals save their explanation.</span> }
+        </p>
+        <div class="actions">
+            <button class="primary" @onclick="Send" disabled="@(_session.Busy || _session.Context is null || string.IsNullOrWhiteSpace(_instruction))">Send disclosed request</button>
+            @if (_session.Busy) { <button @onclick="Cancel">Cancel</button> }
+        </div>
+        @if (_session.HasProposal)
+        {
+            <button @onclick="Preview" disabled="@_session.Busy">Review proposed edits</button>
+        }
+        <button class="disconnect" @onclick="Disconnect">Disconnect and clear memory</button>
     }
-    <label>Your request (at most 8192 UTF-8 bytes)
-        <textarea @bind="_instruction" @bind:event="oninput" maxlength="8192" disabled="@_session.Busy"></textarea>
-    </label>
-    <label><input type="checkbox" @bind="_propose" disabled="@_session.Busy" /> Request an edit proposal instead of a chat answer</label>
-    <p class="hint">Proposed edits are untrusted. Preview them in Review, then explicitly accept or decline.</p>
-    <details>
-        <summary>Advanced: exact request payload</summary>
-        <p>Edit proposals use strict JSON for this file. Model output is never a tool call or command.</p>
-        <pre data-testid="ai-payload" style="white-space:pre-wrap">@_session.PayloadPreview(_instruction, _propose)</pre>
-    </details>
-    <p>Send submits the displayed file context and request to the selected model.</p>
-    <button @onclick="Send" disabled="@(_session.Busy || _session.Context is null || _session.Connection is null)">Send disclosed request</button>
-    <button @onclick="Preview" disabled="@(_session.Busy || !_session.HasProposal)">Preview proposal in Review (not acceptance)</button>
-    <button @onclick="Cancel" disabled="@(!_session.Busy)">Cancel</button>
-    <button @onclick="Disconnect">Disconnect and clear memory</button>
-    <p role="status" data-testid="ai-status">@_session.Status</p>
-    @if (_session.Busy) { <small>Operation slot remains occupied until the actual request settles, even after cancellation.</small> }
-    @if (_session.Answer is { } answer)
-    {
-        <h3>Answer (plain text; not applied)</h3>
-        <pre data-testid="ai-answer" style="white-space:pre-wrap">@answer</pre>
-    }
+    <p role="status" hidden="@(!_connectionAttempted && _session.Connection is null)" data-testid="ai-status">@_session.Status</p>
 </section>
 
 @code {
     // Optional borrowed session is fixed for this mount; otherwise this panel owns one.
     [Parameter] public AiSession? Session { get; set; }
+    [Parameter] public EventCallback<CheckReport> Completed { get; set; }
     private AiSession _session = default!;
     private bool _ownsSession;
     private string _model = "", _localUrl = AiConnection.DefaultLocalUrl, _instruction = "";
-    private bool _propose, _disposed;
+    private IReadOnlyList<string> _models = [];
+    private CancellationTokenSource? _discovery;
+    private string? _discoveryStatus;
+    private bool _propose, _disposed, _connectionAttempted;
     protected override void OnInitialized()
     {
         _ownsSession = Session is null;
         _session = Session ?? Factory.Create();
         _session.Changed += Changed;
     }
-    private Task Connect() => InvokeAsync(() => _session.Connect(_model, _localUrl));
+    private void Connect()
+    {
+        _connectionAttempted = true;
+        _session.Connect(_model, _localUrl);
+    }
+    private async Task DiscoverModelsAsync()
+    {
+        if (_disposed || _discovery is not null) return;
+        using var discovery = _discovery = new();
+        _discoveryStatus = "Looking for installed models…";
+        try
+        {
+            var catalog = await Factory.DiscoverModelsAsync(_localUrl, discovery.Token);
+            if (_disposed || discovery.IsCancellationRequested) return;
+            if (_models.Contains(_model) && !catalog.Models.Contains(_model)) _model = "";
+            _models = catalog.Models;
+            if (_models.Count == 1 && _model.Length == 0) _model = _models[0];
+            _discoveryStatus = catalog.Outcome switch
+            {
+                AiOutcome.Success => _models.Count == 0 ? "No local chat models found. Install a model in Ollama, then try again." : null,
+                AiOutcome.Unconfigured => "Use http://localhost:11434 or http://127.0.0.1:11434.",
+                AiOutcome.Connectivity or AiOutcome.AccessDenied => "Could not list models. Check that Ollama is running and allows this browser origin.",
+                AiOutcome.Timeout => "Ollama took too long to list models. Try again or enter the model ID manually.",
+                _ => "Could not list models. Try again or enter the model ID manually."
+            };
+        }
+        finally { _discovery = null; }
+    }
+    private void ResetModelChoice()
+    {
+        _discovery?.Cancel();
+        if (_models.Contains(_model)) _model = "";
+        _models = [];
+        _discoveryStatus = null;
+        _connectionAttempted = false;
+    }
     private Task Prepare() => InvokeAsync(_session.PrepareAsync);
-    private Task Send() => InvokeAsync(() => _session.SendAsync(_instruction, _propose, consent: true));
+    private async Task Send()
+    {
+        if (_session.Busy || _session.Context is not { } context || _session.Connection is not { } connection) return;
+        bool propose = _propose;
+        await _session.SendAsync(_instruction, propose, consent: true);
+        if (_disposed || !Completed.HasDelegate || !ReferenceEquals(context, _session.Context)
+            || !ReferenceEquals(connection, _session.Connection) || _session.Answer is not { } answer) return;
+        string detail = propose ? _session.ProposalExplanation ?? "The model did not provide a usable edit proposal." : answer;
+        await Completed.InvokeAsync(CheckReport.Create(context.Identity.ProjectId, "ai", $"AI review · {connection.Model}",
+            propose ? "Edit review" : "Response", context.Identity.ExpectedHead, context.Hash.Hex, $"File: {context.Filename}\n\n{detail}"));
+    }
     private Task Preview() => InvokeAsync(_session.PreviewProposalAsync);
     private Task Cancel() => InvokeAsync(_session.Cancel);
-    private Task Disconnect() => InvokeAsync(() => { _session.Disconnect(); _instruction = ""; });
+    private Task Disconnect() => InvokeAsync(() => { _session.Disconnect(); _instruction = ""; _model = ""; ResetModelChoice(); });
     private void Changed() { if (!_disposed) _ = Render(); }
     private async Task Render()
     {
@@ -76,6 +153,7 @@
     public void Dispose()
     {
         _disposed = true;
+        _discovery?.Cancel();
         if (_session is not null) { _session.Changed -= Changed; if (_ownsSession) _session.Dispose(); }
         _instruction = "";
     }

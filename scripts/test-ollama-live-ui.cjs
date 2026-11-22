@@ -56,12 +56,14 @@ async function phase(name, action) {
     }
     browser = await chromium.launch({ headless: true });
     const context = await browser.newContext(); const page = await context.newPage();
-    const requests = [];
+    const requests = [], catalogRequests = [];
     page.on("pageerror", error => receipt.errors.push(String(error).slice(0, 500)));
     page.on("request", request => {
       const url = new URL(request.url());
       if (url.origin === "http://localhost:11434" && url.pathname === "/api/chat" && request.method() === "POST")
         requests.push(JSON.parse(request.postData()));
+      else if (url.origin === "http://localhost:11434" && url.pathname === "/api/tags")
+        catalogRequests.push({ method: request.method(), body: request.postData() });
       else if (["http:", "https:"].includes(url.protocol) && url.origin !== receipt.origin && url.origin !== "http://localhost:11434")
         receipt.externalRequests.push(url.origin);
     });
@@ -77,7 +79,13 @@ async function phase(name, action) {
     });
     const before = await H.head(page, name);
     await phase("disclose exact local context without sending", async () => {
-      await reveal(page, $(page, "ai-model")); await $(page, "ai-model").fill(model); await $(page, "ai-model").blur();
+      await reveal(page, $(page, "ai-discover-models"));
+      assert.equal(catalogRequests.length, 0);
+      await $(page, "ai-discover-models").click();
+      const models = $(page, "ai-installed-models");
+      await models.selectOption(model);
+      receipt.installedModelCount = await models.locator('option[value]:not([value=""])').count();
+      assert.deepEqual(catalogRequests, [{ method: "GET", body: null }]);
       await $(page, "ai-connect").click(); await $(page, "ai-destination").waitFor();
       await page.getByRole("button", { name: "Prepare active-file context", exact: true }).click();
       await $(page, "ai-context").waitFor(); assert.equal(await $(page, "ai-context").textContent(), source);
@@ -96,7 +104,7 @@ async function phase(name, action) {
       assert.deepEqual(await H.head(page, name), before); assert.equal(await $(page, "editor").inputValue(), source);
     });
     await phase("preview explicit acceptance and durable undo", async () => {
-      await page.getByRole("button", { name: "Preview proposal in Review (not acceptance)", exact: true }).click();
+      await page.getByRole("button", { name: "Review proposed edits", exact: true }).click();
       await $(page, "review-preview").waitFor(); await H.idle(page);
       assert.deepEqual(await H.head(page, name), before);
       await reveal(page, $(page, "review-accept")); await $(page, "review-accept").click(); await H.action(page);

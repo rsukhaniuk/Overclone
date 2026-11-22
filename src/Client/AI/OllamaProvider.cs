@@ -11,31 +11,45 @@ public sealed class OllamaProvider(HttpClient http) : IAiProvider
     {
         if (!connection.Connected) return AiReply.Failure(AiOutcome.Unconfigured);
         if (!AiLimits.Fits(request.Prompt, AiLimits.ContextBytes + AiLimits.InstructionBytes + 4096)) return AiReply.Failure(AiOutcome.TooLarge);
+        var payload = JsonSerializer.SerializeToUtf8Bytes(Payload(connection, request));
+        if (payload.Length > AiLimits.BodyBytes) return AiReply.Failure(AiOutcome.TooLarge);
+        using var message = new HttpRequestMessage(HttpMethod.Post, connection.Destination);
+        message.Content = new ByteArrayContent(payload);
+        message.Content.Headers.ContentType = new("application/json");
+        var result = await ReadAsync(message, AiLimits.Timeout, Parse, AiReply.Failure, ct);
+        return connection.Connected ? result : AiReply.Failure(AiOutcome.Cancelled);
+    }
+
+    public async Task<OllamaModelCatalog> DiscoverModelsAsync(string localUrl, CancellationToken ct)
+    {
+        if (AiConnection.LocalService(localUrl) is not { } local)
+            return OllamaModelCatalog.Failed(AiOutcome.Unconfigured);
+        using var message = new HttpRequestMessage(HttpMethod.Get, new Uri(local, "/api/tags"));
+        return await ReadAsync(message, TimeSpan.FromSeconds(5), ParseModels, OllamaModelCatalog.Failed, ct);
+    }
+
+    private async Task<T> ReadAsync<T>(HttpRequestMessage message, TimeSpan deadline, Func<JsonElement, T> parse,
+        Func<AiOutcome, T> failure, CancellationToken ct)
+    {
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
-        timeout.CancelAfter(AiLimits.Timeout);
+        timeout.CancelAfter(deadline);
         try
         {
             ct.ThrowIfCancellationRequested();
-            var payload = JsonSerializer.SerializeToUtf8Bytes(Payload(connection, request));
-            if (payload.Length > AiLimits.BodyBytes) return AiReply.Failure(AiOutcome.TooLarge);
-            using var message = new HttpRequestMessage(HttpMethod.Post, connection.Destination);
             message.SetBrowserRequestCredentials(BrowserRequestCredentials.Omit);
             message.SetBrowserRequestCache(BrowserRequestCache.NoStore);
             message.SetBrowserRequestOption("redirect", "error");
             message.SetBrowserResponseStreamingEnabled(true);
-            message.Content = new ByteArrayContent(payload);
-            message.Content.Headers.ContentType = new("application/json");
             using var response = await http.SendAsync(message, HttpCompletionOption.ResponseHeadersRead, timeout.Token);
             timeout.Token.ThrowIfCancellationRequested();
-            if (!connection.Connected) return AiReply.Failure(AiOutcome.Cancelled);
-            if (!response.IsSuccessStatusCode) return AiReply.Failure(response.StatusCode switch
+            if (!response.IsSuccessStatusCode) return failure(response.StatusCode switch
             {
                 HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden => AiOutcome.AccessDenied,
                 HttpStatusCode.TooManyRequests => AiOutcome.Quota,
                 HttpStatusCode.NotFound => AiOutcome.MissingModel,
                 _ => AiOutcome.Unavailable
             });
-            if (response.Content.Headers.ContentLength > AiLimits.BodyBytes) return AiReply.Failure(AiOutcome.TooLarge);
+            if (response.Content.Headers.ContentLength > AiLimits.BodyBytes) return failure(AiOutcome.TooLarge);
             await using var stream = await response.Content.ReadAsStreamAsync(timeout.Token);
             // Fixed upper allocation, even when content length is missing/dishonest.
             var bytes = new byte[AiLimits.BodyBytes + 1];
@@ -47,21 +61,43 @@ public sealed class OllamaProvider(HttpClient http) : IAiProvider
                 if (n == 0) break;
                 count += n;
             }
-            if (count > AiLimits.BodyBytes) return AiReply.Failure(AiOutcome.TooLarge);
+            if (count > AiLimits.BodyBytes) return failure(AiOutcome.TooLarge);
             AiLimits.Utf8.GetCharCount(bytes, 0, count);
             using var json = JsonDocument.Parse(bytes.AsMemory(0, count), new JsonDocumentOptions { MaxDepth = 24 });
-            if (!AiJson.Unique(json.RootElement)) return AiReply.Failure(AiOutcome.Malformed);
-            var result = Parse(json.RootElement);
+            if (!AiJson.Unique(json.RootElement)) return failure(AiOutcome.Malformed);
+            var result = parse(json.RootElement);
             timeout.Token.ThrowIfCancellationRequested();
-            if (!connection.Connected) return AiReply.Failure(AiOutcome.Cancelled);
-            if (result.Text is { } text && !AiLimits.Fits(text, AiLimits.OutputBytes)) return AiReply.Failure(AiOutcome.TooLarge);
             return result;
         }
-        catch (OperationCanceledException) { return AiReply.Failure(ct.IsCancellationRequested ? AiOutcome.Cancelled : AiOutcome.Timeout); }
-        catch (HttpRequestException) { return AiReply.Failure(AiOutcome.Connectivity); }
+        catch (OperationCanceledException) { return failure(ct.IsCancellationRequested ? AiOutcome.Cancelled : AiOutcome.Timeout); }
+        catch (HttpRequestException) { return failure(AiOutcome.Connectivity); }
         catch (Exception e) when (e is JsonException or InvalidOperationException or ArgumentException)
-        { return AiReply.Failure(AiOutcome.Malformed); }
-        catch (Exception) { return AiReply.Failure(AiOutcome.Unavailable); }
+        { return failure(AiOutcome.Malformed); }
+        catch (Exception) { return failure(AiOutcome.Unavailable); }
+    }
+
+    private static OllamaModelCatalog ParseModels(JsonElement root)
+    {
+        if (root.ValueKind != JsonValueKind.Object || !root.TryGetProperty("models", out var models)
+            || models.ValueKind != JsonValueKind.Array)
+            return OllamaModelCatalog.Failed(AiOutcome.Malformed);
+        if (models.GetArrayLength() > 512) return OllamaModelCatalog.Failed(AiOutcome.TooLarge);
+
+        var names = new SortedSet<string>(StringComparer.Ordinal);
+        foreach (var entry in models.EnumerateArray())
+        {
+            if (!AiJson.String(entry, "model", out var name) && !AiJson.String(entry, "name", out name)) continue;
+            if (!AiConnection.ValidModel(name) || name.EndsWith(":cloud", StringComparison.OrdinalIgnoreCase)
+                || name.EndsWith("-cloud", StringComparison.OrdinalIgnoreCase)
+                || AiJson.String(entry, "remote_host", out var host) && host.Length > 0
+                || AiJson.String(entry, "remote_model", out var remote) && remote.Length > 0) continue;
+            if (entry.TryGetProperty("capabilities", out var capabilities) && capabilities.ValueKind == JsonValueKind.Array
+                && capabilities.GetArrayLength() > 0
+                && !capabilities.EnumerateArray().Any(cap => cap.ValueKind == JsonValueKind.String && cap.GetString() == "completion"))
+                continue;
+            names.Add(name);
+        }
+        return new(AiOutcome.Success, names.ToArray());
     }
 
     private static object Payload(AiConnection connection, AiTextRequest request) => new
@@ -80,8 +116,14 @@ public sealed class OllamaProvider(HttpClient http) : IAiProvider
         if (AiJson.String(root, "done_reason", out var reason) && reason == "length") return AiReply.Failure(AiOutcome.Refused);
         if (!root.TryGetProperty("message", out var message) || !AiJson.String(message, "content", out var text)) return AiReply.Failure(AiOutcome.Malformed);
         if (message.TryGetProperty("tool_calls", out var tools) && tools.ValueKind == JsonValueKind.Array && tools.GetArrayLength() > 0) return AiReply.Failure(AiOutcome.Refused);
-        return string.IsNullOrWhiteSpace(text) ? AiReply.Failure(AiOutcome.Refused) : AiReply.Answer(text);
+        if (string.IsNullOrWhiteSpace(text)) return AiReply.Failure(AiOutcome.Refused);
+        return AiLimits.Fits(text, AiLimits.OutputBytes) ? AiReply.Answer(text) : AiReply.Failure(AiOutcome.TooLarge);
     }
+}
+
+public sealed record OllamaModelCatalog(AiOutcome Outcome, IReadOnlyList<string> Models)
+{
+    internal static OllamaModelCatalog Failed(AiOutcome outcome) => new(outcome, []);
 }
 
 internal static class AiJson
