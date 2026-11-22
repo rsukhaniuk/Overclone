@@ -28,7 +28,8 @@ public enum CompilerLogFlags
 public enum CompilerDiagnosticSeverity { Error, Warning, Unknown }
 public enum CompilerLocationIssue { None, MissingLine, InvalidLineNumber, UnknownFile, UncertainContext, OutOfRange, InvalidSourceUtf8, BinarySource, ResourceLimit }
 public enum CompilerDiagnosticCode { MissingFile, Encoding, Metric, Unicode, Error, Fatal, Reference, Citation, Rerun, Warning, Unknown,
-    OverfullHBox, UnderfullHBox, OverfullVBox, UnderfullVBox }
+    OverfullHBox, UnderfullHBox, OverfullVBox, UnderfullVBox, FontspecEngine, FontspecMissingFont,
+    FontspecMissingArial, FontspecMissingTimesNewRoman, MissingXstring }
 public enum CompilerLocationPrecision { Line }
 public enum CompilerLocationBasis { ExplicitFileLine, BalancedNarrowContext, NarrowFatalContext }
 
@@ -110,6 +111,11 @@ internal static class CompilerLogMessages
         CompilerDiagnosticCode.Unicode => "TEX004",
         CompilerDiagnosticCode.Error => "TEX005",
         CompilerDiagnosticCode.Fatal => "TEX006",
+        CompilerDiagnosticCode.FontspecEngine => "TEX007",
+        CompilerDiagnosticCode.FontspecMissingFont => "TEX008",
+        CompilerDiagnosticCode.FontspecMissingArial => "TEX009",
+        CompilerDiagnosticCode.FontspecMissingTimesNewRoman => "TEX010",
+        CompilerDiagnosticCode.MissingXstring => "TEX011",
         CompilerDiagnosticCode.Reference => "TEX101",
         CompilerDiagnosticCode.Citation => "TEX102",
         CompilerDiagnosticCode.Rerun => "TEX103",
@@ -128,6 +134,11 @@ internal static class CompilerLogMessages
         CompilerDiagnosticCode.Unicode => "LaTeX inputenc could not represent a Unicode character.",
         CompilerDiagnosticCode.Error => "The compiler reported an error; review the local log.",
         CompilerDiagnosticCode.Fatal => "The compiler reported a fatal stop.",
+        CompilerDiagnosticCode.FontspecEngine => "fontspec requires XeLaTeX or LuaLaTeX. Change the engine in Compiler settings and compile again.",
+        CompilerDiagnosticCode.FontspecMissingFont => "fontspec could not find a requested font. See the name in the compile log, then add the font files to the project and select them by filename, or choose an available font.",
+        CompilerDiagnosticCode.FontspecMissingArial => "fontspec could not find Arial in the selected compiler.",
+        CompilerDiagnosticCode.FontspecMissingTimesNewRoman => "fontspec could not find Times New Roman in the selected compiler.",
+        CompilerDiagnosticCode.MissingXstring => "The selected compiler could not load the xstring package.",
         CompilerDiagnosticCode.Reference => "LaTeX reported an unresolved reference.",
         CompilerDiagnosticCode.Citation => "LaTeX reported an unresolved citation.",
         CompilerDiagnosticCode.Rerun => "LaTeX requested another pass; convergence is not established.",

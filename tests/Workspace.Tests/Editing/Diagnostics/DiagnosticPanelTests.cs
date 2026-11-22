@@ -27,10 +27,12 @@ public sealed class DiagnosticPanelTests
         Assert.Contains("diagnostic-filter-file", html); Assert.Contains("diagnostic-filter-rule", html); Assert.Contains("diagnostic-filter-currentness", html);
         Assert.Contains("&lt;img", html); Assert.DoesNotContain("<img src=x", html); Assert.Contains("Україна", System.Net.WebUtility.HtmlDecode(html));
         Assert.Contains("diagnostic-source", html); Assert.DoesNotContain("data-testid=\"preview-fix\"", html);
-        Assert.Contains("does not prove", html); Assert.Contains("No UserUnit", html);
+        Assert.Contains("<summary>Report coverage</summary>", html);
+        Assert.Contains("data-testid=\"diagnostic-origin-status\"", html);
         h.List.SetFilter(new(DiagnosticOrigin.Rendered)); html = await Render(renderer, h.List); Assert.Contains("diagnostic-empty-filter", html);
         h.List.ResetFilters(); h.Analysis.Cancel(); html = await Render(renderer, h.List);
-        Assert.Contains("STALE", html); Assert.DoesNotContain("data-testid=\"diagnostic-source\"", html);
+        Assert.Contains("Earlier result", html); Assert.Contains("data-current=\"false\"", html);
+        Assert.DoesNotContain("data-testid=\"diagnostic-source\"", html);
         Assert.Equal(state, h.Work.State()); Assert.Equal(reads, h.Work.Repo.Reads); Assert.Equal(inspections, h.Inspector.Calls.Count); Assert.Equal(evaluations, h.Evaluator.Calls);
     });
 
@@ -40,7 +42,7 @@ public sealed class DiagnosticPanelTests
         using var services = Services(h); await using var renderer = new HtmlRenderer(services, services.GetRequiredService<ILoggerFactory>());
         string html = await Render(renderer, h.List);
         Assert.Equal(50, html.Split("data-testid=\"diagnostic-row\"", StringSplitOptions.None).Length - 1);
-        Assert.Contains("Continue rows", html); Assert.Contains("1001 projected rows", html);
+        Assert.Contains("Continue rows", html); Assert.Contains("1001 matching entries", html); Assert.Contains("50 shown", html);
         h.List.Next(); string next = await Render(renderer, h.List); Assert.Equal(50, next.Split("data-testid=\"diagnostic-row\"", StringSplitOptions.None).Length - 1);
         Assert.Contains("Page 2", next); Assert.Equal(1, h.Analyzer.Calls);
     });

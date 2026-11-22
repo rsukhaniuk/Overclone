@@ -58,6 +58,7 @@ public static class CompilerLogParser
         private readonly List<CompilationInputFile?> _context = [];
         private readonly List<Candidate> _records = [];
         private Candidate? _pending;
+        private int _missingFilePrompt;
         private CompilerLogFlags _flags;
         private long _work, _retained;
         private int _consumed, _lines, _sourceLines;
@@ -227,19 +228,30 @@ public static class CompilerLogParser
         }
         private void Add(Candidate candidate)
         {
-            if (_records.Count >= budget.MaxDiagnostics) throw new Limit();
+            int replace = -1;
+            if (_records.Count >= budget.MaxDiagnostics)
+            {
+                // The retained list may fill before TeX reaches its first error.
+                // Keep scanning within the work budget and make room for errors.
+                _flags |= CompilerLogFlags.ResourceLimit;
+                if (candidate.Severity != CompilerDiagnosticSeverity.Error) return;
+                Work(2L * _records.Count);
+                replace = _records.FindLastIndex(record => record.Severity != CompilerDiagnosticSeverity.Error);
+                if (replace < 0) return;
+            }
             int message = Encoding.UTF8.GetByteCount(CompilerLogMessages.Message(candidate.Code));
             if (message > budget.MaxMessageBytes) throw new Limit();
             // Reserve both full record and deduplicated B2a projection + file path.
             int path = candidate.File is null ? 0 : PathBytes(candidate.File.RelativePath);
             Work(256); Retain(512L + 2L * message + path);
+            if (replace >= 0) _records.RemoveAt(replace);
             _records.Add(candidate);
         }
         private void FlushPending()
         {
             if (_pending is not { } pending) return;
             Add(pending with { Issue = pending.Issue == CompilerLocationIssue.None ? CompilerLocationIssue.MissingLine : pending.Issue });
-            _pending = null; _flags |= CompilerLogFlags.IncompleteDiagnostic;
+            _pending = null; _missingFilePrompt = 0; _flags |= CompilerLogFlags.IncompleteDiagnostic;
         }
         private CompilationInputFile? Match(ReadOnlySpan<char> alleged)
         {
@@ -281,11 +293,32 @@ public static class CompilerLogParser
                 }
                 return; // Metric parentheses never enter the filename grammar.
             }
-            if (TryFileLine(line, start, end, out var direct)) { FlushPending(); Add(direct!); return; }
+            if (TryFileLine(line, start, end, out var direct, out bool missingStop))
+            {
+                if (missingStop && _pending is { } missing)
+                {
+                    // LaTeX reports the missing name, prompts for a replacement,
+                    // then emits an explicit file:line on emergency stop.
+                    Add(direct! with { Code = missing.Code, Start = missing.Start, End = missing.End });
+                    _pending = null; _missingFilePrompt = 0;
+                }
+                else { FlushPending(); Add(direct!); }
+                return;
+            }
+            _missingFilePrompt = _missingFilePrompt switch
+            {
+                0 when _pending?.Code is (CompilerDiagnosticCode.MissingFile or CompilerDiagnosticCode.MissingXstring)
+                    && line.SequenceEqual("Type X to quit or <RETURN> to proceed,") => 1,
+                1 when line.SequenceEqual("or enter new name. (Default extension: tex)") => 2,
+                2 when line.TrimEnd().SequenceEqual("Enter file name:") => 3,
+                _ => 0
+            };
             if (line.StartsWith("!", StringComparison.Ordinal))
             {
                 FlushPending(); var code = Classify(line);
-                var record = Record(code, CompilerDiagnosticSeverity.Error, start, end, Current);
+                // This fatal error points to the engine guard inside fontspec.sty.
+                var record = Record(code, CompilerDiagnosticSeverity.Error, start, end,
+                    code == CompilerDiagnosticCode.FontspecEngine ? null : Current);
                 if (code == CompilerDiagnosticCode.Fatal) Add(record with { Issue = CompilerLocationIssue.MissingLine });
                 else _pending = record;
                 if (_fatalPending is null && line.SequenceEqual("! Undefined control sequence.")) _fatalPending = record;
@@ -520,21 +553,44 @@ public static class CompilerLogParser
                 || line.StartsWith("Output written on ", StringComparison.Ordinal) || line.StartsWith("Transcript written on ", StringComparison.Ordinal)
                 || line.StartsWith("No file ", StringComparison.Ordinal) || line.StartsWith("LaTeX Font Info:", StringComparison.Ordinal)
                 || line.StartsWith("Package: ", StringComparison.Ordinal) || line.StartsWith("File: ", StringComparison.Ordinal);
+        private static bool IsMissingTeXInput(ReadOnlySpan<char> message)
+        {
+            const string prefix = "I can't find file `";
+            return message.Length > prefix.Length + 2
+                && message.StartsWith(prefix, StringComparison.Ordinal)
+                && message.EndsWith("'.", StringComparison.Ordinal);
+        }
         private static CompilerDiagnosticCode Classify(ReadOnlySpan<char> line)
         {
+            var message = line.TrimStart('!').TrimStart();
+            if (message.StartsWith("Fatal Package fontspec Error: The fontspec package requires either XeTeX or", StringComparison.Ordinal))
+                return CompilerDiagnosticCode.FontspecEngine;
+            const string missingFont = "Package fontspec Error: The font \"";
+            if (message.StartsWith(missingFont, StringComparison.Ordinal))
+            {
+                var name = message[missingFont.Length..];
+                if (name.StartsWith("Arial\"", StringComparison.Ordinal)) return CompilerDiagnosticCode.FontspecMissingArial;
+                if (name.StartsWith("Times New Roman\"", StringComparison.Ordinal) || name.StartsWith("TimesNewRoman\"", StringComparison.Ordinal))
+                    return CompilerDiagnosticCode.FontspecMissingTimesNewRoman;
+                return CompilerDiagnosticCode.FontspecMissingFont;
+            }
+            if (message.StartsWith("LaTeX Error: File `xstring.sty' not found", StringComparison.Ordinal)
+                || message.StartsWith("LaTeX Error: File `xstring.tex' not found", StringComparison.Ordinal))
+                return CompilerDiagnosticCode.MissingXstring;
             if (line.Contains("Fatal error", StringComparison.Ordinal) || line.Contains("Emergency stop", StringComparison.Ordinal)) return CompilerDiagnosticCode.Fatal;
             if (line.Contains("Encoding file", StringComparison.Ordinal)) return CompilerDiagnosticCode.Encoding;
             if (line.Contains("Metric (TFM)", StringComparison.Ordinal)) return CompilerDiagnosticCode.Metric;
             if (line.Contains("Package inputenc Error:", StringComparison.Ordinal) && line.Contains("Unicode char", StringComparison.Ordinal)) return CompilerDiagnosticCode.Unicode;
-            if (line.Contains("File `", StringComparison.Ordinal) && line.Contains("not found", StringComparison.Ordinal)) return CompilerDiagnosticCode.MissingFile;
+            if (IsMissingTeXInput(message) || line.Contains("File `", StringComparison.Ordinal) && line.Contains("not found", StringComparison.Ordinal))
+                return CompilerDiagnosticCode.MissingFile;
             if (line.Contains("Reference `", StringComparison.Ordinal) || line.Contains("undefined references", StringComparison.Ordinal)) return CompilerDiagnosticCode.Reference;
             if (line.Contains("Citation `", StringComparison.Ordinal) || line.Contains("undefined citations", StringComparison.Ordinal)) return CompilerDiagnosticCode.Citation;
             if (line.Contains("Rerun", StringComparison.Ordinal)) return CompilerDiagnosticCode.Rerun;
             return IsWarning(line) ? CompilerDiagnosticCode.Warning : CompilerDiagnosticCode.Error;
         }
-        private bool TryFileLine(ReadOnlySpan<char> line, int start, int end, out Candidate? record)
+        private bool TryFileLine(ReadOnlySpan<char> line, int start, int end, out Candidate? record, out bool missingStop)
         {
-            record = null;
+            record = null; missingStop = false;
             for (int i = 0; i < line.Length; i++)
             {
                 if (line[i] != ':' || i + 1 >= line.Length || !char.IsAsciiDigit(line[i + 1])) continue;
@@ -547,12 +603,25 @@ public static class CompilerLogParser
                 Work(message.Length * 2L + 1);
                 if (BoxRecordStart(message)) return false;
                 bool warning = IsWarning(message);
+                missingStop = _missingFilePrompt == 3 && message.SequenceEqual("Emergency stop.");
                 bool error = message.StartsWith("LaTeX Error:", StringComparison.Ordinal) || message.StartsWith("!", StringComparison.Ordinal)
                     || message.StartsWith("Undefined control sequence", StringComparison.Ordinal)
                     || message.StartsWith("Missing $ inserted", StringComparison.Ordinal)
+                    || IsMissingTeXInput(message)
+                    || missingStop
                     || (message.StartsWith("Package ", StringComparison.Ordinal) && message.Contains(" Error:", StringComparison.Ordinal));
                 if (!warning && !error) return false;
-                var file = Match(line[..i]);
+                var path = line[..i];
+                // The bundled Unicode engines use separate fixed project mounts.
+                // Keep the remaining spelling exact and exclude resource and host paths.
+                var projectPrefix = snapshot.Selection.Engine.Id switch
+                {
+                    "xelatex" => "/work/",
+                    "lualatex" => "/work/project/",
+                    _ => null
+                };
+                var file = projectPrefix is not null && path.StartsWith(projectPrefix, StringComparison.Ordinal)
+                    ? _files.GetValueOrDefault(path[projectPrefix.Length..].ToString()) : Match(path);
                 record = Record(Classify(message), warning ? CompilerDiagnosticSeverity.Warning : CompilerDiagnosticSeverity.Error, start, end, file, true)
                     with
                 { Line = number > 0 ? number : null, Issue = number > 0 ? file is null ? CompilerLocationIssue.UnknownFile : CompilerLocationIssue.None : CompilerLocationIssue.InvalidLineNumber };

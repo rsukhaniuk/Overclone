@@ -36,6 +36,7 @@ public sealed partial class DiagnosticListSession
             _extent = extent; _extentRevoked = false; _pageLost = false;
             _extentAuthority = RenderedExtentAuthority.Capture(_workspace, _compile);
             _extentPreview = _compile.Preview; _extentGeneration = _extentPreview.State.Generation;
+            _extentProvenanceVersion = _extentPreview.ProvenanceVersion;
         }
         bool sourceCurrent = !_sourceRevoked && _sourceReport is { } sourceReport && _source.IsStillCurrent(sourceReport);
         bool compilerCurrent = !_compilerRevoked && CompilerCurrent();
@@ -43,6 +44,7 @@ public sealed partial class DiagnosticListSession
         if (_sourceReport is not null && !sourceCurrent) _sourceRevoked = true;
         if (_attempt is not null && !compilerCurrent) _compilerRevoked = true;
         if (_extent is not null && !extentCurrent) _extentRevoked = true;
+        if (_extent is not null && _extentPreview?.ProvenanceVersion != _extentProvenanceVersion) _pageLost = true;
         if (_extent is not null && !_pageLost && _extentPreview is { } preview && preview.State.Generation != _extentGeneration)
         {
             // A deliberate owned page action may advance exactly once. Any

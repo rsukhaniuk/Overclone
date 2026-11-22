@@ -12,31 +12,34 @@
     var view = CurrentSession.Snapshot();
     bool working = _pending || view.Busy;
 }
-<section aria-label="Diagnostic filters and navigation" data-testid="diagnostic-list" data-busy="@working.ToString().ToLowerInvariant()">
-    <h3>Diagnostic filters</h3>
-    <p>View existing source, compiler and narrow rendered observations. Filtering does not analyze, compile, save or edit. No findings does not prove scholarly or formatting compliance. Detailed rule/context/fix panels remain available separately.</p>
-    <p>No UserUnit, glyph ink/style or physical-rule measurement is supplied here. Rendered rows cover only existing extent observations and author-labelled ranges.</p>
-    <fieldset>
-        <legend>Filter existing rows</legend>
-        <label>Origin <select value="@(view.Filter.Origin?.ToString() ?? "")" @onchange="OriginChanged" data-testid="diagnostic-filter-origin">
-            <option value="">All origins</option>@foreach (var origin in Enum.GetValues<DiagnosticOrigin>()) { <option value="@origin">@origin</option> }
+<section class="tool-content check-findings" aria-label="Filter findings" data-testid="diagnostic-list" data-busy="@working.ToString().ToLowerInvariant()">
+    <div class="checks-filters">
+        <label>Tool <select value="@(view.Filter.Origin?.ToString() ?? "")" @onchange="OriginChanged" data-testid="diagnostic-filter-origin">
+            <option value="">All tools</option>@foreach (var origin in Enum.GetValues<DiagnosticOrigin>()) { <option value="@origin">@origin</option> }
         </select></label>
         <label>Severity <select value="@(view.Filter.Severity?.ToString() ?? "")" @onchange="SeverityChanged" data-testid="diagnostic-filter-severity">
             <option value="">All severities</option>@foreach (var severity in Enum.GetValues<DiagnosticSeverity>()) { <option value="@severity">@severity</option> }
         </select></label>
-        <label>Captured file <select value="@(view.Filter.File ?? "")" @onchange="FileChanged" data-testid="diagnostic-filter-file">
-            <option value="">All files</option><option value="none">No canonical source file</option>
+        <label>File <select value="@(view.Filter.File ?? "")" @onchange="FileChanged" data-testid="diagnostic-filter-file">
+            <option value="">All files</option><option value="none">Findings without a file</option>
             @foreach (var file in view.Files) { <option value="@file.Value">@file.Label</option> }
         </select></label>
-        <label>Rule/code <select value="@(view.Filter.Rule ?? "")" @onchange="RuleChanged" data-testid="diagnostic-filter-rule">
-            <option value="">All rules/codes</option>@foreach (var rule in view.Rules) { <option value="@rule">@rule</option> }
-        </select></label>
-        <label>Currentness <select value="@view.Filter.Currentness" @onchange="CurrentnessChanged" data-testid="diagnostic-filter-currentness">
-            @foreach (var currentness in Enum.GetValues<DiagnosticCurrentness>()) { <option value="@currentness">@currentness</option> }
-        </select></label>
         <button type="button" @onclick="CurrentSession.ResetFilters" data-testid="diagnostic-filter-reset">Reset filters</button>
-    </fieldset>
-    <p role="status" aria-live="polite" data-testid="diagnostic-filter-count">@view.FilteredCount matching / @view.ProjectedCount projected rows; @view.Rows.Length shown, @view.PageSize per page. A check-status row is not a diagnostic occurrence.</p>
+    </div>
+    <details>
+        <summary>More filters</summary>
+        <div class="checks-filters">
+            <label>Rule <select value="@(view.Filter.Rule ?? "")" @onchange="RuleChanged" data-testid="diagnostic-filter-rule">
+                <option value="">All rules</option>@foreach (var rule in view.Rules) { <option value="@rule">@rule</option> }
+            </select></label>
+            <label>Report status <select value="@view.Filter.Currentness" @onchange="CurrentnessChanged" data-testid="diagnostic-filter-currentness">
+                @foreach (var currentness in Enum.GetValues<DiagnosticCurrentness>()) { <option value="@currentness">@currentness</option> }
+            </select></label>
+        </div>
+    </details>
+    <p role="status" aria-live="polite" data-testid="diagnostic-filter-count">@view.FilteredCount matching entries · @view.Rows.Length shown</p>
+    <details>
+    <summary>Report coverage</summary>
     <ul aria-label="Report availability and coverage" data-testid="diagnostic-origin-status">
         @foreach (var origin in view.Origins)
         {
@@ -49,15 +52,16 @@
             </li>
         }
     </ul>
+    </details>
     @if (view.ProjectedCount == 0)
-    { <p data-testid="diagnostic-no-data">No projected report rows. Check report availability above; nothing is implicitly run.</p> }
+    { <p data-testid="diagnostic-no-data">Run a source check or compile the project to see findings here.</p> }
     else if (view.FilteredCount == 0)
     { <p data-testid="diagnostic-empty-filter">No retained rows match these filters. Reset filters to inspect the existing reports.</p> }
     <ol aria-label="Filtered diagnostic rows" data-testid="diagnostic-rows">
         @foreach (var row in view.Rows)
         {
             <li @key="row.Id" data-testid="diagnostic-row" data-row-id="@row.Id" data-origin="@row.Origin" data-current="@row.IsCurrent.ToString().ToLowerInvariant()" data-rule-id="@row.RuleId">
-                <p><strong>@row.Origin · @row.Kind · @row.SeverityText · @row.RuleId</strong> — @(row.IsCurrent ? "current identity" : "STALE — not navigable")</p>
+                <p><strong>@row.Origin · @row.SeverityText · @row.RuleId</strong>@if (!row.IsCurrent) { <span> · Earlier result</span> }</p>
                 @if (row.RelativePath is { } path) { <p>@path (captured path)</p> }
                 @if (row.PageIndex is { } page) { <p>Captured author-labelled start page @(page + 1); not a verified structural role.</p> }
                 @if (row.Outcome is { } outcome) { <p>Existing check status: @outcome</p> }
@@ -65,9 +69,9 @@
                 @if (row.Citation is { } citation) { <p data-testid="diagnostic-citation">@citation</p> }
                 <p>@row.NavigationReason</p>
                 @if (row.HasSourceAction && row.Origin == DiagnosticOrigin.Source)
-                { <button type="button" disabled="@(working || !SourceRequested.HasDelegate)" @onclick="() => Source(row)" data-testid="diagnostic-source">Inspect canonical source</button> }
+                { <button type="button" disabled="@(working || !SourceRequested.HasDelegate)" @onclick="() => Source(row)" data-testid="diagnostic-source">Go to source</button> }
                 @if (row.HasSourceAction && row.Origin == DiagnosticOrigin.Compiler)
-                { <button type="button" disabled="@(working || !CompilerRequested.HasDelegate)" @onclick="() => Compiler(row)" data-testid="diagnostic-compiler">Open captured compiler line</button> }
+                { <button type="button" disabled="@(working || !CompilerRequested.HasDelegate)" @onclick="() => Compiler(row)" data-testid="diagnostic-compiler">Go to compiler line</button> }
                 @if (row.HasPageAction)
                 { <button type="button" disabled="@(working || !PageRequested.HasDelegate)" @onclick="() => Page(row)" data-testid="diagnostic-page">Open author-labelled PDF page</button> }
             </li>

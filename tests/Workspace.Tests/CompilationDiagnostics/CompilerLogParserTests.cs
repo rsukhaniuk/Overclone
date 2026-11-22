@@ -20,7 +20,10 @@ public sealed class CompilerLogParserTests
     private static byte[] Bytes(string text) => Encoding.UTF8.GetBytes(text);
     private static byte[] Fixture(string name, [CallerFilePath] string file = "")
         => File.ReadAllBytes(Path.Combine(Path.GetDirectoryName(file)!, "Fixtures", name));
-    private static async Task<CompilationInputSnapshot> Snapshot(params (string Path, byte[] Bytes)[] files)
+    private static Task<CompilationInputSnapshot> Snapshot(params (string Path, byte[] Bytes)[] files)
+        => SnapshotForEngine("synthetic-engine", files);
+
+    private static async Task<CompilationInputSnapshot> SnapshotForEngine(string engine, params (string Path, byte[] Bytes)[] files)
     {
         await using var f = await CompilationTestWorkspace.Open();
         f.Workspace.Files.Clear();
@@ -31,7 +34,7 @@ public sealed class CompilerLogParserTests
             f.Workspace.Files.Add(new(FileId.New(), path, "text", text, null, bom,
                 false, false, false, true, false, null, 0, bytes.ToArray()));
         }
-        f.Selection.SetSelection(CompilationTestWorkspace.Select(f.Workspace.Files[0].Id));
+        f.Selection.SetSelection(CompilationTestWorkspace.Select(f.Workspace.Files[0].Id, engine));
         return await f.Snapshot();
     }
     private static CompilerLogReport Parse(CompilationInputSnapshot snapshot, string text, CompilerLogBudget? budget = null, bool complete = true)
@@ -86,6 +89,96 @@ public sealed class CompilerLogParserTests
         Assert.DoesNotContain("SOURCE_SECRET", d.SafeMessage);
         Assert.DoesNotContain(report.EnvelopeEntries, x => x.SafeMessage.Contains("SOURCE_SECRET", StringComparison.Ordinal));
     }
+    [Fact]
+    public async Task FontspecEngineGuardDoesNotOfferAPackageLineAsProjectSource()
+    {
+        var log = "(main.tex\n! Fatal Package fontspec Error: The fontspec package requires either XeTeX or\n" +
+            "(fontspec)                      LuaTeX.\nl.2 \\msg_fatal:nn {fontspec} {cannot-use-pdftex}\n)\n";
+        var diagnostic = One(Parse(await Snapshot(), log), CompilerDiagnosticCode.FontspecEngine);
+        Assert.Equal("TEX007", diagnostic.StableCode);
+        Assert.Null(diagnostic.Location);
+    }
+
+    [Theory]
+    [InlineData("xelatex", "/work/main.tex", true)]
+    [InlineData("pdftex", "/work/main.tex", false)]
+    [InlineData("xelatex", "/work/../main.tex", false)]
+    [InlineData("xelatex", "/work/./main.tex", false)]
+    [InlineData("xelatex", "/tex/main.tex", false)]
+    [InlineData("xelatex", "/work/Main.tex", false)]
+    [InlineData("lualatex", "/work/project/main.tex", true)]
+    [InlineData("lualatex", "/work/runtime/main.tex", false)]
+    [InlineData("lualatex", "/work/project/../main.tex", false)]
+    public async Task FontspecMissingFontUsesOnlyAnExactCapturedProjectLocation(string engine, string path, bool located)
+    {
+        var report = Parse(await SnapshotForEngine(engine),
+            $"{path}:2: Package fontspec Error: The font \"LOCAL_FONT_NAME\" cannot be\nfound.\n");
+        var diagnostic = One(report, CompilerDiagnosticCode.FontspecMissingFont);
+        Assert.Equal("TEX008", diagnostic.StableCode);
+        Assert.DoesNotContain("LOCAL_FONT_NAME", diagnostic.SafeMessage);
+        Assert.Equal(located ? 2 : (int?)null, diagnostic.Location?.Line);
+        Assert.Equal(located ? "main.tex" : null, diagnostic.Location?.RelativePath);
+    }
+
+    [Theory]
+    [InlineData("xelatex", "/work/main.tex", "Arial", CompilerDiagnosticCode.FontspecMissingArial, "Arial")]
+    [InlineData("xelatex", "/work/main.tex", "Times New Roman", CompilerDiagnosticCode.FontspecMissingTimesNewRoman, "Times New Roman")]
+    [InlineData("lualatex", "/work/project/main.tex", "TimesNewRoman", CompilerDiagnosticCode.FontspecMissingTimesNewRoman, "Times New Roman")]
+    [InlineData("lualatex", "/work/project/main.tex", "Arial Private", CompilerDiagnosticCode.FontspecMissingFont, "requested font")]
+    public async Task FontspecCompatibilityDiagnosticsNameOnlyTheBundledAliases(string engine, string path, string name,
+        CompilerDiagnosticCode code, string safeName)
+    {
+        var report = Parse(await SnapshotForEngine(engine),
+            $"{path}:2: Package fontspec Error: The font \"{name}\" cannot be\nfound.\nl.2 LOCAL_CONTENT\n");
+        var diagnostic = One(report, code);
+        Assert.Equal(2, diagnostic.Location?.Line);
+        Assert.Contains(safeName, diagnostic.SafeMessage, StringComparison.Ordinal);
+        Assert.DoesNotContain("LOCAL_CONTENT", diagnostic.SafeMessage);
+        Assert.DoesNotContain("Private", diagnostic.SafeMessage);
+    }
+
+    [Fact]
+    public async Task MissingBundledXstringHasASpecificDiagnostic()
+    {
+        var report = Parse(await SnapshotForEngine("lualatex"),
+            "(/work/project/main.tex\n! LaTeX Error: File `xstring.sty' not found.\nl.2 SOURCE\n");
+        var diagnostic = One(report, CompilerDiagnosticCode.MissingXstring);
+        Assert.Equal("TEX011", diagnostic.StableCode);
+        Assert.Contains("xstring", diagnostic.SafeMessage, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task MissingInputAtTheEndOfANoisyXeTeXLogKeepsItsVerifiedSourceLine()
+    {
+        var snapshot = await SnapshotForEngine("xelatex", ("main.tex", Bytes("one\n\\input conclusion\nthree\n")));
+        var warnings = string.Concat(Enumerable.Repeat("Package fancyhdr Warning: Head height is too small.\n", 200));
+        var report = Parse(snapshot, warnings + "/work/main.tex:2: I can't find file `conclusion'.\n" +
+            "l.2 \\input conclusion\n/work/main.tex:2: Emergency stop.\n");
+        Assert.True(report.Flags.HasFlag(CompilerLogFlags.ResourceLimit));
+        Assert.Equal(Budget.MaxDiagnostics, report.Diagnostics.Length);
+        var missing = One(report, CompilerDiagnosticCode.MissingFile);
+        Assert.Equal(CompilerDiagnosticSeverity.Error, missing.Severity);
+        Assert.Equal("main.tex", missing.Location?.RelativePath);
+        Assert.Equal(2, missing.Location?.Line);
+        Assert.Equal(CompilerLocationBasis.ExplicitFileLine, missing.Location?.Basis);
+        Assert.DoesNotContain("conclusion", missing.SafeMessage);
+    }
+
+    [Theory]
+    [InlineData("/work/main.tex", "", true)]
+    [InlineData("/work/other.tex", "", false)]
+    [InlineData("/work/main.tex", "unexpected text\n", false)]
+    public async Task MissingFilePromptUsesOnlyTheExplicitEmergencyStopLine(string path, string extra, bool located)
+    {
+        var snapshot = await SnapshotForEngine("xelatex", ("main.tex", Bytes("one\n\\input{absent}\n")));
+        var report = Parse(snapshot, "! LaTeX Error: File `absent.tex' not found.\n\n"
+            + "Type X to quit or <RETURN> to proceed,\nor enter new name. (Default extension: tex)\n\nEnter file name: \n"
+            + extra + $"{path}:2: Emergency stop.\n<read *>\nl.2 \\input{{absent}}\n");
+        var missing = One(report, CompilerDiagnosticCode.MissingFile);
+        Assert.Equal(located ? 2 : null, missing.Location?.Line);
+        if (located) Assert.Equal(CompilerLocationBasis.ExplicitFileLine, missing.Location?.Basis);
+    }
+
     [Fact]
     public async Task BalancedNarrowContextRestoresMainAfterIncludedChapter()
     {

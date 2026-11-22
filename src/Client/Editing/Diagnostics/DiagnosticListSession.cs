@@ -33,7 +33,7 @@ public sealed partial class DiagnosticListSession : IDisposable
     private RenderedExtentReport? _extent;
     private RenderedExtentAuthority? _extentAuthority;
     private PdfPreviewController? _extentPreview;
-    private long _extentGeneration;
+    private long _extentGeneration, _extentProvenanceVersion;
     private bool _sourceRevoked, _compilerRevoked, _extentRevoked, _pageLost, _disposed;
     private (ProjectId? Project, Guid Session) _view;
     private Stamp? _stamp;

@@ -15,8 +15,12 @@ public partial class Workspace
     private void InitializeDiagnosticList() => _diagnostics = new(Coordinator, AnalysisCoord, Navigator, CompileSession, dispatch: action => InvokeAsync(action));
     private void OnDiagnosticRenderedAvailable(RenderedExtentController? controller)
     { if (!_pageDisposed) _diagnostics?.AttachRendered(controller); }
-    private Task OnDiagnosticPageAsync(DiagnosticPageRequest request) => !_pageDisposed && request.IsCurrent
-        ? request.GoToPageAsync() : Task.CompletedTask;
+    private async Task OnDiagnosticPageAsync(DiagnosticPageRequest request)
+    {
+        if (_pageDisposed || !request.IsCurrent) return;
+        await ShowCheckedPdfAsync();
+        if (!_pageDisposed && request.IsCurrent) await request.GoToPageAsync();
+    }
 
     private CancellationTokenRegistration LinkDiagnosticNavigation(DiagnosticNavigationRequest request)
     {
@@ -56,6 +60,8 @@ public partial class Workspace
         if (_pageDisposed || ct.IsCancellationRequested || !request.IsCurrent) return;
         if (result is NavigationResult.Selected selected)
         {
+            await ShowCheckedSourceAsync();
+            if (_pageDisposed || ct.IsCancellationRequested || !request.IsCurrent) return;
             if (Coordinator.ActiveFileId != selected.FileId)
             {
                 SourceQueryChanged(); if (!JournalSelectFile(selected.FileId)) return;
@@ -80,6 +86,8 @@ public partial class Workspace
             if (_pageDisposed || ct.IsCancellationRequested || !request.IsCurrent || module is null) return;
             var selected = await _compilerSource.PrepareAsync(request.Canonical, ct);
             if (!CompilerSourceIntentCurrent(ct) || !request.IsCurrent || selected is null) return;
+            await ShowCheckedSourceAsync();
+            if (!CompilerSourceIntentCurrent(ct) || !request.IsCurrent) return;
             if (Coordinator.ActiveFileId != request.Canonical.File.FileId)
             {
                 if (!_compilerSource.IsCurrent(selected, ct) || !JournalSelectFile(request.Canonical.File.FileId)) return;
