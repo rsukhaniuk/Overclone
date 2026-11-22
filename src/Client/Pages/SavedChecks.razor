@@ -1,0 +1,65 @@
+@using Client.Checks
+
+<section class="saved-checks">
+    <header>
+        <h3>Saved reports</h3>
+        <p>Reports are stored in this browser with the project. Open a live check to navigate to a finding or review a fix.</p>
+    </header>
+    @if (Notice is not null)
+    {
+        <p class="banner banner-warn" role="status" data-testid="checks-saved-status">@Notice</p>
+        <button type="button" disabled="@Loading" @onclick="Retry">Retry local storage</button>
+    }
+    @if (PendingCount > 0)
+    { <p role="status">@PendingCount pending local report @(PendingCount == 1 ? "write" : "writes").</p> }
+    @if (!Loading && Reports.Count == 0 && Notice is null)
+    { <p data-testid="checks-saved-empty">Run a check to create your first saved report.</p> }
+    @foreach (var report in Reports)
+    {
+        <details class="saved-check" @key="report.Id" data-testid="saved-check" data-check-kind="@report.Kind">
+            <summary>
+                <span><strong>@report.Title</strong> <span class="saved-outcome">@report.Outcome</span></span>
+                <time datetime="@DateTimeOffset.FromUnixTimeMilliseconds(report.Created).ToString("O")">@DateTimeOffset.FromUnixTimeMilliseconds(report.Created).ToLocalTime().ToString("g")</time>
+            </summary>
+            <div class="saved-check-details">
+                @if (report.Revision is not null)
+                { <p>Base revision <code>@report.Revision</code></p> }
+                @if (report.EvidenceIdentity is not null)
+                { <p>Evidence identity <code>@report.EvidenceIdentity</code></p> }
+                <pre>@report.Detail</pre>
+                @if (Writable)
+                {
+                    @if (_confirmRemove == report.Id)
+                    {
+                        <button type="button" @onclick="() => ConfirmRemoveAsync(report.Id)">Remove this report</button>
+                        <button type="button" @onclick="() => _confirmRemove = null">Cancel</button>
+                    }
+                    else
+                    { <button type="button" @onclick="() => _confirmRemove = report.Id">Remove…</button> }
+                }
+            </div>
+        </details>
+    }
+    @if (HasMore)
+    { <button type="button" @onclick="LoadMore" disabled="@Loading">Load older reports</button> }
+</section>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<CheckReport> Reports { get; set; } = [];
+    [Parameter] public string? Notice { get; set; }
+    [Parameter] public bool Loading { get; set; }
+    [Parameter] public bool Writable { get; set; }
+    [Parameter] public bool HasMore { get; set; }
+    [Parameter] public int PendingCount { get; set; }
+    [Parameter] public EventCallback Retry { get; set; }
+    [Parameter] public EventCallback LoadMore { get; set; }
+    [Parameter] public EventCallback<string> Remove { get; set; }
+
+    private string? _confirmRemove;
+
+    private Task ConfirmRemoveAsync(string id)
+    {
+        _confirmRemove = null;
+        return Remove.InvokeAsync(id);
+    }
+}

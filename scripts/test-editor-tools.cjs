@@ -142,7 +142,7 @@ async function actualTools(browser) {
       before,
       "find does not save or dirty source",
     );
-    assert.equal(await $(p, "save").isDisabled(), true);
+    assert.equal(await $(p, "save").isEnabled(), true);
     await $(p, "source-replacement").fill("нова🙂");
     await tool(p, "replace");
     await status(p, "Source edited");
@@ -293,6 +293,7 @@ async function stale(browser, mode) {
   try {
     const name = await create(p, "same same\n");
     // Both files exist BEFORE capture, so switching alone does not bump generation.
+    await H.reveal(p, $(p, "new-file-name"));
     await $(p, "new-file-name").fill("other.tex");
     await $(p, "new-file").click();
     await p.locator(".source-tab", { hasText: "other.tex" }).waitFor();
@@ -364,6 +365,7 @@ async function sourceOperationOwnership(browser, mode) {
   p.on("pageerror", (error) => errors.push(String(error)));
   try {
     const name = await create(p, "same same\n");
+    await H.reveal(p, $(p, "new-file-name"));
     await $(p, "new-file-name").fill("other.tex");
     await $(p, "new-file").click();
     await p.locator(".source-tab", { hasText: "other.tex" }).waitFor();

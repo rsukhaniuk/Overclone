@@ -2,8 +2,8 @@
 {
     <section class="knu-report" aria-label="KNU source observations" data-testid="knu-report"
              data-snapshot-id="@Report.Snapshot.Id" data-outcome="@Report.Result.AggregateOutcome">
-        <h3>KNU source observations</h3>
-        <p data-testid="knu-edition">KNU Faculty of Computer Science and Cybernetics 2025 — source profile @Report.Result.Profile.Version</p>
+        <h3>FCSC KNU ruleset</h3>
+        <p data-testid="knu-edition" data-profile-version="@Report.Result.Profile.Version">KNU Faculty of Computer Science and Cybernetics · 2025 guidelines</p>
         <p data-testid="knu-work-type">Work type: @AnalysisPresentation.WorkType(Report.Result.Configuration!.WorkType)</p>
         <p class="knu-scope" data-testid="knu-scope">Source observations only. Pass covers supported observed literals, not effective TeX state, rendered layout, the whole thesis or faculty certification. Eligible rule fixes require a separate preview and explicit acceptance; nothing is applied automatically.</p>
         <p data-testid="knu-summary">Source-only summary: <strong>@Report.Result.AggregateOutcome</strong></p>
@@ -72,7 +72,7 @@
             <h4>Source syntax and coverage notes</h4>
             <p class="hint">File-level notes are shown here; rule-specific uncertainty stays separate in the per-rule outcomes. Unsupported literal lengths and conflicting indent declarations concern the indent check.</p>
             @if (Report.Result.Profile.Version == AnalysisCatalog.FormattingVersion)
-            { <p class="hint">Profile 1.4 observations have no admitted fixes. Paper, spacing and caption source intent does not establish physical PDF compliance or full guideline coverage.</p> }
+            { <p class="hint">Paper, spacing and captions are checked as declared in the source. Use compiled layout checks for physical PDF measurements.</p> }
             @foreach (var file in knu.Files)
             {
                 <p>@FileName(file.FileId) — @(file.Eligible ? "eligible TeX source" : "not applicable to this source profile")</p>

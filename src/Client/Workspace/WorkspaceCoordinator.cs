@@ -177,11 +177,18 @@ public sealed partial class WorkspaceCoordinator : IAsyncDisposable
                 if (saveResult.Status != CommitStatus.Saved)
                     return;
             }
+            // Keep retained edits open when writer authority was lost. Block
+            // new edits while the final release is in flight.
+            if (IsDirty) return;
+            _closing = true;
+            try
+            {
+                await ReleaseLockAsync(ct);
+                ResetSession();
+            }
+            finally { _closing = false; }
         }
         finally { _gate.Release(); }
-
-        await ReleaseLockAsync(ct);
-        ResetSession();
     }
 
     private async Task ReleaseLockAsync(CancellationToken ct)
@@ -485,7 +492,8 @@ public sealed partial class WorkspaceCoordinator : IAsyncDisposable
         return true;
     }
 
-    private bool CanEdit() => IsOpen && !IsReadOnly && Recovery is null;
+    private bool _closing;
+    private bool CanEdit() => IsOpen && !IsReadOnly && Recovery is null && !_closing;
 
     private void BumpGeneration()
     {
@@ -536,6 +544,19 @@ public sealed partial class WorkspaceCoordinator : IAsyncDisposable
     }
 
     // ---- save (serialized) ----
+
+    internal async Task<CommitResult> SaveWorkingRevisionAsync(ProjectId project, Guid session)
+    {
+        var ct = CancellationToken.None;
+        await _gate.WaitAsync(ct);
+        try
+        {
+            if (Project?.Id != project || SessionId != session)
+                return CommitResult.Unavailable("The save session changed.");
+            return await SaveCoreAsync(ct);
+        }
+        finally { _gate.Release(); }
+    }
 
     public async Task<CommitResult> SaveAsync(CancellationToken ct)
     {

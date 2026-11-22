@@ -236,10 +236,9 @@ public sealed class RenderedRoleBinding(WorkspaceCoordinator workspace, CompileW
         // caption context files. Membership and project shadowing are checked separately.
         var component = NativeCompilerComponents.For(profile, NativeCompilerEngine.PdfLaTeX);
         var engine = new CompilationDescriptor(NativeRuntimePackage.EngineId, component.EngineVersion, new(component.WasmHash));
-        return SyncTeXRuntimeBinding.ForProfile(profile) is { } runtime
+        return selection.Bundles.Length == 1 && SyncTeXRuntimeBinding.ForProfile(profile, selection.Bundles[0]) is not null
             && selection.Engine == engine && authority.Ports.Engine == engine
             && authority.Output.OutputAdapter == component.OutputAdapter
-            && selection.Bundles.Length == 1 && selection.Bundles[0] == runtime.Bundle
             && snapshot.Files.All(file => file.MediaKind == "text" && ThesisCaptionRoleCapability.IsContextFile(file.RelativePath));
     }
 

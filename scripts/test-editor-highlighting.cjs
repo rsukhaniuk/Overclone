@@ -52,7 +52,8 @@ async function selection(page, start, end = start) {
 }
 async function selected(page) { return $(page, "editor").evaluate(editor => [editor.selectionStart, editor.selectionEnd]); }
 async function save(page) {
-  if (!(await $(page, "save").isDisabled())) await $(page, "save").click();
+  if (await $(page, "save").isEnabled())
+    await $(page, "save").click({ timeout: 1000 }).catch(error => { if (error.name !== "TimeoutError") throw error; });
   await page.waitForFunction(() => document.querySelector(".workspace-header .status")?.textContent === "Saved.");
 }
 async function sourceTool(page, name) {
@@ -331,16 +332,23 @@ async function coldOpen(name, expected) {
     assert.equal(await $(page, "editor").inputValue(), "Вступ🙂", "native clipboard paste is still the normal input path");
     // During rapid input every synchronous mismatch must be plain, never ghosted.
     const finalText = "\\section{rapid🙂19}\n";
-    const ghost = await $(page, "editor").evaluate(editor => {
+    const inputPaint = await $(page, "editor").evaluateHandle(editor => {
       let ghost = false;
-      for (let i = 0; i < 20; i++) {
-        editor.value = `\\section{rapid🙂${i}}\n`; editor.dispatchEvent(new Event("input", { bubbles: true }));
+      const onInput = () => {
         const layer = editor.parentElement.querySelector(".source-highlighting");
         if (layer.dataset.ready === "true" && layer.querySelector(".source-highlight-text").textContent !== editor.value) ghost = true;
-      }
-      return ghost;
+      };
+      editor.addEventListener("input", onInput);
+      return { ghost: () => ghost, detach: () => editor.removeEventListener("input", onInput) };
     });
-    assert.equal(ghost, false); await layerReady(page);
+    try {
+      for (let i = 0; i < 20; i++) await $(page, "editor").fill("\\section{rapid🙂" + i + "}\n");
+      assert.equal(await inputPaint.evaluate(paint => paint.ghost()), false);
+    } finally {
+      await inputPaint.evaluate(paint => paint.detach());
+      await inputPaint.dispose();
+    }
+    await layerReady(page);
     assert.equal(await $(page, "editor").inputValue(), finalText);
     // Composition event gate (not a claim about every platform's physical IME).
     await $(page, "editor").evaluate(editor => editor.dispatchEvent(new CompositionEvent("compositionstart", { bubbles: true })));

@@ -240,9 +240,14 @@ public sealed partial class CompiledReviewController : IDisposable
                 CheckCurrent();
             }
         }
-        _notice = "Inspecting pages sequentially. Standards coverage stays partial; nominal font size does not measure glyph ink."; Notify();
+        var preview = _compile.Preview;
+        using var pause = preview.PauseInspection();
+        _notice = "Preparing to inspect the current PDF."; Notify();
         try
         {
+            await preview.WhenSettled.WaitAsync(stop.Token);
+            CheckCurrent();
+            _notice = "Inspecting pages sequentially. Standards coverage stays partial; nominal font size does not measure glyph ink."; Notify();
             await VerifyBindings(); CheckCurrent(); var payload = authority.Output.ToPayloadArray();
             if (payload is null || payload.LongLength != authority.Output.OutputLength) throw new JsonException();
             var document = authority.CreateDocument(payload);

@@ -29,12 +29,18 @@ public partial class Workspace
         }
         if(_seenPreview is not null && current.Preview is null && current.Action?.Id==_seenAction && !_reviewPending)
             _reviewNotice="The preview is no longer current. Run analysis and request a fresh preview; no stale proposal was accepted.";
+        if (current.Preview is { } preview && preview.Id != _seenPreview) OpenChecks(ChecksSection.Review);
         _seenPreview=current.Preview?.Id;_seenAction=current.Action?.Id;
         StateHasChanged();
     }
     private Task PreviewProjectReplaceAsync(Client.Editing.Search.ProjectReplaceRequest request)
-        => RunReviewAsync(ct => request.PreviewAsync(ReviewService, ct));
-    private Task PreviewFixAsync(string id)=>RunReviewAsync(ct=>ReviewService.PreviewFixAsync(id,ct));
+        => OpenReviewAsync(ct => request.PreviewAsync(ReviewService, ct));
+    private Task PreviewFixAsync(string id)=>OpenReviewAsync(ct=>ReviewService.PreviewFixAsync(id,ct));
+    private Task OpenReviewAsync(Func<CancellationToken,Task<ReviewResult>> operation)
+    {
+        OpenChecks(ChecksSection.Review);
+        return RunReviewAsync(operation);
+    }
     private Task PreviewReviewSubsetAsync(ReviewSubsetRequest request)
         => RunReviewAsync(ct => ReviewService.PreviewSubsetAsync(request.ExpectedPreviewId, request.Selection, ct));
     private Task AcceptReviewAsync(Guid id)=>RunReviewAsync(ct=>ReviewService.AcceptAsync(id,ct));
@@ -42,21 +48,20 @@ public partial class Workspace
     private Task UndoReviewAsync(Guid id)=>RunReviewAsync(ct=>ReviewService.UndoAsync(id,ct));
     private void DeclineReview(Guid id)
     {
-        if(_pageDisposed||_reviewPending||CurrentReview.Busy||HistoryComparisons.Busy||_historyWholeBusy)return;
+        if(_pageDisposed||_reviewPending||CurrentReview.Busy)return;
         var result=ReviewService.Decline(id);_reviewNotice=result.Failure?.SafeMessage;
         _seenPreview=null;RenderReviewState();
     }
     private void CancelReview()
     {
-        _reviewCts?.Cancel();HistoryComparisons.Cancel();
-        if(_historyWholeCts is not null)CancelHistoryWholePreview();
+        _reviewCts?.Cancel();
         ReviewService.Cancel();
         _reviewNotice="Pending review work cancelled. Already-applied working edits and recovery, if any, are retained below.";
         _seenPreview=null;RenderReviewState();
     }
     private async Task RunReviewAsync(Func<CancellationToken,Task<ReviewResult>> operation)
     {
-        if(_pageDisposed||_reviewPending||CurrentReview.Busy||HistoryComparisons.Busy||_historyWholeBusy)return;
+        if(_pageDisposed||_reviewPending||CurrentReview.Busy)return;
         var intent=++_reviewIntent;var session=Coordinator.SessionId;_reviewSession=session;
         var cts=new CancellationTokenSource();_reviewCts=cts;_reviewPending=true;_reviewNotice=null;
         // Review never cancels an editor's pending ordinary autosave. A real
@@ -70,7 +75,6 @@ public partial class Workspace
             if(!Current())return;
             _reviewNotice=result.Failure?.SafeMessage;
             _seenPreview=CurrentReview.Preview?.Id;_seenAction=CurrentReview.Action?.Id;
-            if(CurrentReview.Action is { Persisted:true })await LoadHistoryAsync(first:true);
         }
         catch(OperationCanceledException)
         { if(Current())_reviewNotice="Review work cancelled; current applied/save state and retained recovery are shown below."; }

@@ -1,5 +1,6 @@
 @using System.Globalization
 @using Client.Analysis.RenderedExtent
+@using Client.Checks
 @using Client.Compilation.Presentation
 @using Client.Workspace
 @implements IDisposable
@@ -7,7 +8,7 @@
 @inject CompileWorkspaceSession Compile
 @inject IJSRuntime JS
 <details class="tool-disclosure" data-testid="rendered-extent-panel">
-    <summary>Rendered diploma checks</summary>
+    <summary>Document length</summary>
     <div class="tool-content">
         <p>Explicit local observation of total pages in the current compiled PDF. KNU Faculty of Computer Science and Cybernetics, 2025; not a university-wide or overall compliance check.</p>
         <label>Work type
@@ -88,6 +89,7 @@
 </details>
 @code {
     [Parameter] public Action<RenderedExtentController?>? ControllerAvailable { get; set; }
+    [Parameter] public EventCallback<CheckReport> Completed { get; set; }
     private RenderedExtentController _controller = default!;
     private bool _disposed;
     private int? _introStart, _introEnd, _bodyStart, _bodyEnd, _conclusionsStart, _conclusionsEnd, _appendixStart;
@@ -98,7 +100,18 @@
         _controller.Changed += Changed;
         ControllerAvailable?.Invoke(_controller); // borrow only; this component retains ownership
     }
-    private Task Check() => _controller.CheckAsync();
+    private async Task Check()
+    {
+        var previous = _controller.Report;
+        await _controller.CheckAsync();
+        if (_disposed || !Completed.HasDelegate || _controller.Report is not { } report || ReferenceEquals(previous, report)
+            || Compile.DisplayedOutput is not { } output || output.OutputHash?.Hex != report.Evidence.PdfSha256) return;
+        var observation = report.Observation;
+        await Completed.InvokeAsync(CheckReport.Create(output.SnapshotIdentity.ProjectId, "pdf", "Document length", "Measured",
+            output.SnapshotIdentity.BaseHeadRevisionId, report.Evidence.PdfSha256,
+            $"{observation.Request.PageCount} PDF pages · {WorkTypeLabel(observation.Request.WorkType)}\n{Range(observation)}\n{Reason(observation.Reason)}\nGuideline §2, p. 11.\n{CheckReport.FormatEvidence(observation.Sections)}",
+            "extent-" + observation.Request.RequestId));
+    }
     private void Cancel() => _controller.Cancel();
     private void WorkTypeChanged(ChangeEventArgs args) => _controller.SelectWorkType(args.Value?.ToString() ?? "");
     private void SectionsChanged(ChangeEventArgs args)

@@ -1,0 +1,337 @@
+@using Client.Compilation
+@using Client.Compilation.Diagnostics
+@using Client.Compilation.Lifecycle
+@using Client.Compilation.Native
+@using Client.Compilation.Navigation
+@using Client.Compilation.Presentation
+@using Client.Workspace
+@using Client.Workspace.Domain
+@implements IDisposable
+@inject WorkspaceCoordinator Workspace
+@inject CompileWorkspaceSession Session
+
+<section class="compile-controls" aria-label="Compile document">
+    <div class="compile-actions">
+        <button class="primary" @ref="_compileButton" @onclick="CompileDocumentAsync"
+                disabled="@(_waitingForSave || EffectiveMain is null || (!Session.UsesBundledResources && (!Session.Readiness.Ready || EffectiveEngine.Length == 0)))"
+                data-testid="compile">Compile</button>
+        <button @onclick="Session.Cancel" disabled="@(!IsCompiling)" hidden="@(!IsCompiling)"
+                data-testid="cancel-compile">Cancel</button>
+        <details class="compiler-settings" data-testid="compiler-settings">
+            <summary @onclick="PrepareBundledToolsOnDemandAsync">@(NeedsMainChoice ? "Choose main file" : "Compiler settings")</summary>
+            <div class="settings-content">
+                @if (NeedsMainChoice) { <p>Choose the root document to compile.</p> }
+                <label>Main file
+                    <select aria-label="Compile main file" value="@ChosenMain?.ToString()" @onchange="MainChanged">
+                        <option value="">@(DefaultMain is { } root ? $"Automatic ({root.RelativePath})" : "Choose a main file")</option>
+                        @foreach (var file in RootFiles)
+                        { <option value="@file.Id.ToString()">@file.RelativePath</option> }
+                    </select>
+                </label>
+                <label>Engine
+                    <select aria-label="Compile engine" value="@(_automaticEngine ? "" : Session.EngineChoice)" @onchange="EngineChanged">
+                        <option value="">@(DefaultEngine.Length == 0 ? "Choose an available engine" : "Automatic (pdfLaTeX)")</option>
+                        @foreach (var ports in Session.AvailableEngines)
+                        { <option value="@ports.CapabilityId" disabled="@(!Session.Readiness.Ready)">@ports.Label</option> }
+                        @if (Session.UsesBundledResources && !Session.AvailableEngines.Any())
+                        { <option value="local-authoring-v4" disabled>pdfLaTeX — preparing</option> }
+                        @if (!Session.AvailableEngines.Any(p => p.CapabilityId == "xelatex"))
+                        { <option value="xelatex" disabled>XeLaTeX — @(Session.UsesBundledResources ? "preparing" : "unavailable")</option> }
+                        @if (!Session.AvailableEngines.Any(p => p.CapabilityId == "lualatex"))
+                        { <option value="lualatex" disabled>LuaLaTeX — @(Session.UsesBundledResources ? "preparing" : "unavailable")</option> }
+                        @if (!Session.AvailableEngines.Any(p => p.CapabilityId == "latex-dvi"))
+                        { <option value="latex-dvi" disabled>LaTeX DVI mode — @(Session.UsesBundledResources ? "preparing" : "unavailable")</option> }
+                    </select>
+                </label>
+                @if (CompatibleXeLaTeXChoice is not null)
+                {
+                    <p data-testid="xetex-font-aliases">@(HasLuaFontAliases ? "XeLaTeX and LuaLaTeX use" : "XeLaTeX uses") Liberation Serif for Times New Roman and Liberation Sans for Arial.</p>
+                }
+                @if (Session.ConfiguredPorts is { SelectableBibliography: true })
+                {
+                    <label>Bibliography
+                        <select aria-label="Bibliography tool" value="@Session.BibliographyTool" @onchange="BibliographyChanged" disabled="@(!Session.Readiness.Ready)" data-testid="bibliography-tool">
+                            <option value="None">None</option>
+                            <option value="Bibtex" disabled="@(!Session.CanSelectBibtex)">BibTeX</option>
+                            <option value="Biber" disabled="@(!Session.CanSelectBiber)">Biber@(Session.CanSelectBiber ? "" : " — unavailable")</option>
+                        </select>
+                    </label>
+                }
+                <details><summary>Runtime availability &amp; compatibility</summary>
+                    <p>@Session.Readiness.Status: @Session.Readiness.Message</p>
+                    <p>Select a .tex root, including a nested path, and a verified local engine with optional BibTeX. Includes resolve from project CWD. Internal ASCII spaces in directory and base names are supported; leading/trailing basename spaces and TeX command syntax are unsupported. Source/PDF navigation requires native maps and supported page geometry. Unsupported graphics transforms can leave navigation unavailable while the compiled PDF remains usable.</p>
+                    <p data-testid="renderer-readiness">@(Session.ConfiguredPorts?.Inspector is null ? "Preview unavailable — no renderer configured." : "Preview checks its supported local renderer on each request; actual availability is reported in the preview.")</p>
+                    @if (Session.UsesBundledResources)
+                    {
+                        <p data-testid="bundled-runtime-info">All four compilers, their bundled packages/fonts and the PDF renderer are included. Resources cache automatically for offline use after the first download. No manual installation is required.</p>
+                        <a href="/recover-release.html?release-recovery=2">Refresh the app build</a>
+                    }
+                </details>
+                @if (!Session.UsesBundledResources)
+                {
+                    <NativeRuntimeSetupPanel />
+                    <PdfRuntimeSetupPanel />
+                }
+                <button @onclick="PrepareToolsAsync" disabled="@Session.ReadingTools" data-testid="refresh-compile-tools">Check tools</button>
+            </div>
+        </details>
+
+    </div>
+    <div class="compile-feedback">
+        <p class="compiler-readiness" hidden="@(Session.Readiness.Ready || (Session.UsesBundledResources && !_preparationRequested))" role="status" data-testid="compiler-readiness">@(Session.ReadingTools ? "Preparing local compilers…" : Session.Readiness.Ready ? "Local compiler checked — compilation available." : Session.UsesBundledResources ? "Compiler unavailable. Select Compile to retry." : "Compiler unavailable. See compiler settings.")</p>
+        <p role="status" hidden="@(!_waitingForSave && (Session.ReadingTools || CurrentError is not null ||
+            Session.LastReason == CompileLifecycleReason.Succeeded ||
+            Session.LastReason is null && !IsCompiling && _compileNoticeSession != Workspace.SessionId))"
+           data-testid="compile-status">@(_waitingForSave ? (Session.ReadingTools ? "Compile queued" : "Preparing to compile…") : _dispatchNotice ?? Session.Notice)</p>
+        <p class="sr-only" data-testid="compile-work-status">@(State?.Active is not null ? "Compiling…" : State?.UnsettledJobs > 0 ? "Finishing previous work…" : "Idle") @(State?.Pending is not null ? "Latest request queued." : "")</p>
+    </div>
+    @if (State is { } state)
+    {
+        <details hidden="@(Session.LastTicket is null && state.LastAttempt is null)" data-testid="compile-details"><summary>Compile log</summary>
+          <div class="compile-log-content">
+            @if (Session.Attempt?.ParserResult is CompilerLogParseResult.Parsed parsed)
+            {
+                <section aria-label="Compiler diagnostics" data-testid="compiler-diagnostics">
+                    <p>Compiler diagnostics @(!state.IsAttemptCurrent ? "from a previous attempt" : "")</p>
+                    @foreach (var group in parsed.Report.Diagnostics
+                        .Where(finding => finding.Severity != CompilerDiagnosticSeverity.Unknown
+                            && (finding.Code != CompilerDiagnosticCode.Rerun || !Converged(state.LastAttempt)))
+                        .GroupBy(finding => (finding.Severity, finding.Code, finding.Location?.FileId, finding.Location?.Line))
+                        .OrderBy(group => group.Key.Severity))
+                    {
+                        var finding = group.First();
+                        <p data-testid="compiler-finding">@finding.Severity: @finding.SafeMessage
+                            @if (group.Count() > 1)
+                            {
+                                <span>(@group.Count() occurrences)</span>
+                            }
+                            @if (finding.Location is { } location)
+                            {
+                                <span>@location.RelativePath:@location.Line (line-level precision)</span>
+                                @if (CompilerSourceNavigationRequest.TryCreate(Session, parsed.Report, finding) is not null)
+                                {
+                                    <button type="button" data-testid="compiler-go-to-source"
+                                            @onclick="() => RequestSourceLine(parsed.Report, finding)">
+                                        Go to source — @location.RelativePath:@location.Line (line)
+                                    </button>
+                                }
+                            }
+                        </p>
+                    }
+                </section>
+            }
+            <p>Outcome: @Session.LastReason; selection version: @Session.SelectionVersion; unsettled operations: @state.UnsettledJobs.</p>
+            @if (state.LastAttempt?.Snapshot.Selection is { Engine.Id: "xelatex" } selection &&
+                selection.Bundles.Any(bundle => NativeCompilerCompatibleFontPins.HasXeAliases(bundle.Hash.Hex)))
+            {
+                <p>This XeLaTeX runtime maps Times New Roman to Liberation Serif and Arial to Liberation Sans.</p>
+            }
+            @if (state.LastAttempt is { } attempt)
+            {
+                <p>Attempt <code>@attempt.RequestContext.RequestId</code> at worker epoch @attempt.RequestContext.WorkerEpoch.</p>
+                @foreach (var bundle in attempt.Snapshot.Selection.Bundles)
+                {
+                    <p data-testid="compiler-bundle">Compiler bundle <code>@bundle.Hash.Hex</code></p>
+                }
+                <p>Source digest <code>@attempt.InputContentDigest.Hex</code></p>
+                @if (Session.DisplayedOutput is { } output && output.RequestId == attempt.RequestContext.RequestId)
+                {
+                    <p>PDF digest <code>@output.OutputHash?.Hex</code></p>
+                }
+            }
+            <pre data-testid="compiler-log">@state.LastAttempt?.LogText</pre>
+          </div>
+        </details>
+    }
+    @if (CurrentError is { } error)
+    {
+        <div class="compile-error" role="status" data-testid="compile-error">
+            <span>@error.Finding.SafeMessage</span>
+            @if (error.Finding.Code == CompilerDiagnosticCode.MissingFile)
+            {
+                <span>Check the filename and path in the compile log.</span>
+            }
+            @if (XeLaTeXRemedy(error.Report, error.Finding) is not null)
+            {
+                <button type="button" @onclick="ChooseXeLaTeXAsync">Use XeLaTeX</button>
+            }
+            @if (IsBundledFontError(error.Finding.Code) && Session.UsesBundledResources && CompatibleXeLaTeXChoice is null)
+            {
+                <a href="/recover-release.html?release-recovery=2">Refresh the app build for bundled fonts</a>
+            }
+            @if (error.Finding.Location is { } location)
+            {
+                @if (CompilerSourceNavigationRequest.TryCreate(Session, error.Report, error.Finding) is not null)
+                {
+                    <button type="button" data-testid="compile-error-jump" @onclick="() => RequestSourceLine(error.Report, error.Finding)">
+                        Go to @location.RelativePath:@location.Line
+                    </button>
+                }
+                else { <span>@location.RelativePath:@location.Line</span> }
+            }
+        </div>
+    }
+    <p class="compiler-navigation-status" role="status" data-testid="compiler-navigation-status">@(_lineNotice ?? SourceNavigationStatus)</p>
+</section>
+
+@code {
+    [Parameter] public Func<Task>? BeforeCompile { get; set; }
+    [Parameter] public EventCallback<CompilerSourceNavigationRequest> SourceLineRequested { get; set; }
+    [Parameter] public string? SourceNavigationStatus { get; set; }
+
+    private bool _disposed, _waitingForSave;
+    private ElementReference _compileButton;
+    private Task _toolPreparation = Task.CompletedTask;
+    private bool _preparationRequested;
+    private bool _automaticMain = true, _automaticEngine = true;
+    private string? _lineNotice, _dispatchNotice;
+    private Guid? _compileNoticeSession;
+    private CompileLifecycleView? State => Session.State;
+    private bool IsCompiling => State is { } state && (state.Active is not null || state.Pending is not null || state.UnsettledJobs > 0);
+    private IEnumerable<WorkingFile> RootFiles => Workspace.Files.Where(IsRoot);
+    private static bool IsRoot(WorkingFile file) => !file.Deleted && file.MediaKind == "text"
+        && file.RelativePath.EndsWith(".tex", StringComparison.OrdinalIgnoreCase);
+    private WorkingFile? DefaultMain
+    {
+        get
+        {
+            var roots = RootFiles.ToArray();
+            return roots.FirstOrDefault(file => file.RelativePath == "main.tex")
+                ?? (roots.Length == 1 ? roots[0] : null);
+        }
+    }
+    private FileId? ChosenMain => !_automaticMain && Workspace.Files.Any(file => file.Id == Session.MainFile && IsRoot(file))
+        ? Session.MainFile : null;
+    private FileId? EffectiveMain => _automaticMain ? DefaultMain?.Id : ChosenMain;
+    private bool NeedsMainChoice => EffectiveMain is null && RootFiles.Any();
+    private string DefaultEngine => Session.AvailableEngines.FirstOrDefault(port => port.Engine.Id == "pdftex")?.CapabilityId ?? "";
+    private string EffectiveEngine => _automaticEngine ? DefaultEngine : Session.EngineChoice;
+    private string? XeLaTeXChoice => Session.AvailableEngines.FirstOrDefault(port => port.Engine.Id == "xelatex")?.CapabilityId;
+    private string? CompatibleXeLaTeXChoice => Session.AvailableEngines.FirstOrDefault(port => port.Engine.Id == "xelatex"
+        && port.Bundles.Any(bundle => NativeCompilerCompatibleFontPins.HasXeAliases(bundle.Hash.Hex)))?.CapabilityId;
+    private bool HasLuaFontAliases => Session.AvailableEngines.Any(port => port.Engine.Id == "lualatex"
+        && port.Bundles.Any(bundle => bundle.Hash.Hex == NativeCompilerLuaFontPins.RuntimeIdentity));
+
+    private static bool IsBundledFontError(CompilerDiagnosticCode code) =>
+        code is CompilerDiagnosticCode.FontspecMissingArial or CompilerDiagnosticCode.FontspecMissingTimesNewRoman;
+
+    private static bool Converged(ValidatedCompileAttempt? attempt) => attempt is { Status: CompileOutputStatus.Succeeded }
+        && attempt.Diagnostics.Any(item => item.Code == "converged");
+
+    private string? XeLaTeXRemedy(CompilerLogReport report, CompilerLogDiagnostic finding) =>
+        finding.Code == CompilerDiagnosticCode.FontspecEngine ? XeLaTeXChoice :
+        (IsBundledFontError(finding.Code) || finding.Code == CompilerDiagnosticCode.MissingXstring)
+            && report.Snapshot.Selection.Engine.Id != "xelatex" ? CompatibleXeLaTeXChoice : null;
+
+    private (CompilerLogReport Report, CompilerLogDiagnostic Finding)? CurrentError
+    {
+        get
+        {
+            if (Session.LastReason != CompileLifecycleReason.CompilerFailed || State?.IsAttemptCurrent != true
+                || Session.Attempt?.ParserResult is not CompilerLogParseResult.Parsed parsed) return null;
+            var errors = parsed.Report.Diagnostics.Where(finding => finding.Severity == CompilerDiagnosticSeverity.Error);
+            var finding = errors.FirstOrDefault(item => XeLaTeXRemedy(parsed.Report, item) is not null
+                || item.Location is not null || IsBundledFontError(item.Code)
+                || item.Code == CompilerDiagnosticCode.FontspecMissingFont) ?? errors.FirstOrDefault();
+            return finding is null ? null : (parsed.Report, finding);
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        Session.AttachRenderer(action => InvokeAsync(action));
+        Session.Changed += Changed;
+        if (!Session.UsesBundledResources) await PrepareToolsAsync();
+    }
+
+    private Task PrepareBundledToolsOnDemandAsync() =>
+        Session.UsesBundledResources && !Session.Readiness.Ready ? PrepareToolsAsync() : Task.CompletedTask;
+
+    private Task PrepareToolsAsync()
+    {
+        _preparationRequested = true;
+        return Session.ReadingTools ? _toolPreparation : _toolPreparation = Session.RefreshToolsAsync();
+    }
+
+    private async Task CompileDocumentAsync()
+    {
+        if (_waitingForSave || EffectiveMain is not { } main) return;
+        var session = Workspace.SessionId;
+        var generation = Workspace.WorkingGeneration;
+        var selectionVersion = Session.SelectionVersion;
+        _lineNotice = _dispatchNotice = null;
+        _compileNoticeSession = session;
+        _waitingForSave = true;
+        try
+        {
+            if (!Session.Readiness.Ready && Session.UsesBundledResources) await PrepareToolsAsync();
+            if (BeforeCompile is not null) await BeforeCompile();
+        }
+        finally { _waitingForSave = false; }
+        if (_disposed || session != Workspace.SessionId) return;
+        if (generation != Workspace.WorkingGeneration || selectionVersion != Session.SelectionVersion)
+        {
+            _dispatchNotice = "Source or compiler settings changed. Compile again.";
+            return;
+        }
+        if (!Session.Readiness.Ready || EffectiveEngine is not { Length: > 0 } engine)
+        {
+            _dispatchNotice = Session.Readiness.Ready ? "Choose a compiler engine." : Session.Readiness.Message;
+            return;
+        }
+        if (Session.MainFile != main) Session.SelectMain(main);
+        if (Session.EngineChoice != engine) Session.SelectEngine(engine);
+        await Session.CompileAsync();
+    }
+
+    private async Task RequestSourceLine(CompilerLogReport report, CompilerLogDiagnostic finding)
+    {
+        if (_disposed) return;
+        var request = CompilerSourceNavigationRequest.TryCreate(Session, report, finding);
+        if (request is null) { _lineNotice = "Compiler attempt is no longer current; compile again."; return; }
+        _lineNotice = null;
+        await SourceLineRequested.InvokeAsync(request);
+    }
+
+    private void MainChanged(ChangeEventArgs args)
+    {
+        FileId? file = Guid.TryParse(args.Value?.ToString(), out var id) ? new FileId(id) : null;
+        _automaticMain = file is null;
+        Session.SelectMain(file);
+    }
+
+    private async Task ChooseXeLaTeXAsync()
+    {
+        if (_disposed || CurrentError is not { } error || XeLaTeXRemedy(error.Report, error.Finding) is not { } engine) return;
+        SelectEngine(engine);
+        await _compileButton.FocusAsync();
+    }
+
+    private void EngineChanged(ChangeEventArgs args) => SelectEngine(args.Value?.ToString() ?? "");
+
+    private void SelectEngine(string engine)
+    {
+        _automaticEngine = engine.Length == 0;
+        Session.SelectEngine(engine);
+    }
+
+    private void BibliographyChanged(ChangeEventArgs args)
+    {
+        if (args.Value is string value && Enum.TryParse<BibliographyToolKind>(value, out var kind))
+            Session.SelectBibliography(kind);
+    }
+
+    private void Changed() { if (!_disposed) _ = Render(); }
+    private async Task Render()
+    {
+        try { await InvokeAsync(() => { if (!_disposed) StateHasChanged(); }).ConfigureAwait(false); }
+        catch (ObjectDisposedException) { }
+        catch (InvalidOperationException) when (_disposed) { }
+    }
+
+    public void Dispose()
+    {
+        _disposed = true;
+        Session.Changed -= Changed;
+    }
+}

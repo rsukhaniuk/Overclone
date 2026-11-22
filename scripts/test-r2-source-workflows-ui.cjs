@@ -58,7 +58,7 @@ async function stop() {
     await new Promise(resolve=>old.close(resolve));
 }
 async function open(offline) {
-    context = await chromium.launchPersistentContext(profile,{headless:true,offline,
+    context = await chromium.launchPersistentContext(profile,{headless:true,offline,viewport:{width:1850,height:1080},
         ...(citationNotes?{permissions:['clipboard-read','clipboard-write']}:{})});
     page = await context.newPage();page.setDefaultTimeout(30000);
     page.on('pageerror',e=>record.pageErrors.push(String(e).slice(0,512)));
@@ -85,14 +85,18 @@ async function choose(name,p=page){await H.$(p,'select-file').filter({has:p.loca
 async function status(want,p=page){await p.waitForFunction(want=>document.querySelector('[data-testid=project-search-status]')?.dataset.searchStatus===want,want,{timeout:180000});}
 async function search(query,p=page){await H.reveal(p,H.$(p,'project-search-query'));await H.$(p,'project-search-query').fill(query);await H.$(p,'project-search-submit').click();await status('Complete',p);await H.$(p,'project-search-submit').waitFor({state:'visible'});}
 const file=(head,path)=>{const v=head.files.find(f=>f.path===path);assert(v,path);return Buffer.from(v.bytes);};
-async function analysisProfile(p=page,version=thesisVersion){await H.reveal(p,H.$(p,'analysis-profile'));await H.$(p,'analysis-profile').selectOption('knu-csc-2025-source@'+version);
- assert.equal(await H.$(p,'analysis-work-type').inputValue(),'');assert.equal(await H.$(p,'reference-root').inputValue(),'');
- assert(await H.$(p,'analyze-now').isDisabled());await H.$(p,'analysis-work-type').selectOption('unspecified');
- const option=H.$(p,'reference-root').locator('option').filter({hasText:thesis});assert.equal(await option.count(),1);await H.$(p,'reference-root').selectOption(await option.getAttribute('value'));
+async function analysisProfile(p=page,version=thesisVersion){const root=H.$(p,'reference-root'),work=H.$(p,'analysis-work-type');
+ const keepScope=await H.$(p,'analysis-profile').inputValue()==='fcsc-knu'&&await root.count()>0;
+ const previousRoot=keepScope?await root.inputValue():'',previousWork=keepScope?await work.inputValue():'';
+ await H.selectAnalysisProfile(p,'knu-csc-2025-source@'+version);
+ assert.equal(await work.inputValue(),previousWork);assert.equal(await root.inputValue(),previousRoot);
+ if(!previousRoot||!previousWork)assert(await H.$(p,'analyze-now').isDisabled());await work.selectOption('unspecified');
+ const option=root.locator('option').filter({hasText:thesis});assert.equal(await option.count(),1);await root.selectOption(await option.getAttribute('value'));
  try { await H.analyze(p);if(citationNotes)await reportEdition(p,version); } catch(error) { record.failedAnalysis=await p.evaluate(()=>({status:document.querySelector('[data-testid=analysis-status]')?.textContent,root:document.querySelector('[data-testid=reference-root]')?.value,work:document.querySelector('[data-testid=analysis-work-type]')?.value,body:document.body.innerText.slice(0,5500)}));throw error; }}
 async function reportEdition(p,version,previous=null){await p.waitForFunction(({version,previous})=>{
  const report=document.querySelector('[data-testid=thesis-report]'),edition=document.querySelector('[data-testid=knu-edition]');
- return report?.dataset.snapshotId&&report.dataset.snapshotId!==previous&&edition?.textContent.endsWith('source profile '+version)
+ return report?.dataset.snapshotId&&report.dataset.snapshotId!==previous
+  &&(edition?.dataset.profileVersion===version||edition?.textContent.endsWith('source profile '+version))
   &&document.querySelector('[data-testid=analysis-status]')?.textContent==='Analysis complete.';
  },{version,previous});}
 const thesisRule=(p,id)=>H.$(p,'thesis-rule').filter({has:p.locator('code',{hasText:id})});
@@ -103,9 +107,9 @@ async function editionMetadata(p,version){
  const metadata=JSON.parse(metadataBytes),catalog=JSON.parse(catalogBytes);
  assert.deepEqual(metadata.profile,{id:'knu-csc-2025-source',version});assert.equal(catalog.profileVersion,version);
  assert.equal(catalog.catalogVersion,version==='1.6.0'?'1.1.0':'1.0.0');assert.equal(metadata.guidelineSha256,catalog.guidelineSha256);
- assert.equal(await H.$(p,'analysis-profile').inputValue(),'knu-csc-2025-source@'+version);
- assert.equal(await H.$(p,'thesis-report').locator('h3').textContent(),'Cited thesis source observations — opt-in '+version);
- assert.equal(await H.$(p,'knu-edition').textContent(),'KNU Faculty of Computer Science and Cybernetics 2025 — source profile '+version);
+ assert.equal(await H.selectedAnalysisProfile(p),'knu-csc-2025-source@'+version);
+ assert.match(await H.$(p,'thesis-report').locator('h3').textContent(),/^Cited thesis source observations/);
+ assert.equal(await H.knuReportVersion(p),version);
  const row=catalog.rules.find(r=>r.ruleId==='KNU-SRC-CITATIONS-001');
  const rendered=H.$(p,'thesis-catalog-row').filter({has:p.locator('summary',{hasText:row.ruleId})});assert.equal(await rendered.count(),1);
  const text=await rendered.textContent();assert(text.includes(row.supportedSyntax));assert(text.includes('Fix policy: none'));
@@ -145,6 +149,11 @@ async function pasteSource(text){
  assert.equal(observed.input,1);assert.equal(observed.beforeinput,1);assert(observed.trusted);assert(observed.types.every(t=>t==='insertFromPaste'));return observed;
 }
 async function phase(label){const name='Source workflow '+label+' '+Date.now();checkpoint(label+': import actual files');await importZip(name,buildZip(files));
+ checkpoint(label+': prepare compiler tools');
+ if(!(await H.$(page,'compiler-readiness').textContent()).includes('compilation available.')){
+  const refresh=H.$(page,'refresh-compile-tools');await H.reveal(page,refresh);await refresh.click();
+  await H.$(page,'compiler-settings').locator(':scope > summary').click();
+ }
  await page.waitForFunction(()=>document.querySelector('[data-testid=compiler-readiness]')?.textContent.includes('compilation available.'),null,{timeout:180000});
  await choose(main);await H.analyze(page);const before=await H.head(page,name);assert.deepEqual(file(before,main),a);assert.deepEqual(file(before,'notes.tex'),b);
  checkpoint(label+': search and exact selected multi-file replacement');await search('old');assert.equal(await H.$(page,'project-search-result').count(),3);
@@ -188,7 +197,7 @@ async function phase(label){const name='Source workflow '+label+' '+Date.now();c
  checkpoint(label+': invalidate source report');const workSnapshot=citationNotes?await H.$(page,'thesis-report').getAttribute('data-snapshot-id'):null;
  const workControl=citationNotes?await citationEvidence(page).locator('[data-testid=thesis-source-link]').elementHandle():null;
  await H.$(page,'analysis-work-type').selectOption('masterQualification');await H.analyze(page);
- if(citationNotes){await reportEdition(page,thesisVersion,workSnapshot);notesCheck.workTypeControl=await retiredControl(workControl,workSnapshot);assert.equal(await H.$(page,'analysis-profile').inputValue(),'knu-csc-2025-source@1.6.0');
+ if(citationNotes){await reportEdition(page,thesisVersion,workSnapshot);notesCheck.workTypeControl=await retiredControl(workControl,workSnapshot);assert.equal(await H.selectedAnalysisProfile(page),'knu-csc-2025-source@1.6.0');
   assert.equal(await thesisRule(page,'KNU-SRC-CITATIONS-001').getAttribute('data-outcome'),'Pass');}
  assert((await H.$(page,'thesis-selection').textContent()).includes('Master'));
  await choose(thesis);const current=await H.$(page,'editor').inputValue(),edited=current.replace('\\end{document}','\\unknownMacro\n\\end{document}');
@@ -198,7 +207,7 @@ async function phase(label){const name='Source workflow '+label+' '+Date.now();c
  }else await H.$(page,'editor').fill(edited);
  await H.save(page);await H.analyze(page);if(citationNotes)await reportEdition(page,thesisVersion,sourceSnapshot);
  assert.equal(await H.$(page,'thesis-rule').evaluateAll(es=>es.filter(e=>e.dataset.outcome==='Indeterminate').length),5);assert((await H.$(page,'thesis-known-finding').count())>=2);
- await H.$(page,'analysis-profile').selectOption('knu-csc-2025-source@1.4.0');await H.analyze(page);assert.equal(await H.$(page,'thesis-report').count(),0);
+ await H.selectAnalysisProfile(page,'knu-csc-2025-source@1.4.0');await H.analyze(page);assert.equal(await H.$(page,'thesis-report').count(),0);
  await page.screenshot({path:path.join(out,label+'-source-workflows.png'),fullPage:true});return {label,project:name,selectedReplacementExactBytes:true,declineAcceptSaveUndo:true,unrelatedBytesPreserved:true,
   explicitRootWorkType:true,fiveSourceRules:true,catalogCells:31,unicodeAndEmptySourceNavigation:true,readonlySearchAndAnalysis:true,knownCounterexamplesRetained:true,legacyProfilePreserved:true,
   ...(citationNotes?{literalCitationNotes:notesCheck}:{})};}

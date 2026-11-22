@@ -149,10 +149,19 @@ public partial class Workspace
         try
         {
             if (Coordinator.ActiveFile is not { } file || !Coordinator.EditText(file.Id, value)) return false;
-            ScheduleAutosave(); if (!JournalComposing) StateHasChanged(); return true;
+            if (!JournalComposing) StateHasChanged(); return true;
         }
         finally { _journalProgrammatic = previous; }
     }
+    // A native insertion can briefly expose raw CR/CRLF in the textarea.
+    // Interpret offsets in the representation the browser actually captured.
+    private static bool JournalSourceRange(string source, string observed, SourceRange range, out SourceRange mapped)
+    {
+        mapped = range;
+        if (source == observed) return SourceTools.ValidRange(source, range);
+        return SourceTools.TextareaText(source) == observed && SourceTools.TryFromTextarea(source, range, out mapped);
+    }
+
     // Called at the top of the existing ActiveContent setter. No captured native
     // frame means startup/programmatic input uses the existing ordinary setter.
     private bool TryJournalNativeInput(string value)
@@ -165,10 +174,11 @@ public partial class Workspace
         var native = CurrentJournalState();
         if (!JournalWritable() || !JournalIdentity(frame.FileId, frame.Session, frame.Path, frame.BindingEpoch, frame.NativeEpoch, native)
             || frame.CompositionEpoch != native!.CompositionEpoch || (frame.Composing && frame.CompositionEpoch <= 0)) return true;
+        var after = new SourceRange(frame.Start, frame.End);
         if (frame.FileId != file.Id.ToString() || frame.Session != Coordinator.SessionId.ToString("N") || frame.Path != file.RelativePath
-            || frame.BeforeValue != SourceTools.TextareaText(file.Content) || !SourceTools.ValidText(value, out _)
-            || !SourceTools.TryFromTextarea(file.Content, new(frame.BeforeStart, frame.BeforeEnd), out var before)
-            || !SourceTools.TryFromTextarea(value, new(frame.Start, frame.End), out var after))
+            || !SourceTools.ValidText(value, out _)
+            || !JournalSourceRange(file.Content, frame.BeforeValue, new(frame.BeforeStart, frame.BeforeEnd), out var before)
+            || !SourceTools.ValidRange(value, after))
         { _journalInputNotice = "Source input preimage changed; no stale input was applied."; return true; }
         bool composing = _journalComposing || frame.Composing;
         if (composing && (_journalCompositionScope is not { } old || old.BindingEpoch != frame.BindingEpoch || old.CompositionEpoch != frame.CompositionEpoch))
@@ -183,7 +193,7 @@ public partial class Workspace
         {
             // Recording is optional; the root's ordinary source/lock/recovery
             // and actual DOM preimage guards remain mandatory here.
-            if (Coordinator.ActiveFile == file && SourceTools.TextareaText(file.Content) == frame.BeforeValue && !Coordinator.IsReadOnly && Coordinator.Recovery is null)
+            if (Coordinator.ActiveFile == file && (file.Content == frame.BeforeValue || SourceTools.TextareaText(file.Content) == frame.BeforeValue) && !Coordinator.IsReadOnly && Coordinator.Recovery is null)
                 JournalOrdinaryInput(value);
             _journalInputNotice = "This edit was not recorded for editor undo; current source remains usable.";
         }
@@ -247,6 +257,7 @@ public partial class Workspace
             _journalDom = module as IJSInProcessObjectReference;
             if (_journalDom is null) return;
             _journalDom.Invoke<object?>("enableSourceJournal", _editorRef, _journalRef);
+            _journalDom.InvokeVoid("enableWorkspaceFocus", _editorRef);
             if (pending is { } action && action.Selection.IsCurrent() && !JournalComposing
                 && SourceTools.ToTextarea(action.Selection.Text, action.Selection.Selection) is { } range)
                 selected = _journalDom.Invoke<bool>("selectSourceJournal", _editorRef, action.Selection.FileId.ToString(),

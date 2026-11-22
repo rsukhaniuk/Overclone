@@ -4,10 +4,13 @@
 // commit protocol, stale-head detection and recovery decisions.
 
 const DB_NAME = "oop-workspace";
-const DB_VERSION = 1;
+const DB_VERSION = 3;
 const STORE_PROJECTS = "projects"; // keyPath "id"
 const STORE_REVISIONS = "revisions"; // keyPath "id", index "projectId"
 const STORE_CHECKPOINTS = "checkpoints"; // keyPath "id", index "projectId"
+const STORE_LATEST_PDF = "latestCompiledPdf"; // one replaceable record per project
+const STORE_CHECK_REPORTS = "checkReports";
+const CHECK_REPORT_CHARS = 1048576;
 const CONTENT_DIR = "content";
 
 let dbPromise;
@@ -176,11 +179,26 @@ function openDb() {
                 });
                 s.createIndex("projectId", "projectId", { unique: false });
             }
+            if (!db.objectStoreNames.contains(STORE_LATEST_PDF)) db.createObjectStore(STORE_LATEST_PDF);
+            if (!db.objectStoreNames.contains(STORE_CHECK_REPORTS)) {
+                const reports = db.createObjectStore(STORE_CHECK_REPORTS, { keyPath: ["project", "id"] });
+                reports.createIndex("chronological", ["project", "created", "id"]);
+            }
         };
-        req.onsuccess = () => resolve(req.result);
+        let blocked = false;
+        req.onblocked = () => {
+            blocked = true;
+            reject(new Error("Close the older workspace tab to open local storage."));
+        };
+        req.onsuccess = () => {
+            const db = req.result;
+            if (blocked) { db.close(); return; }
+            db.onversionchange = () => { db.close(); dbPromise = undefined; };
+            resolve(db);
+        };
         req.onerror = () =>
             reject(req.error || new Error("IndexedDB open failed"));
-    });
+    }).catch(error => { dbPromise = undefined; throw error; });
     return dbPromise;
 }
 
@@ -214,7 +232,106 @@ export async function listProjects() {
 
 export async function deleteProject(id) {
     const db = await openDb();
-    await reqAsPromise(txStore(db, STORE_PROJECTS, "readwrite").delete(id));
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction([STORE_PROJECTS, STORE_LATEST_PDF, STORE_CHECK_REPORTS], "readwrite");
+        tx.oncomplete = () => resolve();
+        tx.onabort = () => reject(tx.error || new Error("Project deletion aborted"));
+        tx.objectStore(STORE_PROJECTS).delete(id);
+        tx.objectStore(STORE_LATEST_PDF).delete(id);
+        tx.objectStore(STORE_CHECK_REPORTS).delete(IDBKeyRange.bound([id], [id, []]));
+    });
+}
+
+// Checks use an independent transaction and share the project's writer lock.
+export async function readCheckReports(project, beforeCreated, beforeId, pageSize) {
+    if (!Number.isInteger(pageSize) || pageSize < 1 || pageSize > 20) throw new Error("Invalid report page size");
+    const db = await openDb();
+    const before = beforeCreated == null ? null : [project, beforeCreated, beforeId];
+    const range = IDBKeyRange.bound([project], before ?? [project, []], false, before !== null);
+    const request = txStore(db, STORE_CHECK_REPORTS, "readonly").index("chronological").openCursor(range, "prev");
+    const rows = [];
+    return new Promise((resolve, reject) => {
+        request.onerror = () => reject(request.error);
+        request.onsuccess = () => {
+            const cursor = request.result;
+            if (!cursor) { resolve(rows); return; }
+            const payload = cursor.value?.payload;
+            if (typeof payload !== "string" || payload.length > CHECK_REPORT_CHARS) {
+                reject(new Error("Invalid saved report"));
+                return;
+            }
+            rows.push(payload);
+            if (rows.length > pageSize) resolve(rows);
+            else cursor.continue();
+        };
+    });
+}
+
+async function changeCheckReports(project, lockId, change) {
+    const entry = locks?.get(lockId);
+    const name = "oop-project:" + project;
+    const ownsWriter = () => entry?.name === name && locks.get(lockId) === entry;
+    if (!ownsWriter() || !(await ownsLock(lockId, name))) return false;
+    const db = await openDb();
+    if (!ownsWriter()) return false;
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction([STORE_PROJECTS, STORE_CHECK_REPORTS], "readwrite");
+        let queued = false;
+        tx.oncomplete = () => resolve(queued);
+        tx.onabort = () => reject(tx.error || new Error("Report storage transaction aborted"));
+        const owner = tx.objectStore(STORE_PROJECTS).getKey(project);
+        owner.onsuccess = () => {
+            if (owner.result === undefined || !ownsWriter()) return;
+            change(tx.objectStore(STORE_CHECK_REPORTS));
+            queued = true;
+        };
+    });
+}
+
+export function writeCheckReport(project, lockId, id, created, payload) {
+    if (typeof id !== "string" || id.length < 1 || id.length > 128 || !Number.isSafeInteger(created)
+        || typeof payload !== "string" || payload.length > CHECK_REPORT_CHARS) return false;
+    return changeCheckReports(project, lockId, store => store.put({ project, id, created, payload }));
+}
+
+export function removeCheckReport(project, lockId, id) {
+    return changeCheckReports(project, lockId, store => store.delete([project, id]));
+}
+
+function validCachedPdf(row) {
+    return row?.metadata instanceof Uint8Array && row.metadata.length > 0 && row.metadata.length <= 262144
+        && row.pdf instanceof Uint8Array && row.pdf.length > 0 && row.pdf.length <= 12 * 1024 * 1024;
+}
+
+export async function readLatestCompiledPdf(project) {
+    const db = await openDb();
+    const row = await reqAsPromise(txStore(db, STORE_LATEST_PDF, "readonly").get(project));
+    if (row === undefined) return null;
+    if (!validCachedPdf(row)) throw new Error("Invalid cached PDF bounds");
+    return { metadata: row.metadata, pdf: row.pdf };
+}
+
+export async function writeLatestCompiledPdf(project, lockId, metadata, pdf) {
+    const row = { metadata, pdf };
+    if (!validCachedPdf(row)) return false;
+    const entry = locks?.get(lockId);
+    const name = "oop-project:" + project;
+    const ownsWriter = () => entry?.name === name && locks.get(lockId) === entry;
+    if (!ownsWriter() || !(await ownsLock(lockId, name))) return false;
+    const db = await openDb();
+    if (!ownsWriter()) return false;
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction([STORE_PROJECTS, STORE_LATEST_PDF], "readwrite");
+        let queued = false;
+        tx.oncomplete = () => resolve(queued);
+        tx.onabort = () => reject(tx.error || new Error("Compiled PDF cache write aborted"));
+        const owner = tx.objectStore(STORE_PROJECTS).getKey(project);
+        owner.onsuccess = () => {
+            if (owner.result === undefined || !ownsWriter()) return;
+            tx.objectStore(STORE_LATEST_PDF).put(row, project);
+            queued = true;
+        };
+    });
 }
 
 // Name-only compare/exchange. Name policy is C#; this is only browser lock/

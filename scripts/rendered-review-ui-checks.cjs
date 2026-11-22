@@ -267,6 +267,7 @@ async function searchLabel(page,{project,hash,authority,pages,workers,previewRea
   if(!/^Page 1 of /.test(await H.$(page,'page-label').textContent()))await selection(async()=>{const input=page.locator('input[aria-label="Go to page"]');await input.fill('1');await input.press('Tab');});
   const text=await H.$(page,'page-text').textContent(),term=text.match(/[\p{L}]{3,24}/u)?.[0];assert.ok(term,'real extracted page text must contain a searchable literal');
   const input=H.$(page,'pdf-pane').locator('input[aria-label="Search PDF"]');
+  await H.reveal(page, input);
   async function find(query){await input.fill(query);await selection(()=>page.getByRole('button',{name:'Search document',exact:true}).click());}
   await find(term);assert.ok(Number(await H.$(page,'search-status').getAttribute('data-match-count'))>0);
   await selection(()=>page.getByRole('button',{name:'Next result',exact:true}).click());

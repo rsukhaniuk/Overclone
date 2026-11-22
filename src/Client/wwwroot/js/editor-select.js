@@ -62,15 +62,20 @@ export function trySelectForFind(
   expectedNormalizedText,
   start,
   end,
+  revealLine = false,
 ) {
-  return selectRange(
-    element,
-    expectedFileId,
-    expectedNormalizedText,
-    start,
-    end,
-    true,
-  );
+  const selected = selectRange(element, expectedFileId, expectedNormalizedText, start, end, true);
+  if (selected && revealLine && element.wrap === "off") {
+    const lineHeight = Number.parseFloat(getComputedStyle(element).lineHeight);
+    if (Number.isFinite(lineHeight) && lineHeight > 0) {
+      let lineIndex = 0;
+      for (let i = 0; i < start; i++) if (expectedNormalizedText[i] === "\n") lineIndex++;
+      const top = lineIndex * lineHeight;
+      if (top < element.scrollTop || top + 2 * lineHeight > element.scrollTop + element.clientHeight)
+        element.scrollTop = Math.max(0, top - element.clientHeight / 3);
+    }
+  }
+  return selected;
 }
 
 function selectRange(
@@ -346,4 +351,32 @@ export function disableSourceJournal(element) {
   const s = sourceJournals.get(element);
   if (s) { for (const [name, fn] of s.events) element.removeEventListener(name, fn); s.reference = null; s.before = s.frame = s.lastConsumed = s.owned = s.inputSelection = s.composition = null; }
   sourceJournals.delete(element);
+}
+
+// Disclosures keep their contents mounted. Escape closes the innermost panel
+// and returns keyboard focus to its own summary without touching source state.
+const workspaceFocusRoots = new WeakSet();
+export function enableWorkspaceFocus(element) {
+  const root = element?.closest('.workspace');
+  if (!root || workspaceFocusRoots.has(root)) return;
+  workspaceFocusRoots.add(root);
+  root.addEventListener('keydown', event => {
+    if (event.key !== 'Escape' || event.isComposing) return;
+    const panel = event.target.closest('details[open]');
+    if (!panel || !root.contains(panel)) return;
+    const summary = panel.querySelector(':scope > summary');
+    if (!summary) return;
+    event.preventDefault();
+    event.stopPropagation();
+    panel.open = false;
+    summary.focus({ preventScroll: true });
+  });
+}
+
+export function closeNarrowSidebar(navigation, filesOnly) {
+  if (!navigation?.isConnected || !matchMedia("(max-width: 800px)").matches) return;
+  const details = navigation.querySelector(filesOnly ? ".files-switch[open]" : ".sidebar-switch[open]");
+  if (!details) return;
+  if (details.contains(document.activeElement)) details.querySelector("summary")?.focus({ preventScroll: true });
+  details.open = false;
 }

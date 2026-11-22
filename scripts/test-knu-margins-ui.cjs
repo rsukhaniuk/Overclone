@@ -40,7 +40,7 @@ const result = {
   status: "running", phases: [], failures: [],
   source: { scriptSha256: sha(fs.readFileSync(__filename)), fixtureSha256: Object.fromEntries(
     Object.entries({ positive, negative, unknown, macro, missing, fix }).map(([name, bytes]) => [name, sha(bytes)])) },
-  errors: [], externalRequests: [], coldNetworkSuccesses: [], loadedWasm: [],
+  errors: [], externalRequests: [], coldNetworkSuccesses: [], loadedWasm: [], unreadableWasmResponses: [],
 };
 let base, context, cold = false, latestMetadata, legacyMetadata, activePhase;
 const bodyTasks = new Set();
@@ -122,13 +122,29 @@ async function launch(offline) {
     if (cold && local && response.status() < 400 && !response.fromServiceWorker())
       boundedPush(result.coldNetworkSuccesses, { path: parseUrl(url).pathname, status: response.status() });
     if (local && /\/rust-generated\/document_engine_bg\.wasm(?:\?|$)/.test(url)) {
-      const task = response.body().then(bytes => {
+      const phase = cold ? "cold" : "online";
+      const deadlineError = new Error("Browser WASM response body collection timed out");
+      let deadline;
+      const deadlinePromise = new Promise((_, reject) => {
+        deadline = setTimeout(() => reject(deadlineError), 5000);
+      });
+      const task = Promise.race([response.body(), deadlinePromise]).then(bytes => {
         const digest = sha(bytes);
         if (digest !== result.source.publishedWasmSha256) boundedPush(result.failures, "Browser-loaded Rust WASM differs from publication identity");
         if (result.loadedWasm.length === 8) result.loadedWasm.shift();
-        result.loadedWasm.push({ phase: cold ? "cold" : "online", sha256: digest, bytes: bytes.length, fromServiceWorker: response.fromServiceWorker() });
-      }).catch(error => boundedPush(result.failures, "WASM identity observation: " + String(error).slice(0, 500)))
-        .finally(() => bodyTasks.delete(task));
+        result.loadedWasm.push({ phase, sha256: digest, bytes: bytes.length, fromServiceWorker: response.fromServiceWorker() });
+      }).catch(error => {
+        // A superseded analysis can terminate its worker before Playwright can
+        // retrieve the response body. Both phases still require measured hashes.
+        if (error === deadlineError || String(error).includes("response.body: Target page, context or browser has been closed"))
+          boundedPush(result.unreadableWasmResponses, { phase, reason: error.message });
+        else
+          boundedPush(result.failures, "WASM identity observation: " + String(error).slice(0, 500));
+      })
+      .finally(() => {
+        clearTimeout(deadline);
+        bodyTasks.delete(task);
+      });
       bodyTasks.add(task);
     }
   });
@@ -153,7 +169,7 @@ async function create(page, bytes) {
   return name;
 }
 async function closeProject(page) { await page.getByRole("button", { name: "Close", exact: true }).click(); await page.locator(".project-dashboard").waitFor(); }
-async function select(page, value = ID) { await reveal(page, $(page, "analysis-profile")); await $(page, "analysis-profile").selectOption(value); }
+async function select(page, value = ID) { await H.selectAnalysisProfile(page, value); }
 async function analyze(page, version = "1.1.0") {
   const before = await page.evaluate(() => ({ count: window.__knuMarginsObserved.total,
     snapshotId: document.querySelector('[data-testid="knu-report"]')?.dataset.snapshotId }));
@@ -173,7 +189,7 @@ async function analyze(page, version = "1.1.0") {
   assert.deepEqual(payload.knu.metadata, version === "1.1.0" ? latestMetadata : legacyMetadata);
   assert.deepEqual(payload.ruleResults.map(rule => rule.ruleId), version === "1.1.0" ? ["ENGINE-STRUCT-001", INDENT, HEADING, MARGINS] : ["ENGINE-STRUCT-001", INDENT, HEADING]);
   assert.equal(await $(page, "knu-rule").count(), version === "1.1.0" ? 3 : 2);
-  assert.match(await $(page, "knu-edition").innerText(), new RegExp(version.replaceAll(".", "\\.")));
+  assert.equal(await H.knuReportVersion(page), version);
   return payload;
 }
 function marginRule(payload) { return payload.ruleResults.find(rule => rule.ruleId === MARGINS); }
@@ -249,7 +265,7 @@ async function run() {
   });
   await phase("primary-latest-worktype-positive-four-sides", async () => {
     const name = await create(page, positive);
-    assert.equal(await $(page, "analysis-profile").inputValue(), "engine-structural", "engine default unchanged");
+    assert.equal(await H.selectedAnalysisProfile(page), "engine-structural", "engine default unchanged");
     const before = await H.head(page, name);
     await select(page);
     assert.equal(await $(page, "analysis-work-type").inputValue(), "unspecified");
@@ -260,7 +276,7 @@ async function run() {
     for (const work of ["coursework", "bachelorQualification", "masterQualification", "unspecified"]) {
       await $(page, "analysis-work-type").selectOption(work); payload = await analyze(page);
       assert.equal(payload.configuration.workType, work); assert.equal(marginRule(payload).outcome, "pass");
-      assert.equal(await $(page, "analysis-profile").inputValue(), ID);
+      assert.equal(await H.selectedAnalysisProfile(page), ID);
     }
     // Adversarial INPUT only; no worker response or agreement is synthesized.
     await $(page, "analysis-work-type").evaluate(select => {
@@ -268,7 +284,7 @@ async function run() {
       select.dispatchEvent(new Event("change", { bubbles: true }));
     });
     await page.waitForFunction(() => document.querySelector('[data-testid="analysis-status"]')?.textContent.startsWith("Analysis rejected the input:"));
-    assert.equal(await $(page, "analysis-profile").inputValue(), ID, "invalid worktype cannot silently downgrade latest");
+    assert.equal(await H.selectedAnalysisProfile(page), ID, "invalid worktype cannot silently downgrade latest");
     assert.equal(await $(page, "knu-report").count(), 0);
     await $(page, "analysis-work-type").selectOption("coursework");
     payload = await analyze(page); assert.equal(payload.configuration.workType, "coursework");
@@ -311,11 +327,11 @@ async function run() {
     await page.locator(`[data-testid="review-preview"][data-preview-id="${previewId}"]`).waitFor({ state: "detached" });
     await page.waitForFunction(id => !document.querySelector(`[data-testid="knu-report"][data-snapshot-id="${id}"]`), staleSnapshot);
     assert.equal(await $(page, "nav-notice").count(), 0);
-    assert.equal(await $(page, "analysis-profile").inputValue(), LEGACY);
+    assert.equal(await H.selectedAnalysisProfile(page), LEGACY);
     await analyze(page, "1.0.0");
     await $(page, "analysis-work-type").selectOption("masterQualification");
     const legacy = await analyze(page, "1.0.0"); assert.equal(legacy.configuration.workType, "masterQualification");
-    assert.equal(await $(page, "analysis-profile").inputValue(), LEGACY, "legacy remains visibly selected after worktype change");
+    assert.equal(await H.selectedAnalysisProfile(page), LEGACY, "legacy remains visibly selected after worktype change");
     await select(page, "engine-structural"); await $(page, "knu-report").waitFor({ state: "detached" });
     assert.equal(await $(page, "review-preview").count(), 0);
     await select(page); await analyze(page); await H.assertBytes(page, project, fix);

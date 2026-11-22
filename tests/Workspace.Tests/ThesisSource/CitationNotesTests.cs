@@ -145,7 +145,9 @@ public sealed class CitationNotesTests
                 [nameof(ThesisReportView.Report)] = new AnalysisReport(snapshot, result, "r", 7),
                 [nameof(ThesisReportView.IsCurrent)] = false,
             }))).ToHtmlString());
-        Assert.Contains("opt-in " + version, html);
+        Assert.Equal(version, result.Profile.Version);
+        Assert.Contains("<h3>Cited thesis source observations</h3>", html);
+        Assert.DoesNotContain("opt-in " + version, html);
         Assert.Equal(literalNotes, html.Contains("Profile 1.6:", StringComparison.Ordinal));
         Assert.Contains("Incomplete standards coverage", html);
         Assert.DoesNotContain("data-testid=\"preview-fix\"", html);

@@ -17,7 +17,7 @@ async function create(page) {
 }
 async function check(page, expected) {
   await H.analyze(page);
-  assert.match(await $(page,"knu-edition").textContent(), /profile 1\.4\.0/);
+  assert.equal(await H.knuReportVersion(page), "1.4.0");
   for (const id of rules) {
     const rule = page.locator(`[data-testid="knu-rule"][data-rule-id="${id}"]`);
     assert.equal(await rule.getAttribute("data-outcome"),expected);
@@ -30,7 +30,7 @@ async function exercise(page,name,phase) {
   const original=await H.head(page,name);
   assert.deepEqual(original.files.map(f=>({path:f.path,bytes:f.bytes})),[{path:"main.tex",bytes:phase === "online" ? [...bytes] : [239,187,191,...Buffer.from(source.replace(/\r\n/g,"\n"))]}]);
   await reveal(page,$(page,"analysis-profile"));
-  await $(page,"analysis-profile").selectOption(ID);
+  await H.selectAnalysisProfile(page, ID);
   await $(page,"analysis-work-type").selectOption("bachelorQualification");
   await check(page,"Fail");
   const caption=page.locator('[data-testid="knu-finding"][data-rule-id="KNU-SRC-CAPTION-DOT-001"]');

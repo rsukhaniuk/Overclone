@@ -354,10 +354,10 @@ public sealed class CompileWorkspaceTests
         await using var f = await CompilationTestWorkspace.Open(); var c = new Configuration(selectableBibliography: true, tools: [CompilationTestWorkspace.Descriptor("bibtex")]); var session = Attach(f, c);
         try
         {
-            await Select(f, session); var panel = new Client.Pages.CompilePanel();
+            await Select(f, session); var panel = new Client.Pages.CompileControls();
             var flags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
-            typeof(Client.Pages.CompilePanel).GetProperty("Session", flags)!.SetValue(panel, session);
-            var handler = typeof(Client.Pages.CompilePanel).GetMethod("BibliographyChanged", flags)!;
+            typeof(Client.Pages.CompileControls).GetProperty("Session", flags)!.SetValue(panel, session);
+            var handler = typeof(Client.Pages.CompileControls).GetMethod("BibliographyChanged", flags)!;
             handler.Invoke(panel, [new Microsoft.AspNetCore.Components.ChangeEventArgs { Value = "Bibtex" }]); Assert.True(session.UseBibtex);
             handler.Invoke(panel, [new Microsoft.AspNetCore.Components.ChangeEventArgs { Value = "None" }]); Assert.False(session.UseBibtex);
             var version = session.SelectionVersion;

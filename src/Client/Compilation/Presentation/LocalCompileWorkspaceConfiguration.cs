@@ -127,7 +127,8 @@ public sealed class LocalCompileWorkspaceConfiguration : ICompileWorkspaceConfig
                             _xeFactory = new(_resources, _module.Transport, NativeCompilerSuiteContract.CreatePlan(NativeCompilerEngine.XeLaTeX, profile: package.Profile));
                             _luaFactory = new(_resources, _module.Transport, NativeCompilerSuiteContract.CreatePlan(NativeCompilerEngine.LuaLaTeX, profile: package.Profile));
                             _additionalEngines = [.. _additionalEngines,
-                                new("xelatex", "XeLaTeX (XDV to PDF)", package.EngineFor(NativeCompilerEngine.XeLaTeX), [package.Bundle], tools,
+                                new("xelatex", NativeCompilerCompatibleFontPins.HasXeAliases(package.Identity.Hex)
+                                        ? "XeLaTeX (compatible fonts)" : "XeLaTeX (XDV to PDF)", package.EngineFor(NativeCompilerEngine.XeLaTeX), [package.Bundle], tools,
                                     _xeFactory, _inspector, () => CheckAsync(), this, SelectableBibliography: true,
                                     SelectionOptions: NativeCompilerSuiteContract.SelectionOptions(package.Profile, NativeCompilerEngine.XeLaTeX), OutputAdapter: package.AdapterFor(NativeCompilerEngine.XeLaTeX), NativeProfile: package.Profile),
                                 new("lualatex", "LuaLaTeX", package.EngineFor(NativeCompilerEngine.LuaLaTeX), [package.Bundle], tools,

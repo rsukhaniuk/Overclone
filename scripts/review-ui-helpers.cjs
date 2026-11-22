@@ -29,6 +29,15 @@ async function ready(p) {
 async function reveal(p, target) {
  // Open real disclosure controls from the outside inward; never inject UI state.
  await target.waitFor({ state: "attached" });
+ const section = await target.evaluate(element => element.closest('[data-checks-section]')?.dataset.checksSection ?? null);
+ if (section) {
+  const checks = $(p, 'open-checks');
+  if (await checks.getAttribute('aria-pressed') !== 'true') await checks.click();
+  const tab = p.locator(`[data-checks-tab="${section}"]`);
+  if (await tab.getAttribute('aria-current') !== 'page') await tab.click();
+ } else if (await $(p, 'open-editor').count() && await target.evaluate(element => !!element.closest('.workspace-body[hidden], .document-bar[hidden]'))) {
+  await $(p, 'open-editor').click();
+ }
  for (const detail of await target.locator("xpath=ancestor::details").all()) {
   if ((await detail.getAttribute("open")) === null)
    await detail.locator(":scope > summary").click();
@@ -57,18 +66,43 @@ async function save(p) {
 }
 async function analyze(p) {
  await reveal(p, $(p, "analyze-now"));
+ const previous = await $(p, "analysis-panel").getAttribute("data-snapshot-id");
  await $(p, "analyze-now").click();
  await p.waitForFunction(
-  () =>
+  previous =>
    document.querySelector("[data-testid=analysis-status]")?.textContent ===
-   "Analysis complete.",
-  null,
+   "Analysis complete." && (!previous || document.querySelector("[data-testid=analysis-panel]")?.dataset.snapshotId !== previous),
+  previous,
   { timeout: 30000 },
  );
 }
+const knuProfileId = "knu-csc-2025-source";
+async function selectAnalysisProfile(p, value) {
+ const profile = $(p, "analysis-profile");
+ await reveal(p, profile);
+ // Some regression runners also support retained, versioned publications.
+ if (!value.startsWith(knuProfileId) || !(await profile.locator('option[value="fcsc-knu"]').count())) {
+  await profile.selectOption(value);
+  return;
+ }
+ if (await profile.inputValue() !== "fcsc-knu") await profile.selectOption("fcsc-knu");
+ const checks = $(p, "knu-checks");
+ await reveal(p, checks);
+ const version = value === knuProfileId ? "1.1.0" : value.split("@")[1];
+ if (await checks.inputValue() !== version) await checks.selectOption(version);
+}
+async function selectedAnalysisProfile(p) {
+ const value = await $(p, "analysis-profile").inputValue();
+ if (value !== "fcsc-knu") return value;
+ const version = await $(p, "knu-checks").inputValue();
+ return version === "1.1.0" ? knuProfileId : `${knuProfileId}@${version}`;
+}
+async function knuReportVersion(p) {
+ const edition = $(p, "knu-edition");
+ return await edition.getAttribute("data-profile-version") ?? (await edition.textContent()).match(/source profile (\d+\.\d+\.\d+)$/)?.[1];
+}
 async function selectKnu(p) {
- await reveal(p, $(p, "analysis-profile"));
- await $(p, "analysis-profile").selectOption("knu-csc-2025-source@1.0.0");
+ await selectAnalysisProfile(p, "knu-csc-2025-source@1.0.0");
  await $(p, "analysis-work-type").selectOption("bachelorQualification");
  await analyze(p);
 }
@@ -93,8 +127,7 @@ async function open(p, name) {
   .locator("[data-testid=project-row]", { hasText: name })
   .locator("[data-testid=open-project]")
   .click();
- await reveal(p, $(p, "analysis-profile"));
- await $(p, "analysis-profile").waitFor();
+ await $(p, "analysis-profile").waitFor({ state: "attached" });
 }
 async function head(p, name) {
  return p.evaluate(async (name) => {
@@ -242,6 +275,9 @@ module.exports = {
  save,
  analyze,
  selectKnu,
+ selectAnalysisProfile,
+ selectedAnalysisProfile,
+ knuReportVersion,
  create,
  open,
  head,

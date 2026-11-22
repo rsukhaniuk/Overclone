@@ -40,8 +40,9 @@ public sealed class HistoryRegistrationTests
             await renderer.Dispatcher.InvokeAsync(async () =>
             {
                 await workspace.OpenAsync(fixture.Repo.Project.Id, CancellationToken.None);
+                var controls = await renderer.RenderComponentAsync<CompileControls>(ParameterView.Empty);
                 var output = await renderer.RenderComponentAsync<CompilePanel>(ParameterView.Empty);
-                string html = WebUtility.HtmlDecode(output.ToHtmlString());
+                string html = WebUtility.HtmlDecode(controls.ToHtmlString() + output.ToHtmlString());
                 Assert.Contains("Compiler unavailable", html); Assert.Contains("Saved PDFs", html); Assert.Contains("Save PDF to history", html);
                 Assert.Contains("data-testid=\"compile-history-panel\"", html); Assert.False(compile.Readiness.Ready); Assert.False(history.CanSave);
                 var main = workspace.Files.First(f => f.MediaKind == "text").Id;
@@ -63,6 +64,7 @@ public sealed class HistoryRegistrationTests
     });
     [Theory]
     [InlineData("compile")]
+    [InlineData("controls")]
     [InlineData("history")]
     [InlineData("preview")]
     public void View_only_renderer_await_does_not_capture_untracked_compile_owner(string componentName) => Run(async () =>
@@ -77,7 +79,8 @@ public sealed class HistoryRegistrationTests
         });
         await using var services = new ServiceCollection().AddLogging().AddSingleton<IJSRuntime>(new NoJs()).AddAuthoringWorkspace().BuildServiceProvider();
         await using var renderer = new GateRenderer(services, services.GetRequiredService<ILoggerFactory>());
-        var type = componentName == "compile" ? typeof(CompilePanel) : componentName == "history" ? typeof(CompileHistoryPanel) : typeof(Client.Pdf.Preview.PdfPreviewPane);
+        var type = componentName == "compile" ? typeof(CompilePanel) : componentName == "controls" ? typeof(CompileControls)
+            : componentName == "history" ? typeof(CompileHistoryPanel) : typeof(Client.Pdf.Preview.PdfPreviewPane);
         var component = renderer.Create(type);
         if (component is CompileHistoryPanel) type.GetProperty(nameof(CompileHistoryPanel.Session))!.SetValue(component, services.GetRequiredService<CompileHistoryUiSession>());
         renderer.Attach(component);

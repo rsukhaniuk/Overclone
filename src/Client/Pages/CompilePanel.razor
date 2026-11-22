@@ -1,137 +1,35 @@
-@using Client.Compilation
-@using Client.Compilation.Diagnostics
 @using Client.Compilation.Download
 @using Client.Compilation.History
-@using Client.Compilation.Navigation
 @using Client.Compilation.Presentation
-@using Client.Compilation.Provisioning
 @using Client.Compilation.SyncTeX
 @using Client.Pdf.Preview
 @using Client.Workspace
-@using Client.Workspace.Domain
 @implements IDisposable
 @inject WorkspaceCoordinator Workspace
 @inject CompileWorkspaceSession Session
 @inject CompileHistoryUiSession History
 @inject IPdfDownloadBrowser DownloadBrowser
 <aside class="authoring-compile" aria-label="Compilation and PDF" data-testid="compile-panel" data-selection-version="@Session.SelectionVersion" data-is-current="@(Session.State?.IsCurrent.ToString().ToLowerInvariant())" data-output-hash="@Session.DisplayedOutput?.OutputHash?.Hex">
-    <header class="compile-toolbar">
-        <h2>PDF</h2>
-        <div class="actions">
-            <button class="primary" @onclick="Session.CompileAsync" disabled="@(!Session.Readiness.Ready || Session.ReadingTools || Session.MainFile is null || Session.EngineChoice.Length == 0)" data-testid="compile">Compile</button>
-            <button @onclick="Session.Cancel" disabled="@(Session.State is not { } s || s.Active is null && s.Pending is null && s.UnsettledJobs == 0)" data-testid="cancel-compile">Cancel</button>
-            <button @onclick="DownloadPdf" disabled="@(_download?.CanDownload != true)" data-testid="download-pdf">Download PDF</button>
-        </div>
-    </header>
     <p role="status" data-testid="pdf-download-status">@_download?.Notice</p>
-    <p class="compiler-readiness" role="status" data-testid="compiler-readiness">@(Session.UsesBundledResources && Session.ReadingTools ? $"Preparing included compilers automatically… First open downloads about {BundledRuntimeAssets.CompilerAsset.Length / (1024 * 1024)} MiB of compiler resources. Editing and saving remain available." : Session.Readiness.Ready ? "Local compiler checked — compilation available." : "Compiler unavailable — " + Session.Readiness.Message)</p>
-    <details class="compiler-settings" data-testid="compiler-settings">
-    <summary>Compiler settings</summary>
-    <div class="settings-content">
-    <label>Main file
-        <select aria-label="Compile main file" value="@Session.MainFile?.ToString()" @onchange="MainChanged">
-            <option value="">Choose a main file</option>
-            @foreach (var file in Workspace.Files.Where(f => !f.Deleted && f.MediaKind == "text"))
-            { <option value="@file.Id.ToString()">@file.RelativePath</option> }
-        </select>
-    </label>
-    <label>Engine
-        <select aria-label="Compile engine" value="@Session.EngineChoice" @onchange="EngineChanged">
-            <option value="">Choose an available engine</option>
-            @foreach (var ports in Session.AvailableEngines)
-            { <option value="@ports.CapabilityId" disabled="@(!Session.Readiness.Ready)">@ports.Label</option> }
-            @if (Session.UsesBundledResources && !Session.AvailableEngines.Any())
-            { <option value="local-authoring-v4" disabled>pdfLaTeX — preparing</option> }
-            @if (!Session.AvailableEngines.Any(p => p.CapabilityId == "xelatex"))
-            { <option value="xelatex" disabled>XeLaTeX — @(Session.UsesBundledResources ? "preparing" : "unavailable")</option> }
-            @if (!Session.AvailableEngines.Any(p => p.CapabilityId == "lualatex"))
-            { <option value="lualatex" disabled>LuaLaTeX — @(Session.UsesBundledResources ? "preparing" : "unavailable")</option> }
-            @if (!Session.AvailableEngines.Any(p => p.CapabilityId == "latex-dvi"))
-            { <option value="latex-dvi" disabled>LaTeX DVI mode — @(Session.UsesBundledResources ? "preparing" : "unavailable")</option> }
-        </select>
-    </label>
-    @if (Session.ConfiguredPorts is { SelectableBibliography: true })
+    <p class="pdf-freshness" hidden="@(!Session.IsDisplayedPdfStale)"
+       role="status" data-testid="compiled-pdf-status">@Session.PdfLabel</p>
+    @if (Session.CacheNotice.Length != 0)
     {
-        <label>Bibliography
-            <select aria-label="Bibliography tool" value="@Session.BibliographyTool" @onchange="BibliographyChanged" disabled="@(!Session.Readiness.Ready)" data-testid="bibliography-tool">
-                <option value="None">None</option>
-                <option value="Bibtex" disabled="@(!Session.CanSelectBibtex)">BibTeX</option>
-                <option value="Biber" disabled="@(!Session.CanSelectBiber)">Biber@(Session.CanSelectBiber ? "" : " — unavailable")</option>
-            </select>
-        </label>
-        <p class="hint">Choose the backend required by your document. Bibliography tools run locally; unavailable tools are not substituted.</p>
-    }
-    <p class="hint">Settings apply to this session. Unsupported engines and packages are not substituted.</p>
-    <details><summary>Runtime availability &amp; compatibility</summary>
-        <p>@Session.Readiness.Status: @Session.Readiness.Message</p>
-        <p>Select a .tex root, including a nested path, and a verified local engine with optional BibTeX. Includes resolve from project CWD. Internal ASCII spaces in directory and base names are supported; leading/trailing basename spaces and TeX command syntax are unsupported. Source/PDF navigation requires native maps and supported page geometry. Unsupported graphics transforms can leave navigation unavailable while the compiled PDF remains usable.</p>
-        <p data-testid="renderer-readiness">@(Session.ConfiguredPorts?.Inspector is null ? "Preview unavailable — no renderer configured." : "Preview checks its supported local renderer on each request; actual availability is reported in the preview.")</p>
-    </details>
-    @if (Session.UsesBundledResources)
-    {
-        <p data-testid="bundled-runtime-info">All four compilers, their bundled packages/fonts and the PDF renderer are included. Resources cache automatically for offline use after the first download. No manual installation is required.</p>
-    }
-    else
-    {
-        <NativeRuntimeSetupPanel />
-        <PdfRuntimeSetupPanel />
-    }
-    <button @onclick="Session.RefreshToolsAsync" disabled="@Session.ReadingTools" data-testid="refresh-compile-tools">Check tools</button>
-    </div>
-    </details>
-    <div class="compile-notices">
-        <p role="status" data-testid="compile-status">@Session.Notice</p>
-        <p data-testid="compiled-pdf-status">@Session.PdfLabel</p>
-    </div>
-    @if (Session.State is { } state)
-    {
-        <p data-testid="compile-work-status">@(state.Active is not null ? "Compiling…" : state.UnsettledJobs > 0 ? "Finishing previous work…" : "Idle") @(state.Pending is not null ? "Latest request queued." : "")</p>
-        @if (Session.Attempt is { } presentation)
-        {
-            <section aria-label="Compiler diagnostics" data-testid="compiler-diagnostics">
-                <h3>Compiler diagnostics @(!state.IsAttemptCurrent ? "— previous attempt" : "")</h3>
-                <p>Compiler log completeness is unknown. Source checks remain independent. Source actions select an entire captured line, not a token or column.</p>
-                <p role="status" data-testid="compiler-navigation-status">@(_lineNotice ?? SourceNavigationStatus)</p>
-                @if (presentation.ParserResult is CompilerLogParseResult.Parsed parsed)
-                {
-                    @foreach (var finding in parsed.Report.Diagnostics)
-                    {
-                        <p data-testid="compiler-finding">@finding.Severity: @finding.SafeMessage
-                            @if (finding.LocationIssue == CompilerLocationIssue.None && finding.Location is { } location)
-                            {
-                                <span>@location.RelativePath:@location.Line (line-level precision)</span>
-                                @if (CompilerSourceNavigationRequest.TryCreate(Session, parsed.Report, finding) is not null && SourceLineRequested.HasDelegate)
-                                {
-                                    <button type="button" data-testid="compiler-go-to-source" @onclick="() => RequestSourceLine(parsed.Report, finding)">Go to source — @location.RelativePath:@location.Line (line)</button>
-                                }
-                                else { <span>Source navigation unavailable: previous or superseded attempt.</span> }
-                            }
-                            else { <span>Location unavailable: @finding.LocationIssue</span> }
-                        </p>
-                    }
-                }
-                else { <p>Compiler log interpretation unavailable: @presentation.Issue</p> }
-            </section>
-        }
-        <details data-testid="compile-details"><summary>Compile details and log</summary>
-            <p>Outcome: @Session.LastReason; selection version: @Session.SelectionVersion; unsettled operations: @state.UnsettledJobs.</p>
-            <p>Request: @Session.DisplayedOutput?.RequestId; epoch: @Session.DisplayedOutput?.WorkerEpoch.</p>
-            <p>Input: @Session.DisplayedOutput?.InputContentDigest.Hex; PDF: @Session.DisplayedOutput?.OutputHash?.Hex.</p>
-            <pre data-testid="compiler-log">@state.LastAttempt?.LogText</pre>
-        </details>
+        <p class="pdf-freshness" role="status" data-testid="pdf-cache-notice">@Session.CacheNotice</p>
     }
     <PdfPreviewPane Controller="@Session.Preview" OwnsController="false" SourceMappingAvailable="@SourceMappingAvailable"
         SourcePointRequested="@SourcePointRequested" SourceNavigationNotice="@MapNavigationStatus"
         SourceMatch="@SourceMatch" SourceMatchPdfHash="@SourceMatchPdfHash"
-        SourceMatchTransform="@SourceMatchTransform" SourceMatchUsesNativeTransform="@SourceMatchUsesNativeTransform" />
-    <CompiledBibliographyPanel Session="@Session" />
-    <RenderedExtentPanel ControllerAvailable="RenderedExtentAvailable" />
-    <CompileHistoryPanel Session="@History" DownloadBrowser="@DownloadBrowser" />
+        SourceMatchTransform="@SourceMatchTransform" SourceMatchUsesNativeTransform="@SourceMatchUsesNativeTransform" FillPane="true">
+        <ToolbarActions>
+            <button @onclick="DownloadPdf" disabled="@(_download?.CanDownload != true)" data-testid="download-pdf">Download PDF</button>
+        </ToolbarActions>
+        <MoreTools>
+            <CompileHistoryPanel Session="@History" DownloadBrowser="@DownloadBrowser" />
+        </MoreTools>
+    </PdfPreviewPane>
 </aside>
 @code {
-    [Parameter] public EventCallback<CompilerSourceNavigationRequest> SourceLineRequested { get; set; }
-    [Parameter] public Action<Client.Analysis.RenderedExtent.RenderedExtentController?>? RenderedExtentAvailable { get; set; }
-    [Parameter] public string? SourceNavigationStatus { get; set; }
     [Parameter] public bool SourceMappingAvailable { get; set; }
     [Parameter] public EventCallback<PdfPreviewPointer> SourcePointRequested { get; set; }
     [Parameter] public string? MapNavigationStatus { get; set; }
@@ -139,30 +37,16 @@
     [Parameter] public string? SourceMatchPdfHash { get; set; }
     [Parameter] public SourceMapPageTransform? SourceMatchTransform { get; set; }
     [Parameter] public bool SourceMatchUsesNativeTransform { get; set; }
-    private string? _lineNotice;
     private bool _disposed;
     private PdfDownloadCoordinator? _download;
-    private async Task RequestSourceLine(CompilerLogReport report, CompilerLogDiagnostic finding)
+    protected override void OnInitialized()
     {
-        if (_disposed) return;
-        var request = CompilerSourceNavigationRequest.TryCreate(Session, report, finding);
-        if (request is null) { _lineNotice = "Compiler attempt is no longer current; compile again."; return; }
-        _lineNotice = null;
-        await SourceLineRequested.InvokeAsync(request);
+        Session.Changed += Changed;
+        _download = new(Workspace, Session, DownloadBrowser);
+        _download.Changed += Changed;
     }
-    protected override async Task OnInitializedAsync()
-    {
-        Session.AttachRenderer(action => InvokeAsync(action)); Session.Changed += Changed;
-        _download = new(Workspace, Session, DownloadBrowser); _download.Changed += Changed;
-        await Session.RefreshToolsAsync();
-    }
+
     private Task DownloadPdf() => _download?.DownloadAsync() ?? Task.CompletedTask;
-    private void MainChanged(ChangeEventArgs e) => Session.SelectMain(Guid.TryParse(e.Value?.ToString(), out var id) ? new FileId(id) : null);
-    private void EngineChanged(ChangeEventArgs e) => Session.SelectEngine(e.Value?.ToString() ?? "");
-    private void BibliographyChanged(ChangeEventArgs e)
-    {
-        if (e.Value is string value && Enum.TryParse<BibliographyToolKind>(value, out var kind)) Session.SelectBibliography(kind);
-    }
     private void Changed() { if (!_disposed) _ = Render(); }
     private async Task Render()
     {

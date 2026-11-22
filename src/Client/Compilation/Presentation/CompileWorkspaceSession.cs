@@ -1,6 +1,8 @@
 using Client.Compilation.Diagnostics;
+using Client.Compilation.History;
 using Client.Compilation.Lifecycle;
 using Client.Compilation.Native;
+using Client.Compilation.Provisioning;
 using Client.Pdf;
 using Client.Pdf.Preview;
 using Client.Workspace;
@@ -11,7 +13,8 @@ namespace Client.Compilation.Presentation;
 /// <summary>App-scoped composition, not another lifecycle. Borrow workspace/config;
 /// own selection/B3/preview/designated ports. Pages only attach/unsubscribe. Actual
 /// unfinished operations retain the original B3/adapter admission across remounts.</summary>
-public sealed class CompileWorkspaceSession(WorkspaceCoordinator workspace, ICompileWorkspaceConfiguration configuration, TimeProvider? timeProvider = null) : IAsyncDisposable
+public sealed class CompileWorkspaceSession(WorkspaceCoordinator workspace, ICompileWorkspaceConfiguration configuration,
+    TimeProvider? timeProvider = null, LatestCompiledPdfCache? latestPdf = null) : IAsyncDisposable
 {
     private CompileOwnerContext? _owner;
     private CompilationLifecycleService? _lifecycle;
@@ -22,7 +25,7 @@ public sealed class CompileWorkspaceSession(WorkspaceCoordinator workspace, ICom
     private bool _disposed, _refreshing, _previousCurrent, _readingTools;
     private AcceptedCompileOutput? _shown;
     private ValidatedCompileAttempt? _presented;
-    public PdfPreviewController Preview { get; private set; } = new();
+    public PdfPreviewController Preview { get; private set; } = CreatePreview(BundledInspector(configuration), BundledCapacity(configuration));
     public CompileReadiness Readiness { get; private set; } = new(false, "Unavailable", "No compiler configured.");
     public FileId? MainFile { get; private set; }
     public string EngineChoice { get; private set; } = "";
@@ -52,8 +55,10 @@ public sealed class CompileWorkspaceSession(WorkspaceCoordinator workspace, ICom
     public event Action? Changed;
     public CompileLifecycleView? State => _disposed || _owner is null ? null : _owner.Run(() => _lifecycle!.State);
     public CompileOwnerContext? Owner => _owner;
-    public string PdfLabel => State is { LastSuccessful: not null } s && s.LastSuccessful.SnapshotIdentity.ProjectId == workspace.Project?.Id
-        ? s.IsCurrent ? "PDF up to date" : "Last successful PDF — out of date" : "No compiled PDF";
+    public bool IsDisplayedPdfStale => DisplayedOutput is not null ? State?.IsCurrent != true
+        : RestoredPdf is not null && !CachedSourceMatches();
+    public string PdfLabel => IsDisplayedPdfStale ? "Last successful PDF — out of date"
+        : RestoredPdf is not null ? "Last compiled PDF from this browser" : DisplayedOutput is not null ? "PDF up to date" : "No compiled PDF";
     // Configured port options only. Actual runtime/engine admission stays in the factory.
     private static bool SuiteOptions(IEnumerable<CompilationOption> options) => NativeCompilerSuiteContract.MatchesOptions(options)
         || NativeCompilerSuiteContract.MatchesOptions(options, NativeNavigationContract.Profile)
@@ -82,6 +87,8 @@ public sealed class CompileWorkspaceSession(WorkspaceCoordinator workspace, ICom
             _lifecycle.Changed += Refresh;
             _session = workspace.SessionId; workspace.WorkspaceChanged += WorkspaceChanged;
             workspace.RevisionCommitted += RevisionCommitted;
+            Preview.Changed += PreviewChanged;
+            ScheduleCachedPdfRead();
         });
     }
     public Task RefreshToolsAsync()
@@ -109,7 +116,13 @@ public sealed class CompileWorkspaceSession(WorkspaceCoordinator workspace, ICom
                         || engines.Select(p => p.CapabilityId).Distinct(StringComparer.Ordinal).Count() != engines.Length)
                         throw new InvalidOperationException("Invalid configured compiler choices.");
                     _engines = Array.AsReadOnly(engines);
-                    _ports = ports; await Preview.DisposeAsync(); Preview = CreatePreview(); Preview.Changed += PreviewChanged;
+                    _ports = ports;
+                    if (!ReferenceEquals(ports.Inspector, BundledInspector(configuration)) || ports.CompiledPdfCapacity != BundledCapacity(configuration))
+                    {
+                        Preview.Changed -= PreviewChanged;
+                        await Preview.DisposeAsync(); Preview = CreatePreview(); Preview.Changed += PreviewChanged;
+                        ShowRestoredPdf();
+                    }
                 }
             }
             else Readiness = await _ports.Readiness();
@@ -234,6 +247,8 @@ public sealed class CompileWorkspaceSession(WorkspaceCoordinator workspace, ICom
             _session = workspace.SessionId; MainFile = null; EngineChoice = ""; BibliographyTool = BibliographyToolKind.None; _selection.SetSelection(null);
             Preview.Changed -= PreviewChanged; _ = Preview.DisposeAsync(); Preview = CreatePreview(); Preview.Changed += PreviewChanged;
             _shown = null; _previousCurrent = false; _presented = null; Attempt = null; LastTicket = null; LastReason = null;
+            _restoredPdf = null; _checkedCacheHead = null; CacheNotice = "";
+            ScheduleCachedPdfRead();
         }
         Refresh();
     });
@@ -254,10 +269,17 @@ public sealed class CompileWorkspaceSession(WorkspaceCoordinator workspace, ICom
         {
             var state = _lifecycle.State;
             var output = state.LastSuccessful?.SnapshotIdentity.ProjectId == workspace.Project?.Id ? state.LastSuccessful : null;
-            if (output is not null && (!ReferenceEquals(output, _shown) || _previousCurrent && !state.IsCurrent))
+            if (output is not null)
             {
-                _shown = output; _previousCurrent = state.IsCurrent;
-                Preview.Cancel(); Preview.Provide(CreatePdfDocument(output), "Compiled PDF", state.IsCurrent ? PdfDisplayProvenance.ProvidedPdf : PdfDisplayProvenance.CallerSaysHistorical);
+                var provenance = state.IsCurrent ? PdfDisplayProvenance.ProvidedPdf : PdfDisplayProvenance.CallerSaysHistorical;
+                if (!ReferenceEquals(output, _shown))
+                {
+                    _shown = output;
+                    _restoredPdf = null; CacheNotice = "";
+                    ScheduleCachedPdfWrite(output);
+                    Preview.Provide(CreatePdfDocument(output), "Compiled PDF", provenance);
+                }
+                else if (_previousCurrent != state.IsCurrent) Preview.SetProvenance(provenance);
             }
             _previousCurrent = output is not null && state.IsCurrent;
             if (state.LastAttempt is { } attempt && attempt.Snapshot.Identity.ProjectId == workspace.Project?.Id && !ReferenceEquals(attempt, _presented))
@@ -266,12 +288,105 @@ public sealed class CompileWorkspaceSession(WorkspaceCoordinator workspace, ICom
         finally { _refreshing = false; }
         Changed?.Invoke();
     }
-    private PdfPreviewController CreatePreview()
+    private static IPdfInspector? BundledInspector(ICompileWorkspaceConfiguration config) =>
+        config is LocalCompileWorkspaceConfiguration { UsesBundledResources: true } local ? local.PdfInspector : null;
+    private static PdfCompiledInputCapacity? BundledCapacity(ICompileWorkspaceConfiguration config) =>
+        BundledInspector(config) is null ? null : BundledRuntimeAssets.SelectedPdfCapacity;
+    private PdfPreviewController CreatePreview() => CreatePreview(_ports?.Inspector ?? BundledInspector(configuration),
+        _engines.FirstOrDefault()?.CompiledPdfCapacity ?? BundledCapacity(configuration));
+    private static PdfPreviewController CreatePreview(IPdfInspector? inspector, PdfCompiledInputCapacity? capacity) =>
+        new(inspector, new PdfPreviewPolicy(InputBytes: capacity?.MaxInputBytes ?? PdfDocument.DefaultInputBytes,
+            MaxPixels: 4000000, MaxRgbaBytes: 16000000) { CompiledInputCapacity = capacity }, preferredFitWidth: 960, interactiveReader: true);
+
+    private readonly record struct CacheOwner(ProjectId Project, Guid Session);
+    private CachedCompiledPdf? _restoredPdf;
+    private RevisionId? _checkedCacheHead;
+    private bool _cachedFilesMatch;
+    private CacheOwner? _pendingCacheRead;
+    private AcceptedCompileOutput? _pendingCacheWrite;
+    private Task _cacheRead = Task.CompletedTask, _cacheWrite = Task.CompletedTask;
+    private CacheOwner? CurrentCacheOwner => workspace.Project is { } project ? new(project.Id, workspace.SessionId) : null;
+    internal PdfDocument? RestoredPdf => _session == workspace.SessionId ? _restoredPdf?.Document : null;
+    public string CacheNotice { get; private set; } = "";
+
+    private bool CachedSourceMatches()
     {
-        var capacity = _engines.FirstOrDefault()?.CompiledPdfCapacity;
-        return new(_ports?.Inspector, capacity is null ? null
-            : new PdfPreviewPolicy(InputBytes: capacity.MaxInputBytes) { CompiledInputCapacity = capacity });
+        if (_restoredPdf is null || workspace.IsDirty || workspace.CurrentRevision is not { } revision) return false;
+        if (_checkedCacheHead != revision.Id)
+        {
+            _checkedCacheHead = revision.Id;
+            _cachedFilesMatch = _restoredPdf.Files.SequenceEqual(revision.Files.OrderBy(f => f.RelativePath, StringComparer.Ordinal));
+        }
+        return _cachedFilesMatch;
     }
+
+    private void ShowRestoredPdf()
+    {
+        if (RestoredPdf is { } pdf)
+            Preview.Provide(pdf, "Last compiled PDF", PdfDisplayProvenance.CallerSaysHistorical);
+    }
+
+    private void ScheduleCachedPdfRead()
+    {
+        if (latestPdf is null || !UsesBundledResources) return;
+        _pendingCacheRead = CurrentCacheOwner;
+        if (_pendingCacheRead is not null && _cacheRead.IsCompleted)
+            _owner!.ObserveOwnedOperation(_cacheRead = ReadCachedPdfAsync(latestPdf), CompilationOwnedOperationKind.Workflow);
+    }
+
+    private async Task ReadCachedPdfAsync(LatestCompiledPdfCache cache)
+    {
+        await Task.Yield();
+        while (!_disposed && _pendingCacheRead is { } owner)
+        {
+            _pendingCacheRead = null;
+            try
+            {
+                var entry = await cache.ReadAsync(owner.Project);
+                if (_disposed || CurrentCacheOwner != owner || _shown is not null || entry is null) continue;
+                _restoredPdf = entry; _checkedCacheHead = null;
+                ShowRestoredPdf();
+            }
+            catch (Exception error) when (error is not OutOfMemoryException)
+            {
+                if (!_disposed && CurrentCacheOwner == owner && _shown is null)
+                {
+                    CacheNotice = "The cached PDF could not be opened. Compile to generate a new copy.";
+                    Changed?.Invoke();
+                }
+            }
+        }
+    }
+
+    private void ScheduleCachedPdfWrite(AcceptedCompileOutput output)
+    {
+        if (latestPdf is null || !UsesBundledResources || workspace.IsReadOnly || workspace.LockId is null) return;
+        _pendingCacheWrite = output;
+        if (_cacheWrite.IsCompleted)
+            _owner!.ObserveOwnedOperation(_cacheWrite = WriteCachedPdfAsync(latestPdf), CompilationOwnedOperationKind.Workflow);
+    }
+
+    private async Task WriteCachedPdfAsync(LatestCompiledPdfCache cache)
+    {
+        await Task.Yield();
+        while (!_disposed && _pendingCacheWrite is { } output)
+        {
+            _pendingCacheWrite = null;
+            var owner = new CacheOwner(output.SnapshotIdentity.ProjectId, output.SnapshotIdentity.SessionId);
+            if (CurrentCacheOwner != owner || workspace.LockId is not { } lockId || workspace.IsReadOnly) continue;
+            bool Current() => !_disposed && CurrentCacheOwner == owner && !workspace.IsReadOnly
+                && workspace.LockId == lockId && ReferenceEquals(_shown, output);
+            bool saved;
+            try { saved = await cache.SaveAsync(output, lockId, Current); }
+            catch (Exception error) when (error is not OutOfMemoryException) { saved = false; }
+            if (!saved && Current())
+            {
+                CacheNotice = "The PDF could not be cached in this browser. Download it to keep a copy.";
+                Changed?.Invoke();
+            }
+        }
+    }
+
     internal PdfDocument CreatePdfDocument(AcceptedCompileOutput output)
     {
         var selection = output.Snapshot.Selection;

@@ -25,6 +25,18 @@ public static class AuthoringWorkspaceRegistration
                 .Where(p => NativeRuntimeProfiles.IsSuite(p) && NativeRuntimeProfiles.SuitePinsReady(p))
                 .SelectMany(p => Enum.GetValues<NativeCompilerEngine>().Select(e => NativeCompilerComponents.For(p, e).OutputAdapter)))
             .Where(adapter => adapter != NativeRuntimePackage.Adapter).Distinct().ToArray();
+
+    private static ArtifactHistoryBudget PdfArtifactBudget(ICompileWorkspaceConfiguration configuration)
+    {
+        var capacity = configuration is LocalCompileWorkspaceConfiguration { UsesBundledResources: true }
+            ? BundledRuntimeAssets.SelectedPdfCapacity : null;
+        int maxPdfBytes = capacity?.MaxInputBytes ?? PdfDocument.DefaultInputBytes;
+        return new(new(NativeThesisCompilerContract.ProjectFiles,
+                NativeRuntimeProfiles.ProjectFileBytes(NativeInputBudgetContract.Profile),
+                NativeRuntimeProfiles.ProjectTotalBytes(NativeInputBudgetContract.Profile), 131072), maxPdfBytes, 262144,
+            new(new(2, 256, maxPdfBytes, 16777216, 65536, 256, 256), 16384, 64, 128, 15000))
+            { CompiledInputCapacity = capacity };
+    }
     /// <summary>Shared app services with fixed local authoring trust and no bundled runtime bytes.
     /// A trusted TEST/application builder may explicitly replace the configuration.</summary>
     public static IServiceCollection AddAuthoringWorkspace(this IServiceCollection services)
@@ -48,6 +60,8 @@ public static class AuthoringWorkspaceRegistration
         services.TryAddScoped<ICompileWorkspaceConfiguration, LocalCompileWorkspaceConfiguration>();
         services.AddScoped<Client.Compilation.Provisioning.NativeRuntimeSetupFactory>();
         services.AddScoped<Client.Compilation.Provisioning.PdfRuntimeSetupFactory>();
+        services.AddScoped<LatestCompiledPdfCache>(provider => new(provider.GetRequiredService<IJSRuntime>(),
+            PdfArtifactBudget(provider.GetRequiredService<ICompileWorkspaceConfiguration>())));
         services.AddScoped<CompileWorkspaceSession>();
         services.AddTransient<Client.Analysis.RenderedReview.IRenderedReviewEvaluator, Client.Analysis.RenderedReview.RustRenderedReviewEvaluator>();
         services.AddScoped<IPdfDownloadBrowser, PdfDownloadBrowser>();
@@ -63,17 +77,9 @@ public static class AuthoringWorkspaceRegistration
                 provider.GetRequiredService<IProjectRepository>(), NativeRuntimePackage.Pdf, NativeRuntimePackage.Adapter,
                 HistoricalOutputAdapters());
             var index = new CompileHistoryIndex(new JsHistoryIndexBackend(js));
-            var config = provider.GetRequiredService<ICompileWorkspaceConfiguration>() as LocalCompileWorkspaceConfiguration;
-            var capacity = config?.UsesBundledResources == true ? BundledRuntimeAssets.SelectedPdfCapacity : null;
-            int maxPdfBytes = capacity?.MaxInputBytes ?? PdfDocument.DefaultInputBytes;
-            return new(workspace, compile, store, index,
-                new(new(NativeThesisCompilerContract.ProjectFiles,
-                    NativeRuntimeProfiles.ProjectFileBytes(NativeInputBudgetContract.Profile),
-                    NativeRuntimeProfiles.ProjectTotalBytes(NativeInputBudgetContract.Profile), 131072), maxPdfBytes, 262144,
-                    new(new(2, 256, maxPdfBytes, 16777216, 65536, 256, 256), 16384, 64, 128, 15000))
-                    { CompiledInputCapacity = capacity },
-                new(64, 65536, 15000),
-                config?.PdfInspector);
+            var config = provider.GetRequiredService<ICompileWorkspaceConfiguration>();
+            return new(workspace, compile, store, index, PdfArtifactBudget(config), new(64, 65536, 15000),
+                (config as LocalCompileWorkspaceConfiguration)?.PdfInspector);
         });
         return services;
     }

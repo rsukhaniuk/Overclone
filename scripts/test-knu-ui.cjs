@@ -4,7 +4,7 @@ const assert = require("node:assert/strict");
 const http = require("node:http");
 const { chromium } = require("playwright");
 const { fixtures, hashes } = require("./knu-fixtures.cjs");
-const { reveal } = require("./review-ui-helpers.cjs");
+const { reveal, selectAnalysisProfile } = require("./review-ui-helpers.cjs");
 const UPSTREAM = process.env.APP_URL || "http://app:8080";
 const BASE = "http://127.0.0.1:8097";
 const $ = (p, id) => p.locator(`[data-testid="${id}"]`);
@@ -124,7 +124,7 @@ async function analyze(p) {
 }
 async function knu(p) {
  await reveal(p, $(p, "analysis-profile"));
- await $(p, "analysis-profile").selectOption("knu-csc-2025-source@1.0.0");
+ await selectAnalysisProfile(p, "knu-csc-2025-source@1.0.0");
  await analyze(p);
 }
 async function head(p, name) {
@@ -352,7 +352,7 @@ async function races(browser) {
   }
   if (change === "profile") {
    await $(p, "analysis-profile").selectOption("engine-structural");
-   await $(p, "analysis-profile").selectOption("knu-csc-2025-source@1.0.0");
+   await selectAnalysisProfile(p, "knu-csc-2025-source@1.0.0");
   }
   if (change === "edit") {
    await $(p, "editor").fill(fixtures.positive.toString());
@@ -430,7 +430,7 @@ async function navigationRaces(browser) {
    }
    if (change === "profile") {
     await $(p, "analysis-profile").selectOption("engine-structural");
-    await $(p, "analysis-profile").selectOption("knu-csc-2025-source@1.0.0");
+    await selectAnalysisProfile(p, "knu-csc-2025-source@1.0.0");
    }
    if (change === "edit")
     await $(p, "editor").fill("edited while navigation held🙂");

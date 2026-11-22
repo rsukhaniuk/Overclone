@@ -1,4 +1,5 @@
 @using Client.Compilation
+@using Client.Checks
 @using Client.Compilation.Bibliography
 @using Client.Compilation.Presentation
 @using Microsoft.JSInterop
@@ -7,7 +8,7 @@
 
 @if (_current is not null)
 {
-    <details data-testid="compiled-bibliography">
+    <details class="tool-disclosure" data-testid="compiled-bibliography">
         <summary>Compiled bibliography</summary>
         @if (_current.BibliographyEvidence is null)
         {
@@ -55,6 +56,7 @@
 
 @code {
     [Parameter, EditorRequired] public CompileWorkspaceSession Session { get; set; } = default!;
+    [Parameter] public EventCallback<CheckReport> Completed { get; set; }
     private AcceptedCompileOutput? _current;
     private CompiledBibliographyReport? _report;
     private bool _confirmMainWork, _disposed;
@@ -105,6 +107,13 @@
                 "unavailable" => Describe(report.Reason),
                 _ => "The local bibliography check was unavailable."
             };
+            if (Completed.HasDelegate && report is not null)
+            {
+                var rows = report.Rows.Select(row => $"{row.Key} · first use {row.FirstUse?.ToString() ?? "uncited"} · list position {row.ListPosition?.ToString() ?? "missing"} · assigned number {row.AssignedNumber?.ToString() ?? "none"}");
+                await Completed.InvokeAsync(CheckReport.Create(output.SnapshotIdentity.ProjectId, "pdf", "Compiled bibliography",
+                    _notice, output.SnapshotIdentity.BaseHeadRevisionId, output.OutputHash?.Hex,
+                    "Guidelines §§2.8 and 3.15.\n" + string.Join(Environment.NewLine, rows), "bibliography-" + attempt.Id));
+            }
         }
         catch (JSException)
         {
