@@ -354,7 +354,7 @@ async function staleness(browser) {
   }
   if (change === "profile") {
    await $(p, "analysis-profile").selectOption("engine-structural");
-   await $(p, "analysis-profile").selectOption("knu-csc-2025-source");
+   await H.selectAnalysisProfile(p, "knu-csc-2025-source");
   }
   if (change === "reanalyze") await H.analyze(p);
   if (change === "project") {

@@ -682,7 +682,9 @@ async function verifyLongSearch(page, project, marker, hash, label) {
   const beforeFile = `${label}-before.pdf`, afterFile = `${label}-after.pdf`;
   const before = await downloadAcceptedPdf(page, project, `${label}-before`, beforeFile, hash);
   phase = label;
-  await H.$(page, "pdf-pane").locator('input[aria-label="Search PDF"]').fill(marker);
+  const searchInput = H.$(page, "pdf-pane").locator('input[aria-label="Search PDF"]');
+  await H.reveal(page, searchInput);
+  await searchInput.fill(marker);
   async function select(action) {
     const generation = await H.$(page, "pdf-pane").getAttribute("data-generation");
     await action();
@@ -1000,7 +1002,9 @@ function assertR1Text(text,biberEdited=false) {
 async function verifyLiteralR1Search(page, project, pdfHash, biberEdited=false) {
   const before=await H.head(page,project),rows=[],queries=BIBER_CASE?[...biberManifest.bibliographyMarkers,...(biberEdited?[BIBER_COLD_EDIT.marker]:[])]:semanticsManifest.queries[HARFBUZZ_CASE?'harfbuzz.tex':CYRILLIC_FIXTURE];
   for(const query of queries){
-    await H.$(page,'pdf-pane').locator('input[aria-label="Search PDF"]').fill(query);
+    const searchInput = H.$(page,'pdf-pane').locator('input[aria-label="Search PDF"]');
+    await H.reveal(page, searchInput);
+    await searchInput.fill(query);
     const generation=await H.$(page,'pdf-pane').getAttribute('data-generation');
     await page.getByRole('button',{name:'Search document',exact:true}).click();
     await page.waitForFunction(old=>document.querySelector('[data-testid=pdf-pane]')?.dataset.generation!==old,generation,{timeout:30000});
@@ -1359,7 +1363,9 @@ let profile, base;
         await goToPage(page, n);
         assert.ok((await canvasNonwhite(page)) > 0, `long last page ${n} raster`);
         // Bounded full-document search; long docs report Partial (search cap).
-        await H.$(page, "pdf-pane").locator('input[aria-label="Search PDF"]').fill("Kyiv");
+        const searchInput = H.$(page, "pdf-pane").locator('input[aria-label="Search PDF"]');
+        await H.reveal(page, searchInput);
+        await searchInput.fill("Kyiv");
         await page.getByRole("button", { name: "Search document" }).click();
         // data-search-status is the enum ToString (TitleCase): Empty/Scanning/
         // Complete/Partial/Error/Cancelled. For n>32 the finite 32-page search

@@ -823,7 +823,7 @@ async function staleSelection(p, name) {
   await $(p, "subset-choice").first().check();
   const before = await head(p, name, original()),
     stamp = await H.stamp(p);
-  await $(p, "analysis-profile").selectOption("knu-csc-2025-source@1.0.0");
+  await H.selectAnalysisProfile(p, "knu-csc-2025-source@1.0.0");
   await $(p, "analysis-profile").selectOption("engine-structural");
   await H.analyze(p);
   await $(p, "review-preview").waitFor({ state: "detached" });

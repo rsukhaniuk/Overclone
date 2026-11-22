@@ -315,7 +315,9 @@ function exactFrame(view, hash, expectedPage) {
 async function searchPoint(word, wantedPage, attempt, hash) {
   step('native PDF search ' + word + ' on page ' + wantedPage);
   const pane = H.$(page, 'pdf-pane');
-  await pane.locator('input[aria-label="Search PDF"]').fill(word);
+  const field = pane.locator('input[aria-label="Search PDF"]');
+  await H.reveal(page, field);
+  await field.fill(word);
   attempt.searchWord = await pane.locator('input[aria-label="Search PDF"]').inputValue(); flush();
   assert.equal(attempt.searchWord, word);
   const old = await pane.getAttribute('data-generation');

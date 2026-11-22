@@ -134,7 +134,7 @@ async function main(){
    for(const literal of requiredText)assert.ok((await H.$(p,'page-text').textContent()).includes(literal),literal);
    const [download]=await Promise.all([p.waitForEvent('download'),H.$(p,'download-pdf').click()]);const target=path.join(out,label+'.pdf');await download.saveAs(target);assert.equal(sha(fs.readFileSync(target)),hash);
    return {request,digest,hash,capture:rows[0].tag.capture,epoch:rows[0].tag.epoch,phases:rows,pdf:pin(fs.readFileSync(target))};}
-  async function analyze(p){step('explicit source profile '+version+', root and work type');await H.reveal(p,H.$(p,'analysis-profile'));await H.$(p,'analysis-profile').selectOption('knu-csc-2025-source@'+version);
+  async function analyze(p){step('explicit source profile '+version+', root and work type');await H.selectAnalysisProfile(p,'knu-csc-2025-source@'+version);
    await H.$(p,'reference-root').selectOption({label:MAIN});await H.$(p,'analysis-work-type').selectOption('bachelorQualification');
    const old=await H.$(p,'thesis-report').getAttribute('data-snapshot-id').catch(()=>null);await H.$(p,'analyze-now').click();
    await p.waitForFunction(old=>{const r=document.querySelector('[data-testid=thesis-report]');return r?.dataset.snapshotId&&r.dataset.snapshotId!==old&&document.querySelector('[data-testid=analysis-status]')?.textContent==='Analysis complete.';},old,{timeout:30000});

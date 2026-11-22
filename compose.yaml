@@ -307,45 +307,32 @@ services:
     init: true
     working_dir: /tmp/browser-test
     environment:
-      # The SW update-path test verifies the PUBLISHED static build served by
-      # static-origin (same origin as offline-restart-test) and stages a new
-      # worker by routing the SW script to a bumped-CACHE_VERSION copy.
-      APP_URL: http://static-origin:8080
+      PUBLISHED_WWWROOT: /publication/wwwroot
     volumes:
       - ./scripts:/tests:ro
-    depends_on:
-      static-origin:
-        condition: service_healthy
-    command:
-      - sh
-      - -ec
-      - |
-        node /tests/test-sw-update.cjs
+      - publish-assets:/publication:ro
+    command: ["node", "/tests/test-editor-autosave-update-ui.cjs"]
 
-  sw-update-draft-test:
+  # Build bindings from the current checkout for publication. The development
+  # watcher can report healthy while it still serves its previous build.
+  publish-rust:
     profiles: ["test"]
-    <<: *browser-test
-    init: true
-    working_dir: /tmp/browser-test
+    image: oop-dev-rust:local
+    user: "0:0"
+    working_dir: /workspace
     environment:
-      # The SW update-DRAFT preservation test verifies the PUBLISHED static build
-      # served by static-origin and stages new workers by bumping CACHE_VERSION
-      # through a proxy (same approach as sw-update-test, separate proxy port).
-      APP_URL: http://static-origin:8080
+      CARGO_HOME: /cache/rust
+      CARGO_TARGET_DIR: /artifacts/rust/target
+      RUSTUP_HOME: /usr/local/rustup
     volumes:
-      - ./scripts:/tests:ro
-    depends_on:
-      static-origin:
-        condition: service_healthy
-    command:
-      - sh
-      - -ec
-      - |
-        node /tests/test-sw-update-draft.cjs
+      - .:/workspace:ro
+      - rust-cache:/cache/rust
+      - publish-rust-build:/artifacts/rust
+      - publish-rust-wasm:/artifacts/rust-wasm
+    command: ["sh", "scripts/build-rust.sh"]
+    restart: "no"
 
-  # Publishes the Blazor WASM client to a static wwwroot (the production
-  # static build) shared with static-origin. Mirrors the app service's
-  # native/rust WASM mounts so the published wwwroot includes the workers.
+  # Publishes the Blazor WASM client to the static wwwroot shared with static-origin.
   publish-client:
     profiles: ["test"]
     image: oop-dev-dotnet:local
@@ -366,13 +353,13 @@ services:
       - dotnet-cache:/cache
       - publish-build:/artifacts/dotnet
       - wasm:/workspace/src/Client/wwwroot/native-generated:ro
-      - rust-wasm:/workspace/src/Client/wwwroot/rust-generated:ro
+      - publish-rust-wasm:/workspace/src/Client/wwwroot/rust-generated:ro
       - publish-assets:/artifacts/publish
     depends_on:
       native:
         condition: service_healthy
-      rust:
-        condition: service_healthy
+      publish-rust:
+        condition: service_completed_successfully
     command:
       [
         "sh",
@@ -419,3 +406,5 @@ volumes:
   rust-wasm:
   publish-assets:
   publish-build:
+  publish-rust-build:
+  publish-rust-wasm:
