@@ -17,9 +17,8 @@
 //    no ready/accepted claim; offline cold restart (host STOPPED, offline before
 //    navigation) restores the saved fixture's exact BOM/CRLF bytes from storage
 //    and A's identity.
-//  - Restore complete B: registration.update -> waiting banner -> save-aware
-//    explicit update -> DOM shows B's managed rendered identity and manifest
-//    version B; close/reopen offline with host STOPPED -> B identity + exact
+//  - Restore complete B: registration.update -> waits while A is open ->
+//    close all clients -> DOM shows B's managed identity and manifest version; close/reopen offline with host STOPPED -> B identity + exact
 //    saved bytes.
 //  - An unrelated sentinel Cache API entry survives every cleanup; private and
 //    authenticated requests are actually issued and never cached.
@@ -217,7 +216,7 @@ async function assertReleaseIdentity(page, identity, managedId) {
         await H.reveal(page, page.locator("#new-project"));
         await page.locator("#new-project").fill(nameA);
         await page.getByRole("button", { name: "Create project", exact: true }).click();
-        await page.locator("[data-testid=new-file-name]").waitFor({ timeout: 20000 });
+        await page.locator(".workbench .workspace-header").waitFor({ timeout: 20000 });
         await page.locator("[data-testid=import-input]").setInputFiles({ name: "main.tex", mimeType: "text/plain", buffer: fixtureBytes });
         await page.locator(".source-tab", { hasText: "main.tex" }).waitFor();
         await H.save(page);
@@ -314,11 +313,11 @@ async function assertReleaseIdentity(page, identity, managedId) {
         await browser.close();
         browser = null;
 
-        // 5. Complete B -> save-aware explicit update.
+        // 5. Complete B -> native activation once all A clients close.
         proxy.state.serve = "A";
         await new Promise((r) => proxy.listen(PORT, "127.0.0.1", r));
         browser = await chromium.launchPersistentContext(profile, launch);
-        const page3 = await browser.newPage();
+        let page3 = await browser.newPage();
         page3.on("pageerror", (e) => errors.push(String(e)));
         await page3.goto(BASE, { waitUntil: "domcontentloaded" });
         await ready(page3);
@@ -328,11 +327,19 @@ async function assertReleaseIdentity(page, identity, managedId) {
         await page3.reload({ waitUntil: "domcontentloaded" });
         await ready(page3);
         await page3.evaluate(async () => { try { const reg = await navigator.serviceWorker.getRegistration(); if (reg) await reg.update(); } catch {} });
-        await page3.locator("#update-banner").waitFor({ state: "visible", timeout: 20000 });
-        const beforeAccept = await regState(page3);
-        assert.ok(beforeAccept.waiting, "complete B is waiting for explicit acceptance");
-        // Save-aware update: the existing C# UpdateGuard owns the reload.
-        await page3.locator("#update-banner button").click();
+        const waitDeadline = Date.now() + 120000;
+        while (!(await page3.evaluate(async () =>
+            (await navigator.serviceWorker.getRegistration())?.waiting?.state === "installed"))) {
+            assert.ok(Date.now() < waitDeadline, "complete B should wait while A is open");
+            await page3.waitForTimeout(200);
+        }
+        assert.equal(await page3.locator("#update-banner").count(), 0);
+        await assertReleaseIdentity(page3, identA, identityA);
+        await browser.close();
+        browser = await chromium.launchPersistentContext(profile, launch);
+        page3 = await browser.newPage();
+        page3.on("pageerror", (e) => errors.push(String(e)));
+        await page3.goto(BASE, { waitUntil: "domcontentloaded" });
         let bActive = false;
         for (let i = 0; i < 80; i++) {
             const s = await page3.evaluate(async () => {
@@ -345,7 +352,8 @@ async function assertReleaseIdentity(page, identity, managedId) {
                 !s.releases.includes(`oop-workspace-release-${identA.manifest.version}`)) { bActive = true; break; }
             await page3.waitForTimeout(300);
         }
-        assert.ok(bActive, "complete B activated only after explicit save-aware accept, manifest version B");
+        assert.ok(bActive, "complete B activated after closing all older clients, manifest version B");
+        await page3.reload({ waitUntil: "domcontentloaded" });
         await page3.waitForFunction(expected => document.querySelector("[data-testid=build-identity]")?.textContent === expected,
             EXPECTED_B_ID, { timeout: 60000 });
         await ready(page3);
@@ -374,7 +382,7 @@ async function assertReleaseIdentity(page, identity, managedId) {
         assert.ok(await coldB.evaluate(async () => !!(await caches.match("/sentinel"))), "unrelated sentinel cache survives the B activation cleanup");
         assert.deepEqual(errors, [], "No uncaught page errors");
         process.stdout.write(
-            "PASS PWA release update: interrupted(503)+corrupt B rejected, A retained offline with exact BOM/CRLF bytes; complete B save-aware update; B identity + exact bytes offline; sentinel survives; private never cached\n",
+            "PASS PWA release update: interrupted(503)+corrupt B rejected, A retained offline with exact BOM/CRLF bytes; complete B activation after closing existing clients; B identity + exact bytes offline; sentinel survives; private never cached\n",
         );
     } finally {
         if (browser) await browser.close();

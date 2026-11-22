@@ -226,10 +226,6 @@ function warmAssets(urls) {
 
 self.addEventListener("message", (event) => {
     const data = event.data;
-    if (data === "skipWaiting") {
-        self.skipWaiting();
-        return;
-    }
     if (data && data.type === "native-worker-entry") {
         const ports = event.ports || [];
         try {

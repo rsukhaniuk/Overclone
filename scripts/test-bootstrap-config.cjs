@@ -246,12 +246,8 @@ async function run() {
     assert.equal(h.window.__oopOfflineReady, false);
     h.result(true);
     assert.equal(h.window.__oopOfflineReady, true);
-    assert.equal(typeof h.window.__oopUpdateGuardCanActivate, "function");
-    assert.equal(
-      (await h.window.__oopUpdateGuardCanActivate()).safe,
-      false,
-      "update guard still fails closed before registration",
-    );
+    assert.equal(typeof h.window.__oopSetUnsavedChanges, "function");
+    assert.equal(h.window.__oopUpdateGuardCanActivate, undefined);
   }
   const failed = setup(true);
   const rejected = assert.rejects(failed.appStarted, /startup failure/);

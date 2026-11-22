@@ -14,8 +14,8 @@
 // Stable URLs are never opportunistically overwritten inside an existing
 // release, so old and new framework modules cannot mix. Cleanup is restricted
 // to this app's oop-workspace- cache prefix; unrelated Cache API entries and
-// user documents (OPFS/IndexedDB) are never touched. The existing save-aware
-// C# update guard still owns the reload decision; no force activation/reload.
+// user documents (OPFS/IndexedDB) are never touched. The browser activates a
+// replacement after clients of the previous release close.
 
 // ---- manifest import + shape validation (publish only) -----------------
 // importScripts is synchronous; a 404 or syntax error here fails the worker
@@ -332,7 +332,7 @@ self.addEventListener("install", (event) => {
             const fresh = await caches.open(releaseCacheName);
             await caches.open(auxCacheName);
             await precacheWithIntegrity(fresh, requiredAssets); // throws on any failure
-            // Do NOT skipWaiting: the save-aware C# guard owns activation.
+            // Normal updates still wait for existing clients to close.
         })(),
     );
 });
@@ -498,10 +498,36 @@ function warmAssets(urls) {
     return round;
 }
 
+async function recoverRelease(event, data) {
+    const port = event.ports?.length === 1 ? event.ports[0] : null;
+    if (!port) return;
+    let result = "unavailable";
+    try {
+        const source = event.source;
+        const recovery = new URL("/recover-release.html", self.location.origin);
+        if (source?.type !== "window" || ![1, 2].some(version => source.url ===
+            recovery.href + "?release-recovery=" + version) || typeof data.activate !== "boolean") return;
+        if (data.version !== manifest.version) return;
+        if (!data.activate) { result = "current"; return; }
+
+        const cache = await caches.open(releaseCacheName);
+        if (!(await releaseComplete(cache))) return;
+        const windows = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+        if (windows.some(client => client.id !== source.id)) {
+            result = "other-windows";
+            return;
+        }
+        await self.skipWaiting();
+        result = "activating";
+    } finally {
+        try { port.postMessage(result); } finally { port.close(); }
+    }
+}
+
 self.addEventListener("message", (event) => {
     const data = event.data;
-    if (data === "skipWaiting") {
-        self.skipWaiting();
+    if (data?.type === "release-recovery") {
+        event.waitUntil(recoverRelease(event, data));
         return;
     }
     if (data && data.type === NATIVE_ENTRY_TYPE) {

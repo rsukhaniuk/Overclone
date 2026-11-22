@@ -4,7 +4,7 @@
         <meta charset="utf-8" />
         <meta
             http-equiv="Content-Security-Policy"
-            content="default-src 'none'; base-uri 'self'; object-src 'none'; form-action 'none'; script-src 'self' 'wasm-unsafe-eval' 'sha256-4rd1PPVwoDKnTE1bf3kWqnba+VpKDkeVGgBkTHMGSwc='; script-src-attr 'none'; worker-src 'self' blob:; style-src 'self'; style-src-elem 'self'; style-src-attr 'unsafe-inline'; img-src 'self'; font-src 'self'; media-src 'none'; manifest-src 'self'; connect-src 'self' http://localhost:11434 http://127.0.0.1:11434; frame-src 'none'"
+            content="default-src 'none'; base-uri 'self'; object-src 'none'; form-action 'none'; script-src 'self' 'wasm-unsafe-eval' 'sha256-tMD6tcs383IAqtdtI/YCpRsAFUuurIkGuS741AEYXbY='; script-src-attr 'none'; worker-src 'self' blob:; style-src 'self'; style-src-elem 'self'; style-src-attr 'unsafe-inline'; img-src 'self'; font-src 'self'; media-src 'none'; manifest-src 'self'; connect-src 'self' http://localhost:11434 http://127.0.0.1:11434; frame-src 'none'"
         />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <base href="/" />
@@ -41,18 +41,19 @@
                 appStartupSucceeded = true;
             });
 
-            // Register the service worker for offline provisioning. An update never
-            // force-reloads an active editing session: the page shows a banner and
-            // lets the user reload when ready.
-            //
-            // Offline readiness: the page's first load usually happens before the
-            // worker controls the client, so runtime assets are fetched from the
-            // network and not cached by the fetch handler. On activation the worker
-            // posts {type:'activated'}; the page then sends the worker the list of
-            // same-origin resources it loaded, which the worker fetches+caches.
-            // window.__oopOfflineReady becomes true only once that warming round
-            // reports every asset cached, so callers can wait for a genuinely
-            // provisioned shell rather than a freshly registered worker.
+            // Protect working bytes if the browser is closed before autosave settles.
+            // Register only while dirty so clean pages can use the back-forward cache.
+            const protectUnsavedChanges = event => {
+                event.preventDefault();
+                event.returnValue = "";
+            };
+            window.__oopSetUnsavedChanges = dirty => {
+                if (dirty) window.addEventListener("beforeunload", protectUnsavedChanges);
+                else window.removeEventListener("beforeunload", protectUnsavedChanges);
+            };
+
+            // Updates use the browser's normal waiting lifecycle. An open tab
+            // keeps its current release until all clients of that release close.
             if ("serviceWorker" in navigator) {
                 window.__oopOfflineReady = false;
                 // Tri-state readiness so the .NET app can show an actionable
@@ -60,43 +61,6 @@
                 // incomplete (not during normal startup). The page subscribes via
                 // the offline-readiness.js glue module; JS only reports the state.
                 window.__oopOfflineReadiness = "unknown";
-
-                // App-scoped SW-UPDATE safety guard bridge. The C# `UpdateGuard`
-                // component (rendered once at the app root) registers a
-                // DotNetObjectReference here once Blazor boots; the update banner
-                // forwards the user's "Reload to update" click to it. C# owns the
-                // document/save policy; JS forwards the decision and manages the
-                // SW / controllerchange events. Before Blazor boots the guard is
-                // null and EVERY activation attempt FAILS CLOSED (no skipWaiting,
-                // no reload) with a retry message — it never bypasses the gate.
-                window.__oopSetUpdateGuard = function (dotNetRef) {
-                    window.__oopUpdateGuard = dotNetRef;
-                };
-                window.__oopClearUpdateGuard = function () {
-                    delete window.__oopUpdateGuard;
-                };
-                window.__oopUpdateGuardCanActivate = async function () {
-                    var g = window.__oopUpdateGuard;
-                    if (!g || typeof g.invokeMethodAsync !== "function")
-                        return {
-                            safe: false,
-                            message:
-                                "The app is still starting. Try again in a moment.",
-                            action: "retry",
-                        };
-                    try {
-                        return await g.invokeMethodAsync(
-                            "CanActivateUpdateAsync",
-                        );
-                    } catch (e) {
-                        return {
-                            safe: false,
-                            message:
-                                "The app is still starting. Try again in a moment.",
-                            action: "retry",
-                        };
-                    }
-                };
 
                 async function warmRuntime() {
                     // Document load alone does not mean bounded runtime downloads finished.
@@ -232,38 +196,9 @@
                         .register("/service-worker.js", {
                             updateViaCache: "none",
                         })
-                        .then((reg) => {
-                            reg.addEventListener("updatefound", () => {
-                                const installing = reg.installing;
-                                if (!installing) return;
-                                installing.addEventListener(
-                                    "statechange",
-                                    () => {
-                                        // A NEW worker has finished installing and
-                                        // is WAITING to activate (the old worker
-                                        // is still the active controller). Show the
-                                        // banner so the user can accept it; do NOT
-                                        // force-reload an active editing session.
-                                        if (
-                                            installing.state === "installed" &&
-                                            navigator.serviceWorker.controller
-                                        ) {
-                                            showUpdateBanner(reg);
-                                        }
-                                    },
-                                );
-                            });
-                            // If the worker was already active before this script ran
-                            // (e.g. a reload), drive warming now.
+                        .then(() => {
                             if (navigator.serviceWorker.controller)
                                 onActivated();
-                            // A previously installed update may already be waiting
-                            // when this page opens; updatefound will not fire again.
-                            if (
-                                reg.waiting &&
-                                navigator.serviceWorker.controller
-                            )
-                                showUpdateBanner(reg);
                         })
                         .catch((error) => {
                             console.warn(
@@ -274,119 +209,6 @@
                 });
             }
 
-            function showUpdateGuidance(message) {
-                var existing = document.getElementById("update-guidance");
-                if (existing) existing.remove();
-                if (!message) return;
-                var g = document.createElement("div");
-                g.id = "update-guidance";
-                g.setAttribute("data-testid", "update-guidance");
-                g.className = "update-guidance";
-                g.textContent = message;
-                var banner = document.getElementById("update-banner");
-                if (banner) banner.appendChild(g);
-                else document.body.prepend(g);
-            }
-            function hideUpdateGuidance() {
-                var existing = document.getElementById("update-guidance");
-                if (existing) existing.remove();
-            }
-
-            function showUpdateBanner(reg) {
-                if (document.getElementById("update-banner")) return;
-                const banner = document.createElement("div");
-                banner.id = "update-banner";
-                banner.className = "update-banner";
-                banner.innerHTML = "<span>A new version is ready.</span>";
-                const btn = document.createElement("button");
-                btn.textContent = "Reload to update";
-                btn.addEventListener("click", async () => {
-                    hideUpdateGuidance();
-                    // GATE on current workspace safety FIRST (C# owns the policy).
-                    // Refuse while unsaved work would be lost; never bypass when
-                    // the guard is unavailable (fail CLOSED). No skipWaiting / no
-                    // reload until C# says it is safe.
-                    var decision = await window.__oopUpdateGuardCanActivate();
-                    if (!decision || !decision.safe) {
-                        showUpdateGuidance(
-                            (decision && decision.message) ||
-                                "Save your changes, then reload to update.",
-                        );
-                        return;
-                    }
-                    // Target the WAITING (new) worker, not the active controller,
-                    // and reload only after the actual controllerchange so an
-                    // active editing session is not force-reloaded into a worker
-                    // that has not yet taken over. Documents in OPFS/IndexedDB are
-                    // never deleted.
-                    const waiting = reg && reg.waiting;
-                    if (waiting) {
-                        let reloaded = false;
-                        const onControllerChange = async () => {
-                            if (reloaded) return;
-                            reloaded = true;
-                            navigator.serviceWorker.removeEventListener(
-                                "controllerchange",
-                                onControllerChange,
-                            );
-                            // RECHECK before reload: edits may have landed during
-                            // the activation wait. A now-dirty session must keep
-                            // its draft (refuse the reload) even though skipWaiting
-                            // already ran — the user Saves then clicks again.
-                            var d2 = await window.__oopUpdateGuardCanActivate();
-                            if (!d2 || !d2.safe) {
-                                showUpdateGuidance(
-                                    (d2 && d2.message) ||
-                                        "Save your changes, then reload to update.",
-                                );
-                                return;
-                            }
-                            location.reload();
-                        };
-                        navigator.serviceWorker.addEventListener(
-                            "controllerchange",
-                            onControllerChange,
-                        );
-                        waiting.postMessage("skipWaiting");
-                        // Bounded safety: if no controllerchange arrives in time,
-                        // RECHECK then reload ONLY if still safe. The fallback
-                        // never calls an unconditional location.reload and never
-                        // bypasses the gate.
-                        setTimeout(async () => {
-                            if (!reloaded) {
-                                reloaded = true;
-                                navigator.serviceWorker.removeEventListener(
-                                    "controllerchange",
-                                    onControllerChange,
-                                );
-                                var d2 =
-                                    await window.__oopUpdateGuardCanActivate();
-                                if (!d2 || !d2.safe) {
-                                    showUpdateGuidance(
-                                        (d2 && d2.message) ||
-                                            "Save your changes, then reload to update.",
-                                    );
-                                    return;
-                                }
-                                location.reload();
-                            }
-                        }, 4000);
-                    } else {
-                        // No waiting worker (already activated): recheck then reload.
-                        var d2 = await window.__oopUpdateGuardCanActivate();
-                        if (!d2 || !d2.safe) {
-                            showUpdateGuidance(
-                                (d2 && d2.message) ||
-                                    "Save your changes, then reload to update.",
-                            );
-                            return;
-                        }
-                        location.reload();
-                    }
-                });
-                banner.appendChild(btn);
-                document.body.prepend(banner);
-            }
         </script>
     </body>
 </html>

@@ -1,3 +1,4 @@
+// Historical manual-update fixture. Use test-editor-autosave-update-ui.cjs for the current app.
 // M4 service-worker snapshot update path. Proves the explicit, save-aware
 // update against the PUBLISHED manifest-required worker:
 //  - Staging a new release means new worker bytes (triggers updatefound via

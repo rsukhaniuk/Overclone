@@ -1,0 +1,37 @@
+@inject WorkspaceCoordinator Coordinator
+@inject IJSRuntime JS
+@implements IDisposable
+
+@code {
+    private bool _disposed;
+    private bool? _lastDirty;
+
+    protected override void OnInitialized()
+    {
+        Coordinator.WorkspaceChanged += WorkspaceChanged;
+        Coordinator.RevisionCommitted += RevisionCommitted;
+    }
+
+    private void RevisionCommitted(WorkspaceSaveReceipt _) => WorkspaceChanged();
+
+    private void WorkspaceChanged()
+    {
+        if (!_disposed) _ = InvokeAsync(SyncAsync);
+    }
+
+    private async Task SyncAsync()
+    {
+        bool dirty = Coordinator.IsDirty;
+        if (_disposed || _lastDirty == dirty) return;
+        _lastDirty = dirty;
+        try { await JS.InvokeVoidAsync("__oopSetUnsavedChanges", dirty); }
+        catch (JSException) { _lastDirty = null; }
+    }
+
+    public void Dispose()
+    {
+        _disposed = true;
+        Coordinator.WorkspaceChanged -= WorkspaceChanged;
+        Coordinator.RevisionCommitted -= RevisionCommitted;
+    }
+}

@@ -1,3 +1,4 @@
+// Historical manual-update fixture. Use test-editor-autosave-update-ui.cjs for the current app.
 // M2a-2b-2b update-DRAFT PRESERVATION regressions. Proves the app-scoped
 // update guard never lets a waiting service worker activate / the page reload
 // while unsaved work would be lost:

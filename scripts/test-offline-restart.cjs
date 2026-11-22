@@ -199,16 +199,12 @@ async function awaitTerminalAnalysis(page, timeout = 30000) {
     await saveAndWait(page);
     // Current published UI + actual native KNU capability, not a warm old demo.
     await review.reveal(page, page.locator("[data-testid=analysis-profile]"));
-    await page
-      .locator("[data-testid=analysis-profile]")
-      .selectOption("knu-csc-2025-source@1.0.0");
+    await review.selectAnalysisProfile(page, "knu-csc-2025-source@1.0.0");
     await analyzeNow(page);
     await awaitTerminalAnalysis(page);
     await page.locator("[data-testid=knu-report]").waitFor();
-    assert.match(
-      await page.locator("[data-testid=knu-edition]").innerText(),
-      /2025.*1.0.0/,
-    );
+    assert.match(await page.locator("[data-testid=knu-edition]").innerText(), /2025/);
+    assert.equal(await review.knuReportVersion(page), "1.0.0");
     assert.equal(await page.locator("[data-testid=knu-finding]").count(), 2);
     await review.reveal(page, page.locator("[data-testid=analysis-profile]"));
     await page
@@ -362,9 +358,7 @@ async function awaitTerminalAnalysis(page, timeout = 30000) {
     // M2b: real KNU rules, bundled citations and exact Unicode navigation with
     // the actual origin still stopped. No guideline/CDN/provider request.
     await review.reveal(page, page.locator("[data-testid=analysis-profile]"));
-    await page
-      .locator("[data-testid=analysis-profile]")
-      .selectOption("knu-csc-2025-source@1.0.0");
+    await review.selectAnalysisProfile(page, "knu-csc-2025-source@1.0.0");
     await analyzeNow(page);
     await awaitTerminalAnalysis(page);
     await page.locator("[data-testid=knu-report]").waitFor();
@@ -482,9 +476,7 @@ async function awaitTerminalAnalysis(page, timeout = 30000) {
       "selection is session-local, not persisted",
     );
     await review.reveal(page, page.locator("[data-testid=analysis-profile]"));
-    await page
-      .locator("[data-testid=analysis-profile]")
-      .selectOption("knu-csc-2025-source@1.0.0");
+    await review.selectAnalysisProfile(page, "knu-csc-2025-source@1.0.0");
     await analyzeNow(page);
     await awaitTerminalAnalysis(page);
     await page.locator("[data-testid=knu-report]").waitFor();
@@ -703,9 +695,7 @@ async function awaitTerminalAnalysis(page, timeout = 30000) {
     );
     // Analysis now fails honestly: a fresh worker cannot load the missing WASM offline.
     await review.reveal(page, page.locator("[data-testid=analysis-profile]"));
-    await page
-      .locator("[data-testid=analysis-profile]")
-      .selectOption("knu-csc-2025-source@1.0.0");
+    await review.selectAnalysisProfile(page, "knu-csc-2025-source@1.0.0");
     await analyzeNow(page);
     await awaitTerminalAnalysis(page);
     const failStatus = await analysisStatusText(page);

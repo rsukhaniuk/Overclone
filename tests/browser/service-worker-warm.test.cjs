@@ -336,8 +336,8 @@ async function updateSafety() {
     h.handlers.get("message")({ data: "skipWaiting" });
     assert.equal(
         h.stats.skipWaiting,
-        1,
-        "existing explicit update protocol preserved",
+        0,
+        "the development worker ignores the retired unguarded update message",
     );
     return { shellVersion: "v10", installDidNotSkipWaiting: true };
 }
@@ -503,7 +503,7 @@ function absoluteUrl(value, origin) {
 function manifestHarness(manifest, backend, stats = { fetches: [], opens: [], skipWaiting: 0, deletes: [] }) {
     const shared = backend || createReleaseBackend();
     const handlers = new Map();
-    const control = { fetchFailure: new Set(), badStatus: new Set(), badIntegrity: new Set() };
+    const control = { fetchFailure: new Set(), badStatus: new Set(), badIntegrity: new Set(), windows: [] };
     const ORIGIN = "https://rel.test";
     const absolute = (value) => absoluteUrl(value, ORIGIN);
     let pendingManifest = manifest;
@@ -518,7 +518,7 @@ function manifestHarness(manifest, backend, stats = { fetches: [], opens: [], sk
         location: { origin: ORIGIN },
         addEventListener: (name, action) => handlers.set(name, action),
         skipWaiting: () => { stats.skipWaiting++; },
-        clients: { claim: async () => {}, matchAll: async () => [] },
+        clients: { claim: async () => {}, matchAll: async () => control.windows },
         importScripts: (url) => {
             if (importFails || !pendingManifest) throw new Error("manifest not found");
             if (url === "/service-worker-assets.js") self.assetsManifest = pendingManifest;
@@ -560,6 +560,33 @@ async function manifestActivate(h) {
     let activated;
     h.handlers.get("activate")({ waitUntil: (p) => { activated = p; } });
     await activated;
+}
+async function guardedReleaseRecovery() {
+    const h = manifestHarness({ version: RELEASE_VERSION_A, assets: RELEASE_CORE });
+    const source = { type: "window", id: "recovery", url: h.absolute("/recover-release.html?release-recovery=2") };
+    async function ask({ sender = source, version = RELEASE_VERSION_A, activate = true } = {}) {
+        let completion, reply;
+        h.handlers.get("message")({
+            source: sender, data: { type: "release-recovery", version, activate },
+            ports: [{ postMessage: value => { reply = value; }, close() {} }],
+            waitUntil: value => { completion = value; },
+        });
+        await completion;
+        return reply;
+    }
+    assert.equal(await ask(), "unavailable", "incomplete cache cannot authorize activation");
+    await manifestInstall(h);
+    assert.equal(await ask({ sender: { ...source, url: h.absolute("/") } }), "unavailable");
+    assert.equal(await ask({ version: RELEASE_VERSION_B }), "unavailable");
+    h.control.windows = [source, { id: "editor" }];
+    assert.equal(await ask(), "other-windows");
+    assert.equal(h.stats.skipWaiting, 0);
+    h.control.windows = [source];
+    assert.equal(await ask({ activate: false }), "current");
+    assert.equal(h.stats.skipWaiting, 0, "version check cannot trigger activation");
+    assert.equal(await ask(), "activating");
+    assert.equal(h.stats.skipWaiting, 1);
+    return { exactRelease: true, soleRecoveryWindow: true, completeCache: true };
 }
 async function releaseCompleteInstallIntegrityChecked() {
     const h = manifestHarness({ version: RELEASE_VERSION_A, assets: [...RELEASE_CORE, ...RELEASE_NON_CORE] });
@@ -961,6 +988,7 @@ const deadline = setTimeout(() => {
         failures: await failuresAndRecovery(),
         cacheOpen: await cacheOpenFailure(),
         update: await updateSafety(),
+        recovery: await guardedReleaseRecovery(),
         boot: await bootRevalidation(),
         frameworkVersionIsolation: await frameworkVersionIsolation(),
         releaseCompleteInstall: await releaseCompleteInstallIntegrityChecked(),
