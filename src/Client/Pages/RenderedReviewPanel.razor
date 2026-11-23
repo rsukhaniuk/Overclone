@@ -19,7 +19,7 @@
 <details class="tool-disclosure" data-testid="rendered-review-panel">
     <summary>Rendered layout review</summary>
     <div class="tool-content">
-        <p>Inspect measured pages of the current compiled PDF locally. KNU Faculty of Computer Science and Cybernetics, 2025. Coverage is partial: unknown or unavailable checks remain open, and this review does not certify overall compliance.</p>
+        <p class="hint">KNU CSC 2025. Coverage is partial.</p>
         <label>Work type
             <select data-testid="rendered-review-work-type" value="@_controller.WorkType" @onchange="WorkTypeChanged">
                 <option value="unspecified">Unspecified — applicability may be unknown</option>
@@ -28,6 +28,21 @@
                 <option value="masterQualification">Master qualification</option>
             </select>
         </label>
+        <fieldset disabled="@_controller.Busy">
+            <legend>Pages to inspect</legend>
+            <label><input type="checkbox" data-testid="rendered-review-all-pages" @bind="_allPages" /> Inspect all PDF pages sequentially</label>
+            @if (!_allPages)
+            {
+                <label>First PDF page <input data-testid="rendered-review-first" inputmode="numeric" maxlength="3" @bind="_checkFirst" @bind:event="oninput" /></label>
+                <label>Last PDF page, inclusive (optional) <input data-testid="rendered-review-last" inputmode="numeric" maxlength="3" @bind="_checkLast" @bind:event="oninput" /></label>
+            }
+        </fieldset>
+        <div class="checks-panel-heading">
+            <button type="button" data-testid="rendered-review-check" @onclick="Check" disabled="@(!_controller.CanCheck || _draftChanged)">Check current compiled PDF</button>
+            <button type="button" data-testid="rendered-review-cancel" @onclick="Cancel" disabled="@(!_controller.CanCancel)" hidden="@(!_controller.Busy)">Cancel</button>
+        </div>
+        <p role="status" data-testid="rendered-review-status" data-busy="@_controller.Busy.ToString().ToLowerInvariant()">@_controller.Notice</p>
+        @if (_inputError is not null) { <p role="alert" data-testid="rendered-review-input-error">@_inputError</p> }
         <label>
             <input type="checkbox" data-testid="rendered-review-work-numbers" checked="@_controller.ChecksWorkPageNumbers"
                    disabled="@(_controller.Busy || _controller.ChecksWorkPageNumbers && !_controller.CanTurnOffWorkPageNumbers)"
@@ -265,17 +280,6 @@
             </details>
         }
 
-        <fieldset disabled="@_controller.Busy">
-            <legend>Pages to inspect</legend>
-            <label><input type="checkbox" data-testid="rendered-review-all-pages" @bind="_allPages" /> Inspect all PDF pages sequentially</label>
-            @if (!_allPages)
-            {
-                <label>First PDF page <input data-testid="rendered-review-first" inputmode="numeric" maxlength="3" @bind="_checkFirst" @bind:event="oninput" /></label>
-                <label>Last PDF page, inclusive (optional) <input data-testid="rendered-review-last" inputmode="numeric" maxlength="3" @bind="_checkLast" @bind:event="oninput" /></label>
-            }
-            <p>At most 512 pages per review. If collection stops early, explicitly check the remaining pages; uninspected pages do not pass.</p>
-        </fieldset>
-        <button type="button" data-testid="rendered-review-check" @onclick="Check" disabled="@(!_controller.CanCheck || _draftChanged)">Check current compiled PDF</button>
         <details data-testid="rendered-paragraph-indent-controls">
             <summary>Check first-line paragraph indent</summary>
             <p>Open the paragraph’s PDF page. In PDF search, enter its first three complete lines with spaces between them.
@@ -303,9 +307,6 @@
             <button type="button" data-testid="rendered-heading-spacing-check" disabled="@(HeadingSpacingPage is null)"
                     @onclick="CheckHeadingSpacing">Compare line spacing on current page</button>
         </details>
-        <button type="button" data-testid="rendered-review-cancel" @onclick="Cancel" disabled="@(!_controller.CanCancel)">Cancel rendered review</button>
-        <p role="status" data-testid="rendered-review-status" data-busy="@_controller.Busy.ToString().ToLowerInvariant()">@_controller.Notice</p>
-        @if (_inputError is not null) { <p role="alert" data-testid="rendered-review-input-error">@_inputError</p> }
         @if (_controller.Busy && !_controller.CanCancel)
         { <p>Finishing the active inspection or evaluation. Another review starts after it settles.</p> }
 
@@ -314,17 +315,16 @@
             <section aria-label="Measured rendered observations" data-testid="rendered-review-report" data-current="@ShownCurrent.ToString().ToLowerInvariant()"
                      data-complete="@report.Complete.ToString().ToLowerInvariant()" data-pdf-sha256="@report.Evidence.Compilation.PdfSha256"
                      data-annotation-version="@report.Evidence.AnnotationVersion">
-                <h3>Measured observations — partial standards coverage</h3>
-                @if (!ShownCurrent) { <p role="status" data-testid="rendered-review-stale">Previous review — stale. PDF, source, work type or labels changed. Check the current compiled PDF again.</p> }
-                <p data-testid="rendered-review-coverage">Inspected @report.EvaluatedPages of @report.RequestedPages requested pages. @(report.Complete ? "The requested page collection is complete." : "Page coverage is incomplete.") Overall compliance is not assessed.</p>
-                <p>Work type for these observations: @WorkTypeLabel(_shownWorkType).</p>
+                <h3>Layout results</h3>
+                @if (!ShownCurrent) { <p role="status" data-testid="rendered-review-stale">Results are out of date. Run the PDF check again.</p> }
+                <p data-testid="rendered-review-coverage">Inspected @report.EvaluatedPages of @report.RequestedPages requested pages · @WorkTypeLabel(_shownWorkType) · partial standards coverage</p>
                 @if (report.Results.Count == 0)
-                { <p>No rule observations were returned. No checks have been established.</p> }
-                @foreach (var result in report.Results)
+                { <p>No layout results available.</p> }
+                @foreach (var result in report.Results.OrderBy(result => result.Evidence.Count == 0).ThenBy(result => result.Outcome == "pass"))
                 {
-                    <article data-testid="rendered-review-rule" data-rule-id="@result.RuleId" data-outcome="@result.Outcome" data-support="@result.SupportState">
-                        <h4>@result.RuleId — @RuleLabel(result.RuleId)</h4>
-                        <p>Observation: @OutcomeLabel(result.Outcome). Support: @result.SupportState. Severity: @result.Severity.</p>
+                    <details @key="result.RuleId" class="check-details rendered-check-result" open="@(result.Evidence.Count > 0 && result.Outcome != "pass")"
+                             data-testid="rendered-review-rule" data-rule-id="@result.RuleId" data-outcome="@result.Outcome" data-support="@result.SupportState">
+                        <summary>@RuleLabel(result.RuleId) · @OutcomeLabel(result.Outcome)</summary>
                         <p data-testid="rendered-review-reason">@result.Reason.Replace('-', ' ')</p>
                         @if (report.ProfileVersion == RenderedReviewContract.ParagraphIndentProfileVersion && result.RuleId == "KNU-PARAGRAPH-RENDERED-001")
                         {
@@ -347,10 +347,9 @@
                                     <li data-testid="rendered-review-measurement">
                                         @if (EvidencePage(evidence) is { } page)
                                         {
-                                            <span>PDF page @(page + 1). </span>
-                                            <button type="button" @onclick="() => ShowPage(page)" disabled="@(!CanShowPage(page))">Show page @(page + 1) in PDF preview</button>
+                                            <button type="button" @onclick="() => ShowPage(report, page)" disabled="@(!CanShowPage(report, page))">Show page @(page + 1) in PDF preview</button>
                                         }
-                                        <p>Measured: @JsonText(evidence, "measured"). Expected observation: @JsonText(evidence, "expected"). Unit: @JsonText(evidence, "unit"). Method: @JsonText(evidence, "method").</p>
+                                        <p>Measured @JsonText(evidence, "measured") @JsonText(evidence, "unit") · Expected @JsonText(evidence, "expected")</p>
                                         @if (result.RuleId == "KNU-PAGINATION-001" && evidence.TryGetProperty("observation", out var observation)
                                             && observation.TryGetProperty("placement", out var placement))
                                         {
@@ -371,10 +370,9 @@
                                 </nav>
                             }
                         }
-                        else { <p>No measured page evidence establishes this category. Its reported outcome remains @(OutcomeLabel(result.Outcome).ToLowerInvariant()).</p> }
                         @if (result.Limitations.Count > 0)
-                        { <ul aria-label="Limitations">@foreach (var limitation in result.Limitations) { <li>@limitation.Replace('-', ' ')</li> }</ul> }
-                    </article>
+                        { <details><summary>Measurement limits</summary><ul>@foreach (var limitation in result.Limitations) { <li>@limitation.Replace('-', ' ')</li> }</ul></details> }
+                    </details>
                 }
                 <details data-testid="rendered-review-identity"><summary>Compiled revision and measurement identity</summary>
                     <p>PDF SHA256: @report.Evidence.Compilation.PdfSha256; @report.Evidence.Compilation.PdfBytes bytes.</p>
@@ -826,12 +824,13 @@
     private IEnumerable<JsonElement> VisibleEvidence(RenderedRuleResult result) => result.Evidence.Skip(EvidencePageNumber(result.RuleId) * EvidencePageSize).Take(EvidencePageSize);
     private void MoveEvidence(RenderedRuleResult result, int delta) => _evidencePages[result.RuleId] = Math.Clamp(EvidencePageNumber(result.RuleId) + delta, 0, PageTotal(result.Evidence.Count, EvidencePageSize) - 1);
     private void MoveIdentity(int delta) => _identityPage = Math.Clamp(_identityPage + delta, 0, PageTotal(_shown?.Evidence.Pages.Count ?? 0, EvidencePageSize) - 1);
-    private bool CanShowPage(int page) => ShownCurrent && Compile.Preview.State.DocumentSha256 == _shown!.Evidence.Compilation.PdfSha256 && page >= 0 && page < Compile.Preview.State.PageCount;
-    private async Task ShowPage(int page)
+    private bool CanShowPage(RenderedReviewReport report, int page) => ReferenceEquals(_shown, report) && ShownCurrent
+        && Compile.Preview.State.DocumentSha256 == report.Evidence.Compilation.PdfSha256 && page >= 0 && page < Compile.Preview.State.PageCount;
+    private async Task ShowPage(RenderedReviewReport report, int page)
     {
-        if (!CanShowPage(page)) return;
+        if (!CanShowPage(report, page)) return;
         await PreviewRequested.InvokeAsync();
-        if (CanShowPage(page) && !Compile.Preview.GoToPage(page + 1))
+        if (CanShowPage(report, page) && !Compile.Preview.GoToPage(page + 1))
             _inputError = "The PDF preview could not show this page.";
     }
     private static int? EvidencePage(JsonElement evidence) => evidence.ValueKind == JsonValueKind.Object && evidence.TryGetProperty("pageIndex", out var page) && page.TryGetInt32(out var index) && index >= 0 ? index : null;

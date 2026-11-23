@@ -3,6 +3,7 @@ using Client.Checks;
 using Client.Compilation.Diagnostics;
 using Client.Workspace.Domain;
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Web;
 using Microsoft.JSInterop;
 
 namespace Client.Pages;
@@ -11,14 +12,16 @@ public partial class Workspace
 {
     [Inject] private CheckReportStore CheckReports { get; set; } = default!;
 
-    private enum ChecksSection { Source, Pdf, Ai, Saved, Review }
+    private enum SidebarTab { Files, Checks, Ai }
+    private enum ChecksSection { Source, Pdf, Saved }
 
     private static readonly ChecksSection[] CheckSections =
-        [ChecksSection.Source, ChecksSection.Pdf, ChecksSection.Ai, ChecksSection.Saved, ChecksSection.Review];
+        [ChecksSection.Source, ChecksSection.Pdf, ChecksSection.Saved];
 
     private ChecksSection _checksSection;
-    private bool _checksOpen, _focusChecks, _loadingChecks, _hasOlderChecks, _refreshChecksAfterRead;
-    private ElementReference _checksHeading;
+    private SidebarTab _sidebarTab, _reviewLayer;
+    private bool _sidebarExpanded, _loadingChecks, _hasOlderChecks, _refreshChecksAfterRead;
+    private (Guid Session, long Generation, long Selection)? _inlineCheckScope;
     private Guid _checksSession;
     private string? _checkStorageNotice;
     private string? _sourceStorageNotice, _lastStoredSourceSnapshot;
@@ -29,51 +32,51 @@ public partial class Workspace
 
     private sealed record RecordedAnalysis(Guid Session, long Generation, long Selection, string? PreviousSnapshot);
 
-    private IEnumerable<ChecksSection> VisibleCheckSections => CheckSections.Where(section =>
-        section != ChecksSection.Review || _checksSection == section || CurrentReview.Preview is not null || CurrentReview.Action is not null);
-
     private int PendingCheckCount => _pendingCheckWrites.Values.Count(report => report.ProjectId == Coordinator.Project?.Id.ToString());
     private static string ChecksId(ChecksSection section) => section.ToString().ToLowerInvariant();
     private static string ChecksLabel(ChecksSection section) => section switch
     {
         ChecksSection.Source => "Source",
         ChecksSection.Pdf => "PDF",
-        ChecksSection.Ai => "AI review",
         ChecksSection.Saved => "Saved reports",
-        ChecksSection.Review => "Review changes",
         _ => throw new ArgumentOutOfRangeException(nameof(section)),
     };
 
-    private void OpenChecks(ChecksSection section)
+    private string SidebarPressed(SidebarTab tab) => _sidebarTab == tab ? "true" : "false";
+
+    private void SelectSidebar(SidebarTab tab)
     {
-        if (!Coordinator.IsOpen) return;
-        _focusChecks = !_checksOpen;
-        _checksOpen = true;
+        _sidebarExpanded = _sidebarTab != tab || !_sidebarExpanded;
+        _sidebarTab = tab;
+        if (tab != SidebarTab.Files) _reviewLayer = tab;
+    }
+
+    private void OnSidebarKeyDown(KeyboardEventArgs args)
+    {
+        if (args.Key == "Escape") _sidebarExpanded = false;
+    }
+
+    private void SelectChecksSection(ChecksSection section)
+    {
         _checksSection = section;
         if (section == ChecksSection.Saved) QueueCheckWork(() => ReadChecksAsync(older: false));
     }
 
-    private void ShowEditor()
+    private Task ShowCheckedSourceAsync()
     {
-        _checksOpen = false;
-        _focusChecks = false;
-    }
-
-    private async Task ShowCheckedSourceAsync()
-    {
-        if (!_checksOpen) return;
-        ShowEditor();
+        _sidebarExpanded = false;
+        if (!_narrowPdf) return Task.CompletedTask;
         _narrowPdf = false;
-        await AwaitDiagnosticRender();
+        return AwaitDiagnosticRender();
     }
 
-    private async Task ShowCheckedPdfAsync()
+    private Task ShowCheckedPdfAsync()
     {
-        if (!_checksOpen) return;
-        ShowEditor();
+        if (_showOutput && _narrowPdf && !_sidebarExpanded) return Task.CompletedTask;
         _showOutput = true;
         _narrowPdf = true;
-        await AwaitDiagnosticRender();
+        _sidebarExpanded = false;
+        return AwaitDiagnosticRender();
     }
 
     private void InitializeChecks()
@@ -102,7 +105,14 @@ public partial class Workspace
             _loadingChecks = _hasOlderChecks = _refreshChecksAfterRead = false;
             _checkStorageNotice = PendingCheckCount > 0 ? "Some reports still need to be saved in this browser." : null;
             _checksSection = ChecksSection.Source;
-            ShowEditor();
+            _sidebarTab = _reviewLayer = SidebarTab.Files;
+            _sidebarExpanded = _reviewDrawerOpen = false;
+            _inlineCheckScope = null;
+            _checkMarks = null;
+            _gutterFindings = null;
+            _gutterAiFinding = null;
+            _aiSelectionNotice = null;
+            _inlineAi.Disconnect();
             StateHasChanged();
         }
         return Task.CompletedTask;
@@ -117,6 +127,8 @@ public partial class Workspace
 
     private void RequestRecordedAnalysis()
     {
+        _gutterFindings = null;
+        _inlineCheckScope = (Coordinator.SessionId, Coordinator.WorkingGeneration, AnalysisCoord.CurrentSelectionVersion);
         _lastStoredSourceSnapshot = null;
         _sourceStorageNotice = "Saving the result when this check completes…";
         _requestedCheck = new(Coordinator.SessionId, Coordinator.WorkingGeneration, AnalysisCoord.CurrentSelectionVersion,

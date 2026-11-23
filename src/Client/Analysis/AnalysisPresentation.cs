@@ -3,6 +3,48 @@ namespace Client.Analysis;
 /// <summary>Display labels only; no parsing, rule evaluation or fix execution.</summary>
 public static class AnalysisPresentation
 {
+    public static string SourceRule(string ruleId) => ruleId switch
+    {
+        AnalysisCatalog.Indent => "Paragraph indent",
+        AnalysisCatalog.Heading => "Heading punctuation",
+        AnalysisCatalog.Margins => "Margins",
+        AnalysisCatalog.Paper => "Paper size",
+        AnalysisCatalog.LineSpacing => "Line spacing",
+        AnalysisCatalog.Caption => "Caption punctuation",
+        AnalysisCatalog.Labels => "Labels",
+        AnalysisCatalog.References => "References",
+        _ => ruleId,
+    };
+
+    public static string FindingAction(AnalysisEngineDiagnosticDto diagnostic) => diagnostic.RuleId switch
+    {
+        AnalysisCatalog.Indent => "Set the paragraph indent to 12.7 mm",
+        AnalysisCatalog.Heading => "Remove the final period from the heading",
+        AnalysisCatalog.Margins => "Increase the marked margin to the required minimum",
+        AnalysisCatalog.Paper => "Review the declared paper size",
+        AnalysisCatalog.LineSpacing => "Set the declared line spacing to 1.5",
+        AnalysisCatalog.Caption => "Remove the final period from the caption",
+        _ => diagnostic.Message,
+    };
+
+    public static AnalysisFixDescriptorDto? FixFor(AnalysisReport report, AnalysisEngineDiagnosticDto diagnostic)
+        => report.Result.Knu?.FixDescriptors.FirstOrDefault(fix => fix.EvidenceId == diagnostic.Id
+            && fix.FileId == diagnostic.FileId && fix.RuleId == diagnostic.RuleId && fix.Span == diagnostic.Span
+            && fix.Version == AnalysisCatalog.Version && AnalysisCatalog.IsCanonicalFixId(fix.Id));
+
+    public static string? RepairProfileFor(AnalysisReport report, AnalysisEngineDiagnosticDto diagnostic)
+    {
+        if (diagnostic.Origin != "knu" || !AnalysisCatalog.IsThesis(report.Snapshot.Profile)) return null;
+        return diagnostic.RuleId switch
+        {
+            AnalysisCatalog.Indent => AnalysisCatalog.Version,
+            AnalysisCatalog.Margins when report.Snapshot.Files.Count(file => AnalysisCatalog.IsTex(file.RelativePath)) == 1
+                && !report.Snapshot.Excluded.Any(file => AnalysisCatalog.IsTex(file.RelativePath)) => AnalysisCatalog.GeometryPackageVersion,
+            AnalysisCatalog.Margins => AnalysisCatalog.ProjectMarginFixVersion,
+            _ => null,
+        };
+    }
+
     public static string WorkType(AnalysisWorkType value) => value switch
     {
         AnalysisWorkType.Unspecified => "Unspecified — no degree/work type chosen",

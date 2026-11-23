@@ -215,10 +215,6 @@ else
                 <p class="status @StatusClass" role="status" aria-live="polite">@StatusText</p>
             </div>
             <div class="actions workspace-actions">
-                <nav class="workspace-modes" aria-label="Project workspace">
-                    <button type="button" data-testid="open-editor" aria-pressed="@(!_checksOpen ? "true" : "false")" @onclick="ShowEditor">Editor</button>
-                    <button type="button" data-testid="open-checks" aria-pressed="@(_checksOpen ? "true" : "false")" @onclick="() => OpenChecks(_checksSection)">Checks</button>
-                </nav>
                 <button @onclick="SaveAsync" disabled="@SaveDisabled" aria-label="Save source"
                         title="Save source files to this browser" data-testid="save">
                     @(Coordinator.SavePhase == SavePhase.Saving ? "Saving…" : ManualSaveConfirmed ? "Source saved" : "Save source")
@@ -287,21 +283,26 @@ else
                data-testid="transfer-status">@_transferStatus</p>
         }
 
-        <div class="document-bar" hidden="@_checksOpen">
+        <div class="document-bar">
             <CompileControls BeforeCompile="WaitForPendingSaveAsync"
                 SourceLineRequested="OnCompilerSourceNavigateAsync" SourceNavigationStatus="@_compilerSourceStatus" />
             <button type="button" class="preview-toggle" aria-controls="workspace-output" aria-expanded="@(_showOutput ? "true" : "false")"
                     @onclick="() => _showOutput = !_showOutput">@(_showOutput ? "Hide PDF" : "Show PDF")</button>
         </div>
 
-        <div hidden="@_checksOpen" class="workspace-body @(_showOutput ? "" : "source-only") @(_narrowPdf ? "show-narrow-pdf" : "")">
-            <nav class="workspace-navigation" aria-label="Editor sidebar" @ref="_workspaceNavigation">
-                <details class="sidebar-switch files-switch" name="editor-sidebar" open>
-                    <summary title="Show or hide project files">
-                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7V5h7l2 3h9v12H3z" /></svg>
-                        Files
-                    </summary>
-                    <aside class="file-tree" aria-label="Files">
+        <div class="workspace-body @(_showOutput ? "" : "source-only") @(_narrowPdf ? "show-narrow-pdf" : "")">
+            <aside class="workspace-navigation @(_sidebarExpanded ? "sidebar-expanded" : "")" aria-label="Editor sidebar"
+                   @onkeydown="OnSidebarKeyDown">
+                <div class="sidebar-tabs" role="group" aria-label="Sidebar tabs">
+                    <button type="button" data-testid="open-editor" aria-controls="sidebar-files" aria-pressed="@SidebarPressed(SidebarTab.Files)"
+                            @onclick="() => SelectSidebar(SidebarTab.Files)">Files</button>
+                    <button type="button" data-testid="open-checks" aria-controls="sidebar-checks" aria-pressed="@SidebarPressed(SidebarTab.Checks)"
+                            @onclick="() => SelectSidebar(SidebarTab.Checks)">Checks</button>
+                    <button type="button" data-testid="open-ai" aria-controls="sidebar-ai" aria-pressed="@SidebarPressed(SidebarTab.Ai)"
+                            @onclick="() => SelectSidebar(SidebarTab.Ai)">AI</button>
+                </div>
+                <div class="sidebar-content">
+                    <section id="sidebar-files" class="file-tree" aria-label="Files" hidden="@(_sidebarTab != SidebarTab.Files)">
                         <h2 class="pane-title">Project files</h2>
                         <ul class="files">
                             @foreach (var f in Coordinator.Files.Where(f => !f.Deleted))
@@ -349,15 +350,207 @@ else
                             <ProjectSearchPanel OnNavigate="OnProjectSearchNavigateAsync" NavigationStatus="@_projectSearchNavigationStatus" OnPreviewRequested="PreviewProjectReplaceAsync" />
                         </details>
 
-                    </aside>
-                </details>
-            </nav>
+                    </section>
+                    <section id="sidebar-checks" class="checks-sidebar" hidden="@(_sidebarTab != SidebarTab.Checks)" aria-label="Checks" data-testid="checks-page">
+                        <nav class="checks-nav" aria-label="Checks sections">
+                            @foreach (var section in CheckSections)
+                            {
+                                <button type="button" aria-current="@(_checksSection == section ? "page" : null)" data-checks-tab="@ChecksId(section)"
+                                        @onclick="() => SelectChecksSection(section)">@ChecksLabel(section)</button>
+                            }
+                        </nav>
+                        @if (_checkStorageNotice is not null && _checksSection != ChecksSection.Saved)
+                        {
+                            <p class="banner banner-warn" role="status">@_checkStorageNotice</p>
+                        }
+                        <section class="checks-content" data-checks-section="source" hidden="@(_checksSection != ChecksSection.Source)" aria-label="Source checks">
+                            @{ var marked = GutterDiagnostics; }
+                            @if (CurrentMarkedReport is { } markedReport && marked.Count > 0)
+                            {
+                                <section class="gutter-finding" data-testid="active-check-finding" aria-label="Findings on the marked line">
+                                    <header class="checks-panel-heading">
+                                        <strong>Findings on this line</strong>
+                                        <button type="button" @onclick="() => _gutterFindings = null">All findings</button>
+                                    </header>
+                                    <ul class="finding-list">
+                                        @foreach (var finding in marked)
+                                        {
+                                            <SourceCheckFinding @key="(markedReport.Result.SnapshotId, finding.Id)" Report="markedReport" Diagnostic="finding" InGutter="true"
+                                                CanReview="CanReviewSourceChecks" FindingSelected="@(d => OnFindingClickAsync(markedReport, d))"
+                                                FixRequested="@(id => PreviewFixAsync(markedReport, id))" RepairRequested="@(version => RunRepairCheckAsync(markedReport, version))" />
+                                        }
+                                    </ul>
+                                </section>
+                            }
+                            <details class="tool-disclosure" data-testid="analysis-disclosure" open>
+                                <summary>Source and thesis checks</summary>
+                            <section class="analysis-panel tool-content" aria-label="Source analysis" data-testid="analysis-panel" data-snapshot-id="@AnalysisCurrentReport?.Result.SnapshotId" data-generation="@Coordinator.WorkingGeneration" data-session="@Coordinator.SessionId" data-head="@Coordinator.CurrentRevision?.Id">
+                                <div class="analysis-controls">
+                                    <label for="analysis-profile">Check type</label>
+                                    <select id="analysis-profile" data-testid="analysis-profile" value="@AnalysisProfileValue" @onchange="ChangeAnalysisProfile">
+                                        <option value="engine-structural">Engine checks</option>
+                                        <option value="engine-source-references">Source references</option>
+                                        <option value="@KnuRulesetValue">FCSC KNU ruleset</option>
+                                    </select>
+                                    @if (AnalysisCoord.CurrentConfiguration is not null || AnalysisCatalog.RequiresKnuRoot(AnalysisCoord.CurrentProfile))
+                                    {
+                                        <label for="analysis-work-type">Work type</label>
+                                        <select id="analysis-work-type" data-testid="analysis-work-type" value="@(AnalysisCoord.CurrentConfiguration is { } configuration ? AnalysisPresentation.WorkValue(configuration.WorkType) : "")" @onchange="ChangeWorkType">
+                                            @if (AnalysisCoord.CurrentConfiguration is null) { <option value="">Select a work type (unspecified is allowed)</option> }
+                                            @foreach (var work in Enum.GetValues<AnalysisWorkType>())
+                                            { <option value="@AnalysisPresentation.WorkValue(work)">@AnalysisPresentation.WorkType(work)</option> }
+                                        </select>
+                                    }
+                                    @if (AnalysisCatalog.RequiresRoot(AnalysisCoord.CurrentProfile))
+                                    {
+                                        <label for="reference-root">@(IsKnuRuleset ? "Thesis source root" : "Source-reference root")</label>
+                                        <select id="reference-root" data-testid="reference-root" value="@AnalysisCoord.CurrentReferenceConfiguration?.RootFileId" @onchange="ChangeReferenceRoot">
+                                            @if (!HasReferenceRoot) { <option value="">Select a current .tex text root</option> }
+                                            @foreach (var file in ReferenceRootFiles)
+                                            { <option value="@file.Id.ToString()">@file.RelativePath</option> }
+                                        </select>
+                                        @if (!HasReferenceRoot)
+                                        { <p role="status" data-testid="reference-root-unavailable">Choose a .tex file as the root for this check.</p> }
+                                    }
+                                    <button @onclick="AnalyzeNowAsync" disabled="@(AnalysisCatalog.RequiresRoot(AnalysisCoord.CurrentProfile) && (!HasReferenceRoot || !AnalysisCoord.CurrentSelection.IsValid))" data-testid="analyze-now">@(_inlineCheckScope is not null && CurrentMarkedReport is null ? "Run again" : "Run checks")</button>
+                                    <button @onclick="CancelAnalysis" data-testid="cancel-analysis"
+                                            hidden="@(AnalysisCoord.State is not (AnalysisState.Pending or AnalysisState.Running or AnalysisState.Completed))">
+                                        @(AnalysisCurrentReport is null ? "Cancel" : "Clear results")
+                                    </button>
+                                </div>
+                                @if (IsKnuRuleset)
+                                {
+                                    <details>
+                                        <summary>Ruleset options <span>· @KnuCheckLabel</span></summary>
+                                        <label for="knu-checks">Checks to run</label>
+                                        <select id="knu-checks" data-testid="knu-checks" value="@AnalysisCoord.CurrentProfile.Version" @onchange="args => ChangeKnuChecks(args.Value as string)">
+                                            <option value="@AnalysisCatalog.CaptionRolesVersion">Source and thesis checks</option>
+                                            <option value="@AnalysisCatalog.ProjectMarginFixVersion">Project margin repair</option>
+                                            <optgroup label="Compatibility checks">
+                                                <option value="@AnalysisCatalog.Version">Paragraph indent and heading punctuation</option>
+                                                <option value="@AnalysisCatalog.LatestVersion">Basic margin observations</option>
+                                                <option value="@AnalysisCatalog.MarginFixVersion">Literal margin fixes</option>
+                                                <option value="@AnalysisCatalog.GeometryPackageVersion">Geometry package checks and fixes</option>
+                                                <option value="@AnalysisCatalog.FormattingVersion">File-level formatting intent</option>
+                                                <option value="@AnalysisCatalog.ThesisVersion">Cited thesis observations</option>
+                                                <option value="@AnalysisCatalog.CitationNotesVersion">Cited thesis observations with citation notes</option>
+                                            </optgroup>
+                                        </select>
+                                    </details>
+                                }
+                                <p class="analysis-status-line @AnalysisStatusClass" role="status" aria-live="polite"
+                                   data-testid="analysis-status">@AnalysisStatusText</p>
+                                @if (_sourceStorageNotice is not null)
+                                {
+                                    <p class="hint" role="status" data-testid="analysis-check-storage" data-saved-snapshot="@_lastStoredSourceSnapshot">@_sourceStorageNotice</p>
+                                }
+                                @if (AnalysisCurrentReport is { } report)
+                                {
+                                    @if (IsIncomplete(report))
+                                    {
+                                        <p class="hint analysis-incomplete" data-testid="analysis-incomplete">
+                                            Incomplete scan. Review coverage for unchecked source.
+                                        </p>
+                                    }
+                                    @if (report.Result.Diagnostics.Count > 0 && marked.Count == 0)
+                                    {
+                                        <h3 class="source-findings-heading">Findings <span class="check-count">@report.Result.Diagnostics.Count</span></h3>
+                                    }
+                                    else if (!IsIncomplete(report) && report.Result.Diagnostics.Count == 0)
+                                    {
+                                        <p data-testid="analysis-pass">No findings in the supported source scan.</p>
+                                    }
+                                    @if (report.Result.Knu is not null)
+                                    {
+                                        <KnuReportView Report="report" ShowFindings="@(marked.Count == 0)" CanReview="CanReviewSourceChecks"
+                                            FindingSelected="@(d => OnFindingClickAsync(report, d))" FixRequested="@(id => PreviewFixAsync(report, id))"
+                                            RepairRequested="@(version => RunRepairCheckAsync(report, version))" />
+                                    }
+                                    <section class="analysis-findings" aria-label="Engine checks">
+                                        <p class="hint" data-testid="engine-outcome">Source syntax · @EngineOutcome(report)</p>
+                                        @if (marked.Count == 0 && report.Result.Diagnostics.Any(d => d.Origin == "engine"))
+                                        {
+                                            <ul class="finding-list" data-testid="finding-list">
+                                                @foreach (var finding in report.Result.Diagnostics.Where(d => d.Origin == "engine"))
+                                                {
+                                                    <SourceCheckFinding @key="(report.Result.SnapshotId, finding.Id)" Report="report" Diagnostic="finding" FindingSelected="@(d => OnFindingClickAsync(report, d))" />
+                                                }
+                                            </ul>
+                                        }
+                                        @if (report.Result.Coverage.Unsupported.Count > 0 || report.Snapshot.Excluded.Length > 0 || report.Result.UnavailableCapabilities.Count > 0)
+                                        {
+                                            <details class="source-coverage">
+                                                <summary>Coverage and limits</summary>
+                                                @if (report.Result.Coverage.Unsupported.Count > 0 || report.Snapshot.Excluded.Length > 0)
+                                                {
+                                                    <section class="analysis-unsupported" data-testid="analysis-unsupported">
+                                                        <h4>Outside the source scan</h4>
+                                                        <ul>
+                                                            @foreach (var u in report.Result.Coverage.Unsupported)
+                                                            { <li>@u</li> }
+                                                            @foreach (var x in report.Snapshot.Excluded)
+                                                            { <li data-testid="analysis-excluded">@x.RelativePath — @x.Reason</li> }
+                                                        </ul>
+                                                    </section>
+                                                }
+                                                @if (report.Result.UnavailableCapabilities.Count > 0)
+                                                {
+                                                    <section class="analysis-unavailable" data-testid="analysis-unavailable">
+                                                        <h4>Unavailable for this report</h4>
+                                                        <ul>
+                                                            @foreach (var u in report.Result.UnavailableCapabilities)
+                                                            { <li>@u</li> }
+                                                        </ul>
+                                                    </section>
+                                                }
+                                            </details>
+                                        }
+                                    </section>
+                                    @if (report.Result.Profile.Id == AnalysisCatalog.ReferenceId)
+                                    { <ReferenceChecksView Report="report" /> }
+                                    @if (report.Result.Thesis is not null)
+                                    { <ThesisReportView Report="report" IsCurrent="@Navigator.IsStillCurrent(report)" EvidenceSelected="OnThesisEvidenceAsync" /> }
+                                }
+                                @if (!string.IsNullOrEmpty(_navNotice))
+                                {
+                                    <p class="hint nav-notice" role="status" data-testid="nav-notice">@_navNotice</p>
+                                }
+                            </section>
+                            </details>
+                            <details class="tool-disclosure" data-testid="diagnostic-filter-disclosure">
+                                <summary>Search findings across reports</summary>
+                                <DiagnosticListPanel Session="_diagnostics" SourceRequested="OnDiagnosticSourceAsync" CompilerRequested="OnDiagnosticCompilerAsync" PageRequested="OnDiagnosticPageAsync" />
+                            </details>
+                        </section>
+                        <section class="checks-content" data-checks-section="pdf" hidden="@(_checksSection != ChecksSection.Pdf)" aria-label="PDF checks">
+                            <header class="checks-panel-heading">
+                                <h3>PDF checks</h3>
+                                <button type="button" @onclick="ShowCheckedPdfAsync">Open PDF preview</button>
+                            </header>
+                            @if (CompileSession.DisplayedOutput is null || CompileSession.IsDisplayedPdfStale)
+                            { <p class="hint">Compile the current source to run PDF checks.</p> }
+                            <RenderedReviewPanel Binding="@_renderedRoleBinding" SourceReport="@AnalysisCurrentReport" Completed="SaveCheckAsync" PreviewRequested="ShowCheckedPdfAsync" />
+                            <RenderedExtentPanel ControllerAvailable="OnDiagnosticRenderedAvailable" Completed="SaveCheckAsync" />
+                            <CompiledBibliographyPanel Session="@CompileSession" Completed="SaveCheckAsync" />
+                        </section>
+                        <section class="checks-content" data-checks-section="saved" hidden="@(_checksSection != ChecksSection.Saved)" aria-label="Saved reports">
+                            <SavedChecks @key="Coordinator.SessionId" Reports="_savedChecks" Notice="_checkStorageNotice" Loading="_loadingChecks"
+                                Retry="RetryCheckStorageAsync" PendingCount="PendingCheckCount" HasMore="_hasOlderChecks"
+                                LoadMore="() => ReadChecksAsync(older: true)" Remove="RemoveCheckAsync" Writable="ReviewWritable" />
+                        </section>
+                    </section>
+                    <section id="sidebar-ai" class="checks-content" data-checks-section="ai" hidden="@(_sidebarTab != SidebarTab.Ai)" aria-label="AI review">
+                        @if (_aiSelectionNotice is not null) { <p role="status">@_aiSelectionNotice</p> }
+                        <AiPanel Session="_inlineAi" FindingSelected="SelectAiFindingAsync" PrepareSelection="PrepareAiSelectionAsync" SelectedFinding="_gutterAiFinding" />
+                    </section>
+                </div>
+            </aside>
 
             <div class="document-view-switch" role="group" aria-label="Document view">
                 <button type="button" aria-controls="workspace-source" aria-pressed="@(!_narrowPdf ? "true" : "false")"
-                        @onclick="() => SwitchNarrowDocumentAsync(false)">Source</button>
+                        @onclick="() => SwitchNarrowDocument(false)">Source</button>
                 <button type="button" aria-controls="workspace-output" aria-pressed="@(_narrowPdf ? "true" : "false")"
-                        @onclick="() => SwitchNarrowDocumentAsync(true)">PDF</button>
+                        @onclick="() => SwitchNarrowDocument(true)">PDF</button>
             </div>
 
             <div class="editor-area" id="workspace-source">
@@ -471,7 +664,7 @@ else
                         <div class="source-editor-shell" data-testid="source-editor-shell" @key="(Coordinator.SessionId, active.Id, _journalViewEpoch)">
                             <SourceHighlightLayer Source="@active.Content" FileIdentity="@active.Id.ToString()"
                                 Revision="@Coordinator.WorkingGeneration.ToString(System.Globalization.CultureInfo.InvariantCulture)"
-                                ReadOnly="@Coordinator.IsReadOnly" />
+                                ReadOnly="@Coordinator.IsReadOnly" Marks="SourceMarks(active)" MarkSelected="OpenGutterFinding" />
                             <textarea id="editor" @bind="ActiveContent" @bind:event="oninput"
                                   data-source-journal="true" data-journal-session="@(Coordinator.SessionId.ToString("N"))" data-journal-path="@active.RelativePath"
                                   disabled="@Coordinator.IsReadOnly"
@@ -509,219 +702,38 @@ else
                     SourceMatch="@CurrentSyncMatch" SourceMatchPdfHash="@(_syncResult?.Output.OutputHash?.Hex)"
                     SourceMatchTransform="@CurrentSyncTransform" SourceMatchUsesNativeTransform="@(_syncResult?.Geometry is not null)" />
             </div>
-        </div>
-
-        <section class="checks-page" hidden="@(!_checksOpen)" aria-labelledby="checks-title" data-testid="checks-page">
-            <div class="checks-shell">
-                <header class="checks-header">
-                    <h2 id="checks-title" tabindex="-1" @ref="_checksHeading">Checks</h2>
-                    <p>Inspect the source or compiled PDF, get a local AI review, and revisit saved results.</p>
-                </header>
-                @if (_checkStorageNotice is not null && _checksSection != ChecksSection.Saved)
-                {
-                    <p class="banner banner-warn" role="status">@_checkStorageNotice <button type="button" @onclick="() => OpenChecks(ChecksSection.Saved)">Open saved reports</button></p>
-                }
-                <div class="checks-layout">
-                    <nav class="checks-nav" aria-label="Checks sections">
-                        @foreach (var section in VisibleCheckSections)
-                        {
-                            var activeSection = _checksSection == section;
-                            <button type="button" aria-current="@(activeSection ? "page" : null)" data-checks-tab="@ChecksId(section)"
-                                    @onclick="() => OpenChecks(section)">@ChecksLabel(section)</button>
-                        }
-                    </nav>
-                    <div class="checks-panels">
-                        <section class="checks-content" data-checks-section="source" hidden="@(_checksSection != ChecksSection.Source)" aria-label="Source checks">
-        <details class="tool-disclosure" data-testid="analysis-disclosure" open>
-            <summary>Source and thesis checks</summary>
-        <section class="analysis-panel tool-content" aria-label="Source analysis" data-testid="analysis-panel" data-snapshot-id="@AnalysisCurrentReport?.Result.SnapshotId" data-generation="@Coordinator.WorkingGeneration" data-session="@Coordinator.SessionId" data-head="@Coordinator.CurrentRevision?.Id">
-            <div class="analysis-controls">
-                <label for="analysis-profile">Analysis profile</label>
-                <select id="analysis-profile" data-testid="analysis-profile" value="@AnalysisProfileValue" @onchange="ChangeAnalysisProfile">
-                    <option value="engine-structural">Engine checks</option>
-                    <option value="engine-source-references">Source references</option>
-                    <option value="@KnuRulesetValue">FCSC KNU ruleset</option>
-                </select>
-                @if (AnalysisCoord.CurrentConfiguration is not null || AnalysisCatalog.RequiresKnuRoot(AnalysisCoord.CurrentProfile))
-                {
-                    <label for="analysis-work-type">Work type</label>
-                    <select id="analysis-work-type" data-testid="analysis-work-type" value="@(AnalysisCoord.CurrentConfiguration is { } configuration ? AnalysisPresentation.WorkValue(configuration.WorkType) : "")" @onchange="ChangeWorkType">
-                        @if (AnalysisCoord.CurrentConfiguration is null) { <option value="">Select a work type (unspecified is allowed)</option> }
-                        @foreach (var work in Enum.GetValues<AnalysisWorkType>())
-                        { <option value="@AnalysisPresentation.WorkValue(work)">@AnalysisPresentation.WorkType(work)</option> }
-                    </select>
-                }
-                @if (AnalysisCatalog.RequiresRoot(AnalysisCoord.CurrentProfile))
-                {
-                    <label for="reference-root">@(IsKnuRuleset ? "Thesis source root" : "Source-reference root") (independent of compile main)</label>
-                    <select id="reference-root" data-testid="reference-root" value="@AnalysisCoord.CurrentReferenceConfiguration?.RootFileId" @onchange="ChangeReferenceRoot">
-                        @if (!HasReferenceRoot) { <option value="">Select a current .tex text root</option> }
-                        @foreach (var file in ReferenceRootFiles)
-                        { <option value="@file.Id.ToString()">@file.RelativePath</option> }
-                    </select>
-                    <p>Source scope starts at this explicit root and supported project-local literal inputs/includes. No TeX expansion, compiler or PDF measurement is performed.</p>
-                    @if (!HasReferenceRoot)
-                    { <p role="status" data-testid="reference-root-unavailable">No valid selected root. Choose a current .tex text file; analysis will not use an alternative root automatically.</p> }
-                }
-                <button @onclick="AnalyzeNowAsync" disabled="@(AnalysisCatalog.RequiresRoot(AnalysisCoord.CurrentProfile) && (!HasReferenceRoot || !AnalysisCoord.CurrentSelection.IsValid))" data-testid="analyze-now">Run and save report</button>
-                <button @onclick="CancelAnalysis" data-testid="cancel-analysis">Cancel</button>
-            </div>
-            @if (IsKnuRuleset)
+            @if (ReviewDrawerAvailable)
             {
-                <details>
-                    <summary>Ruleset options <span>· @KnuCheckLabel</span></summary>
-                    <label for="knu-checks">Checks to run</label>
-                    <select id="knu-checks" data-testid="knu-checks" value="@AnalysisCoord.CurrentProfile.Version" @onchange="ChangeKnuChecks">
-                        <option value="@AnalysisCatalog.CaptionRolesVersion">Source and thesis checks</option>
-                        <option value="@AnalysisCatalog.ProjectMarginFixVersion">Project margin repair</option>
-                        <optgroup label="Compatibility checks">
-                            <option value="@AnalysisCatalog.Version">Paragraph indent and heading punctuation</option>
-                            <option value="@AnalysisCatalog.LatestVersion">Basic margin observations</option>
-                            <option value="@AnalysisCatalog.MarginFixVersion">Literal margin fixes</option>
-                            <option value="@AnalysisCatalog.GeometryPackageVersion">Geometry package checks and fixes</option>
-                            <option value="@AnalysisCatalog.FormattingVersion">File-level formatting intent</option>
-                            <option value="@AnalysisCatalog.ThesisVersion">Cited thesis observations</option>
-                            <option value="@AnalysisCatalog.CitationNotesVersion">Cited thesis observations with citation notes</option>
-                        </optgroup>
-                    </select>
+                <button class="review-drawer-toggle" type="button" data-testid="open-review" aria-controls="workspace-review"
+                        aria-expanded="@(_reviewDrawerOpen ? "true" : "false")" @onclick="() => _reviewDrawerOpen = !_reviewDrawerOpen">Review changes</button>
+            }
+            <aside id="workspace-review" class="review-drawer" aria-label="Review changes" data-checks-section="review" hidden="@(!_reviewDrawerOpen)">
+                <button type="button" class="review-drawer-close" aria-label="Close change review" @onclick="() => _reviewDrawerOpen = false">Close</button>
+                <details class="tool-disclosure review-disclosure" data-testid="review-disclosure"
+                         open="@(_reviewPending || CurrentReview.Busy || CurrentReview.Preview is not null || CurrentReview.Action is not null || CurrentReview.Notice is not null || !string.IsNullOrEmpty(_reviewNotice))">
+                    <summary>Preview and approve changes</summary>
+                    <ReviewSubsetPanel State="CurrentReview" Writable="ReviewWritable" Working="@(_reviewPending)" Preview="PreviewReviewSubsetAsync" />
+                    <ReviewPanel State="CurrentReview" Writable="ReviewWritable" Working="@(_reviewPending)" Notice="@_reviewNotice"
+                                 Accept="AcceptReviewAsync" Decline="DeclineReview" Retry="RetryReviewAsync" Undo="UndoReviewAsync" Cancel="CancelReview" />
+                    @if (CurrentReview.Action is { Persisted: false } historyRecoveryAction)
+                    {
+                        <section aria-label="Download retained reviewed bytes" data-testid="history-review-recovery-export">
+                            <p>Retained reviewed bytes remain downloadable if save fails. This recovery copy excludes unrelated later edits; it is not a project ZIP or a claim that the current workspace is saved. Retry save and review Undo remain above.</p>
+                            <label>Retained file
+                                <select @bind="_historyRecoveryFile" disabled="@_historyRecoveryBusy">
+                                    <option value="">Choose a retained file</option>
+                                    @foreach (var file in historyRecoveryAction.Exact.Files) { <option value="@file.FileId.ToString()">@file.RelativePath</option> }
+                                </select>
+                            </label>
+                            <button type="button" @onclick="() => DownloadSelectedReviewRecoveryAsync(historyRecoveryAction.Id)"
+                                disabled="@(_historyRecoveryBusy || CurrentReview.Busy || _reviewPending || !Guid.TryParse(_historyRecoveryFile, out _))">Download retained reviewed bytes</button>
+                            @if (_historyRecoveryNotice is not null) { <p role="status">@_historyRecoveryNotice</p> }
+                        </section>
+                    }
+
                 </details>
-            }
-            <p class="analysis-status-line @AnalysisStatusClass" role="status" aria-live="polite"
-               data-testid="analysis-status">@AnalysisStatusText</p>
-            @if (_sourceStorageNotice is not null)
-            {
-                <p class="hint" role="status" data-testid="analysis-check-storage" data-saved-snapshot="@_lastStoredSourceSnapshot">@_sourceStorageNotice</p>
-            }
-            @if (AnalysisCurrentReport is { } report)
-            {
-                @if (IsIncomplete(report))
-                {
-                    <p class="hint analysis-incomplete" data-testid="analysis-incomplete">
-                        This analysis is incomplete: some files could not be fully scanned. Known findings are shown below; do not treat them as a complete check or as document correctness.
-                    </p>
-                }
-                @if (report.Result.Profile.Id == AnalysisCatalog.ReferenceId)
-                { <ReferenceChecksView Report="report" /> }
-                <section class="analysis-findings" aria-label="Engine checks">
-                    <h3>Engine checks</h3>
-                    <p data-testid="engine-outcome">Source syntax: @EngineOutcome(report).</p>
-                    @if (!report.Result.Diagnostics.Any(d => d.Origin == "engine") && !IsIncomplete(report))
-                    {
-                        <p class="hint" data-testid="analysis-pass">No findings in the supported syntax.</p>
-                    }
-                    else
-                    {
-                        <ul class="finding-list" data-testid="finding-list">
-                            @foreach (var d in report.Result.Diagnostics.Where(d => d.Origin == "engine"))
-                            {
-                                <li class="finding" data-testid="analysis-finding" data-origin="engine"
-                                    data-diag-id="@d.Id" data-snapshot-id="@report.Snapshot.Id.ToString()"
-                                    data-epoch="@report.WorkerEpoch">
-                                    <button class="finding-link" @onclick='() => OnFindingClickAsync(report, d)'
-                                            data-testid="finding-link"
-                                            aria-label='Open diagnostic @d.RuleId'>
-                                        <span class="finding-severity severity-@d.Severity">@d.Severity</span>
-                                        <span class="finding-rule">@d.RuleId</span>
-                                        <span class="finding-file">@FileLabel(report, d.FileId)</span>
-                                        <span class="finding-msg">@d.Message</span>
-                                    </button>
-                                </li>
-                            }
-                        </ul>
-                    }
-                    @if (report.Result.Coverage.Unsupported.Count > 0 || report.Snapshot.Excluded.Length > 0 || report.Result.UnavailableCapabilities.Count > 0)
-                    {
-                        <details class="source-coverage">
-                            <summary>Coverage and limits</summary>
-                            @if (report.Result.Coverage.Unsupported.Count > 0 || report.Snapshot.Excluded.Length > 0)
-                            {
-                                <section class="analysis-unsupported" data-testid="analysis-unsupported">
-                                    <h4>Outside the source scan</h4>
-                                    <ul>
-                                        @foreach (var u in report.Result.Coverage.Unsupported)
-                                        { <li>@u</li> }
-                                        @foreach (var x in report.Snapshot.Excluded)
-                                        { <li data-testid="analysis-excluded">@x.RelativePath — @x.Reason</li> }
-                                    </ul>
-                                </section>
-                            }
-                            @if (report.Result.UnavailableCapabilities.Count > 0)
-                            {
-                                <section class="analysis-unavailable" data-testid="analysis-unavailable">
-                                    <h4>Unavailable for this report</h4>
-                                    <ul>
-                                        @foreach (var u in report.Result.UnavailableCapabilities)
-                                        { <li>@u</li> }
-                                    </ul>
-                                </section>
-                            }
-                        </details>
-                    }
-                </section>
-                @if (report.Result.Knu is not null)
-                { <KnuReportView Report="report" FindingSelected="@(d => OnFindingClickAsync(report, d))" FixRequested="PreviewFixAsync" ReviewWorking="@(_reviewPending || CurrentReview.Busy)" /> }
-                @if (report.Result.Thesis is not null)
-                { <ThesisReportView Report="report" IsCurrent="@Navigator.IsStillCurrent(report)" EvidenceSelected="OnThesisEvidenceAsync" /> }
-            }
-            @if (!string.IsNullOrEmpty(_navNotice))
-            {
-                <p class="hint nav-notice" role="status" data-testid="nav-notice">@_navNotice</p>
-            }
-        </section>
-        </details>
-        <details class="tool-disclosure" data-testid="diagnostic-filter-disclosure">
-            <summary>Findings from source and compilation</summary>
-            <DiagnosticListPanel Session="_diagnostics" SourceRequested="OnDiagnosticSourceAsync" CompilerRequested="OnDiagnosticCompilerAsync" PageRequested="OnDiagnosticPageAsync" />
-        </details>
-                        </section>
-                        <section class="checks-content" data-checks-section="pdf" hidden="@(_checksSection != ChecksSection.Pdf)" aria-label="PDF checks">
-                            <header class="checks-panel-heading">
-                                <h3>PDF checks</h3>
-                                <button type="button" @onclick="ShowCheckedPdfAsync">Open PDF preview</button>
-                            </header>
-                            @if (CompileSession.DisplayedOutput is null || CompileSession.IsDisplayedPdfStale)
-                            { <p class="hint">Compile the current source to run PDF checks.</p> }
-                            <RenderedReviewPanel Binding="@_renderedRoleBinding" SourceReport="@AnalysisCurrentReport" Completed="SaveCheckAsync" PreviewRequested="ShowCheckedPdfAsync" />
-                            <RenderedExtentPanel ControllerAvailable="OnDiagnosticRenderedAvailable" Completed="SaveCheckAsync" />
-                            <CompiledBibliographyPanel Session="@CompileSession" Completed="SaveCheckAsync" />
-                        </section>
-                        <section class="checks-content" data-checks-section="ai" hidden="@(_checksSection != ChecksSection.Ai)" aria-label="AI review">
-                            <AiPanel Completed="SaveCheckAsync" />
-                        </section>
-                        <section class="checks-content" data-checks-section="saved" hidden="@(_checksSection != ChecksSection.Saved)" aria-label="Saved reports">
-                            <SavedChecks @key="Coordinator.SessionId" Reports="_savedChecks" Notice="_checkStorageNotice" Loading="_loadingChecks"
-                                Retry="RetryCheckStorageAsync" PendingCount="PendingCheckCount" HasMore="_hasOlderChecks"
-                                LoadMore="() => ReadChecksAsync(older: true)" Remove="RemoveCheckAsync" Writable="ReviewWritable" />
-                        </section>
-                        <section class="checks-content" data-checks-section="review" hidden="@(_checksSection != ChecksSection.Review)" aria-label="Review changes">
-        <details class="tool-disclosure review-disclosure" data-testid="review-disclosure"
-                 open="@(_reviewPending || CurrentReview.Busy || CurrentReview.Preview is not null || CurrentReview.Action is not null || CurrentReview.Notice is not null || !string.IsNullOrEmpty(_reviewNotice))">
-            <summary>Preview and approve changes</summary>
-            <ReviewSubsetPanel State="CurrentReview" Writable="ReviewWritable" Working="@(_reviewPending)" Preview="PreviewReviewSubsetAsync" />
-            <ReviewPanel State="CurrentReview" Writable="ReviewWritable" Working="@(_reviewPending)" Notice="@_reviewNotice"
-                         Accept="AcceptReviewAsync" Decline="DeclineReview" Retry="RetryReviewAsync" Undo="UndoReviewAsync" Cancel="CancelReview" />
-            @if (CurrentReview.Action is { Persisted: false } historyRecoveryAction)
-            {
-                <section aria-label="Download retained reviewed bytes" data-testid="history-review-recovery-export">
-                    <p>Retained reviewed bytes remain downloadable if save fails. This recovery copy excludes unrelated later edits; it is not a project ZIP or a claim that the current workspace is saved. Retry save and review Undo remain above.</p>
-                    <label>Retained file
-                        <select @bind="_historyRecoveryFile" disabled="@_historyRecoveryBusy">
-                            <option value="">Choose a retained file</option>
-                            @foreach (var file in historyRecoveryAction.Exact.Files) { <option value="@file.FileId.ToString()">@file.RelativePath</option> }
-                        </select>
-                    </label>
-                    <button type="button" @onclick="() => DownloadSelectedReviewRecoveryAsync(historyRecoveryAction.Id)"
-                        disabled="@(_historyRecoveryBusy || CurrentReview.Busy || _reviewPending || !Guid.TryParse(_historyRecoveryFile, out _))">Download retained reviewed bytes</button>
-                    @if (_historyRecoveryNotice is not null) { <p role="status">@_historyRecoveryNotice</p> }
-                </section>
-            }
-
-        </details>
-                        </section>
-                    </div>
-                </div>
-            </div>
-        </section>
+            </aside>
+        </div>
     </section>
 }
 
@@ -730,9 +742,7 @@ else
 @code {
     private bool _showOutput = true;
     private bool _narrowPdf;
-    private bool _focusNewArticle, _closeNarrowFiles;
-    private ElementReference _workspaceNavigation;
-    private Guid _filesSidebarSession;
+    private bool _focusNewArticle;
     private System.Threading.CancellationTokenSource? _autosaveCts;
     private Task _autosaveTask = Task.CompletedTask;
     private Task _manualSaveTask = Task.CompletedTask;
@@ -1208,6 +1218,8 @@ else
     {
         AnalysisCatalog.CaptionRolesVersion => "Source and thesis checks",
         AnalysisCatalog.ProjectMarginFixVersion => "Project margin repair",
+        AnalysisCatalog.GeometryPackageVersion => "Geometry package checks and fixes",
+        AnalysisCatalog.Version => "Paragraph indent and heading punctuation",
         _ => "Compatibility checks",
     };
     private string AnalysisProfileValue => AnalysisCoord.CurrentProfile switch
@@ -1232,9 +1244,9 @@ else
         else AnalysisCoord.SetSelection(default);
     }
 
-    private void ChangeKnuChecks(ChangeEventArgs e)
+    private void ChangeKnuChecks(string? version)
     {
-        if (!IsKnuRuleset || e.Value is not string version || !AnalysisCatalog.IsKnown(AnalysisCatalog.KnuId, version)) return;
+        if (!IsKnuRuleset || version is null || !AnalysisCatalog.IsKnown(AnalysisCatalog.KnuId, version)) return;
         ClearSelectionIntent();
         var profile = new AnalysisProfile(AnalysisCatalog.KnuId, version);
         var previous = AnalysisCoord.CurrentSelection;
@@ -1271,13 +1283,6 @@ else
         _navNotice = null;
     }
 
-    private static string FileLabel(AnalysisReport report, string fileId)
-    {
-        var cf = report.Snapshot.Files.FirstOrDefault(f => f.FileId.ToString() == fileId);
-        var x = report.Snapshot.Excluded.FirstOrDefault(f => f.FileId.ToString() == fileId);
-        return cf?.RelativePath ?? x?.RelativePath ?? fileId;
-    }
-
     private string _projectQuery = "";
     private List<Project> _projects = new();
     private string _newProjectName = "";
@@ -1295,6 +1300,7 @@ else
     protected override async Task OnInitializedAsync()
     {
         InitializeDiagnosticList();
+        InitializeInlineAi();
         InitializeChecks();
         _articleStarter = new(Coordinator, StarterLocks);
         _projectRename = new(Coordinator, action => InvokeAsync(action));
@@ -1356,14 +1362,6 @@ else
             await _editorRef.FocusAsync(preventScroll: true);
         }
 
-        if (Coordinator.IsOpen && (_closeNarrowFiles || _filesSidebarSession != Coordinator.SessionId))
-        {
-            _closeNarrowFiles = false;
-            _filesSidebarSession = Coordinator.SessionId;
-            await CloseNarrowSidebarAsync(filesOnly: true);
-        }
-
-        if (_focusChecks && Coordinator.IsOpen && _checksOpen) { _focusChecks = false; await _checksHeading.FocusAsync(preventScroll: true); }
         CompleteDiagnosticRender(); // actual DOM render fence for diagnostic cross-file actions
         await JournalAfterRenderAsync();
         await AssistanceAfterRenderAsync();
@@ -1657,23 +1655,15 @@ else
         if (JournalSelectFile(id))
         {
             _narrowPdf = false;
-            _closeNarrowFiles = true;
+            _sidebarExpanded = false;
         }
         StateHasChanged();
     }
 
-    private async Task SwitchNarrowDocumentAsync(bool showPdf)
+    private void SwitchNarrowDocument(bool showPdf)
     {
         _narrowPdf = showPdf;
-        await CloseNarrowSidebarAsync(filesOnly: false);
-    }
-
-    private async Task CloseNarrowSidebarAsync(bool filesOnly)
-    {
-        var session = Coordinator.SessionId;
-        var module = await GetEditorSelectAsync(System.Threading.CancellationToken.None);
-        if (_pageDisposed || session != Coordinator.SessionId || module is null) return;
-        await module.InvokeVoidAsync("closeNarrowSidebar", _workspaceNavigation, filesOnly);
+        _sidebarExpanded = false;
     }
 
     private async Task DownloadFileAsync()
@@ -1837,6 +1827,7 @@ else
         _navNotice = null;
         CancelSelectionIntents();
         _requestedCheck = null;
+        _inlineCheckScope = null;
         _sourceStorageNotice = null;
         AnalysisCoord.Cancel();
     }
@@ -2227,6 +2218,8 @@ else
         }
         var ct = NavCancelAndStart();
         _navNotice = null;
+        _reviewLayer = SidebarTab.Checks;
+        _inlineCheckScope = (Coordinator.SessionId, Coordinator.WorkingGeneration, AnalysisCoord.CurrentSelectionVersion);
         NavigationResult result;
         try { result = await Navigator.NavigateAsync(report, diag, ct); }
         catch (System.OperationCanceledException) { return; }
@@ -2424,7 +2417,14 @@ else
     private void AutosaveRevisionCommitted(WorkspaceSaveReceipt receipt)
     {
         if (_pageDisposed || receipt.SessionId != Coordinator.SessionId) return;
-        _ = InvokeAsync(StateHasChanged).ContinueWith(ObserveTaskFault, TaskScheduler.Default);
+        _ = InvokeAsync(() =>
+        {
+            if (_pageDisposed || receipt.SessionId != Coordinator.SessionId) return;
+            // A commit can advance the head without changing the working bytes.
+            // Rebind an explicitly run check to the new head via a fresh report.
+            if (InlineCheckScopeCurrent && CurrentMarkedReport is null) AnalysisCoord.RequestReanalyze();
+            StateHasChanged();
+        }).ContinueWith(ObserveTaskFault, TaskScheduler.Default);
     }
 
     private void CancelAutosave()
@@ -2440,6 +2440,8 @@ else
         _pageDisposed = true;
         DisposeDiagnosticList();
         DisposeChecks();
+        _inlineAi.Changed -= OnInlineAiChanged;
+        _inlineAi.Dispose();
         DisposeJournal();
         DisposeAssistance();
         _articleStarter?.Dispose();

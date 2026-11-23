@@ -4,16 +4,16 @@
 @if (Report?.Result.Thesis is { } thesis)
 {
     var report = Report!;
-    <section aria-label="Cited thesis source review" data-testid="thesis-report" data-snapshot-id="@report.Snapshot.Id">
+    int knownFindings = thesis.RuleResults.Count(rule => rule.KnownCounterexample);
+    <details class="check-details" data-testid="thesis-report" data-snapshot-id="@report.Snapshot.Id">
+        <summary>Thesis structure and citations @(knownFindings > 0 ? $"· {knownFindings} to review" : "")</summary>
         <h3>Cited thesis source observations</h3>
-        <p>KNU Faculty of Computer Science and Cybernetics, 2025. This faculty profile is not a university-wide standard or DSTU certification.</p>
-        <p data-testid="thesis-scope"><strong>Incomplete standards coverage.</strong> Literal source observations only; effective TeX state, physical PDF layout and overall compliance are not assessed. No automatic fixes.</p>
+        <p data-testid="thesis-scope"><strong>Incomplete standards coverage.</strong> KNU Faculty of Computer Science and Cybernetics, 2025. This report covers supported literal thesis syntax.</p>
         <p data-testid="thesis-selection">Root: @FileName(report, thesis.RootFileId). Work type: @AnalysisPresentation.WorkType(thesis.WorkType).</p>
-        <p>Qualification-only title evidence: @thesis.WorkTypeDependentTitle. Bibliography: @thesis.BibliographyMode. Backend-generated numbering, style and order are not measured.</p>
+        <p>Qualification title evidence: @thesis.WorkTypeDependentTitle. Bibliography: @thesis.BibliographyMode.</p>
         @if (!IsCurrent) { <p role="status">This report is not actionable; analyze the current selection again.</p> }
         <p data-testid="thesis-literal-coverage">Supported literal scan: @(thesis.CompleteLiteralScan ? "complete within the finite grammar, not full guideline coverage" : "uncertain or incomplete; known literal findings retained").</p>
         <ul data-testid="thesis-limitations">@foreach (var limitation in thesis.Limitations) { <li>@limitation</li> }</ul>
-        <p>The following five selected-root observations are separate from the six base source-setting/title observations shown in the existing report.</p>
         <label>Source rule <select value="@_rule" @onchange="FilterChanged"><option value="">All five</option>
             @foreach (var id in ThesisCatalog.RuleIds) { <option value="@id">@id</option> }
         </select></label>
@@ -29,9 +29,9 @@
                 { <p>No supported observation or required capability; this is not a Pass.</p> }
             </section>
         }
-        <details open>
-            <summary>Canonical source context evidence (@thesis.Events.Length entries; 50 per page)</summary>
-            <p>These are bounded literal context anchors, not precise error locations inferred from generic findings. A float is not one physical figure. Missing literal captions do not prove missing physical captions.</p>
+        <details>
+            <summary>Source anchors (@thesis.Events.Length)</summary>
+            <p>Each anchor shows a literal source observation. Use PDF checks to verify rendered figures and captions.</p>
             @foreach (var index in Enumerable.Range(_page * PageSize, Math.Min(PageSize, Math.Max(0, thesis.Events.Length - _page * PageSize))))
             {
                 var e = thesis.Events[index];
@@ -67,7 +67,7 @@
                 </details>
             }
         </details>
-    </section>
+    </details>
 }
 
 @code {

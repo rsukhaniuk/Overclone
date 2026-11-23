@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using System.Text;
+using Client.Editing;
 using Client.Workspace.Domain;
 using Client.Workspace.Transfer;
 
@@ -74,6 +75,39 @@ public abstract record SpanMappingResult
 
 public static class SpanMapping
 {
+    /// <summary>Map the overlay's spans in one scan of the captured file. The
+    /// editor comparison and boundary rules are the same as for navigation.</summary>
+    internal static IReadOnlyDictionary<AnalysisSpanDto, SourceRange> MapSourceRanges(
+        CapturedFile file, string source, IEnumerable<AnalysisSpanDto> spans)
+    {
+        var result = new Dictionary<AnalysisSpanDto, SourceRange>();
+        if (!TextContent.TryDecode(file.Bytes.ToArray(), out var captured, out var bom)
+            || captured != source || bom != file.HasBom) return result;
+        var pending = spans.Distinct().ToArray();
+        if (pending.Length == 0) return result;
+
+        var endpoints = pending.SelectMany(span => new[] { span.StartByte, span.EndByte }).ToHashSet();
+        var offsets = new Dictionary<long, int>();
+        int at = bom ? TextContent.Bom.Length : 0, offset = 0;
+        var bytes = file.Bytes.AsSpan();
+        while (at < bytes.Length)
+        {
+            if (endpoints.Contains(at)) offsets.Add(at, offset);
+            if (Rune.DecodeFromUtf8(bytes[at..], out var rune, out var length) != System.Buffers.OperationStatus.Done)
+                return result;
+            at += length;
+            offset += rune.Utf16SequenceLength;
+        }
+        if (endpoints.Contains(at)) offsets.Add(at, offset);
+
+        foreach (var span in pending)
+        {
+            if (!offsets.TryGetValue(span.StartByte, out int start) || !offsets.TryGetValue(span.EndByte, out int end)) continue;
+            var range = new SourceRange(start, end);
+            if (SourceTools.ValidRange(source, range)) result.Add(span, range);
+        }
+        return result;
+    }
     /// <summary>Upper bound on the byte length of a single mapped file. Matches
     /// <see cref="AnalysisLimits.DMaxBytesPerFile"/> (8 MiB). Larger byte arrays
     /// are rejected as InvalidSpan before any decoding.</summary>

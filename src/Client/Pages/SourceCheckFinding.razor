@@ -1,0 +1,50 @@
+@using Client.Analysis
+
+@{
+    bool knu = Diagnostic.Origin == "knu";
+    var file = Report.Snapshot.Files.FirstOrDefault(file => file.FileId.ToString() == Diagnostic.FileId);
+    string path = file?.RelativePath ?? Diagnostic.FileId;
+    string location = Diagnostic.PrimaryLocation is { } point ? $"{path}:{point.Line}" : path;
+    var rule = Report.Result.RuleResults.FirstOrDefault(result => result.RuleId == Diagnostic.RuleId);
+    string action = AnalysisPresentation.FindingAction(Diagnostic);
+    string navigation = Diagnostic.Span is null ? "Show location" : "Go to source";
+    var fix = AnalysisPresentation.FixFor(Report, Diagnostic);
+    var repair = AnalysisPresentation.RepairProfileFor(Report, Diagnostic);
+}
+<li class="finding check-finding" data-testid="@(InGutter ? "marked-check-finding" : knu ? "knu-finding" : "analysis-finding")"
+    data-origin="@Diagnostic.Origin" data-diag-id="@Diagnostic.Id" data-rule-id="@Diagnostic.RuleId"
+    data-snapshot-id="@Report.Result.SnapshotId" data-epoch="@Report.WorkerEpoch"
+    data-start-byte="@Diagnostic.Span?.StartByte" data-end-byte="@Diagnostic.Span?.EndByte">
+    <button type="button" class="finding-link" data-testid="@(InGutter ? "marked-check-source" : knu ? "knu-finding-link" : "finding-link")"
+            aria-label="@($"{navigation}: {action}, {location}")"
+            @onclick="() => FindingSelected.InvokeAsync(Diagnostic)">
+        <strong>@action</strong>
+        <span class="finding-file">@location</span>
+        <span class="check-source-link">@navigation →</span>
+    </button>
+    @if (rule?.Source?.Citation is { } citation)
+    {
+        <small class="check-citation">Guideline §@citation.Section · printed pages @string.Join(", ", citation.PrintedPages)</small>
+    }
+    @if (fix is not null)
+    {
+        <button type="button" class="check-fix" data-testid="preview-fix" data-fix-id="@fix.Id"
+                disabled="@(!CanReview)" @onclick="() => FixRequested.InvokeAsync(fix.Id)">Preview fix</button>
+    }
+    else if (repair is not null && CanReview)
+    {
+        <button type="button" data-testid="check-for-fix" @onclick="() => RepairRequested.InvokeAsync(repair)">
+            @(Diagnostic.RuleId == AnalysisCatalog.Margins ? "Check for margin fix" : "Check for indent fix")
+        </button>
+    }
+</li>
+
+@code {
+    [Parameter, EditorRequired] public AnalysisReport Report { get; set; } = null!;
+    [Parameter, EditorRequired] public AnalysisEngineDiagnosticDto Diagnostic { get; set; } = null!;
+    [Parameter] public EventCallback<AnalysisEngineDiagnosticDto> FindingSelected { get; set; }
+    [Parameter] public EventCallback<string> FixRequested { get; set; }
+    [Parameter] public EventCallback<string> RepairRequested { get; set; }
+    [Parameter] public bool CanReview { get; set; }
+    [Parameter] public bool InGutter { get; set; }
+}

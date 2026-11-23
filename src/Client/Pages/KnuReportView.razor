@@ -3,18 +3,37 @@
     <section class="knu-report" aria-label="KNU source observations" data-testid="knu-report"
              data-snapshot-id="@Report.Snapshot.Id" data-outcome="@Report.Result.AggregateOutcome">
         <h3>FCSC KNU ruleset</h3>
+        @if (ShowFindings && Report.Result.Diagnostics.Any(diagnostic => diagnostic.Origin == "knu"))
+        {
+            <ul class="finding-list">
+                @foreach (var finding in Report.Result.Diagnostics.Where(d => d.Origin == "knu")
+                    .OrderBy(d => AnalysisPresentation.FixFor(Report, d) is null))
+                {
+                    <SourceCheckFinding @key="(Report.Result.SnapshotId, finding.Id)" Report="Report" Diagnostic="finding" CanReview="CanReview"
+                        FindingSelected="FindingSelected" FixRequested="FixRequested" RepairRequested="RepairRequested" />
+                }
+            </ul>
+            @if (AnalysisCatalog.HasMarginFixes(Report.Result.Profile.Version) && knu.FixDescriptors.IsEmpty
+                && Report.Result.Diagnostics.Any(diagnostic => diagnostic.RuleId == AnalysisCatalog.Margins))
+            {
+                <p class="hint">Automatic margin fix unavailable for this source.</p>
+            }
+        }
+        <details class="check-details">
+        <summary>Rule evidence and coverage</summary>
         <p data-testid="knu-edition" data-profile-version="@Report.Result.Profile.Version">KNU Faculty of Computer Science and Cybernetics · 2025 guidelines</p>
         <p data-testid="knu-work-type">Work type: @AnalysisPresentation.WorkType(Report.Result.Configuration!.WorkType)</p>
-        <p class="knu-scope" data-testid="knu-scope">Source observations only. Pass covers supported observed literals, not effective TeX state, rendered layout, the whole thesis or faculty certification. Eligible rule fixes require a separate preview and explicit acceptance; nothing is applied automatically.</p>
+        <p class="knu-scope" data-testid="knu-scope">Source findings cover supported observed literals. Use PDF checks to inspect the rendered layout.</p>
+        @if (Report.Result.Profile.Version == AnalysisCatalog.FormattingVersion)
+        { <p class="hint">This profile has no admitted fixes.</p> }
         <p data-testid="knu-summary">Source-only summary: <strong>@Report.Result.AggregateOutcome</strong></p>
         @foreach (var rule in Report.Result.RuleResults.Where(r => r.Origin == "knu"))
         {
             var source = rule.Source!;
-            <section class="knu-rule" data-testid="knu-rule" data-rule-id="@rule.RuleId" data-outcome="@rule.Outcome">
-                <h4><code>@rule.RuleId</code> — @rule.Outcome</h4>
+            <details class="knu-rule" data-testid="knu-rule" data-rule-id="@rule.RuleId" data-outcome="@rule.Outcome">
+                <summary>@AnalysisPresentation.SourceRule(rule.RuleId) · @rule.Outcome</summary>
                 <p data-testid="knu-citation">Guideline §@source.Citation.Section; printed pages @string.Join(", ", source.Citation.PrintedPages); PDF pages @string.Join(", ", source.Citation.PdfPages).</p>
                 <p data-testid="knu-expected">Expected: @source.Expected</p>
-                <p class="hint">@source.SeverityRationale</p>
                 @foreach (var file in rule.PerFile)
                 {
                     <p data-testid="knu-file-outcome">@FileName(file.FileId) — @file.Outcome</p>
@@ -48,31 +67,10 @@
                         </div>
                     }
                 }
-                <ul class="finding-list">
-                    @foreach (var d in Report.Result.Diagnostics.Where(d => d.Origin == "knu" && d.RuleId == rule.RuleId))
-                    {
-                        <li class="finding" data-testid="knu-finding" data-rule-id="@d.RuleId"
-                            data-snapshot-id="@Report.Snapshot.Id" data-start-byte="@d.Span?.StartByte" data-end-byte="@d.Span?.EndByte">
-                            <button class="finding-link" @onclick="() => FindingSelected.InvokeAsync(d)" data-testid="knu-finding-link"
-                                    aria-label="Open KNU diagnostic @d.RuleId">
-                                <span class="finding-severity">@d.Severity</span><code>@d.RuleId</code>
-                                <span>@FileName(d.FileId)</span><span>@d.Message</span>
-                                <span>UTF-8 bytes [@d.Span?.StartByte, @d.Span?.EndByte)</span>
-                            </button>
-                        </li>
-                    }
-                </ul>
-                @foreach (var fix in knu.FixDescriptors.Where(f => AnalysisCatalog.IsCanonicalFixId(f.Id) && f.Version == AnalysisCatalog.Version && f.RuleId == rule.RuleId))
-                {
-                    <button data-testid="preview-fix" data-fix-id="@fix.Id" disabled="@ReviewWorking" @onclick="()=>FixRequested.InvokeAsync(fix.Id)">Preview fix</button>
-                }
-            </section>
+            </details>
         }
         <section data-testid="knu-coverage" aria-label="Source syntax and coverage notes">
             <h4>Source syntax and coverage notes</h4>
-            <p class="hint">File-level notes are shown here; rule-specific uncertainty stays separate in the per-rule outcomes. Unsupported literal lengths and conflicting indent declarations concern the indent check.</p>
-            @if (Report.Result.Profile.Version == AnalysisCatalog.FormattingVersion)
-            { <p class="hint">Paper, spacing and captions are checked as declared in the source. Use compiled layout checks for physical PDF measurements.</p> }
             @foreach (var file in knu.Files)
             {
                 <p>@FileName(file.FileId) — @(file.Eligible ? "eligible TeX source" : "not applicable to this source profile")</p>
@@ -80,6 +78,7 @@
                 <ul>@foreach (var reason in file.Limitations) { <li>@AnalysisPresentation.Limitation(reason)</li> }</ul>
             }
         </section>
+        </details>
     </section>
 }
 
@@ -87,6 +86,8 @@
     [Parameter, EditorRequired] public AnalysisReport Report { get; set; } = null!;
     [Parameter] public EventCallback<AnalysisEngineDiagnosticDto> FindingSelected { get; set; }
     [Parameter] public EventCallback<string> FixRequested { get; set; }
-    [Parameter] public bool ReviewWorking { get; set; }
+    [Parameter] public EventCallback<string> RepairRequested { get; set; }
+    [Parameter] public bool CanReview { get; set; } = true;
+    [Parameter] public bool ShowFindings { get; set; } = true;
     private string FileName(string id) => Report.Snapshot.Files.FirstOrDefault(f => f.FileId.ToString() == id)?.RelativePath ?? id;
 }

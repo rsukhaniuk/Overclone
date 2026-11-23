@@ -1,3 +1,4 @@
+using Client.Analysis;
 using Client.Review;
 
 namespace Client.Pages;
@@ -7,11 +8,14 @@ public partial class Workspace
     private CancellationTokenSource? _reviewCts;
     private long _reviewIntent;
     private bool _reviewPending;
+    private bool _reviewDrawerOpen;
     private string? _reviewNotice;
     private Guid _reviewSession;
     private Guid? _seenPreview,_seenAction;
     private ReviewServiceState CurrentReview => ReviewService.State;
     private bool ReviewWritable => Coordinator.IsOpen && !Coordinator.IsReadOnly && Coordinator.Recovery is null;
+    private bool ReviewDrawerAvailable => _reviewDrawerOpen || _reviewPending || CurrentReview.Preview is not null
+        || CurrentReview.Action is not null || CurrentReview.Notice is not null || _reviewNotice is not null;
 
     private void OnReviewChanged(ReviewServiceState ignored)
     {
@@ -29,17 +33,33 @@ public partial class Workspace
         }
         if(_seenPreview is not null && current.Preview is null && current.Action?.Id==_seenAction && !_reviewPending)
             _reviewNotice="The preview is no longer current. Run analysis and request a fresh preview; no stale proposal was accepted.";
-        if (current.Preview is { } preview && preview.Id != _seenPreview) OpenChecks(ChecksSection.Review);
+        if (current.Preview is { } preview && preview.Id != _seenPreview) OpenReviewDrawer();
         _seenPreview=current.Preview?.Id;_seenAction=current.Action?.Id;
         StateHasChanged();
     }
     private Task PreviewProjectReplaceAsync(Client.Editing.Search.ProjectReplaceRequest request)
         => OpenReviewAsync(ct => request.PreviewAsync(ReviewService, ct));
-    private Task PreviewFixAsync(string id)=>OpenReviewAsync(ct=>ReviewService.PreviewFixAsync(id,ct));
+    private bool CanReviewSourceChecks => Coordinator.IsOpen && !_reviewPending && !CurrentReview.Busy;
+
+    private Task PreviewFixAsync(AnalysisReport report, string id)
+        => CanReviewSourceChecks && Navigator.IsStillCurrent(report)
+            ? OpenReviewAsync(ct => ReviewService.PreviewFixAsync(id, ct)) : Task.CompletedTask;
+
+    private Task RunRepairCheckAsync(AnalysisReport report, string version)
+    {
+        if (!CanReviewSourceChecks || !Navigator.IsStillCurrent(report)) return Task.CompletedTask;
+        ChangeKnuChecks(version);
+        return AnalyzeNowAsync();
+    }
     private Task OpenReviewAsync(Func<CancellationToken,Task<ReviewResult>> operation)
     {
-        OpenChecks(ChecksSection.Review);
+        OpenReviewDrawer();
         return RunReviewAsync(operation);
+    }
+    private void OpenReviewDrawer()
+    {
+        _reviewDrawerOpen = true;
+        _sidebarExpanded = false;
     }
     private Task PreviewReviewSubsetAsync(ReviewSubsetRequest request)
         => RunReviewAsync(ct => ReviewService.PreviewSubsetAsync(request.ExpectedPreviewId, request.Selection, ct));

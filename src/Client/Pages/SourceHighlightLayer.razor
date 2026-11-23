@@ -1,15 +1,16 @@
 @using Client.Editing.Highlighting
+@using Client.Editing
 @using System.Globalization
 @using Microsoft.AspNetCore.Components.Rendering
 @implements IAsyncDisposable
 @inject IJSRuntime JS
 
-<div class="source-highlighting" aria-hidden="true" @ref="_root"
+<div class="source-highlighting" @ref="_root"
      data-testid="source-highlight-layer" data-file-id="@FileIdentity" data-revision="@Revision"
      data-supported="@(_document.Ready ? "true" : "false")" data-highlight-fallback="@_document.Status">
-    <div class="source-highlight-gutter"><pre class="source-highlight-numbers" data-testid="source-line-numbers">@_numbers</pre></div>
-    <div class="source-highlight-viewport"><pre class="source-highlight-text" data-testid="source-highlight-text">@ColoredText</pre></div>
-    <span class="source-highlight-notice" data-testid="source-highlight-status">
+    <div class="source-highlight-gutter"><pre class="source-highlight-numbers" data-testid="source-line-numbers">@GutterText</pre></div>
+    <div class="source-highlight-viewport" aria-hidden="true"><pre class="source-highlight-text" data-testid="source-highlight-text">@ColoredText</pre></div>
+    <span class="source-highlight-notice" aria-hidden="true" data-testid="source-highlight-status">
         @if (_document.Ready)
         {
             <span class="source-highlight-active-note">LaTeX lexical colors · line numbers</span>
@@ -27,9 +28,13 @@
     [Parameter, EditorRequired] public string FileIdentity { get; set; } = "";
     [Parameter, EditorRequired] public string Revision { get; set; } = "";
     [Parameter] public bool ReadOnly { get; set; }
+    [Parameter] public IReadOnlyList<SourceMark> Marks { get; set; } = [];
+    [Parameter] public EventCallback<IReadOnlyList<SourceMark>> MarkSelected { get; set; }
     private readonly HighlightCache _cache = new();
     private HighlightDocument _document = LatexHighlighter.Scan("");
-    private (string Text, string Class)[] _runs = Array.Empty<(string, string)>();
+    private readonly List<(string Text, string Class, SourceMarkKind? Mark)> _runs = [];
+    private readonly Dictionary<int, List<SourceMark>> _gutterMarks = [];
+    private IReadOnlyList<SourceMark>? _lastMarks;
     private string _numbers = "1";
     private string? _lastFile, _lastRevision;
     private bool _lastReadOnly, _needsRender = true, _disposed;
@@ -49,19 +54,65 @@
     {
         var next = _cache.Get(Source);
         bool contentChanged = !ReferenceEquals(next, _document);
-        _needsRender = contentChanged || FileIdentity != _lastFile || Revision != _lastRevision || ReadOnly != _lastReadOnly;
+        bool marksChanged = !ReferenceEquals(_lastMarks, Marks);
+        _needsRender = contentChanged || marksChanged || FileIdentity != _lastFile || Revision != _lastRevision || ReadOnly != _lastReadOnly;
         if (!_needsRender) return;
         _intent++;
         _document = next;
         _lastFile = FileIdentity; _lastRevision = Revision; _lastReadOnly = ReadOnly;
-        if (!contentChanged) return;
+        _lastMarks = Marks;
+        if (!contentChanged && !marksChanged) return;
         // Projection is display-only and only for bounded successful scans. No
         // normalized content ever flows into Workspace/Coordinator persistence.
-        _runs = next.Ready ? next.Spans.Select(span => (
-            Normalize(next.Source.Substring(span.Start, span.Length)), CssClass(span.Kind))).ToArray()
-            : Array.Empty<(string, string)>();
+        ProjectMarks(next);
         _numbers = next.Ready ? string.Join("\n", Enumerable.Range(1, next.LineCount)
             .Select(line => line.ToString(CultureInfo.InvariantCulture))) : "";
+    }
+
+    private void ProjectMarks(HighlightDocument document)
+    {
+        _runs.Clear(); _gutterMarks.Clear();
+        if (!document.Ready) return;
+        var ranges = new List<(int Start, int End, SourceMarkKind Kind)>();
+        int scan = 0, line = 1;
+        foreach (var mark in Marks.OrderBy(mark => mark.Range.Start))
+        {
+            var (start, end) = mark.Range;
+            if (!SourceTools.ValidRange(document.Source, mark.Range)) continue;
+            while (scan < start)
+            {
+                if (document.Source[scan] == '\r' && scan + 1 < document.Source.Length && document.Source[scan + 1] == '\n') scan++;
+                if (document.Source[scan++] is '\r' or '\n') line++;
+            }
+            if (!_gutterMarks.TryGetValue(line, out var lineMarks))
+                _gutterMarks[line] = lineMarks = [];
+            lineMarks.Add(mark);
+            if (start == end) continue;
+            // Only the current review layer is displayed. Combine overlapping
+            // ranges so nested findings do not duplicate visible source text.
+            if (ranges.Count > 0 && ranges[^1].End > start)
+            {
+                var last = ranges[^1];
+                ranges[^1] = (last.Start, Math.Max(last.End, end), last.Kind);
+            }
+            else ranges.Add((start, end, mark.Kind));
+        }
+
+        int index = 0;
+        foreach (var token in document.Spans)
+        {
+            int at = token.Start, end = at + token.Length;
+            string css = CssClass(token.Kind);
+            while (at < end)
+            {
+                while (index < ranges.Count && ranges[index].End <= at) index++;
+                var range = index < ranges.Count ? ranges[index] : (Start: end, End: end, Kind: SourceMarkKind.Check);
+                bool marked = range.Start <= at;
+                int until = Math.Min(end, marked ? range.End : range.Start);
+                _runs.Add((Normalize(document.Source[at..until]), css, marked ? range.Kind : null));
+                at = until;
+            }
+        }
     }
 
     protected override bool ShouldRender() => _needsRender;
@@ -77,14 +128,57 @@
     };
     private RenderFragment ColoredText => builder =>
     {
-        // At most 4,096 spans, not a DOM node per character. AddContent escapes
+        // Bounded lexical spans plus at most two boundaries per mark. AddContent escapes
         // imported text, including literal HTML; no MarkupString/innerHTML.
         foreach (var run in _runs)
         {
             builder.OpenElement(0, "span");
-            builder.AddAttribute(1, "class", run.Class);
+            string css = run.Mark switch
+            {
+                SourceMarkKind.Check => run.Class + " source-mark-check",
+                SourceMarkKind.Ai => run.Class + " source-mark-ai",
+                _ => run.Class,
+            };
+            builder.AddAttribute(1, "class", css);
             builder.AddContent(2, run.Text);
             builder.CloseElement();
+        }
+    };
+    private RenderFragment GutterText => builder =>
+    {
+        if (_gutterMarks.Count == 0)
+        {
+            builder.OpenElement(0, "span");
+            builder.AddAttribute(1, "aria-hidden", "true");
+            builder.AddContent(2, _numbers);
+            builder.CloseElement();
+            return;
+        }
+        for (int line = 1; line <= _document.LineCount; line++)
+        {
+            if (line > 1) builder.AddContent(3, "\n");
+            string number = line.ToString(CultureInfo.InvariantCulture);
+            if (_gutterMarks.TryGetValue(line, out var marks))
+            {
+                bool ai = marks[0].Kind == SourceMarkKind.Ai;
+                string label = ai ? $"Open AI suggestion on line {number}" :
+                    $"Open {marks.Count} check {(marks.Count == 1 ? "finding" : "findings")} on line {number}";
+                builder.OpenElement(4, "button");
+                builder.AddAttribute(5, "type", "button");
+                builder.AddAttribute(6, "class", ai ? "source-gutter-marker ai" : "source-gutter-marker");
+                builder.AddAttribute(7, "aria-label", label);
+                builder.AddAttribute(8, "title", label);
+                builder.AddAttribute(9, "onclick", EventCallback.Factory.Create(this, () => MarkSelected.InvokeAsync(marks)));
+                builder.AddContent(10, number);
+                builder.CloseElement();
+            }
+            else
+            {
+                builder.OpenElement(11, "span");
+                builder.AddAttribute(12, "aria-hidden", "true");
+                builder.AddContent(13, number);
+                builder.CloseElement();
+            }
         }
     };
 

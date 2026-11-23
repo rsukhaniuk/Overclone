@@ -372,11 +372,3 @@ export function enableWorkspaceFocus(element) {
     summary.focus({ preventScroll: true });
   });
 }
-
-export function closeNarrowSidebar(navigation, filesOnly) {
-  if (!navigation?.isConnected || !matchMedia("(max-width: 800px)").matches) return;
-  const details = navigation.querySelector(filesOnly ? ".files-switch[open]" : ".sidebar-switch[open]");
-  if (!details) return;
-  if (details.contains(document.activeElement)) details.querySelector("summary")?.focus({ preventScroll: true });
-  details.open = false;
-}
