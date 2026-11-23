@@ -93,6 +93,7 @@ async function connectSynthetic(page) {
     const ai = H.$(page, 'ai-panel');
     await ai.getByRole('button', { name: 'Prepare active-file context', exact: true }).click();
     await H.$(page, 'ai-context').waitFor();
+    await ai.getByRole('combobox', { name: 'Request type' }).selectOption('Question');
     await ai.locator('textarea').fill(promptMarker);
     return ai;
 }

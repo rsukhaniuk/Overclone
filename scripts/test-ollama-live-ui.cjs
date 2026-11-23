@@ -89,7 +89,7 @@ async function phase(name, action) {
       await $(page, "ai-connect").click(); await $(page, "ai-destination").waitFor();
       await page.getByRole("button", { name: "Prepare active-file context", exact: true }).click();
       await $(page, "ai-context").waitFor(); assert.equal(await $(page, "ai-context").textContent(), source);
-      await $(page, "ai-panel").locator('input[type="checkbox"]').check();
+      await $(page, "ai-panel").getByRole("combobox", { name: "Request type" }).selectOption("Proposal");
       await $(page, "ai-panel").locator("textarea").fill("Replace only ALPHA with BETA. Preserve every other character and line ending of the supplied file. Return the prescribed JSON object only.");
       assert.equal(requests.length, 0);
     });

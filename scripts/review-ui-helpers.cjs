@@ -30,7 +30,19 @@ async function reveal(p, target) {
  // Open real disclosure controls from the outside inward; never inject UI state.
  await target.waitFor({ state: "attached" });
  const section = await target.evaluate(element => element.closest('[data-checks-section]')?.dataset.checksSection ?? null);
- if (section) {
+ if (await $(p, 'open-ai').count()) {
+  if (section === 'review') {
+   const drawer = $(p, 'open-review');
+   if (await drawer.count() && await drawer.getAttribute('aria-expanded') !== 'true') await drawer.click();
+  } else if (section || await target.evaluate(element => !!element.closest('#sidebar-files'))) {
+   const button = $(p, section === 'ai' ? 'open-ai' : section ? 'open-checks' : 'open-editor');
+   if (await button.getAttribute('aria-pressed') !== 'true' || !await p.locator('.sidebar-content').isVisible()) await button.click();
+   if (section && section !== 'ai') {
+    const tab = p.locator(`[data-checks-tab="${section}"]`);
+    if (await tab.getAttribute('aria-current') !== 'page') await tab.click();
+   }
+  }
+ } else if (section) {
   const checks = $(p, 'open-checks');
   if (await checks.getAttribute('aria-pressed') !== 'true') await checks.click();
   const tab = p.locator(`[data-checks-tab="${section}"]`);

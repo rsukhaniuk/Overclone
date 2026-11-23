@@ -42,6 +42,7 @@ async function closeProject(p) {
  await p.locator(".project-dashboard").waitFor();
 }
 async function addNote(p, name = "notes.txt") {
+ await reveal(p, $(p, "new-file-name"));
  await $(p, "new-file-name").fill(name);
  await $(p, "new-file").click();
  await p.locator(".editor-toolbar .source-tab", { hasText: name }).waitFor();

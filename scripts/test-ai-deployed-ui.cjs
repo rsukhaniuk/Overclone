@@ -586,8 +586,8 @@ async function live(config, signal, result, controller) {
                     );
                     const send = async (operation, instruction) => {
                         await ai
-                            .getByRole("checkbox")
-                            .setChecked(operation === "proposal");
+                            .getByRole("combobox", { name: "Request type" })
+                            .selectOption(operation === "proposal" ? "Proposal" : "Question");
                         await ai
                             .getByRole("textbox", {
                                 name: "Your request",

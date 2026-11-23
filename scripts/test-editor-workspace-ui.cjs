@@ -175,11 +175,11 @@ async function highlight(page) {
             const before = await writingPosition(page);
             assert.ok(before.top > 0 && before.left > 0 && before.start !== before.end);
             await H.reveal(page, $(page, "ai-panel"));
-            assert.equal(await editor.isVisible(), false);
+            assert.ok(await editor.isVisible());
             assert.ok(await $(page, "ai-panel").isVisible());
             await page.screenshot({ path: path.join(output, "checks-ai-" + width + ".png") });
             await withoutOverflow(page);
-            await page.locator('[data-checks-tab="source"]').click();
+            await H.reveal(page, $(page, "analyze-now"));
             await page.screenshot({ path: path.join(output, "checks-source-" + width + ".png") });
             await withoutOverflow(page);
             await $(page, "open-editor").click();
@@ -247,7 +247,7 @@ async function highlight(page) {
         await page.locator("#new-project").fill("Ambiguous root selection");
         await page.getByRole("button", { name: "Create project", exact: true }).click();
         await $(page, "starter-article").waitFor();
-        await page.waitForFunction(() => document.querySelector(".files-switch")?.open === false);
+        await page.waitForFunction(() => !document.querySelector(".workspace-navigation.sidebar-expanded"));
         const chooser = page.waitForEvent("filechooser");
         await page.getByText("Import a source file…", { exact: true }).click();
         await (await chooser).setFiles({

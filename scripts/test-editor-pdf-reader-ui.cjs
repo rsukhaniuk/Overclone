@@ -215,10 +215,9 @@ Page 12 text.
         assert.ok(Math.abs(await scroll() - position) <= 5);
 
         await page.setViewportSize({ width: 390, height: 840 });
-        const files = page.locator(".files-switch");
-        if (await files.getAttribute("open") === null) await files.locator("summary").click();
+        if (!await page.locator(".sidebar-content").isVisible()) await $(page, "open-editor").click();
         await page.getByRole("button", { name: "PDF", exact: true }).click();
-        await page.waitForFunction(() => !document.querySelector(".sidebar-switch[open]"));
+        await page.waitForFunction(() => !document.querySelector(".workspace-navigation.sidebar-expanded"));
         await rendered(2, "Revised second page text.");
         await page.getByRole("button", { name: "Next page", exact: true }).click();
         await rendered(3, "Third page target.");
