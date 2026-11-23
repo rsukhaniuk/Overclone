@@ -47,9 +47,10 @@ public sealed class AiConnection
     }
 }
 
-public sealed class AiTextRequest(string prompt)
+public sealed class AiTextRequest(string prompt, bool inlineReview = false)
 {
     public string Prompt { get; } = prompt;
+    public bool InlineReview { get; } = inlineReview;
     public override string ToString() => "AI text request (content omitted)";
 }
 public sealed class AiReply

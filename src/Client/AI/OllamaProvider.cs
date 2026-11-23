@@ -1,5 +1,6 @@
 using System.Net;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Components.WebAssembly.Http;
 
 namespace Client.AI;
@@ -7,11 +8,13 @@ namespace Client.AI;
 /// <summary>Sends one bounded Ollama request and reads its nonstreaming response.</summary>
 public sealed class OllamaProvider(HttpClient http) : IAiProvider
 {
+    private static readonly JsonSerializerOptions PayloadJson = new() { DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull };
+
     public async Task<AiReply> SendAsync(AiConnection connection, AiTextRequest request, CancellationToken ct)
     {
         if (!connection.Connected) return AiReply.Failure(AiOutcome.Unconfigured);
         if (!AiLimits.Fits(request.Prompt, AiLimits.ContextBytes + AiLimits.InstructionBytes + 4096)) return AiReply.Failure(AiOutcome.TooLarge);
-        var payload = JsonSerializer.SerializeToUtf8Bytes(Payload(connection, request));
+        var payload = JsonSerializer.SerializeToUtf8Bytes(Payload(connection, request), PayloadJson);
         if (payload.Length > AiLimits.BodyBytes) return AiReply.Failure(AiOutcome.TooLarge);
         using var message = new HttpRequestMessage(HttpMethod.Post, connection.Destination);
         message.Content = new ByteArrayContent(payload);
@@ -105,6 +108,7 @@ public sealed class OllamaProvider(HttpClient http) : IAiProvider
         model = connection.Model,
         messages = new[] { new { role = "user", content = request.Prompt } },
         stream = false,
+        format = request.InlineReview ? AiInlineReview.Schema : (JsonElement?)null,
         options = new { num_predict = AiLimits.OutputTokens }
     };
 

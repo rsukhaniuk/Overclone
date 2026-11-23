@@ -1,4 +1,5 @@
 using Client.Review;
+using Client.Editing;
 using Client.Workspace;
 using Client.Workspace.Domain;
 using Client.Workspace.Patching;
@@ -24,6 +25,8 @@ public sealed class AiFileContext
     public bool HasBom { get; }
     public string Text { get; }
     public int ByteLength => _bytes.Length;
+    public SourceRange? Selection { get; private init; }
+    public string DisclosedText => Selection is { } range ? Text[range.Start..range.End] : Text;
     public override string ToString() => "Active-file AI context (content omitted)";
 
     public bool IsCurrent(WorkspaceCoordinator workspace) => workspace.CurrentTextPatchIdentity == Identity
@@ -37,7 +40,8 @@ public sealed class AiFileContext
         ct.ThrowIfCancellationRequested();
         return IsCurrent(workspace) && bytes is not null && HashBytes(bytes) == Hash && bytes.AsSpan().SequenceEqual(_bytes);
     }
-    public static async Task<(AiFileContext? Context, AiOutcome Outcome)> CaptureAsync(WorkspaceCoordinator workspace, CancellationToken ct)
+    public static async Task<(AiFileContext? Context, AiOutcome Outcome)> CaptureAsync(WorkspaceCoordinator workspace, CancellationToken ct,
+        SourceRange? selection = null)
     {
         if (workspace.CurrentTextPatchIdentity is not { } identity || workspace.ActiveFile is not { MediaKind: "text", Deleted: false } file)
             return (null, AiOutcome.Unavailable);
@@ -47,10 +51,12 @@ public sealed class AiFileContext
         if (workspace.CurrentTextPatchIdentity != identity || workspace.ActiveFileId != frozen.Id
             || workspace.ActiveFile?.RelativePath != frozen.RelativePath) return (null, AiOutcome.Cancelled);
         if (bytes is null) return (null, AiOutcome.TooLarge);
-        if (!TextContent.TryDecode(bytes, out _, out var bom) || bom != frozen.HasBom) return (null, AiOutcome.Malformed);
+        if (!TextContent.TryDecode(bytes, out var text, out var bom) || bom != frozen.HasBom) return (null, AiOutcome.Malformed);
+        if (selection is { } range && (range.Start == range.End || text != frozen.Content || !SourceTools.ValidRange(text, range)))
+            return (null, AiOutcome.Malformed);
         if (!frozen.DirtyContent && !frozen.IsNew && frozen.PendingTextBytes is null
             && (bytes.LongLength != frozen.DurableLength || HashBytes(bytes) != frozen.DurableHash)) return (null, AiOutcome.Malformed);
-        return (new(identity, frozen.Id, frozen.RelativePath, bytes), AiOutcome.Success);
+        return (new(identity, frozen.Id, frozen.RelativePath, bytes) { Selection = selection }, AiOutcome.Success);
     }
     private static async Task<byte[]?> ReadBoundedAsync(WorkspaceCoordinator workspace, WorkingFile file, CancellationToken ct)
     {
@@ -73,12 +79,19 @@ public sealed class AiFileContext
 
     internal TextChangeSet? Propose(string replacementText, string explanation)
     {
-        if (!AiLimits.Fits(replacementText, AiLimits.OutputBytes) || !AiLimits.Fits(explanation, 4096)
-            || replacementText.StartsWith('\uFEFF')) return null; // BOM is preserved separately, never model-controlled.
-        var start = HasBom ? 3 : 0;
+        if (Selection is not null) return null;
+        return Propose(new(0, Text.Length), replacementText, explanation);
+    }
+
+    internal TextChangeSet? Propose(SourceRange range, string replacementText, string explanation)
+    {
+        if (!SourceTools.ValidRange(Text, range) || !AiLimits.Fits(replacementText, AiLimits.OutputBytes)
+            || !AiLimits.Fits(explanation, 4096) || replacementText.StartsWith('\uFEFF')) return null;
+        int start = (HasBom ? 3 : 0) + AiLimits.Utf8.GetByteCount(Text.AsSpan(0, range.Start));
+        int length = AiLimits.Utf8.GetByteCount(Text.AsSpan(range.Start, range.End - range.Start));
         var replacement = AiLimits.Utf8.GetBytes(replacementText);
         return TextChangeSet.Create(TextPatchOrigin.Ai, explanation,
             [new(FileId, Filename, Hash, _bytes.Length,
-                [new(start, _bytes.Length, _bytes.AsMemory(start), replacement)])]).ChangeSet;
+                [new(start, start + length, _bytes.AsMemory(start, length), replacement)])]).ChangeSet;
     }
 }
