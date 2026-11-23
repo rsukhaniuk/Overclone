@@ -5,7 +5,8 @@ persistence, source analysis, explicit review/undo, a project manager, optional
 local Ollama, bundled compilation and PDF preview. Diagrams retain the earlier
 architecture checkpoint and show some superseded integration plans. See [decisions](decisions.md),
 [contracts](contracts.md), [roadmap](roadmap.md) and
-[compilation status](compilation.md).
+[compilation status](compilation.md). Use the [repository map](repository-map.md)
+to find the code and tests behind each workflow.
 
 ## Product boundary
 
@@ -48,8 +49,7 @@ independent build/test boundaries and separate WASM memories.
 
 Handwritten JavaScript is limited to unavailable .NET browser bindings: worker
 creation/message transport, OPFS/IndexedDB and picker calls, service-worker
-lifecycle, Google browser authorization/Picker, and drawing a native raster when
-needed. Keep credential/provider logic and HTTP requests in C#; generated
+lifecycle, and drawing a native raster when needed. Keep credential/provider logic and HTTP requests in C#; generated
 Emscripten/wasm-bindgen loaders are tool output. Browser glue never evaluates
 rules or applies patches. Existing `wwwroot/js` bridges are migration seams, not
 the final protocol. C/C++/Rust third-party engine dependencies require a recorded
@@ -66,8 +66,8 @@ After provisioning, the application must cold-start with that host unavailable.
 
 Use one Rust analysis worker, one TeX worker and one PDF worker initially; storage
 glue uses a dedicated worker for synchronous OPFS access. Workers need no pthreads
-or shared memory. Explicitly assess COOP/COEP and OAuth compatibility before any
-future dependency requires cross-origin isolation. Do not make it a hidden default.
+or shared memory. Assess COOP/COEP and browser compatibility before any
+future dependency requires cross-origin isolation.
 Compilation and rendering cannot share a busy worker. Workers take immutable
 snapshots or transferable buffers, expose cancellation and have operation budgets.
 For a blocking native call, cancellation/timeouts terminate and recreate the worker;
@@ -204,21 +204,15 @@ callbacks. Disable PDF actions/embedded scripting; render native pixels/text rat
 than executable document HTML. Do not execute model-generated code or render raw
 AI HTML. Enforce worker termination, page/raster/memory and archive limits.
 
-Workers separate scheduling/memory, not origin authority: same-origin code can
-access browser storage. Content Security Policy, reviewed dependencies and absence
-of arbitrary script execution are essential; no document claims that WASM or a
-worker protects keys from an XSS compromise. Use restrictive `script-src` with the
-tested WASM allowance, `object-src 'none'`, no inline eval, explicit provider
-`connect-src` destinations and a separate worker policy denying network where
-feasible. Test Google OAuth/Picker requirements before publishing exact headers.
-Custom Ollama endpoints are user-entered and disclosed; validate scheme/origin,
-test local network permissions/CORS, and never request browser security bypasses.
+Same-origin code can access browser storage. Preserve the restrictive app CSP,
+the WASM script allowance, and the separate worker policy. App connections
+permit the supported Ollama loopback origins. Check scheme, exact origin,
+local network permissions and CORS for the tested browser configuration.
+See [browser security](browser-security.md) and [Ollama setup](mvp-ai.md).
 
-Memory-only keys reduce persistence, not same-origin exposure. Clear credentials
-on disconnect; redact errors/logs and exclude secrets from history, exports and
-caches. Browser GC prevents a guarantee of immediate secure memory erasure.
-Remote prompt retention remains governed by the selected provider. Diagnostics
-for the app stay local and omit document content/secrets; no telemetry backend.
+Clear transient chat state on disconnect. Keep prompts, replies and sensitive
+values out of diagnostics, exports, history and caches. Application diagnostics
+stay local.
 
 ![Worker lifecycle](uml/rendered/12-worker-state.svg)
 
