@@ -43,5 +43,3 @@ template/generated-JS coverage, a complete runtime license/source pack, a source
 offer, a selected project license or runtime adoption/distribution clearance.
 These source-controlled texts are not automatically bundled into the PWA or
 resource ZIP. Recipient-facing release packaging remains a separate gate.
-
-See [runtime notice status](../../../docs/runtime-toolchain-notices.md).

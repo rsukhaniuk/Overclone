@@ -3,10 +3,7 @@
 Current implementation includes a local multi-file workspace, OPFS/IndexedDB
 persistence, source analysis, explicit review/undo, a project manager, optional
 local Ollama, bundled compilation and PDF preview. Diagrams retain the earlier
-architecture checkpoint and show some superseded integration plans. See [decisions](decisions.md),
-[contracts](contracts.md), [roadmap](roadmap.md) and
-[compilation status](compilation.md). Use the [repository map](repository-map.md)
-to find the code and tests behind each workflow.
+architecture checkpoint and show some superseded integration plans.
 
 ## Product boundary
 
@@ -18,7 +15,7 @@ folder and ZIP transfers. Ollama is the optional local service and uses a
 preinstalled model. Local saving and deterministic analysis work independently.
 
 Offline covers work after installing and provisioning the app on that origin and
-browser profile. Feature compatibility follows the tested [matrix](roadmap.md).
+browser profile.
 
 ![Application use cases](uml/rendered/01-use-cases.svg)
 
@@ -41,7 +38,7 @@ browser profile. Feature compatibility follows the tested [matrix](roadmap.md).
 | Ollama session | C# | Disclosed active-file context, explicit chat and reviewed edit proposals through the local service |
 | OfflineAssetManager | C# + service-worker glue | Provisioned asset inventories, checksums, compatibility and update readiness |
 
-Application services depend on the ports in [contracts](contracts.md), never
+Application services depend on ports, never
 integration implementations. Rust analysis runs independently of Blazor and Ollama. C++ PDF
 inspection returns facts to Rust; it must not embed KNU thresholds. Rust does not
 call C++ directly: the coordinator connects typed results. Native modules retain
@@ -164,7 +161,6 @@ findings: a missing PDF must not produce an empty report interpreted as success.
 Distinguish exact measurements from heuristic classification of headings or body
 text. Dynamic macros, scanned PDFs and ambiguous layout require explicit uncertainty.
 
-[Decisions](decisions.md#knu-profile-evidence) gives source-cited KNU examples.
 The first profile checks a diploma project's source plus its compiled PDF; arbitrary
 standalone PDF import/analysis is not required by this architecture.
 
@@ -193,7 +189,7 @@ The optional Ollama workflow previews the destination, model and active-file
 context. The browser sends an explicit single-turn request to the local service.
 Chat state stays in memory. The existing review service validates complete proposals
 against the exact captured file and revision, then preview, acceptance and Undo use
-the normal local workflow. [Ollama setup](mvp-ai.md)
+the normal local workflow.
 
 ## Security boundaries and operational limits
 
@@ -208,7 +204,6 @@ Same-origin code can access browser storage. Preserve the restrictive app CSP,
 the WASM script allowance, and the separate worker policy. App connections
 permit the supported Ollama loopback origins. Check scheme, exact origin,
 local network permissions and CORS for the tested browser configuration.
-See [browser security](browser-security.md) and [Ollama setup](mvp-ai.md).
 
 Clear transient chat state on disconnect. Keep prompts, replies and sensitive
 values out of diagnostics, exports, history and caches. Application diagnostics

@@ -205,9 +205,8 @@ allow project-local package overrides, not force a collision with runtime
 `geometry.sty`. Filesystem directories are explicit virtual inputs, not host
 font search roots. Runtime assets must not be copied into the project namespace.
 The accepted Lua ABI2 quota fix and real component pins are now assembled and
-registered by the master-owned [compiler integration](../../../docs/compiler-suite-integration.md).
-Actual native, app and offline results are recorded in
-[verification](../../../docs/verification.md). This tooling does not grant
+registered by the master-owned compiler integration.
+This tooling does not grant
 redistribution clearance or establish full package compatibility.
 
 Focused checks:

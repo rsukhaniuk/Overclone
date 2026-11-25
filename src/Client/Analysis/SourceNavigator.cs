@@ -17,7 +17,7 @@ namespace Client.Analysis;
 // tiny DOM-glue module (editor-select.js) that does final DOM checks +
 // focus/setSelectionRange and returns a bool.
 //
-// GUARANTEES (see docs/milestones/m2-source-analysis.md):
+// GUARANTEES:
 // - A click references a diagnostic actually IN the current Completed report.
 //   The diagnostic is RESOLVED FROM report.Result.Diagnostics by reference, then
 //   by stable Id, and the CANONICAL object's file/span/location/message fields

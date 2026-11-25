@@ -7,7 +7,7 @@
 //   node scripts/test-pwa-release-update.cjs
 // Each dir is a published wwwroot (dotnet publish site/wwwroot). The lead builds
 // B from a PRIVATE TEMPORARY clone with a C# rendered build-identity marker
-// (NEVER committed; see docs/offline-release-updates.md for the exact patch).
+// (NEVER committed).
 //
 // Proves on actual published bytes:
 //  - Provision A, save a UTF-8/BOM/CRLF fixture, wait for genuine release readiness.

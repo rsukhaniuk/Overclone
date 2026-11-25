@@ -4,7 +4,6 @@ These are actual cached Emscripten 6.0.13 texts from source revision
 `e13ee988ce3d87a738dd8f3661d02223308c412a`. Complete files are unchanged;
 excerpts are identified below and are not complete upstream source files.
 Source URLs identify the pinned SDK source paths; no live retrieval is implied.
-See [scope and associations](../../../docs/runtime-toolchain-notices.md).
 
 | Local text | Bytes | SHA-256 | Source / extraction |
 | --- | ---: | --- | --- |

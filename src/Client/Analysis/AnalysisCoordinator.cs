@@ -14,7 +14,7 @@ namespace Client.Analysis;
 // analysis; C# owns orchestration). No diagnostics UI, DI registration, JS,
 // storage schema, history/transfer, Program.cs or compose changes happen here.
 //
-// INVARIANTS (see docs/milestones/m2-source-analysis.md section D):
+// INVARIANTS:
 // - ONE AnalysisSnapshotFactory is created/owned FIRST, then this coordinator
 //   subscribes its own WorkspaceChanged handler, so the factory's epoch bump
 //   fires before this handler observes each raise.
